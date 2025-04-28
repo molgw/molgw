@@ -1110,7 +1110,7 @@ subroutine read_cc4s_coulombvertex()
   implicit none
 
   !=====
-  integer :: nstate, istate, jstate, ng
+  integer :: nstate, istate, jstate, naux
   integer :: unitcv
   complex(dp), allocatable :: coulomb_vertex_ij(:)
   integer, allocatable :: yaml_integers(:)
@@ -1145,16 +1145,16 @@ subroutine read_cc4s_coulombvertex()
   deallocate(yaml_integers)
 
   call yaml_search_keyword('CoulombVertex.yaml', 'length', yaml_integers)
-  ng     = yaml_integers(1)
+  naux   = yaml_integers(1)
   nstate = yaml_integers(2)
-  write(stdout, '(1x,a,i6,a,i4,a,i4)') 'Dimensions read:', ng, ' x ', nstate, ' x ', nstate
-  ! nauxil_global is 2*ng because of real and imaginary parts
-  nauxil_global = 2 * ng 
+  write(stdout, '(1x,a,i6,a,i4,a,i4)') 'Dimensions read:', naux, ' x ', nstate, ' x ', nstate
+  ! nauxil_global is 2*naux because of real and imaginary parts
+  nauxil_global = 2 * naux
 
   call distribute_auxil_basis(nauxil_global)
 
   
-  allocate(coulomb_vertex_ij(ng))
+  allocate(coulomb_vertex_ij(naux))
 
   call clean_allocate('3-center MO integrals', eri_3center_eigen, 1, nauxil_local, 1, nstate, 1, nstate, 1, 1)
 
@@ -1164,8 +1164,8 @@ subroutine read_cc4s_coulombvertex()
   do istate=1, nstate
     do jstate=1, nstate
       read(unitcv) coulomb_vertex_ij(:)
-      eri_3center_eigen(1:ng, istate, jstate, 1)      = coulomb_vertex_ij(:)%re
-      eri_3center_eigen(ng+1:2*ng, istate, jstate, 1) = coulomb_vertex_ij(:)%im
+      eri_3center_eigen(1:naux, istate, jstate, 1)      = coulomb_vertex_ij(:)%re
+      eri_3center_eigen(naux+1:2*naux, istate, jstate, 1) = coulomb_vertex_ij(:)%im
     enddo
   enddo
 
@@ -1187,7 +1187,7 @@ subroutine read_cc4s_coulombvertex()
 
   ! complex_length in bytes whereas STORAGE_SIZE is in bits
   complex_length = STORAGE_SIZE(coulomb_vertex_ij(1)) / 8
-  disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(ng, KIND=MPI_OFFSET_KIND)
+  disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(naux, KIND=MPI_OFFSET_KIND)
 
   call MPI_FILE_OPEN(MPI_COMM_WORLD, 'CoulombVertex.elements', &
                      MPI_MODE_RDONLY, &
@@ -1206,10 +1206,10 @@ subroutine read_cc4s_coulombvertex()
       ijstate_local = INDXG2L(ijstate_global, block_col, 0, first_col, npcol_cd)
 
       call MPI_FILE_READ_AT(unitcv, disp, coulomb_vertex_ij, &
-                            ng, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE, ierr)
+                            naux, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE, ierr)
 
-      eri_3center_tmp(1:ng, ijstate_local)      = coulomb_vertex_ij(:)%re
-      eri_3center_tmp(ng+1:2*ng, ijstate_local) = coulomb_vertex_ij(:)%im
+      eri_3center_tmp(1:naux, ijstate_local)      = coulomb_vertex_ij(:)%re
+      eri_3center_tmp(naux+1:2*naux, ijstate_local) = coulomb_vertex_ij(:)%im
 
     enddo
   enddo
@@ -1249,7 +1249,7 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
   character(len=*), intent(in), optional :: rootname
   !=====
   character(len=128) :: rootname_ = 'molgw_'
-  integer :: nstate, istate, jstate, ng
+  integer :: nstate, istate, jstate, naux
   integer :: unitcv
   complex(dp), allocatable :: coulomb_vertex_ij(:)
   integer, allocatable :: yaml_integers(:)
@@ -1284,8 +1284,13 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
   ! complex_length in bytes whereas STORAGE_SIZE is in bits
   complex_length = STORAGE_SIZE(coulomb_vertex_ij(1)) / 8
 
-  ng = nauxil_global / 2
-  allocate(coulomb_vertex_ij(ng))
+  if( MOD(nauxil_global, 2) == 0 ) then ! even
+    naux = nauxil_global / 2
+  else ! odd
+    naux = (nauxil_global + 1) / 2
+  endif
+
+  allocate(coulomb_vertex_ij(naux))
   nstate = SIZE(eri_3center_updated, DIM=2)
   nstate2 = nstate**2
 
@@ -1295,7 +1300,7 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
   write(unitcv, '(a)')    'type: Tensor'
   write(unitcv, '(a)')    'scalarType: Complex64'
   write(unitcv, '(a)')    'dimensions:'
-  write(unitcv, '(a,i8)')    '- length:', ng
+  write(unitcv, '(a,i8)')    '- length:', naux
   write(unitcv, '(a)')    '  type: AuxiliaryField'
   write(unitcv, '(a,i8)')    '- length:', nstate
   write(unitcv, '(a)')    '  type: State'
@@ -1308,15 +1313,21 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
   write(unitcv, '(a)')    '  halfGrid: 1'
   close(unitcv)
 
-  write(stdout, *) 'File size (bytes):', INT(complex_length, KIND=8) * INT(ng, KIND=8) * INT(nstate2, KIND = 8)
+  write(stdout, *) 'File size (bytes):', INT(complex_length, KIND=8) * INT(naux, KIND=8) * INT(nstate2, KIND = 8)
 
 #if !defined(HAVE_MPI)
   write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with plain fortran'
   open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.elements', form='unformatted', access='stream', status='unknown', action='write')
   do istate=LBOUND(eri_3center_updated, DIM=2), UBOUND(eri_3center_updated, DIM=2)
     do jstate=LBOUND(eri_3center_updated, DIM=3), UBOUND(eri_3center_updated, DIM=3)
-      coulomb_vertex_ij(:) = CMPLX( eri_3center_updated(1:ng, istate, jstate, 1) , &
-                                    eri_3center_updated(ng+1:2*ng, istate, jstate, 1) )
+      if( MOD(nauxil_global, 2) == 0 ) then ! even
+        coulomb_vertex_ij(:) = CMPLX( eri_3center_updated(1:naux, istate, jstate, 1), &
+                                      eri_3center_updated(naux+1:2*naux, istate, jstate, 1) )
+      else ! odd
+        coulomb_vertex_ij(1:naux-1) = CMPLX( eri_3center_updated(1:naux-1, istate, jstate, 1), &
+                                             eri_3center_updated(naux+1:2*naux-1, istate, jstate, 1) )
+        coulomb_vertex_ij(naux) = CMPLX( eri_3center_updated(naux, istate, jstate, 1), 0.0_dp )
+      endif
       write(unitcv) coulomb_vertex_ij(:)
     enddo
   enddo
@@ -1347,7 +1358,7 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
   write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with MPI-IO'
   write(stdout, '(5x,a,i4,a,i4)') 'using a processor grid:', nprow_cd, ' x ', npcol_cd
 
-  disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(ng, KIND=MPI_OFFSET_KIND)
+  disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(naux, KIND=MPI_OFFSET_KIND)
 
   call MPI_FILE_OPEN(MPI_COMM_WORLD, TRIM(rootname_) // 'CoulombVertex.elements', &
                      MPI_MODE_WRONLY + MPI_MODE_CREATE, &
@@ -1365,10 +1376,16 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
       if( ipcol_cd /= INDXG2P(ijstate_global, block_col, 0, first_col, npcol_cd) ) cycle
       ijstate_local = INDXG2L(ijstate_global, block_col, 0, first_col, npcol_cd)
 
-      coulomb_vertex_ij(:) = CMPLX( eri_3center_tmp(1:ng, ijstate_local) , eri_3center_tmp(ng+1:2*ng, ijstate_local) )
+      if( MOD(nauxil_global, 2) == 0 ) then ! even
+        coulomb_vertex_ij(:) = CMPLX( eri_3center_tmp(1:naux, ijstate_local), eri_3center_tmp(naux+1:2*naux, ijstate_local) )
+      else ! odd
+        coulomb_vertex_ij(1:naux-1) = CMPLX( eri_3center_tmp(1:naux-1, ijstate_local), &
+                                             eri_3center_tmp(naux+1:2*naux-1, ijstate_local) )
+        coulomb_vertex_ij(naux) = CMPLX( eri_3center_tmp(naux, ijstate_local) , 0.0_dp )
+      endif
 
       call MPI_FILE_WRITE_AT(unitcv, disp, coulomb_vertex_ij, &
-                            ng, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE, ierr)
+                            naux, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE, ierr)
 
 
     enddo
