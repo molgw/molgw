@@ -537,7 +537,7 @@ program molgw
 
   ! This overrides the value of scf_has_converged
   if( assume_scf_converged_ ) scf_has_converged = .TRUE.
-  if( .NOT. scf_has_converged ) then
+  if( .NOT. scf_has_converged .AND. nscf > 0) then
     call issue_warning('SCF loop is not converged. The postscf calculations (if any) will be skipped. ' // &
                        'Use keyword assume_scf_converged to override this security check')
   endif
@@ -577,8 +577,9 @@ program molgw
   endif
   if( TRIM(init_hamiltonian) == 'CC4S_FILES' ) then
     if(has_auxil_basis) call destroy_eri_3center()
-    call read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, s_matrix, hamiltonian_fock)
-    call read_cc4s_coulombvertex()
+    call read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, s_matrix, hamiltonian_fock, cc4s_input)
+    call read_cc4s_coulombvertex(cc4s_input)
+    call setup_hartreefock_totalenergy_mo(occupation, energy)
   endif
 
   if( print_cc4s_files_ ) then

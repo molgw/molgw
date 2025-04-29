@@ -391,13 +391,21 @@ basis_path:
   comment: Sets the path pointing to the basis functions files. If
     not specified, then the basis set files will be searched in folder ~molgw/basis/.
 
+cc4s_input:
+  family: io
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'molgw_'
+  comment: Specifies the rootname for the Cc4s files to be read.
+
 cc4s_output:
   family: io
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
   default: 'molgw_'
-  comment: Specifies the rootname for the Cc4s files.
+  comment: Specifies the rootname for the Cc4s files to be written.
 
 cube_nx:
   family: io

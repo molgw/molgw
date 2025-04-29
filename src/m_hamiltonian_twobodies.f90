@@ -2043,38 +2043,37 @@ end subroutine dft_approximate_vhxc
 
 
 !=========================================================================
-subroutine setup_hartree_mo(occupation,vhartree_mo,ehartree)
+subroutine setup_hartree_mo(occupation, vhartree_mo, ehartree)
   implicit none
 
-  real(dp),intent(in) :: occupation(:,:)
-  real(dp),intent(out) :: vhartree_mo(:,:,:)
-  real(dp),optional,intent(out) :: ehartree
+  real(dp), intent(in) :: occupation(:, :)
+  real(dp), intent(out) :: vhartree_mo(:, :, :)
+  real(dp), optional, intent(out) :: ehartree
   !=====
   integer :: nstate, istate, jstate, nocc, ispin
-  real(dp),allocatable :: x_vector(:)
+  real(dp), allocatable :: x_vector(:)
   !=====
 
-  write(stdout,*) 'Calculate Hartree in MO basis with MO integrals'
-  nstate = SIZE(occupation,DIM=1)
+  write(stdout, *) 'Calculate Hartree in MO basis with MO integrals'
+  nstate = SIZE(occupation, DIM=1)
   nocc = get_number_occupied_states(occupation)
   allocate(x_vector(nauxil_local))
 
   if( .NOT. ALLOCATED(eri_3center_eigen)) call die('setup_hartree_mo: MO integrals are not available')
-  write(stdout,*) SIZE(eri_3center_eigen,DIM=1)
 
   x_vector(:) = 0.0_dp
-  do ispin=1,nspin
-    do istate=1,nocc
-      x_vector(:) = x_vector(:) + occupation(istate,ispin) * eri_3center_eigen(:,istate,istate,ispin)
+  do ispin=1, nspin
+    do istate=1, nocc
+      x_vector(:) = x_vector(:) + occupation(istate, ispin) * eri_3center_eigen(:, istate, istate, ispin)
     enddo
   enddo
   !if( auxil%nproc > 1) call die('not coded yet how to find G=0')
   !x_vector(1) = 0.0_dp ! G=0 is removed
   call auxil%sum(x_vector)
-  do ispin=1,nspin
-    do jstate=1,nstate
-      do istate=1,nstate
-        vhartree_mo(istate,jstate,ispin) = SUM( eri_3center_eigen(:,istate,jstate,ispin) * x_vector(:) )
+  do ispin=1, nspin
+    do jstate=1, nstate
+      do istate=1, nstate
+        vhartree_mo(istate, jstate, ispin) = SUM( eri_3center_eigen(:, istate, jstate, ispin) * x_vector(:) )
       enddo
     enddo
   enddo
@@ -2082,9 +2081,9 @@ subroutine setup_hartree_mo(occupation,vhartree_mo,ehartree)
 
   if( PRESENT(ehartree) ) then
     ehartree = 0.0_dp
-    do ispin=1,nspin
-      do istate=1,nocc
-        ehartree = ehartree + 0.5_dp * vhartree_mo(istate,istate,ispin) * occupation(istate,ispin) 
+    do ispin=1, nspin
+      do istate=1, nocc
+        ehartree = ehartree + 0.5_dp * vhartree_mo(istate, istate, ispin) * occupation(istate, ispin) 
       enddo
     enddo
   endif
@@ -2093,39 +2092,38 @@ end subroutine setup_hartree_mo
 
 
 !=========================================================================
-subroutine setup_exchange_mo(occupation,sigx_mo,eexchange)
+subroutine setup_exchange_mo(occupation, sigx_mo, eexchange)
   implicit none
 
-  real(dp),intent(in) :: occupation(:,:)
-  real(dp),intent(out) :: sigx_mo(:,:,:)
-  real(dp),optional,intent(out) :: eexchange
+  real(dp), intent(in) :: occupation(:, :)
+  real(dp), intent(out) :: sigx_mo(:, :, :)
+  real(dp), optional, intent(out) :: eexchange
   !=====
   integer :: nstate, istate, nocc, ispin
   !=====
 
-  write(stdout,*) 'Calculate exchange in MO basis with MO integrals'
-  nstate = SIZE(occupation,DIM=1)
+  write(stdout, *) 'Calculate exchange in MO basis with MO integrals'
+  nstate = SIZE(occupation, DIM=1)
   nocc = get_number_occupied_states(occupation)
 
   if( .NOT. ALLOCATED(eri_3center_eigen)) call die('setup_exchange_mo: MO integrals are not available')
-  write(stdout,*) SIZE(eri_3center_eigen,DIM=1)
 
-  sigx_mo(:,:,:) = 0.0_dp
-  do ispin=1,nspin
-    do istate=1,nocc
-      call DSYRK('L', 'T', nstate, nauxil_local, -occupation(istate,ispin) / spin_fact, &
+  sigx_mo(:, :, :) = 0.0_dp
+  do ispin=1, nspin
+    do istate=1, nocc
+      call DSYRK('L', 'T', nstate, nauxil_local, -occupation(istate, ispin) / spin_fact, &
                  eri_3center_eigen(1, 1, istate, ispin), nauxil_local, &
                  1.0d0, sigx_mo(1, 1, ispin), nstate)
     enddo
-    call matrix_lower_to_full(sigx_mo(:,:,ispin))
+    call matrix_lower_to_full(sigx_mo(:, :, ispin))
   enddo
   call auxil%sum(sigx_mo)
 
   if( PRESENT(eexchange) ) then
     eexchange = 0.0_dp
-    do ispin=1,nspin
-      do istate=1,nocc
-        eexchange = eexchange + 0.5_dp * sigx_mo(istate,istate,ispin) * occupation(istate,ispin)
+    do ispin=1, nspin
+      do istate=1, nocc
+        eexchange = eexchange + 0.5_dp * sigx_mo(istate, istate, ispin) * occupation(istate, ispin)
       enddo
     enddo
   endif
@@ -2285,6 +2283,7 @@ subroutine init_c_matrix_cmplx(c_matrix, c_matrix_cmplx)
 
 end subroutine init_c_matrix_cmplx
 
+
 !=========================================================================
 subroutine init_c_matrix_x2c(basis, c_matrix_rel, x_matrix_rel, hamiltonian_kin_nuc_rel)
   implicit none
@@ -2320,6 +2319,37 @@ subroutine init_c_matrix_x2c(basis, c_matrix_rel, x_matrix_rel, hamiltonian_kin_
   endif
 
 end subroutine init_c_matrix_x2c
+
+
+!=========================================================================
+! Calculate the H-F total energy from MO integrals
+subroutine setup_hartreefock_totalenergy_mo(occupation, energy)
+  implicit none
+  real(dp), intent(in) :: occupation(:, :), energy(:, :)
+  !=====
+  integer :: nocc, nmo
+  real(dp) :: etotal, ehartree, eexchange
+  real(dp), allocatable :: htmp_mo(:, :, :)
+  !=====
+
+  if( nspin > 1) call die('setup_hartree_fock_mo: not coded for nspin > 1')
+
+  nocc = get_number_occupied_states(occupation)
+  nmo  = SIZE(occupation, DIM=1)
+
+  ! "Band energy"
+  etotal = SUM( occupation(1:nocc, :) * energy(1:nocc, :) )
+
+  allocate(htmp_mo(nmo, nmo, nspin))
+  call setup_hartree_mo(occupation, htmp_mo, ehartree)
+  call setup_exchange_mo(occupation, htmp_mo, eexchange)
+  deallocate(htmp_mo)
+
+  etotal = etotal - ehartree - eexchange
+
+  write(stdout, '(a25,f19.10)') 'HF Total Energy (Ha):', etotal
+
+end subroutine setup_hartreefock_totalenergy_mo
 
 
 end module m_hamiltonian_twobodies

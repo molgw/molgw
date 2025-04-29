@@ -4031,7 +4031,8 @@ end subroutine yaml_search_keyword_dp
 
 
 !=========================================================================
-subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, s_matrix, hamiltonian_fock)
+subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, s_matrix, hamiltonian_fock, &
+                                   rootname)
   implicit none
 
   type(basis_set), intent(inout) :: basis
@@ -4040,23 +4041,30 @@ subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, 
   real(dp), allocatable, intent(inout) :: occupation(:, :)
   real(dp), allocatable, intent(inout) :: c_matrix(:, :, :), s_matrix(:, :)
   real(dp), allocatable, intent(inout) :: hamiltonian_fock(:, :, :)
+  character(len=*), intent(in), optional :: rootname
   !=====
+  character(len=128) :: rootname_ = 'molgw_'
   integer, allocatable :: yaml_integers(:)
   real(dp), allocatable :: yaml_reals(:)
   real(dp) :: efermi
   integer :: istate, nstate_old, ifile
   !=====
 
+  if( PRESENT(rootname) ) then
+    rootname_ = rootname
+  endif
+
   if( nspin > 1 ) call die('read_cc4s_eigenenergies: only spin restricted implemented')
-  write(stdout, '(/,1x,a)') 'Reading EigenEnergies.yaml and Eigenenergies.elements'
+  write(stdout, '(/,1x,a)') 'Reading ' // TRIM(rootname_) // 'EigenEnergies.yaml and ' &
+                            // TRIM(rootname_) // 'Eigenenergies.elements'
 
   nstate_old = nstate
 
-  call yaml_search_keyword('EigenEnergies.yaml', 'fermiEnergy', yaml_reals)
+  call yaml_search_keyword(TRIM(rootname_) // 'EigenEnergies.yaml', 'fermiEnergy', yaml_reals)
   efermi = yaml_reals(1)
   write(stdout, '(1x,a,f12.5)') 'Fermi energy from file (eV): ', efermi * Ha_eV
 
-  call yaml_search_keyword('EigenEnergies.yaml', 'length', yaml_integers)
+  call yaml_search_keyword(TRIM(rootname_) // 'EigenEnergies.yaml', 'length', yaml_integers)
   nstate = yaml_integers(1)
   basis%nbf = nstate
 
@@ -4080,7 +4088,7 @@ subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, 
   allocate(energy(nstate, nspin))
   allocate(occupation(nstate, nspin))
 
-  open(newunit=ifile, file='EigenEnergies.elements', status='old', action='read')
+  open(newunit=ifile, file=TRIM(rootname_) // 'EigenEnergies.elements', status='old', action='read')
   hamiltonian_fock(:, :, :) = 0.0_dp
   do istate=1, nstate
     read(ifile, *) energy(istate, 1)
