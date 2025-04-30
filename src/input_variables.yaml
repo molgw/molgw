@@ -516,6 +516,14 @@ print_hartree:
   default: 'no'
   comment: Prints the Hartree potential and exchange expectation value on eigenstates.
 
+print_hdf5:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints an HDF5 file with self-consistent field data
+
 print_multipole:
   family: io
   datatype: yes/no
@@ -1369,14 +1377,6 @@ r_disc:
   experimental: 'no'
   default: 200.0
   comment: Radius of the disc for density calculations (option calc_dens_disc) for the real-time dynamics.
-
-tddft_frozencore:
-  family: rt_tddft
-  datatype: yes/no
-  mandatory: 'no'
-  experimental: 'no'
-  default: 'no'
-  comment: Do not "propagate" states mentioned in the manual_tddft_frozencore file in the real-time dynamics.
 
 tddft_wfn_t0:
   family: rt_tddft

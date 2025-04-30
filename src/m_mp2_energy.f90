@@ -13,7 +13,7 @@ module m_mp2_energy
   use m_cart_to_pure
   use m_basis_set
   use m_eri_ao_mo
-  use m_inputparam, only: nspin, spin_fact, ncoreg, nvirtualg, is_frozencore, kappa_hybrid
+  use m_inputparam, only: nspin, spin_fact, ncoreg, nvirtualg, frozencore_, kappa_hybrid
 
 
 contains
@@ -45,7 +45,7 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
 
 
   ncore = ncoreg
-  if(is_frozencore) then
+  if(frozencore_) then
     if( ncore == 0) ncore = atoms_core_states()
   endif
 
@@ -162,7 +162,7 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
   write(stdout, '(/,a)') ' RI-MP2 correlation calculation'
 
   ncore = ncoreg
-  if(is_frozencore) then
+  if(frozencore_) then
     if( ncore == 0) ncore = atoms_core_states()
   endif
 
@@ -285,7 +285,7 @@ subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
   write(stdout, '(/,a)') ' X2C RI-MP2 correlation calculation'
 
   ncore = ncoreg
-  if(is_frozencore) then
+  if(frozencore_) then
     if( ncore == 0) ncore = atoms_core_states()
   endif
   ncore = 2*ncore
@@ -375,7 +375,7 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
   if( nspin > 1 ) call die('MP3 not implemented for unrestricted calculations')
 
   ncore = ncoreg
-  if(is_frozencore) then
+  if(frozencore_) then
     if( ncore == 0) ncore = atoms_core_states()
   endif
 

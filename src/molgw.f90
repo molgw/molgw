@@ -482,12 +482,17 @@ program molgw
     ! Big RESTART file written if converged
     !
     if( scf_has_converged .AND. print_bigrestart_ ) then
-      !call print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy)
       call write_restart(BIG_RESTART, basis, occupation, c_matrix, energy, hamiltonian_fock)
     else
       if( print_restart_ ) then
         call write_restart(SMALL_RESTART, basis, occupation, c_matrix, energy)
       endif
+    endif
+
+    !
+    ! HDF5 file with scf data
+    if( scf_has_converged .AND. print_hdf5_ ) then
+      call print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy)
     endif
    
     !
@@ -700,7 +705,7 @@ program molgw
     ! Set the range of states on which to evaluate the self-energy
     call selfenergy_set_state_range(nstate, occupation)
 
-    if( is_virtual_fno ) then
+    if( virtual_fno_ ) then
       call calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_matrix)
     endif
     if(has_auxil_basis) then
@@ -732,7 +737,7 @@ program molgw
 
     call destroy_ci()
 
-    if( is_virtual_fno ) then
+    if( virtual_fno_ ) then
       call destroy_fno(basis, nstate, energy, c_matrix)
     endif
 
