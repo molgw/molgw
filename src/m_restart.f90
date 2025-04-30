@@ -55,7 +55,11 @@ subroutine write_restart(restart_type, basis, occupation, c_matrix, energy, hami
 
   call start_clock(timing_restart_file)
 
-  nstate = SIZE(occupation, DIM=1)
+  nstate = SIZE(occupation,DIM=1)
+  if( nstate /= SIZE(energy,DIM=1) ) then
+    call die('write_restart: inconsistency in size of occupation and energy') 
+  endif
+
 
   select case(restart_type)
   case(SMALL_RESTART)
@@ -141,14 +145,13 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
   integer, intent(out)           :: restart_type
   character(len=*), intent(in)   :: restart_filename
   type(basis_set), intent(in)    :: basis
-  real(dp), intent(inout)        :: occupation(:, :)
-  real(dp), intent(out)          :: c_matrix(:, :, :), energy(:, :)
-  real(dp), optional, intent(out) :: hamiltonian_fock(:, :, :)
+  real(dp), allocatable, intent(inout) :: c_matrix(:, :, :), energy(:, :), occupation(:, :)
+  real(dp), allocatable, optional, intent(inout) :: hamiltonian_fock(:, :, :)
   !=====
   integer                    :: restartfile
   integer                    :: ispin, istate, ibf, nstate_local
   logical                    :: file_exists, same_scf, same_basis, same_geometry, same_spin
-  integer                    :: nstate
+  integer                    :: nstate, nstate_expected
   integer                    :: restart_version_read
   integer                    :: restart_type_read
   character(len=100)         :: scf_name_read
@@ -171,7 +174,7 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
     return
   endif
 
-  nstate = SIZE(occupation, DIM=1)
+  nstate_expected = SIZE(occupation,DIM=1)
 
   open(newunit=restartfile, file=restart_filename, form='unformatted', status='old', action='read')
 
@@ -261,24 +264,28 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
 
   ! Nstate
   read(restartfile) nstate_read
-  if( nstate /= nstate_read ) then
+
+  nstate = nstate_read
+  if( nstate_expected /= nstate_read ) then
     call issue_warning('RESTART file: Number of states has changed')
-    restart_type = SMALL_RESTART
+    write(stdout, *) 'Resizing arrays to fit the new size'
+    deallocate(energy, occupation)
+    allocate(energy(nstate, nspin), occupation(nstate, nspin))
+    occupation(:, :) = 0.0_dp
   endif
 
 
   ! Occupations
   allocate(occupation_read(nstate_read, nspin_read))
-  read(restartfile) occupation_read(:, :)
-  if( ANY( ABS( occupation_read(1:MIN(nstate_read, nstate), 1) - occupation(1:MIN(nstate_read, nstate), 1) )  > 1.0e-5_dp ) ) then
+  read(restartfile) occupation_read(:,:)
+  if( ANY( ABS( occupation_read(1:nstate,:) - occupation(1:nstate,:) ) > 1.0e-5_dp ) ) then
     if( temperature > 1.0e-8_dp) then
-      occupation(1:MIN(nstate_read, nstate), 1) = occupation_read(1:MIN(nstate_read, nstate), 1)
-      occupation(1:MIN(nstate_read, nstate), nspin) = occupation_read(1:MIN(nstate_read, nstate), nspin_read)
-      write(stdout, '(1x,a)') "Reading occupations from a RESTART file"
-      call dump_out_occupation('=== Occupations ===', occupation)
+      occupation(1:nstate,:) = occupation_read(1:nstate,:)
+      write(stdout,'(1xa)') "Reading occupations from a RESTART file"
+      call dump_out_occupation('=== Occupations ===',occupation)
     else
       call issue_warning('RESTART file: Occupations have changed')
-      restart_type = SMALL_RESTART
+      occupation(1:nstate, :) = occupation_read(1:nstate, :)
     endif
   endif
   deallocate(occupation_read)

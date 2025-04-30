@@ -24,6 +24,7 @@ module m_dm_mbpt
   use m_pt_density_matrix
   use m_gw_selfenergy_grid
   use m_linear_response
+  use m_restart
 
 
 contains
@@ -46,7 +47,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   integer                    :: nstate, nocc
   logical                    :: density_matrix_found
   integer                    :: file_density_matrix, reading_status
-  integer                    :: ispin, istate
+  integer                    :: ispin, pstate
   type(spectral_function)    :: wpol
   type(energy_contributions) :: en_dm_corr
   real(dp), allocatable       :: h_ii(:, :)
@@ -163,6 +164,97 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
                                             0.0d0, c_matrix_tmp(1, 1, ispin), basis%nbf)
   enddo
   call matrix_ao_to_mo(c_matrix_tmp, p_matrix_corr, p_matrix_mo)
+
+  if( .TRUE. ) then
+    block
+    integer, parameter :: nfrozen = 5
+    integer, parameter :: nvo_truncated = 12
+    real(dp), parameter :: TOL=1.0e-3_dp
+    integer :: nvo, nstate_truncated
+    real(dp), allocatable :: p_matrix_mo_virtual(:, :, :), nvo_occ(:, :), energy2(:, :)
+    real(dp), allocatable :: hfock_truncated(:, :), hfock_nvo(:, :)
+    real(dp), allocatable :: c_matrix_nvo(:, :, :)
+
+    nvo = nstate - nfrozen
+
+    call issue_warning('FBFB working on this here')
+    nocc = get_number_occupied_states(occupation)
+    if( nfrozen < nocc ) call die('FBFB: nfrozen < nocc')
+
+    p_matrix_mo(1:nfrozen, :, :) = 0.0_dp
+    p_matrix_mo(:, 1:nfrozen, :) = 0.0_dp
+    do pstate=1, nocc
+      p_matrix_mo(pstate, pstate, :) = spin_fact
+    enddo
+
+    allocate(p_matrix_mo_virtual(nvo, nvo, nspin))
+    allocate(nvo_occ(nvo, nspin))
+    p_matrix_mo_virtual(:, :, :) = -p_matrix_mo(nfrozen+1:nstate, nfrozen+1:nstate, :)
+    
+    do ispin=1, nspin
+      call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, p_matrix_mo_virtual(:, :, ispin), nvo_occ(:, ispin))
+      nvo_occ(:, ispin) = -nvo_occ(:, ispin)
+      write(*, *) '===== nvo_occ', ispin
+      write(stdout, '(8(1x, es14.6))') nvo_occ(:, ispin)
+
+      write(stdout, *) 'Neglecting virtual states with occupation lower than ', nvo_occ(nvo_truncated, ispin)
+      nstate_truncated = nfrozen + nvo_truncated
+      
+      write(*, *) 'nstate=', nstate
+      write(*, *) 'nfrozen=', nfrozen
+      write(*, *) 'nvo=', nvo
+      write(*, *) 'nvo_truncated=', nvo_truncated
+      write(*, *) 'nstate_truncated=', nstate_truncated
+
+      allocate(energy2(nstate_truncated, nspin))
+      allocate(hfock_truncated(nstate_truncated, nstate_truncated))
+      hfock_truncated(:, :) = 0.0_dp
+      do pstate=1, nfrozen
+        hfock_truncated(pstate, pstate) = energy(pstate, ispin)
+      enddo
+
+      allocate(hfock_nvo(nvo, nvo))
+      hfock_nvo(:, :) = 0.0_dp
+      do pstate=nfrozen+1, nfrozen+nvo
+        hfock_nvo(pstate-nfrozen, pstate-nfrozen) = energy(pstate, ispin)
+      enddo
+      write(*, *) SIZE(p_matrix_mo_virtual, DIM=1)
+      write(*, *) SIZE(p_matrix_mo_virtual, DIM=2)
+      write(*, *) SIZE(hfock_nvo, DIM=1)
+      write(*, *) SIZE(hfock_nvo, DIM=2)
+      hfock_truncated(nfrozen+1:nstate_truncated, nfrozen+1:nstate_truncated) = &
+                          MATMUL( TRANSPOSE(p_matrix_mo_virtual(:, 1:nvo_truncated, ispin)) , &
+                                    MATMUL( hfock_nvo, p_matrix_mo_virtual(:, 1:nvo_truncated, ispin) ) )
+
+      call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, hfock_truncated(:, :), energy2(:, ispin))
+      do pstate=1, nstate_truncated
+        write(stdout, '(i4, 2x, f14.8)') pstate, energy2(pstate, ispin) * Ha_eV
+      enddo
+
+      !
+      ! Get the natural orbital in the AO basis
+      ! C_NO^AO = C * C_NO^MO
+      allocate(c_matrix_nvo(basis%nbf, nstate_truncated, 1))
+      c_matrix_nvo(:, 1:nfrozen, ispin) = c_matrix(:, 1:nfrozen, ispin) ! not sure
+      c_matrix_nvo(:, nfrozen+1:nstate_truncated, ispin) = MATMUL( c_matrix(:, nfrozen+1:nstate, ispin) , &
+                                              MATMUL(  p_matrix_mo_virtual(1:nvo, 1:nvo_truncated, ispin) , &
+                                                           hfock_truncated(nfrozen+1:nstate_truncated, nfrozen+1:nstate_truncated) ) )
+      
+
+
+      call write_restart(BIG_RESTART, basis, occupation(1:nstate_truncated, :), c_matrix_nvo, energy2, hamiltonian_fock)
+
+      deallocate(energy2, hfock_nvo, hfock_truncated)
+
+    enddo
+    
+    
+    deallocate(p_matrix_mo_virtual, nvo_occ)
+    end block
+    call die('FBFB enough is enough')
+
+  endif
+
 
   ! Multiply by -1 so to order the eigenvalues (natural occupations) from the largest to the smallest
   p_matrix_mo(:, :, :) = -p_matrix_mo(:, :, :)

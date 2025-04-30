@@ -1074,9 +1074,6 @@ subroutine selfenergy_convergence_prediction(basis, c_matrix, eqp)
   !
   ! Be careful this routine is in eV !
   !
-  write(stdout, '(/,1x,a)') 'Estimate the Complete Basis Set limit for free'
-  write(stdout, *)          '  see Bruneval, Maliyov, Lapointe, Marinica, JCTC 16, 4399 (2020)'
-  write(stdout, *)          '      https://doi.org/10.1021/acs.jctc.0c00433'
 
   !
   ! Retrieve the linear regression parameters trained on a benchmark of organic molecules (GW@BHLYP level)
@@ -1127,6 +1124,10 @@ subroutine selfenergy_convergence_prediction(basis, c_matrix, eqp)
     write(stdout, *) 'only fitted for a Dunning basis cc-pVXZ or aug-cc-pVXZ'
     write(stdout, *) 'only fitted for the same basis on all atoms'
     return
+  else
+    write(stdout, '(/,1x,a)') 'Estimate the Complete Basis Set limit for free'
+    write(stdout, *)          '  see Bruneval, Maliyov, Lapointe, Marinica, JCTC 16, 4399 (2020)'
+    write(stdout, *)          '      https://doi.org/10.1021/acs.jctc.0c00433'
   endif
 
   call setup_kinetic(basis, hkin)
