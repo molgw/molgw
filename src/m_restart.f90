@@ -140,7 +140,8 @@ end subroutine write_restart
 
 
 !=========================================================================
-subroutine read_restart(restart_type, restart_filename, basis, occupation, c_matrix, energy, hamiltonian_fock)
+subroutine read_restart(restart_type, restart_filename, basis, &
+                        occupation, c_matrix, energy, hamiltonian_fock)
   implicit none
 
   integer, intent(out)           :: restart_type
@@ -150,9 +151,9 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
   real(dp), allocatable, optional, intent(inout) :: hamiltonian_fock(:, :, :)
   !=====
   integer                    :: restartfile
-  integer                    :: ispin, istate, ibf, nstate_local
+  integer                    :: ispin, istate, ibf, nstate_local, nstate
   logical                    :: file_exists, same_scf, same_basis, same_geometry, same_spin
-  integer                    :: nstate, nstate_expected
+  integer                    :: nstate_expected
   integer                    :: restart_version_read
   integer                    :: restart_type_read
   character(len=100)         :: scf_name_read
@@ -267,9 +268,9 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
   read(restartfile) nstate_read
 
   nstate = nstate_read
-  if( nstate_expected /= nstate_read ) then
+  if( nstate_expected /= nstate ) then
     call issue_warning('RESTART file: Number of states has changed')
-    write(stdout, *) 'Resizing arrays to fit the new size'
+    write(stdout, '(1x,a,i5,a,i5)') 'Resizing arrays to fit the new size ', nstate_expected, ' -> ', nstate
     deallocate(energy, occupation)
     allocate(energy(nstate, nspin), occupation(nstate, nspin))
     occupation(:, :) = 0.0_dp
@@ -403,7 +404,7 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
   endif
 
   ! the code should never reach that point.
-  call die('Internal error in the read_restart subroutine')
+  call die('read_restart: internal error in the read_restart subroutine')
 
 
 end subroutine read_restart
