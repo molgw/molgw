@@ -283,8 +283,8 @@ subroutine setup_kinetic_fourier(basis_p, basis_t, reference)
     !ekin(ibf,jbf) = ekin(ibf,jbf) + weight * NORM2(qvec)**2 &
     !                                * basis_function_qmv(ibf) * CONJG( basis_function_q(jbf) )
 
-    call  ZGERC(basis_p%nbf, basis_t%nbf, CMPLX(weight*NORM2(qvec)**2, 0.0_dp, KIND=dp), &
-                basis_function_qmv, 1, basis_function_q, 1, ekin, basis_p%nbf)
+    call ZGERC(basis_p%nbf, basis_t%nbf, CMPLX(weight*NORM2(qvec)**2, 0.0_dp, KIND=dp), &
+               basis_function_qmv, 1, basis_function_q, 1, ekin, basis_p%nbf)
 
 
   enddo

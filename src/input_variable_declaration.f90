@@ -53,6 +53,8 @@
  logical, protected :: mpi_poorman_
  integer, protected :: scalapack_block_min
  character(len=256), protected :: basis_path
+ character(len=256), protected :: cc4s_input
+ character(len=256), protected :: cc4s_output
  integer, protected :: cube_nx
  integer, protected :: cube_ny
  integer, protected :: cube_nz
@@ -64,6 +66,8 @@
  logical, protected :: ignore_bigrestart_
  character(len=3), protected :: print_bigrestart
  logical, protected :: print_bigrestart_
+ character(len=3), protected :: print_cc4s_files
+ logical, protected :: print_cc4s_files_
  character(len=3), protected :: print_cube
  logical, protected :: print_cube_
  character(len=3), protected :: print_transition_density
@@ -177,6 +181,7 @@
  character(len=256), protected :: pt3_a_diagrams
  character(len=256), protected :: pt_density_matrix
  real(dp), protected :: rcut_mbpt
+ integer, protected :: rdm_filtering_no
  real(dp), protected :: scissor
  integer, protected :: selfenergy_state_max
  integer, protected :: selfenergy_state_min

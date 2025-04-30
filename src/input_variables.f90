@@ -45,6 +45,8 @@
     mpi_poorman,       &
     scalapack_block_min,       &
     basis_path,       &
+    cc4s_input,       &
+    cc4s_output,       &
     cube_nx,       &
     cube_ny,       &
     cube_nz,       &
@@ -53,6 +55,7 @@
     force_energy_qp,       &
     ignore_bigrestart,       &
     print_bigrestart,       &
+    print_cc4s_files,       &
     print_cube,       &
     print_transition_density,       &
     print_wfn_files,       &
@@ -126,6 +129,7 @@
     pt3_a_diagrams,       &
     pt_density_matrix,       &
     rcut_mbpt,       &
+    rdm_filtering_no,       &
     scissor,       &
     selfenergy_state_max,       &
     selfenergy_state_min,       &
@@ -263,6 +267,8 @@
  mpi_poorman = 'False'
  scalapack_block_min = 100000
  basis_path = ''
+ cc4s_input = 'molgw_'
+ cc4s_output = 'molgw_'
  cube_nx = 30
  cube_ny = 30
  cube_nz = 30
@@ -271,6 +277,7 @@
  force_energy_qp = 'no'
  ignore_bigrestart = 'no'
  print_bigrestart = 'yes'
+ print_cc4s_files = 'no'
  print_cube = 'no'
  print_transition_density = 'no'
  print_wfn_files = 'no'
@@ -344,6 +351,7 @@
  pt3_a_diagrams = 'yes'
  pt_density_matrix = 'no'
  rcut_mbpt = 1.0_dp 
+ rdm_filtering_no = 0
  scissor = 0.0_dp 
  selfenergy_state_max = 100000
  selfenergy_state_min = 1

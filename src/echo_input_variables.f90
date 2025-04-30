@@ -25,6 +25,8 @@
   write(stdout, '(1x,a32,6x,a)') 'calc_dens_disc', calc_dens_disc 
   write(stdout, '(1x,a32,6x,a)') 'calc_q_matrix', calc_q_matrix 
   write(stdout, '(1x,a32,6x,a)') 'calc_spectrum', calc_spectrum 
+  write(stdout, '(1x,a32,6x,a)') 'cc4s_input', TRIM(cc4s_input) 
+  write(stdout, '(1x,a32,6x,a)') 'cc4s_output', TRIM(cc4s_output) 
   write(stdout, '(1x,a32,2x,es16.8)') 'charge', charge 
   write(stdout, '(1x,a32,6x,a)') 'check_CdSC_x2c', check_CdSC_x2c 
   write(stdout, '(1x,a32,6x,a)') 'ci_greens_function', TRIM(ci_greens_function) 
@@ -147,6 +149,7 @@
   write(stdout, '(1x,a32,6x,a)') 'print_all_MO_wfn_file', print_all_MO_wfn_file 
   write(stdout, '(1x,a32,6x,a)') 'print_bigrestart', print_bigrestart 
   write(stdout, '(1x,a32,6x,a)') 'print_c_matrix_cmplx_hdf5', print_c_matrix_cmplx_hdf5 
+  write(stdout, '(1x,a32,6x,a)') 'print_cc4s_files', print_cc4s_files 
   write(stdout, '(1x,a32,6x,a)') 'print_charge_tddft', print_charge_tddft 
   write(stdout, '(1x,a32,6x,a)') 'print_cube', print_cube 
   write(stdout, '(1x,a32,6x,a)') 'print_cube_diff_tddft', print_cube_diff_tddft 
@@ -179,6 +182,7 @@
   write(stdout, '(1x,a32,6x,a)') 'pt_density_matrix', TRIM(pt_density_matrix) 
   write(stdout, '(1x,a32,2x,es16.8)') 'r_disc', r_disc 
   write(stdout, '(1x,a32,2x,es16.8)') 'rcut_mbpt', rcut_mbpt 
+  write(stdout, '(1x,a32,2x,i8)') 'rdm_filtering_no', rdm_filtering_no 
   write(stdout, '(1x,a32,6x,a)') 'read_fchk', TRIM(read_fchk) 
   write(stdout, '(1x,a32,6x,a)') 'read_restart', read_restart 
   write(stdout, '(1x,a32,6x,a)') 'read_tddft_restart', read_tddft_restart 

@@ -17,6 +17,10 @@ module m_eri_ao_mo
   use m_timing
   use m_eri
   use m_inputparam, only: nspin, has_auxil_basis
+  use m_io, only: yaml_search_keyword
+
+
+  logical, protected :: eri_3center_mo_stay_in_memory = .FALSE.
 
 
   real(dp), protected, allocatable :: eri_3center_eigen(:, :, :, :)
@@ -196,7 +200,7 @@ subroutine calculate_eri_4center_eigen(c_matrix, istate, ijspin, eri_eigenstate_
                                     REAL(nbf, dp)**3 * REAL(dp, dp) / 1024.0_dp**2, ' (Mb)'
     disclaimer = .FALSE.
   endif
-  !$OMP PARALLEL PRIVATE(index_ij,index_kl,ibf,jbf,kbf,lbf,stride)
+  !$OMP PARALLEL PRIVATE(index_ij, index_kl, ibf, jbf, kbf, lbf, stride)
 #if defined(_OPENMP)
   stride = OMP_GET_NUM_THREADS()
   index_ij = OMP_GET_THREAD_NUM() - stride + 1
@@ -206,9 +210,9 @@ subroutine calculate_eri_4center_eigen(c_matrix, istate, ijspin, eri_eigenstate_
 #endif
   index_kl = 1
 
-  ! SCHEDULE(static,1) should not be modified
+  ! SCHEDULE(static, 1) should not be modified
   ! else a race competition will occur when performing index_ij = index_ij + stride
-  !$OMP DO REDUCTION(+:eri_tmp3) SCHEDULE(static,1)
+  !$OMP DO REDUCTION(+:eri_tmp3) SCHEDULE(static, 1)
   do iint=1, nint_4center
     index_ij = index_ij + stride
     do while( index_ij > npair )
@@ -248,13 +252,13 @@ subroutine calculate_eri_4center_eigen(c_matrix, istate, ijspin, eri_eigenstate_
   !$OMP END PARALLEL
 
 
-  call DGEMM('T', 'N', nstate, nbf*nbf, nbf, 1.0d0, c_matrix(1,1,ijspin),nbf, &
+  call DGEMM('T', 'N', nstate, nbf*nbf, nbf, 1.0d0, c_matrix(1, 1, ijspin), nbf, &
                                               eri_tmp3(1, 1, 1), nbf,    &
                                         0.0d0, eri_tmp2(1, 1, 1), nstate)
 
   do klspin=1, nspin
     do lbf=1, nbf
-      call DGEMM('N', 'N', nstate, nstate, nbf, 1.0d0, eri_tmp2(1, 1,lbf),nstate,    &
+      call DGEMM('N', 'N', nstate, nstate, nbf, 1.0d0, eri_tmp2(1, 1, lbf), nstate,    &
                                                  c_matrix(1, 1, klspin), nbf, &
                                            0.0d0, eri_tmp3(1, 1, lbf), nbf)
     enddo
@@ -322,7 +326,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix, nstate_min, nstate_max)
 
     eri_tmp3(:, :, :) = 0.0_dp
 
-    !$OMP PARALLEL PRIVATE(index_ij,index_kl,ibf,jbf,kbf,lbf,stride)
+    !$OMP PARALLEL PRIVATE(index_ij, index_kl, ibf, jbf, kbf, lbf, stride)
 #if defined(_OPENMP)
     stride = OMP_GET_NUM_THREADS()
     index_ij = OMP_GET_THREAD_NUM() - stride + 1
@@ -332,9 +336,9 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix, nstate_min, nstate_max)
 #endif
     index_kl = 1
 
-    ! SCHEDULE(static,1) should not be modified
+    ! SCHEDULE(static, 1) should not be modified
     ! else a race competition will occur when performing index_ij = index_ij + stride
-    !$OMP DO REDUCTION(+:eri_tmp3) SCHEDULE(static,1)
+    !$OMP DO REDUCTION(+:eri_tmp3) SCHEDULE(static, 1)
     do iint=1, nint_4center
       index_ij = index_ij + stride
       do while( index_ij > npair )
@@ -373,18 +377,18 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix, nstate_min, nstate_max)
     !$OMP END DO
     !$OMP END PARALLEL
 
-    call DGEMM('T', 'N', nstate_maxmin, nbf*nbf, nbf, 1.0d0, c_matrix(1, nstate_min,ijspin),nbf, &
+    call DGEMM('T', 'N', nstate_maxmin, nbf*nbf, nbf, 1.0d0, c_matrix(1, nstate_min, ijspin), nbf, &
                                                    eri_tmp3(1, 1, 1), nbf,             &
                                              0.0d0, eri_tmp2(1, 1, 1), nstate_maxmin)
 
     do klspin=1, nspin
       do jstate=nstate_min, nstate_max
         eri_tmp1b(:, :) = eri_tmp2(jstate-nstate_min+1, :, 1:nbf)
-        call DGEMM('T', 'N', nstate_maxmin, nbf, nbf, 1.0d0, c_matrix(1, nstate_min,klspin),nbf,   &
+        call DGEMM('T', 'N', nstate_maxmin, nbf, nbf, 1.0d0, c_matrix(1, nstate_min, klspin), nbf,   &
                                                                  eri_tmp1b(1, 1), nbf,                  &
                                                            0.0d0, eri_tmp1(nstate_min, 1), nstate_maxmin)
 
-        call DGEMM('N', 'N', nstate_maxmin, nstate_maxmin,nbf, &
+        call DGEMM('N', 'N', nstate_maxmin, nstate_maxmin, nbf, &
                                               1.0d0, eri_tmp1(1, 1), nstate_maxmin,              &
                                                     c_matrix(1, nstate_min, klspin), nbf,  &
                                               0.0d0, eri_4center_eigen_uks(nstate_min, nstate_min, jstate, istate), nstate_maxmin)
@@ -418,7 +422,7 @@ end subroutine destroy_eri_4center_eigen_uks
 
 !=================================================================
 subroutine calculate_eri_3center_eigen(c_matrix, mstate_min, mstate_max, nstate_min, nstate_max, timing, verbose, long_range, &
-  &                                    only_one_spin)
+                                       only_one_spin)
   implicit none
   real(dp), intent(in)         :: c_matrix(:, :, :)
   integer, optional, intent(in) :: mstate_min, mstate_max, nstate_min, nstate_max
@@ -517,7 +521,7 @@ subroutine calculate_eri_3center_eigen(c_matrix, mstate_min, mstate_max, nstate_
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
 
       tmp1(:, :) = 0.0_dp
-      !$OMP PARALLEL PRIVATE(kbf,lbf)
+      !$OMP PARALLEL PRIVATE(kbf, lbf)
       !$OMP DO REDUCTION(+:tmp1)
       do ipair=1, npair
         kbf = index_basis(1, ipair)
@@ -529,7 +533,7 @@ subroutine calculate_eri_3center_eigen(c_matrix, mstate_min, mstate_max, nstate_
       !$OMP END PARALLEL
 
       ! Transformation of the second index
-      call DGEMM('T', 'T', mstate_count_, nstate_count_,nbf, &
+      call DGEMM('T', 'T', mstate_count_, nstate_count_, nbf, &
                  1.0d0, c_matrix(1, mstate_min_, klspin), nbf, &
                        tmp1(nstate_min_, 1), nstate_count_,   &
                  0.0d0, tmp2(mstate_min_, nstate_min_), mstate_count_)
@@ -545,7 +549,7 @@ subroutine calculate_eri_3center_eigen(c_matrix, mstate_min, mstate_max, nstate_
         if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
 
         tmp1(:, :) = 0.0_dp
-        !$OMP PARALLEL PRIVATE(kbf,lbf)
+        !$OMP PARALLEL PRIVATE(kbf, lbf)
         !$OMP DO REDUCTION(+:tmp1)
         do ipair=1, npair
           kbf = index_basis(1, ipair)
@@ -557,7 +561,7 @@ subroutine calculate_eri_3center_eigen(c_matrix, mstate_min, mstate_max, nstate_
         !$OMP END PARALLEL
 
         ! Transformation of the second index
-        call DGEMM('T', 'T', mstate_count_, nstate_count_,nbf, &
+        call DGEMM('T', 'T', mstate_count_, nstate_count_, nbf, &
                    1.0d0, c_matrix(1, mstate_min_, klspin), nbf, &
                          tmp1(nstate_min_, 1), nstate_count_,   &
                    0.0d0, tmp2(mstate_min_, nstate_min_), mstate_count_)
@@ -674,7 +678,7 @@ subroutine calculate_eri_3center_eigen_lr(c_matrix, mstate_min, mstate_max, nsta
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
 
       tmp1(:, :) = 0.0_dp
-      !$OMP PARALLEL PRIVATE(kbf,lbf)
+      !$OMP PARALLEL PRIVATE(kbf, lbf)
       !$OMP DO REDUCTION(+:tmp1)
       do ipair=1, npair
         kbf = index_basis(1, ipair)
@@ -686,7 +690,7 @@ subroutine calculate_eri_3center_eigen_lr(c_matrix, mstate_min, mstate_max, nsta
       !$OMP END PARALLEL
 
       ! Transformation of the second index
-      call DGEMM('N', 'N', mstate_count_, nstate_count_,nbf, &
+      call DGEMM('N', 'N', mstate_count_, nstate_count_, nbf, &
                  1.0d0, tmp1(mstate_min_, 1), mstate_count_,   &
                        c_matrix(1, nstate_min_, klspin), nbf, &
                  0.0d0, tmp2(mstate_min_, nstate_min_), mstate_count_)
@@ -716,7 +720,7 @@ end subroutine calculate_eri_3center_eigen_lr
 
 !=================================================================
 subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, mstate_min, mstate_max, nstate_min, nstate_max, timing, verbose, &
-  &                                          long_range, only_one_spin)
+                                             long_range, only_one_spin)
   implicit none
   complex(dp), intent(in)         :: c_matrix_cmplx(:, :, :)
   integer, optional, intent(in) :: mstate_min, mstate_max, nstate_min, nstate_max
@@ -815,7 +819,7 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, mstate_min, mstate_
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
 
       tmp1_cmplx(:, :) = complex_zero
-      !$OMP PARALLEL PRIVATE(kbf,lbf)
+      !$OMP PARALLEL PRIVATE(kbf, lbf)
       !$OMP DO REDUCTION(+:tmp1_cmplx)
       do ipair=1, npair
         kbf = index_basis(1, ipair)
@@ -827,7 +831,7 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, mstate_min, mstate_
       !$OMP END PARALLEL
 
       ! Transformation of the second index
-      call ZGEMM('N', 'N', mstate_count_, nstate_count_,nbf, &
+      call ZGEMM('N', 'N', mstate_count_, nstate_count_, nbf, &
                  complex_one, tmp1_cmplx(mstate_min_, 1), mstate_count_,   &
                        c_matrix_cmplx(1, nstate_min_, klspin), nbf, &
                  complex_zero, tmp2_cmplx(mstate_min_, nstate_min_), mstate_count_)
@@ -843,7 +847,7 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, mstate_min, mstate_
         if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
 
         tmp1_cmplx(:, :) = complex_zero
-        !$OMP PARALLEL PRIVATE(kbf,lbf)
+        !$OMP PARALLEL PRIVATE(kbf, lbf)
         !$OMP DO REDUCTION(+:tmp1_cmplx)
         do ipair=1, npair
           kbf = index_basis(1, ipair)
@@ -855,7 +859,7 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, mstate_min, mstate_
         !$OMP END PARALLEL
 
         ! Transformation of the second index
-        call ZGEMM('N', 'N', mstate_count_, nstate_count_,nbf, &
+        call ZGEMM('N', 'N', mstate_count_, nstate_count_, nbf, &
                    complex_one, tmp1_cmplx(mstate_min_, 1), mstate_count_,   &
                          c_matrix_cmplx(1, nstate_min_, klspin), nbf, &
                    complex_zero, tmp2_cmplx(mstate_min_, nstate_min_), mstate_count_)
@@ -894,16 +898,16 @@ subroutine calculate_eri_x2c(c_matrix_rel, nstate, nstate_min, nstate_max, mstat
   !=====
   integer                 :: ibf, istate, nbf
   integer                 :: nstate_min_, nstate_max_, mstate_min_, mstate_max_
-  logical                 :: x2c_verbose=.FALSE.
+  logical                 :: x2c_verbose = .FALSE.
   complex(dp), allocatable :: c_matrix_LaorLb(:, :, :)
   !=====
 
-  nstate_min_=1; nstate_max_=nstate; mstate_min_=1; mstate_max_=nstate;
-  nbf=nstate/2
-  if(present(nstate_min)) nstate_min_=nstate_min
-  if(present(nstate_max)) nstate_max_=nstate_max
-  if(present(mstate_min)) mstate_min_=mstate_min
-  if(present(mstate_min)) mstate_max_=mstate_max
+  nstate_min_ = 1; nstate_max_ = nstate; mstate_min_ = 1; mstate_max_ = nstate;
+  nbf = nstate / 2
+  if(PRESENT(nstate_min)) nstate_min_ = nstate_min
+  if(PRESENT(nstate_max)) nstate_max_ = nstate_max
+  if(PRESENT(mstate_min)) mstate_min_ = mstate_min
+  if(PRESENT(mstate_min)) mstate_max_ = mstate_max
   allocate(c_matrix_LaorLb(nbf, nstate, nspin))
 
   !
@@ -924,13 +928,17 @@ end subroutine calculate_eri_x2c
 
 
 !=================================================================
-subroutine destroy_eri_3center_eigen(verbose, long_range)
+subroutine destroy_eri_3center_eigen(verbose, long_range, force)
   implicit none
 
-  logical, optional, intent(in) :: verbose, long_range
+  logical, optional, intent(in) :: verbose, long_range, force
   !=====
   logical :: verbose_
   !=====
+
+  if( .NOT. PRESENT(force) ) then
+    if( eri_3center_mo_stay_in_memory ) return
+  endif
 
   if(PRESENT(verbose)) then
     verbose_ = verbose
@@ -938,8 +946,10 @@ subroutine destroy_eri_3center_eigen(verbose, long_range)
     verbose_ = .TRUE.
   endif
 
-  if(verbose_) write(stdout, '(/,a)') ' Destroy 3-center integrals on eigenstates'
-  call clean_deallocate('3-center MO integrals', eri_3center_eigen, verbose_)
+  if( ALLOCATED(eri_3center_eigen) ) then
+    if(verbose_) write(stdout, '(/,a)') ' Destroy 3-center integrals on eigenstates'
+    call clean_deallocate('3-center MO integrals', eri_3center_eigen, verbose_)
+  endif
   if(PRESENT(long_range)) then
     if(long_range) then
       if(verbose_) write(stdout, '(a,/)') ' Destroy 3-center_lr integrals on eigenstates'
@@ -1093,6 +1103,314 @@ subroutine form_erimol(nbf, nstate_tot, nstate_jkl, c_matrix, c_matrix_cmplx, ER
   endif
 
 end subroutine form_erimol
+
+
+!=========================================================================
+subroutine read_cc4s_coulombvertex(rootname)
+  implicit none
+
+  character(len=*), intent(in), optional :: rootname
+  !=====
+  character(len=128) :: rootname_ = 'molgw_'
+  integer :: nstate, istate, jstate, naux
+  integer :: unitcv
+  complex(dp), allocatable :: coulomb_vertex_ij(:)
+  integer, allocatable :: yaml_integers(:)
+  real(dp) :: rtmp
+  integer :: first_index
+#if defined(HAVE_MPI)
+  integer :: complex_length
+  integer :: ierr
+  integer(kind=MPI_OFFSET_KIND) :: disp, disp_increment
+  integer :: desc_tmp(NDEL), desc_mo(NDEL)
+  real(dp), allocatable :: eri_3center_tmp(:, :)
+  integer :: mtmp, ntmp, info
+  integer :: nstate2
+  integer :: ijstate_global, ijstate_local
+#endif
+  !=====
+
+  if( PRESENT(rootname) ) then
+    rootname_ = rootname
+  endif
+
+  if( nspin > 1 ) call die("read_cc4s_coulombvertex: spin polarized not implemented yet")
+  
+  call start_clock(timing_read_coulombvertex)
+  write(stdout, '(1x,a)') 'Reading ' // TRIM(rootname_) // 'CoulombVertex.yaml and ' &
+                          // TRIM(rootname_) // 'CoulombVertex.elements'
+
+  ! Keep 3-center ERI in memory forever
+  eri_3center_mo_stay_in_memory = .TRUE.
+
+  !
+  ! Ensure CoulombVertex.yaml has been created with half grid
+  call yaml_search_keyword(TRIM(rootname_) // 'CoulombVertex.yaml', 'halfGrid', yaml_integers)
+  if( yaml_integers(1) /= 1 ) then
+    call die('read_cc4s_coulombvertex: only works for half grid (i.e. real wavefunctions)')
+  endif
+  deallocate(yaml_integers)
+
+  call yaml_search_keyword(TRIM(rootname_) // 'CoulombVertex.yaml', 'length', yaml_integers)
+  naux   = yaml_integers(1)
+  nstate = yaml_integers(2)
+  write(stdout, '(1x,a,i6,a,i4,a,i4)') 'Dimensions read:', naux, ' x ', nstate, ' x ', nstate
+  ! nauxil_global is 2*naux because of real and imaginary parts
+  nauxil_global = 2 * naux
+
+  call distribute_auxil_basis(nauxil_global)
+
+  
+  allocate(coulomb_vertex_ij(naux))
+
+  call clean_allocate('3-center MO integrals', eri_3center_eigen, 1, nauxil_local, 1, nstate, 1, nstate, 1, 1)
+
+#if !defined(HAVE_MPI)
+  write(stdout, '(/,1x,a)') 'Reading file ' // TRIM(rootname_) // 'CoulombVertex.elements with plain fortran'
+  open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.elements', form='unformatted', &
+       access='stream', status='old', action='read')
+  do istate=1, nstate
+    do jstate=1, nstate
+      read(unitcv) coulomb_vertex_ij(:)
+      eri_3center_eigen(1:naux, istate, jstate, 1)      = coulomb_vertex_ij(:)%re
+      eri_3center_eigen(naux+1:2*naux, istate, jstate, 1) = coulomb_vertex_ij(:)%im
+    enddo
+  enddo
+
+  close(unitcv)
+
+#else
+
+  ! Create a SCALAPACK matrix (nauxil_global, nstate**2) that is distributed on column index only
+  nstate2 = nstate**2
+  mtmp = NUMROC(nauxil_global, block_row, iprow_cd, first_row, nprow_cd)
+  ntmp = NUMROC(nstate2      , block_col, ipcol_cd, first_col, npcol_cd)
+  call DESCINIT(desc_tmp, nauxil_global, nstate2, block_row, block_col, first_row, first_col, cntxt_cd, MAX(1, mtmp), info)
+
+  call clean_allocate('Reading 3-center MO integrals', eri_3center_tmp, 1, mtmp, 1, ntmp)
+
+
+  write(stdout, '(/,1x,a)') 'Reading file ' // TRIM(rootname_) // 'CoulombVertex.elements with MPI-IO'
+  write(stdout, '(5x,a,i4,a,i4)') 'using a processor grid:', nprow_cd, ' x ', npcol_cd
+
+  ! complex_length in bytes whereas STORAGE_SIZE is in bits
+  complex_length = STORAGE_SIZE(coulomb_vertex_ij(1)) / 8
+  disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(naux, KIND=MPI_OFFSET_KIND)
+
+  call MPI_FILE_OPEN(MPI_COMM_WORLD, TRIM(rootname_) // 'CoulombVertex.elements', &
+                     MPI_MODE_RDONLY, &
+                     MPI_INFO_NULL, unitcv, ierr)
+
+
+  ! Start with -disp_increment, so that when adding disp_increment, we get 0 in the first iteration
+  disp = -disp_increment
+  ijstate_global = 0
+  do jstate=1, nstate
+    do istate=1, nstate
+      ijstate_global = ijstate_global + 1
+      disp = disp + disp_increment
+
+      if( ipcol_cd /= INDXG2P(ijstate_global, block_col, 0, first_col, npcol_cd) ) cycle
+      ijstate_local = INDXG2L(ijstate_global, block_col, 0, first_col, npcol_cd)
+
+      call MPI_FILE_READ_AT(unitcv, disp, coulomb_vertex_ij, &
+                            naux, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE, ierr)
+
+      eri_3center_tmp(1:naux, ijstate_local)      = coulomb_vertex_ij(:)%re
+      eri_3center_tmp(naux+1:2*naux, ijstate_local) = coulomb_vertex_ij(:)%im
+
+    enddo
+  enddo
+
+
+  call DESCINIT(desc_mo, nauxil_global, nstate2, MB_eri3_mo, NB_eri3_mo, first_row, first_col, cntxt_eri3_mo, &
+                MAX(1, nauxil_local), info)
+
+  !
+  ! Change distribution here
+  write(stdout, '(1x,a,i4,a,i4,a,i4,a,i4,a)') &
+                     'Change MO 3 center integral distribution (', &
+                     nprow_cd, ' x ', npcol_cd, ')   to   (', &
+                     nprow_eri3_mo, ' x ', npcol_eri3_mo, ')'
+  call PDGEMR2D(nauxil_global, nstate2, eri_3center_tmp, 1, 1, desc_tmp, &
+                                      eri_3center_eigen, 1, 1, desc_mo, cntxt_eri3_mo)
+
+  call clean_deallocate('Reading 3-center MO integrals', eri_3center_tmp)
+
+  call MPI_FILE_CLOSE(unitcv, ierr)
+#endif
+  first_index = LBOUND(eri_3center_eigen, DIM=2)
+  rtmp = DOT_PRODUCT(eri_3center_eigen(:, first_index, first_index, 1), eri_3center_eigen(:, first_index, first_index, 1))
+  call auxil%sum(rtmp)
+  write(stdout, '(1x,a,es16.8)') 'Testing integral (11|11) (Ha):', rtmp
+
+  call stop_clock(timing_read_coulombvertex)
+
+end subroutine read_cc4s_coulombvertex
+
+
+!=========================================================================
+subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
+  implicit none
+
+  real(dp), intent(in) :: eri_3center_updated(:, :, :, :)
+  character(len=*), intent(in), optional :: rootname
+  !=====
+  character(len=128) :: rootname_ = 'molgw_'
+  integer :: nstate, istate, jstate, naux
+  integer :: unitcv
+  complex(dp), allocatable :: coulomb_vertex_ij(:)
+  integer, allocatable :: yaml_integers(:)
+  real(dp) :: rtmp
+  integer :: complex_length
+  integer :: nstate2, first_index
+#if defined(HAVE_MPI)
+  integer :: ierr
+  integer(kind=MPI_OFFSET_KIND) :: disp, disp_increment
+  integer :: desc_tmp(NDEL), desc_updated(NDEL)
+  real(dp), allocatable :: eri_3center_tmp(:, :)
+  integer :: mtmp, ntmp, info
+  integer :: ijstate_global, ijstate_local
+#endif
+  !=====
+
+  if( nspin > 1 ) call die("write_cc4s_coulombvertex: spin polarized not implemented yet")
+
+  if( PRESENT(rootname) ) then
+    rootname_ = rootname
+  endif
+  
+  call start_clock(timing_read_coulombvertex)
+  write(stdout, '(1x,a)') 'Writing ' // TRIM(rootname_) // 'CoulombVertex.yaml and ' &
+                          // TRIM(rootname_) // 'CoulombVertex.elements'
+
+  first_index = LBOUND(eri_3center_updated, DIM=2)
+  rtmp = DOT_PRODUCT(eri_3center_updated(:, first_index, first_index, 1), eri_3center_updated(:, first_index, first_index, 1))
+  call auxil%sum(rtmp)
+  write(stdout, '(1x,a,es16.8)') 'Testing integral (11|11) (Ha):', rtmp
+
+
+  ! complex_length in bytes whereas STORAGE_SIZE is in bits
+  complex_length = STORAGE_SIZE(coulomb_vertex_ij(1)) / 8
+
+  if( MOD(nauxil_global, 2) == 0 ) then ! even
+    naux = nauxil_global / 2
+  else ! odd
+    naux = (nauxil_global + 1) / 2
+  endif
+
+  allocate(coulomb_vertex_ij(naux))
+  nstate = SIZE(eri_3center_updated, DIM=2)
+  nstate2 = nstate**2
+
+  ! Write meta data in a yaml file
+  open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.yaml', form='formatted', status='unknown', action='write')
+  write(unitcv, '(a)')    'version: 100'
+  write(unitcv, '(a)')    'type: Tensor'
+  write(unitcv, '(a)')    'scalarType: Complex64'
+  write(unitcv, '(a)')    'dimensions:'
+  write(unitcv, '(a,i8)')    '- length:', naux
+  write(unitcv, '(a)')    '  type: AuxiliaryField'
+  write(unitcv, '(a,i8)')    '- length:', nstate
+  write(unitcv, '(a)')    '  type: State'
+  write(unitcv, '(a,i8)')    '- length:', nstate
+  write(unitcv, '(a)')    '  type: State'
+  write(unitcv, '(a)')    'elements:'
+  write(unitcv, '(a)')    '  type: IeeeBinaryFile'
+  write(unitcv, '(a)')    'unit: 1.0   # Atomic units'
+  write(unitcv, '(a)')    'metaData:'
+  write(unitcv, '(a)')    '  halfGrid: 1'
+  close(unitcv)
+
+  write(stdout, *) 'File size (bytes):', INT(complex_length, KIND=8) * INT(naux, KIND=8) * INT(nstate2, KIND = 8)
+
+#if !defined(HAVE_MPI)
+  write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with plain fortran'
+  open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.elements', form='unformatted', access='stream', &
+       status='unknown', action='write')
+  do istate=LBOUND(eri_3center_updated, DIM=2), UBOUND(eri_3center_updated, DIM=2)
+    do jstate=LBOUND(eri_3center_updated, DIM=3), UBOUND(eri_3center_updated, DIM=3)
+      if( MOD(nauxil_global, 2) == 0 ) then ! even
+        coulomb_vertex_ij(:) = CMPLX( eri_3center_updated(1:naux, istate, jstate, 1), &
+                                      eri_3center_updated(naux+1:2*naux, istate, jstate, 1) )
+      else ! odd
+        coulomb_vertex_ij(1:naux-1) = CMPLX( eri_3center_updated(1:naux-1, istate, jstate, 1), &
+                                             eri_3center_updated(naux+1:2*naux-1, istate, jstate, 1) )
+        coulomb_vertex_ij(naux) = CMPLX( eri_3center_updated(naux, istate, jstate, 1), 0.0_dp )
+      endif
+      write(unitcv) coulomb_vertex_ij(:)
+    enddo
+  enddo
+
+  close(unitcv)
+
+#else
+
+  ! Create a SCALAPACK matrix (nauxil_global, nstate**2) that is distributed on column index only
+  mtmp = NUMROC(nauxil_global, block_row, iprow_cd, first_row, nprow_cd)
+  ntmp = NUMROC(nstate2      , block_col, ipcol_cd, first_col, npcol_cd)
+  call DESCINIT(desc_tmp, nauxil_global, nstate2, block_row, block_col, first_row, first_col, cntxt_cd, MAX(1, mtmp), info)
+
+  call clean_allocate('Writing 3-center MO integrals', eri_3center_tmp, 1, mtmp, 1, ntmp)
+
+  !
+  ! Change distribution here
+  write(stdout, '(1x,a,i4,a,i4,a,i4,a,i4,a)') &
+                     'Change MO 3 center integral distribution (', &
+                     nprow_eri3_mo, ' x ', npcol_eri3_mo, ')   to   (', &
+                     nprow_cd, ' x ', npcol_cd, ')'
+
+  call DESCINIT(desc_updated, nauxil_global, nstate2, MB_eri3_mo, NB_eri3_mo, first_row, first_col, cntxt_eri3_mo, &
+                MAX(1, nauxil_local), info)
+  call PDGEMR2D(nauxil_global, nstate2, eri_3center_updated, 1, 1, desc_updated, &
+                                      eri_3center_tmp, 1, 1, desc_tmp, cntxt_eri3_mo)
+
+  write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with MPI-IO'
+  write(stdout, '(5x,a,i4,a,i4)') 'using a processor grid:', nprow_cd, ' x ', npcol_cd
+
+  disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(naux, KIND=MPI_OFFSET_KIND)
+
+  call MPI_FILE_OPEN(MPI_COMM_WORLD, TRIM(rootname_) // 'CoulombVertex.elements', &
+                     MPI_MODE_WRONLY + MPI_MODE_CREATE, &
+                     MPI_INFO_NULL, unitcv, ierr)
+
+
+  ! Start with -disp_increment, so that when adding disp_increment, we get 0 in the first iteration
+  disp = -disp_increment
+  ijstate_global = 0
+  do jstate=1, nstate
+    do istate=1, nstate
+      ijstate_global = ijstate_global + 1
+      disp = disp + disp_increment
+
+      if( ipcol_cd /= INDXG2P(ijstate_global, block_col, 0, first_col, npcol_cd) ) cycle
+      ijstate_local = INDXG2L(ijstate_global, block_col, 0, first_col, npcol_cd)
+
+      if( MOD(nauxil_global, 2) == 0 ) then ! even
+        coulomb_vertex_ij(:) = CMPLX( eri_3center_tmp(1:naux, ijstate_local), eri_3center_tmp(naux+1:2*naux, ijstate_local) )
+      else ! odd
+        coulomb_vertex_ij(1:naux-1) = CMPLX( eri_3center_tmp(1:naux-1, ijstate_local), &
+                                             eri_3center_tmp(naux+1:2*naux-1, ijstate_local) )
+        coulomb_vertex_ij(naux) = CMPLX( eri_3center_tmp(naux, ijstate_local) , 0.0_dp )
+      endif
+
+      call MPI_FILE_WRITE_AT(unitcv, disp, coulomb_vertex_ij, &
+                            naux, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE, ierr)
+
+
+    enddo
+  enddo
+
+
+  call clean_deallocate('Reading 3-center MO integrals', eri_3center_tmp)
+
+  call MPI_FILE_CLOSE(unitcv, ierr)
+#endif
+
+  call stop_clock(timing_read_coulombvertex)
+
+end subroutine write_cc4s_coulombvertex
+
 
 !=========================================================================
 end module m_eri_ao_mo

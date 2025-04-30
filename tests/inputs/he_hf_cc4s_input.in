@@ -1,0 +1,13 @@
+&molgw
+ scf ='HF'
+ basis='cc-pVTZ'      ! basis is on purpose in disagreement with what we read
+ auxil_basis='pauto'  ! auxiliary basis is on purpose in disagreement with we read
+
+ nscf=0
+ cc4s_input = 'molgw_hf_QZ_'
+ init_hamiltonian='CC4S_FILES'
+ postscf='MP2'
+
+ natom = 1
+/
+He  0. 0. 0.

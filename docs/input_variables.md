@@ -121,6 +121,7 @@
 [pt3_a_diagrams](#pt3_a_diagrams)
 [pt_density_matrix](#pt_density_matrix)
 [rcut_mbpt](#rcut_mbpt)
+[rdm_filtering_no](#rdm_filtering_no)
 [scissor](#scissor)
 [selfenergy_state_max](#selfenergy_state_max)
 [selfenergy_state_min](#selfenergy_state_min)
@@ -173,6 +174,8 @@
 ## IO input variables
 
 [basis_path](#basis_path)
+[cc4s_input](#cc4s_input)
+[cc4s_output](#cc4s_output)
 [cube_nx](#cube_nx)
 [cube_ny](#cube_ny)
 [cube_nz](#cube_nz)
@@ -181,6 +184,7 @@
 [force_energy_qp](#force_energy_qp)
 [ignore_bigrestart](#ignore_bigrestart)
 [print_bigrestart](#print_bigrestart)
+[print_cc4s_files](#print_cc4s_files)
 [print_cube](#print_cube)
 [print_transition_density](#print_transition_density)
 [print_wfn_files](#print_wfn_files)
@@ -553,6 +557,38 @@ Calculate and print q_matrix which is the projection of a propagated state psi(t
 **Description:**
 
 Calculates absorption spectrum in the real-time dynamics
+
+
+---
+### cc4s_input
+
+*Optional*
+
+**Family:** io
+
+**Type:** characters
+
+**Default:** molgw_
+
+**Description:**
+
+Specifies the rootname for the Cc4s files to be read.
+
+
+---
+### cc4s_output
+
+*Optional*
+
+**Family:** io
+
+**Type:** characters
+
+**Default:** molgw_
+
+**Description:**
+
+Specifies the rootname for the Cc4s files to be written.
 
 
 ---
@@ -2524,6 +2560,22 @@ Prints the time-dependent wave function coefficients c_matrix_cmplx in an HDF5 f
 
 
 ---
+### print_cc4s_files
+
+*Optional*
+
+**Family:** io
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Prints CoulombVertex and EigenEnergies CC4S files with Hartree-Fock SCF data.
+
+
+---
 ### print_charge_tddft
 
 *Optional*
@@ -3035,6 +3087,24 @@ Radius of the disc for density calculations (option calc_dens_disc) for the real
 **Description:**
 
 EXPERIMENTAL
+
+
+---
+### rdm_filtering_no
+
+**experimental**
+
+*Optional*
+
+**Family:** post
+
+**Type:** integer
+
+**Default:** 0
+
+**Description:**
+
+Number of natural obritals to span the Hilbert space when creating CC4S-compatible files. Default 0 means skip it.
 
 
 ---

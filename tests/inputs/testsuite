@@ -1163,3 +1163,13 @@ ne_gw2sosex_psd.in, PSD-ized 2SOSEX self-energy
 SCF Total Energy           , -128.5414975632    , 0 , 1.0e-7
 GW+2SOSEX_PSD HOMO energy  ,  -21.798228        , 0 , 1.0e-4
 
+he_hf_cc4s_output.in      , HF+MP2 helium atom with output of Cc4s files
+SCF Total Energy          ,  -2.8615142286      , 0 , 1.0e-7
+Testing integral (11|11)  ,   1.02581670E+00    , 0 , 1.0e-7
+MP2 correlation           ,  -0.0354780027      , 0 , 1.0e-7
+
+he_hf_cc4s_input.in      , HF+MP2 helium atom with output of Cc4s files, restart
+HF Total Energy           ,  -2.8615142286      , 0 , 1.0e-7
+Testing integral (11|11)  ,   1.02581670E+00    , 0 , 1.0e-7
+MP2 correlation           ,  -0.0354780027      , 0 , 1.0e-7
+

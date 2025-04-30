@@ -284,34 +284,20 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
     allocate(omega_quad(sf%nomega))
     allocate(sf%omega(sf%nomega))
 
-    if( .TRUE. ) then
-      call coeffs_gausslegint(0.0_dp, 1.0_dp, omega_quad, sf%weight_quad, sf%nomega)
+    ! This grid is equivalent to that from Erhard, Goerling JChemPhys 157, 114105 (2022)
+    call coeffs_gausslegint(0.0_dp, 1.0_dp, omega_quad, sf%weight_quad, sf%nomega)
 
-      write(stdout_, '(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
-      ! Variable change [0,1] -> [0,+\inf[
-      write(stdout_, '(a)') '    #    Frequencies (eV)    Quadrature weights'
-      do iomega=1, sf%nomega
-        sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha &
-                                * (1.0_dp -  omega_quad(iomega))**(-alpha-1.0_dp) * beta
-        omega_quad(iomega)  =  1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
-                                  * ( 1.0_dp / (1.0_dp-omega_quad(iomega))**alpha - 1.0_dp ) * beta
-        sf%omega(iomega)       =  omega_quad(iomega) * im
-        write(stdout_, '(i5,2(2x,f14.6))') iomega, sf%omega(iomega)%im*Ha_eV, sf%weight_quad(iomega)
-      enddo
-    else
-      ! Grid from Erhard, Goerling JChemPhys 157, 114105 (2022)
-      call issue_warning("FBFB Goerling hack omega freqs")
-      call coeffs_gausslegint(-1.0_dp, 1.0_dp, omega_quad, sf%weight_quad, sf%nomega)
-
-      write(stdout_, '(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
-      ! Variable change [-1,1] -> [0,+\inf[
-      write(stdout_, '(a)') '    #    Frequencies (eV)    Quadrature weights'
-      do iomega=1, sf%nomega
-        sf%weight_quad(iomega) = sf%weight_quad(iomega) * 2.0_dp * omega_0 / ( 1.0_dp - omega_quad(iomega) )**2
-        sf%omega(iomega)       = im * omega_0 * ( 1.0_dp + omega_quad(iomega) ) / ( 1.0_dp - omega_quad(iomega) )
-        write(stdout_, '(i5,2(2x,f14.6))') iomega, sf%omega(iomega)%im*Ha_eV, sf%weight_quad(iomega)
-      enddo
-    endif
+    write(stdout_, '(/,1x,a)') 'Numerical integration on a grid along the imaginary axis'
+    ! Variable change [0, 1] -> [0, +\inf[
+    write(stdout_, '(a)') '    #    Frequencies (eV)    Quadrature weights'
+    do iomega=1, sf%nomega
+      sf%weight_quad(iomega) = sf%weight_quad(iomega) / ( 2.0_dp**alpha - 1.0_dp ) * alpha &
+                              * (1.0_dp -  omega_quad(iomega))**(-alpha-1.0_dp) * beta
+      omega_quad(iomega)  =  1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
+                                * ( 1.0_dp / (1.0_dp-omega_quad(iomega))**alpha - 1.0_dp ) * beta
+      sf%omega(iomega)       =  omega_quad(iomega) * im
+      write(stdout_, '(i5,2(2x,f14.6))') iomega, sf%omega(iomega)%im*Ha_eV, sf%weight_quad(iomega)
+    enddo
     deallocate(omega_quad)
 
   case(REAL_LINEAR)
