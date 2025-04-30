@@ -329,9 +329,7 @@ program molgw
     !
     ! Try to read a RESTART file if it exists
     if( read_restart_ ) then
-      ! nstate may change inside read_restart
       call read_restart(restart_type, 'RESTART', basis, occupation, c_matrix, energy, hamiltonian_fock)
-      nstate = SIZE(occupation, DIM=1)
     else
       restart_type = NO_RESTART
     endif
