@@ -1167,7 +1167,7 @@ subroutine read_cc4s_coulombvertex(rootname)
 
 #if !defined(HAVE_MPI)
   write(stdout, '(/,1x,a)') 'Reading file ' // TRIM(rootname_) // 'CoulombVertex.elements with plain fortran'
-  open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.elements', form='unformatted',
+  open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.elements', form='unformatted', &
        access='stream', status='old', action='read')
   do istate=1, nstate
     do jstate=1, nstate
@@ -1326,7 +1326,8 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
 
 #if !defined(HAVE_MPI)
   write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with plain fortran'
-  open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.elements', form='unformatted', access='stream', status='unknown', action='write')
+  open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.elements', form='unformatted', access='stream', &
+       status='unknown', action='write')
   do istate=LBOUND(eri_3center_updated, DIM=2), UBOUND(eri_3center_updated, DIM=2)
     do jstate=LBOUND(eri_3center_updated, DIM=3), UBOUND(eri_3center_updated, DIM=3)
       if( MOD(nauxil_global, 2) == 0 ) then ! even
