@@ -1,0 +1,15 @@
+&molgw
+ nscf=0
+ scf ='HF'
+ basis='cc-pV5Z'
+ auxil_basis='auto'
+
+ init_hamiltonian='CC4S_FILES'
+ cc4s_input='he_5Z_auto_'
+
+ postscf='MP2'
+
+ natom = 1
+/
+He  0. 0. 0.
+

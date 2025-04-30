@@ -569,8 +569,6 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
       call issue_warning('rdm_filtering_no choice breaks an occupation shell (above 1.0e-8 tolerance)')
     endif
     
-
-
     allocate(hfock_nvo(nvo, nvo))
     hfock_nvo(:, :) = 0.0_dp
     do pstate=rdm_filtering_mo+1, rdm_filtering_mo+nvo
@@ -589,10 +587,9 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
     allocate(cfock_filtered(nstate_filtered, nstate_filtered))
     cfock_filtered(:, :) = hfock_filtered(:, :, ispin)
 
+    !
+    ! Second diagonalization: HF hamiltonian in the filtered space
     call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, cfock_filtered(:, :), ehf_filtered(:, ispin))
-    do pstate=1, nstate_filtered
-      write(stdout, '(i4, 2x, f14.8)') pstate, ehf_filtered(pstate, ispin) * Ha_eV
-    enddo
 
     !
     ! Get the natural orbital in the AO basis
