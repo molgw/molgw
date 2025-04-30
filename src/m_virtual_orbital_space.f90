@@ -564,7 +564,8 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
     write(stdout, '(/,1x,a,i3)')  'Natural occupations in the optimized virtual orbital space for spin: ', ispin
     write(stdout, '(10(2x,f14.6))') nvo_occ(:, ispin)
 
-    write(stdout, '(/,1x,a,es16.4)') 'Neglecting virtual natural orbitals with occupation lower than ', nvo_occ(rdm_filtering_no, ispin)
+    write(stdout, '(/,1x,a,es16.4)') 'Neglecting virtual natural orbitals with occupation lower than ', &
+                                     nvo_occ(rdm_filtering_no, ispin)
     if( ABS(nvo_occ(rdm_filtering_no, 1) - nvo_occ(rdm_filtering_no+1, 1)) < 1.0e-8_dp ) then
       call issue_warning('rdm_filtering_no choice breaks an occupation shell (above 1.0e-8 tolerance)')
     endif
@@ -595,9 +596,10 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
     ! Get the natural orbital in the AO basis
     ! C_NO^AO = C * C_NO^MO
     c_matrix_nvo(:, 1:rdm_filtering_mo, ispin) = c_matrix(:, 1:rdm_filtering_mo, ispin)
-    c_matrix_nvo(:, rdm_filtering_mo+1:nstate_filtered, ispin) = MATMUL( c_matrix(:, rdm_filtering_mo+1:nstate, ispin), &
-                                MATMUL( p_matrix_mo_virtual(1:nvo, 1:rdm_filtering_no, ispin), &
-                                        cfock_filtered(rdm_filtering_mo+1:nstate_filtered, rdm_filtering_mo+1:nstate_filtered) ) )
+    c_matrix_nvo(:, rdm_filtering_mo+1:nstate_filtered, ispin) = &
+                    MATMUL( c_matrix(:, rdm_filtering_mo+1:nstate, ispin), &
+                            MATMUL( p_matrix_mo_virtual(1:nvo, 1:rdm_filtering_no, ispin), &
+                                    cfock_filtered(rdm_filtering_mo+1:nstate_filtered, rdm_filtering_mo+1:nstate_filtered) ) )
     deallocate(cfock_filtered)
     
   enddo
