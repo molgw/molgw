@@ -228,7 +228,6 @@
 [tddft_propagator](#tddft_propagator)
 [projectile_charge_scaling](#projectile_charge_scaling)
 [r_disc](#r_disc)
-[tddft_frozencore](#tddft_frozencore)
 [tddft_wfn_t0](#tddft_wfn_t0)
 [tddft_energy_shift](#tddft_energy_shift)
 [tddft_charge](#tddft_charge)
@@ -3374,22 +3373,6 @@ Shifts the TDDFT eigenvalues in when tddft_wfn_t0='STATIONARY' to tune the occup
 **Description:**
 
 Triggers the calculation of the force acting on the projectile
-
-
----
-### tddft_frozencore
-
-*Optional*
-
-**Family:** rt_tddft
-
-**Type:** yes/no
-
-**Default:** no
-
-**Description:**
-
-Do not "propagate" states mentioned in the manual_tddft_frozencore file in the real-time dynamics.
 
 
 ---

@@ -105,10 +105,6 @@ module m_inputparam
   type(calculation_type), protected :: calc_type
   type(dft_xc_info), allocatable    :: dft_xc(:)
   type(excitation_type), protected  :: excit_type
-  logical, protected                :: is_frozencore
-  logical, protected                :: is_tddft_frozencore
-  logical, protected                :: is_tda, is_triplet
-  logical, protected                :: is_virtual_fno
   real(dp), protected               :: spin_fact
   real(dp), protected               :: electrons
 

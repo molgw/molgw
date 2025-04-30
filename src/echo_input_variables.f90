@@ -200,7 +200,6 @@
   write(stdout, '(1x,a32,2x,es16.8)') 'tddft_charge', tddft_charge 
   write(stdout, '(1x,a32,2x,es16.8)') 'tddft_energy_shift', tddft_energy_shift 
   write(stdout, '(1x,a32,6x,a)') 'tddft_force', tddft_force 
-  write(stdout, '(1x,a32,6x,a)') 'tddft_frozencore', tddft_frozencore 
   write(stdout, '(1x,a32,6x,a)') 'tddft_grid_quality', TRIM(tddft_grid_quality) 
   write(stdout, '(1x,a32,2x,i8)') 'tddft_history', tddft_history 
   write(stdout, '(1x,a32,2x,es16.8)') 'tddft_magnetization', tddft_magnetization 

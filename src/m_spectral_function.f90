@@ -182,7 +182,7 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
   ncore_W      = ncorew
   nvirtual_W   = MIN(nvirtualw, nstate+1)
 
-  if(is_frozencore) then
+  if(frozencore_) then
     if( ncore_W == 0) ncore_W = atoms_core_states()
   endif
   if( ncore_W > 0 ) then
