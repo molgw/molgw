@@ -1134,13 +1134,22 @@ rcut_mbpt:
   default: 1.0
   comment: EXPERIMENTAL
 
+rdm_filtering_mo:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 0
+  comment: Number of molecular orbitals that are conserved when creating CC4S-compatible files. `rdm_filtering_mo` should larger or equal to
+           the number of occupied orbitals. Default 0 means number occupied orbitals.
+
 rdm_filtering_no:
   family: post
   datatype: integer
   mandatory: 'no'
   experimental: 'yes'
   default: 0
-  comment: Number of natural obritals to span the Hilbert space when creating CC4S-compatible files. Default 0 means skip it.
+  comment: Number of natural orbitals in addition to the fixed `rdm_filtering_mo` when creating CC4S-compatible files. Default 0 means skip it.
 
 scissor:
   family: post

@@ -129,6 +129,7 @@
     pt3_a_diagrams,       &
     pt_density_matrix,       &
     rcut_mbpt,       &
+    rdm_filtering_mo,       &
     rdm_filtering_no,       &
     scissor,       &
     selfenergy_state_max,       &
@@ -351,6 +352,7 @@
  pt3_a_diagrams = 'yes'
  pt_density_matrix = 'no'
  rcut_mbpt = 1.0_dp 
+ rdm_filtering_mo = 0
  rdm_filtering_no = 0
  scissor = 0.0_dp 
  selfenergy_state_max = 100000

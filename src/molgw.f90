@@ -482,10 +482,10 @@ program molgw
     ! Big RESTART file written if converged
     !
     if( scf_has_converged .AND. print_bigrestart_ ) then
-      call write_restart(BIG_RESTART, basis, occupation, c_matrix, energy, hamiltonian_fock)
+      call write_restart(BIG_RESTART, 'RESTART', basis, occupation, c_matrix, energy, hamiltonian_fock)
     else
       if( print_restart_ ) then
-        call write_restart(SMALL_RESTART, basis, occupation, c_matrix, energy)
+        call write_restart(SMALL_RESTART, 'RESTART', basis, occupation, c_matrix, energy)
       endif
     endif
 
@@ -575,7 +575,7 @@ program molgw
   if( assume_scf_converged_ .AND. TRIM(init_hamiltonian)=='GAUSSIAN') then
     if( basis%nbf == nstate .AND. basis%gaussian_type == 'CART' ) then
       call read_guess_fchk(c_matrix, file_name, basis, nstate, nspin, energy=energy)
-      call write_restart(SMALL_RESTART, basis, occupation, c_matrix, energy)
+      call write_restart(SMALL_RESTART, 'RESTART', basis, occupation, c_matrix, energy)
     else
       call die(' The number of states is not equal to the number of basis functions in Gaussian for restart.')
     endif

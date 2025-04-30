@@ -182,6 +182,7 @@
  write(unit_yaml, '(4x,a,13x,a)') 'pt_density_matrix:', TRIM(pt_density_matrix) 
  write(unit_yaml, '(4x,a,24x,es16.8)') 'r_disc:', r_disc 
  write(unit_yaml, '(4x,a,21x,es16.8)') 'rcut_mbpt:', rcut_mbpt 
+ write(unit_yaml, '(4x,a,14x,i8)') 'rdm_filtering_mo:', rdm_filtering_mo 
  write(unit_yaml, '(4x,a,14x,i8)') 'rdm_filtering_no:', rdm_filtering_no 
  write(unit_yaml, '(4x,a,21x,a)') 'read_fchk:', TRIM(read_fchk) 
  write(unit_yaml, '(4x,a,18x,a)') 'read_restart:', yesno_to_TrueFalse(read_restart) 

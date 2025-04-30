@@ -182,6 +182,7 @@
   write(stdout, '(1x,a32,6x,a)') 'pt_density_matrix', TRIM(pt_density_matrix) 
   write(stdout, '(1x,a32,2x,es16.8)') 'r_disc', r_disc 
   write(stdout, '(1x,a32,2x,es16.8)') 'rcut_mbpt', rcut_mbpt 
+  write(stdout, '(1x,a32,2x,i8)') 'rdm_filtering_mo', rdm_filtering_mo 
   write(stdout, '(1x,a32,2x,i8)') 'rdm_filtering_no', rdm_filtering_no 
   write(stdout, '(1x,a32,6x,a)') 'read_fchk', TRIM(read_fchk) 
   write(stdout, '(1x,a32,6x,a)') 'read_restart', read_restart 

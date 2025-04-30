@@ -320,7 +320,7 @@ subroutine scf_loop(is_restart, &
     !
     ! Write down a "small" RESTART file at each step
     if( print_restart_ ) then
-      call write_restart(SMALL_RESTART, basis, occupation, c_matrix, energy)
+      call write_restart(SMALL_RESTART, 'RESTART', basis, occupation, c_matrix, energy)
     endif
 
 

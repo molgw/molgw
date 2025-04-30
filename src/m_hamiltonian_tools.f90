@@ -187,7 +187,7 @@ subroutine setup_density_matrix_MO_cmplx(c_matrix, s_matrix, p_matrix_cmplx, p_m
   ! Steps:
   ! 1. Compute SC: nbf x nstate => real, DSYMM
   ! 2. Compute P (SC): nbf x nstate => complex, ZHEMM
-  ! 3. Compute (SC)^T (PSC): nstate x nstate => complex, ZGEMM
+  ! 3. Compute (SC)^T (PSC): nstate x nstate => complex, ZGEMMT
 
   nbf    = SIZE(c_matrix(:, :, :), DIM=1)
   nstate = SIZE(c_matrix(:, :, :), DIM=2)
@@ -259,8 +259,8 @@ subroutine setup_density_matrix_MO_real(c_matrix, s_matrix, p_matrix_real, p_mat
   !
   ! Steps:
   ! 1. Compute SC: nbf x nstate => real, DSYMM
-  ! 2. Compute P (SC): nbf x nstate => complex, ZHEMM
-  ! 3. Compute (SC)^T (PSC): nstate x nstate => complex, ZGEMM
+  ! 2. Compute P (SC): nbf x nstate => real, DSYMM
+  ! 3. Compute (SC)^T (PSC): nstate x nstate => real, DGEMMT
 
   nbf    = SIZE(c_matrix(:, :, :), DIM=1)
   nstate = SIZE(c_matrix(:, :, :), DIM=2)
@@ -1328,7 +1328,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
         jglobal = INDXL2G(jlocal, block_col, ipcol, first_col, npcol)
         do ilocal=1, mc
           iglobal = INDXL2G(ilocal, block_row, iprow, first_row, nprow)
-          s_matrix_local(ilocal, jlocal) = x_matrix(iglobal, jglobal)
+          _s_matrix_local(ilocal, jlocal) = x_matrix(iglobal, jglobal)
         enddo
       enddo
 

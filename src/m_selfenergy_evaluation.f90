@@ -404,10 +404,6 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
             call sosex_selfenergy_analyzed(basis, occupation, energy_g, c_matrix, wpol, se_g3w2)
           else
             call sosex_selfenergy(basis, occupation, energy_g, c_matrix, wpol, se_g3w2)
-            !!!FBFB
-            !call issue_warning('FBFB in regular coding: GW + 2SOX + 2SOSEX')
-            !call pt2_selfenergy(SOX, basis, occupation, energy_g, c_matrix, se, en_mbpt%mp2)
-            !!!FBFB
           endif
 
           call se%add(se_gw)

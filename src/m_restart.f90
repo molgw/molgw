@@ -34,17 +34,18 @@ contains
 
 
 !=========================================================================
-subroutine write_restart(restart_type, basis, occupation, c_matrix, energy, hamiltonian_fock)
+subroutine write_restart(restart_type, restart_filename, basis, occupation, c_matrix, energy, hamiltonian_fock)
   implicit none
 
   integer, intent(in)           :: restart_type
+  character(len=*), intent(in)  :: restart_filename
   type(basis_set), intent(in)   :: basis
   real(dp), intent(in)          :: occupation(:, :), energy(:, :)
   real(dp), intent(in)          :: c_matrix(:, :, :)
   real(dp), optional, intent(in) :: hamiltonian_fock(:, :, :)
   !=====
+  integer, parameter         :: restart_version=201609
   integer                    :: nstate
-  integer, parameter          :: restart_version=201609
   integer                    :: restartfile
   integer                    :: ispin, istate, ibf, nstate_local
   !=====
@@ -75,7 +76,7 @@ subroutine write_restart(restart_type, basis, occupation, c_matrix, energy, hami
   endif
 
 
-  open(newunit=restartfile, file='RESTART', form='unformatted', action='write')
+  open(newunit=restartfile, file=TRIM(restart_filename), form='unformatted', action='write')
 
   ! An integer to ensure backward compatibility in the future
   write(restartfile) restart_version
@@ -176,7 +177,7 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
 
   nstate_expected = SIZE(occupation,DIM=1)
 
-  open(newunit=restartfile, file=restart_filename, form='unformatted', status='old', action='read')
+  open(newunit=restartfile, file=TRIM(restart_filename), form='unformatted', status='old', action='read')
 
 
   ! An integer to ensure backward compatibility in the future

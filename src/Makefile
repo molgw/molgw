@@ -285,7 +285,7 @@ m_scf_loop.o: m_definitions.o m_warning.o m_timing.o m_memory.o m_atoms.o m_inpu
 m_dm_mbpt.o: m_definitions.o m_warning.o m_timing.o m_memory.o m_inputparam.o m_scf.o \
              m_spectral_function.o m_atoms.o m_basis_set.o m_multipole.o m_hamiltonian_tools.o \
              m_hamiltonian_wrapper.o m_selfenergy_tools.o m_gw_selfenergy_grid.o m_pt_density_matrix.o \
-             m_linear_response.o m_dm_mbpt.f90
+             m_linear_response.o m_virtual_orbital_space.o m_dm_mbpt.f90
 	$(FC_W_OPTS) -c m_dm_mbpt.f90 $(LIBXC_INCS)
 
 m_dm_analysis.o: m_definitions.o m_warning.o m_timing.o m_memory.o m_atoms.o m_inputparam.o m_scf.o m_scalapack.o \

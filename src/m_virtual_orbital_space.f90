@@ -95,7 +95,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
   ! Calculate the overlap matrix in the small basis:
   !  tilde S = Sbs**T *  S**-1 * Sbs
   call clean_allocate('Overlap matrix Ssmall', s_small, basis_small%nbf, basis_small%nbf)
-  s_small(:, :) = MATMUL( TRANSPOSE(s_bigsmall) , MATMUL( s_matrix_inv , s_bigsmall ) )
+  s_small(:, :) = MATMUL( TRANSPOSE(s_bigsmall), MATMUL( s_matrix_inv, s_bigsmall ) )
 
   ! Calculate ( tilde S )^{-1/2}
   call setup_x_matrix(min_overlap, s_small, nstate_small, x_small)
@@ -120,12 +120,12 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
       matrix_tmp(istate, :) = energy(istate, ispin) * c_matrix(:, istate, ispin)
     enddo
     ! M = C * E * C**T
-    matrix_tmp(:, :) = MATMUL( c_matrix(:, 1:nstate, ispin) , matrix_tmp(1:nstate, :) )
+    matrix_tmp(:, :) = MATMUL( c_matrix(:, 1:nstate, ispin), matrix_tmp(1:nstate, :) )
 
     ! H = S * M * S
-    h_big(:, :, ispin) = MATMUL( s_matrix , MATMUL( matrix_tmp , s_matrix ) )
+    h_big(:, :, ispin) = MATMUL( s_matrix, MATMUL( matrix_tmp, s_matrix ) )
     ! Hsmall = Sbs**T * M * Sbs
-    h_small(:, :, ispin) = MATMUL( TRANSPOSE(s_bigsmall) , MATMUL( matrix_tmp , s_bigsmall ) )
+    h_small(:, :, ispin) = MATMUL( TRANSPOSE(s_bigsmall), MATMUL( matrix_tmp, s_bigsmall ) )
 
   enddo
   call clean_deallocate('Tmp matrix', matrix_tmp)
@@ -152,7 +152,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
 
   ! Cbig = S**-1 * Sbs * tilde C
   do ispin=1, nspin
-    c_big(:, :, ispin) = MATMUL( s_matrix_inv(:, :) , MATMUL( s_bigsmall(:, :) , c_small(:, :, ispin) ) )
+    c_big(:, :, ispin) = MATMUL( s_matrix_inv(:, :), MATMUL( s_bigsmall(:, :), c_small(:, :, ispin) ) )
   enddo
   call clean_deallocate('Coefficients small basis', c_small)
   call clean_deallocate('Overlap inverse S^{-1}', s_matrix_inv)
@@ -183,7 +183,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
   ! Calculate the corresponding overlap matrix Sbar and hamiltonian Hbar
   call clean_allocate('Overlap selected states', s_bar, nstate_small, nstate_small)
   call clean_allocate('Hamiltonian selected states', h_bar, nstate_small, nstate_small, nspin)
-  s_bar(:, :) = MATMUL( TRANSPOSE(c_big(:, :, 1)) , MATMUL( s_matrix , c_big(:, :, 1) ) )
+  s_bar(:, :) = MATMUL( TRANSPOSE(c_big(:, :, 1)), MATMUL( s_matrix, c_big(:, :, 1) ) )
 
   call clean_deallocate('Overlap matrix S', s_matrix)
 
@@ -192,7 +192,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
   call clean_deallocate('Overlap selected states', s_bar)
 
   do ispin=1, nspin
-    h_bar(:, :, ispin) = MATMUL( TRANSPOSE(c_big(:, :, ispin)) , MATMUL( h_big(:, :, ispin) , c_big(:, :, ispin) ) )
+    h_bar(:, :, ispin) = MATMUL( TRANSPOSE(c_big(:, :, ispin)), MATMUL( h_big(:, :, ispin), c_big(:, :, ispin) ) )
   enddo
   call clean_deallocate('Hamiltonian H', h_big)
 
@@ -202,7 +202,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
 
 
   do ispin=1, nspin
-    c_big(:, 1:nstate_bar, ispin) = MATMUL( c_big(:, :, ispin) , c_bar(:, :, ispin) )
+    c_big(:, 1:nstate_bar, ispin) = MATMUL( c_big(:, :, ispin), c_bar(:, :, ispin) )
   enddo
 
   call dump_out_energy('=== Energies in the final small basis ===', occupation(1:nstate_bar, :), energy_bar)
@@ -418,8 +418,8 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
     allocate(ham_virtual_kept(nvirtual_kept, nvirtual_kept))
     allocate(energy_virtual_kept(nvirtual_kept))
 
-    ham_virtual_kept(:, :)  = MATMUL( TRANSPOSE( p_matrix_mp2(:, nvirtual-nvirtual_kept+1:) ) ,   &
-                                        MATMUL( ham_virtual , p_matrix_mp2(:, nvirtual-nvirtual_kept+1:) ) )
+    ham_virtual_kept(:, :)  = MATMUL( TRANSPOSE( p_matrix_mp2(:, nvirtual-nvirtual_kept+1:) ),   &
+                                        MATMUL( ham_virtual, p_matrix_mp2(:, nvirtual-nvirtual_kept+1:) ) )
 
     deallocate(ham_virtual)
 
@@ -445,8 +445,8 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
     !
     ! And then override the c_matrix and the energy with the fresh new ones
     energy(nsemax+1:nsemax+nvirtual_kept, ispin)     = energy_virtual_kept(:)
-    c_matrix(:, nsemax+1:nsemax+nvirtual_kept, ispin) = MATMUL( c_matrix(:, nsemax+1:, ispin) ,  &
-                                                    MATMUL( p_matrix_mp2(:, nvirtual-nvirtual_kept+1:) , &
+    c_matrix(:, nsemax+1:nsemax+nvirtual_kept, ispin) = MATMUL( c_matrix(:, nsemax+1:, ispin),  &
+                                                    MATMUL( p_matrix_mp2(:, nvirtual-nvirtual_kept+1:), &
                                                        ham_virtual_kept(:, :) ) )
 
 
@@ -518,89 +518,126 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
   real(dp), intent(in) :: c_matrix(:, :, :)
   real(dp), intent(in) :: p_matrix_mo(:, :, :)
   !=====
-  integer, parameter :: nfrozen = 5
-  integer, parameter :: nvo_truncated = 12
   real(dp), parameter :: TOL=1.0e-3_dp
-  integer :: nvo, nstate_truncated, nstate, nocc
-  real(dp), allocatable :: p_matrix_mo_virtual(:, :, :), nvo_occ(:, :), energy2(:, :)
-  real(dp), allocatable :: hfock_truncated(:, :), hfock_nvo(:, :)
+  integer :: nvo, nstate_filtered, nstate, nocc
+  real(dp), allocatable :: p_matrix_mo_virtual(:, :, :), nvo_occ(:, :), ehf_filtered(:, :)
+  real(dp), allocatable :: hfock_filtered(:, :, :), hfock_nvo(:, :), cfock_filtered(:, :)
   real(dp), allocatable :: c_matrix_nvo(:, :, :)
+  real(dp), allocatable :: s_matrix(:, :), hfock_ao(:, :, :)
   integer :: ispin, pstate
   !=====
 
   nstate = SIZE(p_matrix_mo(:, :, :), DIM=1)
 
-  nvo = nstate - nfrozen
+  !
+  ! nstate_filtered: the final number of MO
+  ! nvo: empty states to optimize over
+  !
+  nstate_filtered = rdm_filtering_mo + rdm_filtering_no
+  nvo = nstate - rdm_filtering_mo
 
   nocc = get_number_occupied_states(occupation)
-  if( nfrozen < nocc ) call die('FBFB: nfrozen < nocc')
+  if( rdm_filtering_mo < nocc ) call die('setup_fno_from_density_matrix: rdm_filtering_mo < nocc')
+  if( ANY(ABS( energy(rdm_filtering_mo+1, :) - energy(rdm_filtering_mo, :) ) < 1.0e-6_dp) ) then
+    do ispin=1, nspin
+      write(stdout, '(1x,a,*(1x,f12.6))') 'HF eigenvalues at truncation (eV): ', energy(rdm_filtering_no, ispin) * Ha_eV, &
+                                                                                energy(rdm_filtering_no+1, ispin) * Ha_eV
+    enddo
+    call issue_warning('rdm_filtering_mo choice breaks an energy shell (above 1.0e-6 Ha tolerance)')
+  endif
+
 
   allocate(p_matrix_mo_virtual(nvo, nvo, nspin))
   allocate(nvo_occ(nvo, nspin))
-  p_matrix_mo_virtual(:, :, :) = -p_matrix_mo(nfrozen+1:nstate, nfrozen+1:nstate, :)
+  p_matrix_mo_virtual(:, :, :) = -p_matrix_mo(rdm_filtering_mo+1:nstate, rdm_filtering_mo+1:nstate, :)
   
+  allocate(ehf_filtered(nstate_filtered, nspin))
+  allocate(hfock_filtered(nstate_filtered, nstate_filtered, nspin))
+  allocate(c_matrix_nvo(basis%nbf, nstate_filtered, nspin))
+
   do ispin=1, nspin
+    !
+    ! First diagonalize the virtual block of the density matrix
     call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, p_matrix_mo_virtual(:, :, ispin), nvo_occ(:, ispin))
     nvo_occ(:, ispin) = -nvo_occ(:, ispin)
-    write(*, *) '===== nvo_occ', ispin
-    write(stdout, '(8(1x, es14.6))') nvo_occ(:, ispin)
 
-    write(stdout, *) 'Neglecting virtual states with occupation lower than ', nvo_occ(nvo_truncated, ispin)
-    nstate_truncated = nfrozen + nvo_truncated
+    write(stdout, '(/,1x,a,i3)')  'Natural occupations in the optimized virtual orbital space for spin: ', ispin
+    write(stdout, '(10(2x,f14.6))') nvo_occ(:, ispin)
+
+    write(stdout, '(/,1x,a,es16.4)') 'Neglecting virtual natural orbitals with occupation lower than ', nvo_occ(rdm_filtering_no, ispin)
+    if( ABS(nvo_occ(rdm_filtering_no, 1) - nvo_occ(rdm_filtering_no+1, 1)) < 1.0e-8_dp ) then
+      call issue_warning('rdm_filtering_no choice breaks an occupation shell (above 1.0e-8 tolerance)')
+    endif
     
-    write(*, *) 'nstate=', nstate
-    write(*, *) 'nfrozen=', nfrozen
-    write(*, *) 'nvo=', nvo
-    write(*, *) 'nvo_truncated=', nvo_truncated
-    write(*, *) 'nstate_truncated=', nstate_truncated
 
-    allocate(energy2(nstate_truncated, nspin))
-    allocate(hfock_truncated(nstate_truncated, nstate_truncated))
-    hfock_truncated(:, :) = 0.0_dp
-    do pstate=1, nfrozen
-      hfock_truncated(pstate, pstate) = energy(pstate, ispin)
-    enddo
 
     allocate(hfock_nvo(nvo, nvo))
     hfock_nvo(:, :) = 0.0_dp
-    do pstate=nfrozen+1, nfrozen+nvo
-      hfock_nvo(pstate-nfrozen, pstate-nfrozen) = energy(pstate, ispin)
+    do pstate=rdm_filtering_mo+1, rdm_filtering_mo+nvo
+      hfock_nvo(pstate-rdm_filtering_mo, pstate-rdm_filtering_mo) = energy(pstate, ispin)
     enddo
-    write(*, *) SIZE(p_matrix_mo_virtual, DIM=1)
-    write(*, *) SIZE(p_matrix_mo_virtual, DIM=2)
-    write(*, *) SIZE(hfock_nvo, DIM=1)
-    write(*, *) SIZE(hfock_nvo, DIM=2)
-    hfock_truncated(nfrozen+1:nstate_truncated, nfrozen+1:nstate_truncated) = &
-                        MATMUL( TRANSPOSE(p_matrix_mo_virtual(:, 1:nvo_truncated, ispin)) , &
-                                  MATMUL( hfock_nvo, p_matrix_mo_virtual(:, 1:nvo_truncated, ispin) ) )
 
-    call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, hfock_truncated(:, :), energy2(:, ispin))
-    do pstate=1, nstate_truncated
-      write(stdout, '(i4, 2x, f14.8)') pstate, energy2(pstate, ispin) * Ha_eV
+    hfock_filtered(:, :, ispin) = 0.0_dp
+    do pstate=1, rdm_filtering_mo
+      hfock_filtered(pstate, pstate, ispin) = energy(pstate, ispin)
+    enddo
+    hfock_filtered(rdm_filtering_mo+1:nstate_filtered, rdm_filtering_mo+1:nstate_filtered, ispin) = &
+                        MATMUL( TRANSPOSE(p_matrix_mo_virtual(:, 1:rdm_filtering_no, ispin)), &
+                                  MATMUL( hfock_nvo, p_matrix_mo_virtual(:, 1:rdm_filtering_no, ispin) ) )
+    deallocate(hfock_nvo)
+
+    allocate(cfock_filtered(nstate_filtered, nstate_filtered))
+    cfock_filtered(:, :) = hfock_filtered(:, :, ispin)
+
+    call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, cfock_filtered(:, :), ehf_filtered(:, ispin))
+    do pstate=1, nstate_filtered
+      write(stdout, '(i4, 2x, f14.8)') pstate, ehf_filtered(pstate, ispin) * Ha_eV
     enddo
 
     !
     ! Get the natural orbital in the AO basis
     ! C_NO^AO = C * C_NO^MO
-    allocate(c_matrix_nvo(basis%nbf, nstate_truncated, 1))
-    c_matrix_nvo(:, 1:nfrozen, ispin) = c_matrix(:, 1:nfrozen, ispin) ! not sure
-    c_matrix_nvo(:, nfrozen+1:nstate_truncated, ispin) = MATMUL( c_matrix(:, nfrozen+1:nstate, ispin) , &
-                                            MATMUL(  p_matrix_mo_virtual(1:nvo, 1:nvo_truncated, ispin) , &
-                                                         hfock_truncated(nfrozen+1:nstate_truncated, nfrozen+1:nstate_truncated) ) )
+    c_matrix_nvo(:, 1:rdm_filtering_mo, ispin) = c_matrix(:, 1:rdm_filtering_mo, ispin)
+    c_matrix_nvo(:, rdm_filtering_mo+1:nstate_filtered, ispin) = MATMUL( c_matrix(:, rdm_filtering_mo+1:nstate, ispin), &
+                                MATMUL( p_matrix_mo_virtual(1:nvo, 1:rdm_filtering_no, ispin), &
+                                        cfock_filtered(rdm_filtering_mo+1:nstate_filtered, rdm_filtering_mo+1:nstate_filtered) ) )
+    deallocate(cfock_filtered)
     
-
-
-    !FBFB
-    !call write_restart(BIG_RESTART, basis, occupation(1:nstate_truncated, :), c_matrix_nvo, energy2, hamiltonian_fock)
-
-    deallocate(energy2, hfock_nvo, hfock_truncated)
-
   enddo
+
+  call dump_out_energy('=== HF Energies in filtered virtual space ===', occupation(1:nstate_filtered, :), ehf_filtered)
+
+  if( print_bigrestart_ ) then
+    ! to write a restart file, one needs Hfock in the AO basis
+    allocate(s_matrix(basis%nbf, basis%nbf))
+    call setup_overlap(basis, s_matrix)
+    ! TODO introduce BLAS coding
+    allocate(hfock_ao(basis%nbf, basis%nbf, nspin))
+    do ispin=1, nspin
+      hfock_ao(:, :, ispin) = MATMUL( MATMUL( s_matrix(:, :) , c_matrix_nvo(:, :, ispin) ) , &
+                                  MATMUL( hfock_filtered(:, :, ispin), &
+                                  MATMUL( TRANSPOSE(c_matrix_nvo(:, :, ispin)), s_matrix(:, :) ) ) )
+    enddo
+    call write_restart(BIG_RESTART, 'RESTART_filtered', basis, occupation(1:nstate_filtered, :), c_matrix_nvo, ehf_filtered, hfock_ao)
+    deallocate(hfock_ao)
+    deallocate(s_matrix)
+  endif
+
+  if( print_cc4s_files_ ) then
+    write(stdout, '(/,1x,a)') 'Transform the integrals from AO to filtered MO'
+    call calculate_eri_3center_eigen(c_matrix_nvo, 1, nstate_filtered, 1, nstate_filtered)
+
+    call write_cc4s_eigenenergies(occupation, ehf_filtered, cc4s_output)
+    call write_cc4s_coulombvertex(eri_3center_eigen, cc4s_output)
+
+    call destroy_eri_3center_eigen()
+  endif
+
+  deallocate(ehf_filtered, hfock_filtered)
   
-  
+  deallocate(c_matrix_nvo)
   deallocate(p_matrix_mo_virtual, nvo_occ)
 
-  call die("FBFB: enough is enough")
 
 end subroutine setup_fno_from_density_matrix
 

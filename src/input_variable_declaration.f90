@@ -181,6 +181,7 @@
  character(len=256), protected :: pt3_a_diagrams
  character(len=256), protected :: pt_density_matrix
  real(dp), protected :: rcut_mbpt
+ integer, protected :: rdm_filtering_mo
  integer, protected :: rdm_filtering_no
  real(dp), protected :: scissor
  integer, protected :: selfenergy_state_max

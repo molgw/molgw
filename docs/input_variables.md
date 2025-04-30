@@ -121,6 +121,7 @@
 [pt3_a_diagrams](#pt3_a_diagrams)
 [pt_density_matrix](#pt_density_matrix)
 [rcut_mbpt](#rcut_mbpt)
+[rdm_filtering_mo](#rdm_filtering_mo)
 [rdm_filtering_no](#rdm_filtering_no)
 [scissor](#scissor)
 [selfenergy_state_max](#selfenergy_state_max)
@@ -3090,6 +3091,24 @@ EXPERIMENTAL
 
 
 ---
+### rdm_filtering_mo
+
+**experimental**
+
+*Optional*
+
+**Family:** post
+
+**Type:** integer
+
+**Default:** 0
+
+**Description:**
+
+Number of molecular orbitals that are conserved when creating CC4S-compatible files. `rdm_filtering_mo` should larger or equal to the number of occupied orbitals. Default 0 means number occupied orbitals.
+
+
+---
 ### rdm_filtering_no
 
 **experimental**
@@ -3104,7 +3123,7 @@ EXPERIMENTAL
 
 **Description:**
 
-Number of natural obritals to span the Hilbert space when creating CC4S-compatible files. Default 0 means skip it.
+Number of natural orbitals in addition to the fixed `rdm_filtering_mo` when creating CC4S-compatible files. Default 0 means skip it.
 
 
 ---
