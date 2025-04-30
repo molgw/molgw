@@ -77,7 +77,7 @@ subroutine selfenergy_set_state_range(nstate_in, occupation, range)
   ncore_G      = ncoreg
   nvirtual_G   = MIN(nvirtualg, nstate_in+1)
 
-  if(is_frozencore) then
+  if(frozencore_) then
     if( ncore_G == 0) ncore_G = atoms_core_states()
   endif
 

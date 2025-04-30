@@ -131,7 +131,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
     ! If requested,
     ! prepare an optmized virtual subspace based on
     ! Frozen Natural Orbitals technique
-    if( is_virtual_fno ) then
+    if( virtual_fno_ ) then
       !
       ! Be aware that the energies and the c_matrix for virtual orbitals are altered after this point
       ! and until they are restored in destroy_fno

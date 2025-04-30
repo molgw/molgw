@@ -3869,7 +3869,7 @@ subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
   write(stdout, '(/,1x,a)')  '==== RPA response calculation (MPI distributed)'
   ncore_W      = ncorew
   nvirtual_W   = MIN(nvirtualw, nstate+1)
-  if(is_frozencore) then
+  if(frozencore_) then
     if( ncore_W == 0) ncore_W = atoms_core_states()
   endif
   nhomo = get_number_occupied_states(occupation)

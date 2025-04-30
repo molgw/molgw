@@ -204,7 +204,6 @@
  write(unit_yaml, '(4x,a,18x,es16.8)') 'tddft_charge:', tddft_charge 
  write(unit_yaml, '(4x,a,12x,es16.8)') 'tddft_energy_shift:', tddft_energy_shift 
  write(unit_yaml, '(4x,a,19x,a)') 'tddft_force:', yesno_to_TrueFalse(tddft_force) 
- write(unit_yaml, '(4x,a,14x,a)') 'tddft_frozencore:', yesno_to_TrueFalse(tddft_frozencore) 
  write(unit_yaml, '(4x,a,12x,a)') 'tddft_grid_quality:', TRIM(tddft_grid_quality) 
  write(unit_yaml, '(4x,a,17x,i8)') 'tddft_history:', tddft_history 
  write(unit_yaml, '(4x,a,11x,es16.8)') 'tddft_magnetization:', tddft_magnetization 

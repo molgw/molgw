@@ -216,8 +216,6 @@
  character(len=256), protected :: tddft_propagator
  real(dp), protected :: projectile_charge_scaling
  real(dp), protected :: r_disc
- character(len=3), protected :: tddft_frozencore
- logical, protected :: tddft_frozencore_
  character(len=256), protected :: tddft_wfn_t0
  real(dp), protected :: tddft_energy_shift
  real(dp), protected :: tddft_charge

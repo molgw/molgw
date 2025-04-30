@@ -281,7 +281,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
   endif
 
   ncore = ncoreg
-  if(is_frozencore) then
+  if(frozencore_) then
     if( ncore == 0) ncore = atoms_core_states()
   endif
 

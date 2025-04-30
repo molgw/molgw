@@ -160,7 +160,6 @@
     tddft_propagator,       &
     projectile_charge_scaling,       &
     r_disc,       &
-    tddft_frozencore,       &
     tddft_wfn_t0,       &
     tddft_energy_shift,       &
     tddft_charge,       &
@@ -383,7 +382,6 @@
  tddft_propagator = 'CN'
  projectile_charge_scaling = 1.0_dp 
  r_disc = 200.0_dp 
- tddft_frozencore = 'no'
  tddft_wfn_t0 = 'SCF'
  tddft_energy_shift = 0.0_dp 
  tddft_charge = -999.0_dp 

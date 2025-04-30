@@ -85,7 +85,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
       call die('polarizability: wrong enforce_spin_multiplicity. Should be 1 or 3')
     end select
   else
-    is_triplet_currently = is_triplet
+    is_triplet_currently = triplet_
   endif
   if(is_triplet_currently) then
     write(stdout, '(a)') ' Triplet final state'
@@ -295,7 +295,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
 
   ! Warning if Tamm-Dancoff flag is on
-  if(is_tda) then
+  if(tda_) then
     msg='Tamm-Dancoff approximation is switched on'
     call issue_warning(msg)
     ! Tamm-Dancoff approximation consists in setting B matrix to zero
@@ -332,7 +332,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     return
   endif
 
-  if( is_rpa .AND. .NOT. is_tda ) call clean_deallocate('A-B', amb_matrix)
+  if( is_rpa .AND. .NOT. tda_ ) call clean_deallocate('A-B', amb_matrix)
 
   !
   ! Prepare the second dimension of xpy_matrix and xmy_matrix
@@ -348,14 +348,14 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   call DESCINIT(desc_x, nmat, nexc, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, m_x), info)
 
   call clean_allocate('X+Y', xpy_matrix, m_x,n_x)
-  if( .NOT. is_rpa .OR. is_tda .OR. PRESENT(x_matrix) .OR. PRESENT(y_matrix) ) &
+  if( .NOT. is_rpa .OR. tda_ .OR. PRESENT(x_matrix) .OR. PRESENT(y_matrix) ) &
     call clean_allocate('X-Y', xmy_matrix, m_x,n_x)
 
   !
   ! Diago using the 4 block structure and the symmetry of each block
   ! With or Without SCALAPACK
   !
-  if( .NOT. is_rpa .OR. is_tda ) then
+  if( .NOT. is_rpa .OR. tda_ ) then
     if( nexcitation == 0 ) then
       ! The following call works with AND without SCALAPACK
       call diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, eigenvalue, xpy_matrix, xmy_matrix, desc_x)

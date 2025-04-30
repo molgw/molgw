@@ -722,7 +722,7 @@ program molgw
     ! Set the range of states on which to evaluate the self-energy
     call selfenergy_set_state_range(nstate, occupation)
 
-    if( is_virtual_fno ) then
+    if( virtual_fno_ ) then
       call calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_matrix)
     endif
     if(has_auxil_basis) then
@@ -754,7 +754,7 @@ program molgw
 
     call destroy_ci()
 
-    if( is_virtual_fno ) then
+    if( virtual_fno_ ) then
       call destroy_fno(basis, nstate, energy, c_matrix)
     endif
 
