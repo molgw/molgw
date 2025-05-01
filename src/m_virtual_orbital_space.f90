@@ -617,7 +617,8 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
                                   MATMUL( hfock_filtered(:, :, ispin), &
                                   MATMUL( TRANSPOSE(c_matrix_nvo(:, :, ispin)), s_matrix(:, :) ) ) )
     enddo
-    call write_restart(BIG_RESTART, 'RESTART_filtered', basis, occupation(1:nstate_filtered, :), c_matrix_nvo, ehf_filtered, hfock_ao)
+    call write_restart(BIG_RESTART, 'RESTART_filtered', basis, occupation(1:nstate_filtered, :), &
+                       c_matrix_nvo, ehf_filtered, hfock_ao)
     deallocate(hfock_ao)
     deallocate(s_matrix)
   endif
