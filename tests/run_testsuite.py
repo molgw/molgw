@@ -11,6 +11,7 @@
 
 
 import sys, os, time, shutil, subprocess
+import re
 
 today=time.strftime("%Y")+'_'+time.strftime("%m")+'_'+time.strftime("%d")
 start_time = time.time()
@@ -28,8 +29,12 @@ listing=False
 in_timing_section=True
 sections_separator="--- Timings in (s) and # of calls ---"
 
+def extract_between_quotes(s):
+    match = re.search(r'"(.*?)"', s)
+    return match.group(1) if match else ''
+
 ###################################
-def clean_run(inp,out,restart):
+def clean_run(inp, out, restart, command=""):
   shutil.copy('inputs/'+inp,tmpfolder+'/'+inp)
   os.chdir(tmpfolder)
   if not restart:
@@ -61,6 +66,9 @@ def clean_run(inp,out,restart):
       os.remove('EIGVEC_CI_M')
     except FileNotFoundError:
       pass
+  if len(command) > 0:
+    result = subprocess.run(command.split(), capture_output=True, text=True)
+
   fout = open(out, 'w')
   if len(mpirun) < 1:
     subprocess.call(['../../molgw',inp],stdout=fout,stderr=subprocess.STDOUT)
@@ -300,7 +308,7 @@ with open('../src/molgw.h', 'r') as stream:
 ###################################
 # Run the fake.in input to get MOLGW compilation options
 ###################################
-clean_run('fake.in','fake.out',False)
+clean_run('fake.in', 'fake.out', False)
 
 have_openmp           = 'Running with OPENMP' in open(tmpfolder+'/fake.out').read()
 have_libxc            = 'Running with LIBXC' in open(tmpfolder+'/fake.out').read()
@@ -356,6 +364,7 @@ need_forces    = []
 need_libcint   = []
 test_names     = []
 testinfo       = []
+command        = []
 
 ftestsuite = open('inputs/testsuite','r')
 for line in ftestsuite:
@@ -375,6 +384,7 @@ for line in ftestsuite:
     need_gradients.append(False)
     need_forces.append(False)
     need_libcint.append(False)
+    command.append("")
 
   if len(parsing) == 3:
     ninput+=1
@@ -383,8 +393,10 @@ for line in ftestsuite:
     testinfo.append([])
     if 'restart' in parsing[2].lower():
       restarting.append(True)
+      command.append(extract_between_quotes(parsing[2]))
     else:
       restarting.append(False)
+      command.append("")
     if 'noparallel' in parsing[2].lower():
       parallel.append(False)
     else:
@@ -539,7 +551,7 @@ for iinput in range(ninput):
   print(test_names[iinput])
   fdiff.write("# " + inp + "\n")
 
-  clean_run(inp,out,restart)
+  clean_run(inp, out, restart, command=command[iinput])
   
   failures = check_output(out,testinfo[iinput])
   if failures != 0:

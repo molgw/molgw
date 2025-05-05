@@ -86,6 +86,7 @@ module m_timing
   integer, parameter :: timing_eri_2center_inverse_sqrt = 65
   integer, parameter :: timing_grid_generation     = 66
   integer, parameter :: timing_grid_wfn            = 67
+  integer, parameter :: timing_read_coulombvertex  = 68
 
   integer, parameter :: timing_density_matrix_MO   = 70
 
@@ -296,6 +297,7 @@ subroutine output_timing()
   write(stdout, '(a,/)')   '                            Post SCF'
 
   ! Prepare post scf
+  call output_timing_line('Reading Coulomb vertex file', timing_read_coulombvertex, 1)
   call output_timing_line('Sigma_x - Vxc', timing_x_m_vxc, 1)
 
   ! Linear response polarization RPA or TDDFT or BSE

@@ -11,6 +11,7 @@
 #                                     need_scalapack  only working when SCALAPACK is available
 #                                     need_gradients  only working when LIBINT or LIBCINT gradients are available
 #                                     need_forces     only working when LIBINT gradients are available
+#                                     "  "            put bash command in between double quotes: "mv RESTART_filtered RESTART"
 #
 # 2. Test line comprises 4 commas:
 #    a. Text key to search in the out file
@@ -1163,3 +1164,25 @@ ne_gw2sosex_psd.in, PSD-ized 2SOSEX self-energy
 SCF Total Energy           , -128.5414975632    , 0 , 1.0e-7
 GW+2SOSEX_PSD HOMO energy  ,  -21.798228        , 0 , 1.0e-4
 
+he_hf_cc4s_output.in      , HF+MP2 helium atom with output of Cc4s files
+SCF Total Energy          ,  -2.8615142286      , 0 , 1.0e-7
+Testing integral (11|11)  ,   1.02581670E+00    , 0 , 1.0e-7
+MP2 correlation           ,  -0.0354780027      , 0 , 1.0e-7
+
+he_hf_cc4s_input.in      , HF+MP2 helium atom with output of Cc4s files, restart
+HF Total Energy           ,  -2.8615142286      , 0 , 1.0e-7
+Testing integral (11|11)  ,   1.02581670E+00    , 0 , 1.0e-7
+MP2 correlation           ,  -0.0354780027      , 0 , 1.0e-7
+
+he_pt2_filtering.in       , He atom: PT2 density-matrix filtering the virtual orbitals
+SCF Total Energy          ,  -2.8616250829      , 0 , 1.0e-7
+Testing integral (11|11)  ,   1.02578581E+00    , 0 , 5.0e-7
+MP2 correlation           ,  -0.0364058094      , 0 , 1.0e-7
+
+he_mp2_from_filtered_CC4S.in, He atom: reading CC4S files with filtered virtual orbitals, restart
+HF Total Energy           ,  -2.8616250222      , 0 , 1.0e-7
+Testing integral (11|11)  ,   1.02578575E+00    , 0 , 5.0e-7
+MP2 correlation           ,  -0.0355613477      , 0 , 1.0e-7
+
+he_mp2_from_filtered_RESTART.in, He atom: reading RESTART with filtered virtual orbitals, restart
+MP2 correlation           ,  -0.0355613477      , 0 , 1.0e-7

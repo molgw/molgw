@@ -746,8 +746,9 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
 
 
   write(stdout, '(/,a)') ' Distribute auxiliary basis functions among processors'
-  write(stdout, '(a,i6,2x,i6,/)') ' Min-Max auxiliary basis functions on a MPI processor after distribution: ', &
-                                 MINVAL(nbf_local_iproc(:)), MAXVAL(nbf_local_iproc(:))
+  write(stdout, '(1x,a,i6,a,i6,a)') 'Auxiliary basis functions load unbalance (Max - Min): ', &
+                                   MAXVAL(nbf_local_iproc(:)), ' - ', MINVAL(nbf_local_iproc(:))
+
 
 end subroutine distribute_auxil_basis
 
@@ -801,10 +802,12 @@ subroutine reshuffle_distribution_3center()
   implicit none
 
   !=====
+#if defined(HAVE_SCALAPACK)
   integer :: info
   integer :: mlocal, nlocal
   integer :: desc3final(NDEL)
   real(dp), allocatable :: eri_3center_tmp(:, :)
+#endif
   !=====
 
 #if defined(HAVE_SCALAPACK)

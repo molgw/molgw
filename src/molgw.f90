@@ -224,7 +224,7 @@ program molgw
 
 #if defined(HAVE_LIBCINT)
     if( has_auxil_basis) then
-      ! basis object will contain the information for the joint (basis,auxil_basis)
+      ! basis object will contain the information for the joint (basis, auxil_basis)
       call init_libcint(basis, auxil_basis)
       ! auxil_basis object will contain the information for the sole auxil_basis
       call init_libcint(auxil_basis)
@@ -256,7 +256,7 @@ program molgw
     ! c_matrix_rel and hamiltonian_kin_nuc_rel if the deviation from I is too large
     !
     if( x2c_ ) then
-      if( trim(check_CdSC_x2c)=='yes' ) then
+      if( TRIM(check_CdSC_x2c) == 'yes' ) then
         call check_CdaggerSC_I(basis, electrons, c_matrix_rel, s_matrix_rel, x_matrix_rel, energy_rel, &
         &  hamiltonian_kin_nuc_rel, s_matrix, x_matrix)
       endif
@@ -324,14 +324,17 @@ program molgw
     call clean_allocate('Kinetic operator T', hamiltonian_kinetic, basis%nbf, basis%nbf)
     call clean_allocate('Nucleus operator V', hamiltonian_nucleus, basis%nbf, basis%nbf)
     call clean_allocate('Fock operator F', hamiltonian_fock, basis%nbf, basis%nbf, nspin)
-    call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate, nspin)  ! not distributed right now
    
     !
     ! Try to read a RESTART file if it exists
     if( read_restart_ ) then
-      call read_restart(restart_type, 'RESTART', basis, occupation, c_matrix, energy, hamiltonian_fock)
+      call read_restart(restart_type, restart_input, basis, occupation, c_matrix, energy, hamiltonian_fock)
+      ! read_restart may have resized the arrays
+      ! occupation, energy and c_matrix should be consistent with nstate
+      nstate = SIZE(occupation(:, :), DIM=1)
     else
       restart_type = NO_RESTART
+      call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate, nspin)
     endif
     is_restart       = ( restart_type /= NO_RESTART )
     is_big_restart   = ( restart_type == BIG_RESTART )
@@ -353,7 +356,7 @@ program molgw
     !
     ! Nucleus-electron interaction
     call setup_nucleus(basis, hamiltonian_nucleus)
-    if( TRIM(parabolic_conf)=='yes' ) call setup_para_conf(basis, hamiltonian_nucleus)
+    if( TRIM(parabolic_conf) == 'yes' ) call setup_para_conf(basis, hamiltonian_nucleus)
    
     !
     ! External electric field
@@ -366,9 +369,9 @@ program molgw
     ! Testing the quadrature in Fourier space
     !if( .TRUE. ) then
     !  !                        basis projectile n basis_target
-    !  call setup_overlap_fourier(basis,basis,s_matrix)
-    !  call setup_kinetic_fourier(basis,basis,hamiltonian_kinetic)
-    !  call setup_nucleus_fourier(basis,basis,hamiltonian_nucleus)
+    !  call setup_overlap_fourier(basis, basis, s_matrix)
+    !  call setup_kinetic_fourier(basis, basis, hamiltonian_kinetic)
+    !  call setup_nucleus_fourier(basis, basis, hamiltonian_nucleus)
     !endif
    
    
@@ -438,7 +441,7 @@ program molgw
         nocc=nint(SUM(occupation(:, 1)))
         write(stdout, '(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
         !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the scalar dens. mat.
-        !     and the occupation numbers (i.e. occupations(:,1)) are \in [0,2].
+        !     and the occupation numbers (i.e. occupations(:, 1)) are \in [0, 2].
         write(stdout, '(/,1x,a)')  'Natural occupations: '
         write(stdout, '(8(2x,f14.6))') occupation(:, 1)
         write(stdout, '(1x,a,f14.6)') 'Trace:', SUM(occupation(:, 1))
@@ -446,7 +449,7 @@ program molgw
 
       else
 
-        if(complex_scf=='no') then ! By default we use the real solution of the SCF equations
+        if(complex_scf == 'no') then ! By default we use the real solution of the SCF equations
           call scf_loop(is_restart,                                     &
                         basis,                                          &
                         x_matrix, s_matrix,                              &
@@ -469,7 +472,7 @@ program molgw
    
           write(stdout, '(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
           !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.
-          !     and the occupation numbers (i.e. occupations(:,1)) are \in [0,2].
+          !     and the occupation numbers (i.e. occupations(:, 1)) are \in [0, 2].
           write(stdout, '(/,1x,a)')  'Natural occupations: '
           write(stdout, '(8(2x,f14.6))') occupation(:, 1)
           write(stdout, '(1x,a,f14.6)') 'Trace:', SUM(occupation(:, 1))
@@ -482,10 +485,10 @@ program molgw
     ! Big RESTART file written if converged
     !
     if( scf_has_converged .AND. print_bigrestart_ ) then
-      call write_restart(BIG_RESTART, basis, occupation, c_matrix, energy, hamiltonian_fock)
+      call write_restart(BIG_RESTART, 'RESTART', basis, occupation, c_matrix, energy, hamiltonian_fock)
     else
       if( print_restart_ ) then
-        call write_restart(SMALL_RESTART, basis, occupation, c_matrix, energy)
+        call write_restart(SMALL_RESTART, 'RESTART', basis, occupation, c_matrix, energy)
       endif
     endif
 
@@ -542,7 +545,7 @@ program molgw
 
   ! This overrides the value of scf_has_converged
   if( assume_scf_converged_ ) scf_has_converged = .TRUE.
-  if( .NOT. scf_has_converged ) then
+  if( .NOT. scf_has_converged .AND. nscf > 0) then
     call issue_warning('SCF loop is not converged. The postscf calculations (if any) will be skipped. ' // &
                        'Use keyword assume_scf_converged to override this security check')
   endif
@@ -565,23 +568,40 @@ program molgw
   endif
 #endif
 
-  if ( (.not. x2c_) .and. (complex_scf=='no') ) then
+  if ( (.NOT. x2c_) .AND. (complex_scf == 'no') ) then
     !
     ! Evaluate spin contamination
     call evaluate_s2_operator(occupation, c_matrix, s_matrix)
   endif
 
   ! Computing on top of a gaussian calculation
-  if( assume_scf_converged_ .and. TRIM(init_hamiltonian)=='GAUSSIAN') then
-    write(file_name, '(2a)') trim(output_name), 'fchk'
-    if( basis%nbf==nstate .and. basis%gaussian_type == 'CART' ) then
+  if( assume_scf_converged_ .AND. TRIM(init_hamiltonian) == 'GAUSSIAN') then
+    if( basis%nbf == nstate .AND. basis%gaussian_type == 'CART' ) then
       call read_guess_fchk(c_matrix, file_name, basis, nstate, nspin, energy=energy)
-      call write_restart(SMALL_RESTART, basis, occupation, c_matrix, energy)
+      call write_restart(SMALL_RESTART, 'RESTART', basis, occupation, c_matrix, energy)
     else
       call die(' The number of states is not equal to the number of basis functions in Gaussian for restart.')
     endif
   endif
+  if( TRIM(init_hamiltonian) == 'CC4S_FILES' ) then
+    if(has_auxil_basis) call destroy_eri_3center()
+    call read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, s_matrix, hamiltonian_fock, cc4s_input)
+    call read_cc4s_coulombvertex(cc4s_input)
+    call setup_hartreefock_totalenergy_mo(occupation, energy)
+  endif
 
+  if( print_cc4s_files_ ) then
+    if( TRIM(scf) /= 'HF') then
+      call issue_warning("CC4S files are only meaningful when using scf ='HF'. Assuming expert user.")
+    endif
+    ! Call selfenergy_set_state_range to set up ncore_G and nvirtual_G
+    call selfenergy_set_state_range(nstate, occupation)
+    call write_cc4s_eigenenergies(occupation(ncore_G+1:nvirtual_G-1,:), &
+                                  energy(ncore_G+1:nvirtual_G-1,:), cc4s_output)
+    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call write_cc4s_coulombvertex(eri_3center_eigen, cc4s_output)
+    call destroy_eri_3center_eigen()
+  endif
 
   if( print_multipole_ ) then
     !
@@ -765,7 +785,7 @@ program molgw
 
     if( .not. x2c_ ) then ! non-relativistic
 
-      if( complex_scf=='no' ) then ! real
+      if( complex_scf == 'no' ) then ! real
   
         if(has_auxil_basis) then
           call mp2_energy_ri(occupation, energy, c_matrix, en_gks%mp2)
@@ -860,6 +880,7 @@ program molgw
   !
   ! Cleanly exiting the code
   !
+  call destroy_eri_3center_eigen(force=.TRUE.)
   call clean_deallocate('Full RKB wavefunctions C', c_matrix_rel)
   call clean_deallocate('Wavefunctions C_cmplx', c_matrix_cmplx)
   call clean_deallocate('Wavefunctions C', c_matrix)

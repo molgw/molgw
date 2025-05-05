@@ -7,22 +7,28 @@
 ### Overview
 
 - RESTART from a different basis made safer
-- Linking with accelerated library `qcint`
+- RESTART from a optmized virtual orbital space
+- Linking with accelerated integral library `qcint`
+- Interface with CC4S
 
 ### Contributors
 
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
 
 ### Changes affecting the usage
+
 - Positive semi-definite version of GW+2SOSEX self-energy
+- Export data to CC4S for MP2 or coupled-cluster post-processing
+- Import Coulomb integrals and HF eigenvalues in the CC4S formats
+- Possibility to rename the yaml output file with `yaml_output` input variable
+- Possibility to rename the RESTART input file with `restart_input` input variable
 
 ### Changes affecting the results
 
 - Adding an orthogonalization step when reading a RESTART file using a different basis
 
-### Changes affecting the usage
-
 ### Changes affecting the compilation
+
 - Possibility to linking against `qcint` or `libcint` without any change
 
 ### Changes affecting the developers

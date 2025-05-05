@@ -145,6 +145,7 @@ molgw:
 	+make  level022
 	+make  level025
 	+make  level030
+	+make  level035
 	+make  level040
 	+make  level045
 	+make  level050
@@ -178,7 +179,9 @@ level025: m_eri.o m_scf.o m_dft_grid.o m_optocc.o m_optorb.o m_tz_pccd_amplitude
 
 level030: m_eri_calculate.o m_density_tools.o m_io.o
 
-level040: m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_tddft_fxc.o m_eri_ao_mo.o
+level035: m_eri_ao_mo.o
+
+level040: m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_tddft_fxc.o
 
 level045: m_spectral_function.o
 
@@ -282,7 +285,7 @@ m_scf_loop.o: m_definitions.o m_warning.o m_timing.o m_memory.o m_atoms.o m_inpu
 m_dm_mbpt.o: m_definitions.o m_warning.o m_timing.o m_memory.o m_inputparam.o m_scf.o \
              m_spectral_function.o m_atoms.o m_basis_set.o m_multipole.o m_hamiltonian_tools.o \
              m_hamiltonian_wrapper.o m_selfenergy_tools.o m_gw_selfenergy_grid.o m_pt_density_matrix.o \
-             m_linear_response.o m_dm_mbpt.f90
+             m_linear_response.o m_virtual_orbital_space.o m_dm_mbpt.f90
 	$(FC_W_OPTS) -c m_dm_mbpt.f90 $(LIBXC_INCS)
 
 m_dm_analysis.o: m_definitions.o m_warning.o m_timing.o m_memory.o m_atoms.o m_inputparam.o m_scf.o m_scalapack.o \

@@ -14,7 +14,7 @@ module m_restart
   use m_inputparam
   use m_atoms
   use m_basis_set
-  use m_hamiltonian_tools, only: dump_out_occupation, orthogonalize_c_matrix
+  use m_hamiltonian_tools, only: dump_out_occupation, orthogonalize_c_matrix, get_number_occupied_states
   use m_hamiltonian_onebody, only: setup_overlap_mixedbasis, setup_overlap
   use m_linear_algebra, only: invert
   use m_io
@@ -34,19 +34,20 @@ contains
 
 
 !=========================================================================
-subroutine write_restart(restart_type, basis, occupation, c_matrix, energy, hamiltonian_fock)
+subroutine write_restart(restart_type, restart_filename, basis, occupation, c_matrix, energy, hamiltonian_fock)
   implicit none
 
   integer, intent(in)           :: restart_type
+  character(len=*), intent(in)  :: restart_filename
   type(basis_set), intent(in)   :: basis
   real(dp), intent(in)          :: occupation(:, :), energy(:, :)
   real(dp), intent(in)          :: c_matrix(:, :, :)
   real(dp), optional, intent(in) :: hamiltonian_fock(:, :, :)
   !=====
+  integer, parameter         :: restart_version=201609
   integer                    :: nstate
-  integer, parameter          :: restart_version=201609
   integer                    :: restartfile
-  integer                    :: ispin, istate, ibf, nstate_local
+  integer                    :: ispin, istate, ibf, nstate_stored
   !=====
 
   !
@@ -55,7 +56,11 @@ subroutine write_restart(restart_type, basis, occupation, c_matrix, energy, hami
 
   call start_clock(timing_restart_file)
 
-  nstate = SIZE(occupation, DIM=1)
+  nstate = SIZE(occupation,DIM=1)
+  if( nstate /= SIZE(energy,DIM=1) ) then
+    call die('write_restart: inconsistency in size of occupation and energy') 
+  endif
+
 
   select case(restart_type)
   case(SMALL_RESTART)
@@ -71,7 +76,7 @@ subroutine write_restart(restart_type, basis, occupation, c_matrix, energy, hami
   endif
 
 
-  open(newunit=restartfile, file='RESTART', form='unformatted', action='write')
+  open(newunit=restartfile, file=TRIM(restart_filename), form='unformatted', action='write')
 
   ! An integer to ensure backward compatibility in the future
   write(restartfile) restart_version
@@ -96,24 +101,18 @@ subroutine write_restart(restart_type, basis, occupation, c_matrix, energy, hami
 
   ! Number of states written down in the RESTART file
   if( restart_type == SMALL_RESTART ) then
-    ! Identify the highest occupied state in order to
-    ! save I-O in SMALL_RESTART
-    nstate_local = 0
-    do ispin=1, nspin
-      do istate=1, nstate
-        if( ANY( occupation(istate, :) > completely_empty ) ) nstate_local = istate
-      enddo
-    enddo
+    ! write only occupied states in SMALL_RESTART
+    nstate_stored = get_number_occupied_states(occupation)
   else
     ! Or write down all the states in BIG_RESTART
-    nstate_local = nstate
+    nstate_stored = nstate
   endif
 
-  write(restartfile) nstate_local
+  write(restartfile) nstate_stored
 
   ! Wavefunction coefficients C
   do ispin=1, nspin
-    do istate=1, nstate_local
+    do istate=1, nstate_stored
       write(restartfile) c_matrix(:, istate, ispin)
     enddo
   enddo
@@ -135,33 +134,33 @@ end subroutine write_restart
 
 
 !=========================================================================
-subroutine read_restart(restart_type, restart_filename, basis, occupation, c_matrix, energy, hamiltonian_fock)
+subroutine read_restart(restart_type, restart_filename, basis, &
+                        occupation, c_matrix, energy, hamiltonian_fock)
   implicit none
 
   integer, intent(out)           :: restart_type
   character(len=*), intent(in)   :: restart_filename
   type(basis_set), intent(in)    :: basis
-  real(dp), intent(inout)        :: occupation(:, :)
-  real(dp), intent(out)          :: c_matrix(:, :, :), energy(:, :)
-  real(dp), optional, intent(out) :: hamiltonian_fock(:, :, :)
+  real(dp), allocatable, intent(inout) :: c_matrix(:, :, :), energy(:, :), occupation(:, :)
+  real(dp), allocatable, optional, intent(inout) :: hamiltonian_fock(:, :, :)
   !=====
   integer                    :: restartfile
-  integer                    :: ispin, istate, ibf, nstate_local
+  integer                    :: ispin, istate, ibf, nstate_stored
   logical                    :: file_exists, same_scf, same_basis, same_geometry, same_spin
-  integer                    :: nstate
+  integer                    :: nstate_expected, nstate_safe
   integer                    :: restart_version_read
   integer                    :: restart_type_read
   character(len=100)         :: scf_name_read
   integer                    :: natom_read
-  real(dp), allocatable       :: zatom_read(:), x_read(:, :)
+  real(dp), allocatable      :: zatom_read(:), x_read(:, :)
   type(basis_set)            :: basis_read
   integer                    :: nspin_read
   integer                    :: nstate_read
-  real(dp), allocatable       :: occupation_read(:, :)
-  real(dp), allocatable       :: energy_read(:, :)
-  real(dp), allocatable       :: c_matrix_read(:, :, :)
-  real(dp), allocatable       :: overlapm1(:, :), s_matrix(:, :)
-  real(dp), allocatable       :: overlap_mixedbasis(:, :)
+  real(dp), allocatable      :: occupation_read(:, :), occupation_tmp(:, :)
+  real(dp), allocatable      :: energy_read(:, :)
+  real(dp), allocatable      :: c_matrix_read(:, :, :)
+  real(dp), allocatable      :: overlapm1(:, :), s_matrix(:, :)
+  real(dp), allocatable      :: overlap_mixedbasis(:, :)
   !=====
 
   inquire(file=restart_filename, exist=file_exists)
@@ -171,9 +170,9 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
     return
   endif
 
-  nstate = SIZE(occupation, DIM=1)
+  nstate_expected = SIZE(occupation,DIM=1)
 
-  open(newunit=restartfile, file=restart_filename, form='unformatted', status='old', action='read')
+  open(newunit=restartfile, file=TRIM(restart_filename), form='unformatted', status='old', action='read')
 
 
   ! An integer to ensure backward compatibility in the future
@@ -261,24 +260,39 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
 
   ! Nstate
   read(restartfile) nstate_read
-  if( nstate /= nstate_read ) then
+
+  nstate_safe = MIN(nstate_expected, nstate_read)
+
+  if( nstate_expected /= nstate_read ) then
     call issue_warning('RESTART file: Number of states has changed')
-    restart_type = SMALL_RESTART
+    if( same_basis ) then
+      write(stdout, '(1x,a,i5,a,i5)') 'Resizing arrays to fit the new size ', nstate_expected, ' -> ', nstate_read
+      allocate(occupation_tmp(nstate_expected, nspin))
+      occupation_tmp(1:nstate_expected, :) = occupation(1:nstate_expected, :)
+      deallocate(energy, occupation)
+      allocate(energy(nstate_read, nspin), occupation(nstate_read, nspin))
+      occupation(1:nstate_safe, :) = occupation_tmp(1:nstate_safe, :)
+      deallocate(occupation_tmp)
+      call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate_read, nspin)
+    else
+      call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate_expected, nspin)
+    endif
+  else
+    call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate_expected, nspin)
   endif
 
 
   ! Occupations
   allocate(occupation_read(nstate_read, nspin_read))
   read(restartfile) occupation_read(:, :)
-  if( ANY( ABS( occupation_read(1:MIN(nstate_read, nstate), 1) - occupation(1:MIN(nstate_read, nstate), 1) )  > 1.0e-5_dp ) ) then
+  if( ANY( ABS( occupation_read(1:nstate_safe, 1) - occupation(1:nstate_safe, 1) ) > 1.0e-5_dp ) ) then
     if( temperature > 1.0e-8_dp) then
-      occupation(1:MIN(nstate_read, nstate), 1) = occupation_read(1:MIN(nstate_read, nstate), 1)
-      occupation(1:MIN(nstate_read, nstate), nspin) = occupation_read(1:MIN(nstate_read, nstate), nspin_read)
-      write(stdout, '(1x,a)') "Reading occupations from a RESTART file"
+      occupation(1:nstate_safe, 1) = occupation_read(1:nstate_safe, 1)
+      occupation(1:nstate_safe, nspin) = occupation_read(1:nstate_safe, nspin_read)
+      write(stdout,'(1xa)') "Reading occupations from a RESTART file"
       call dump_out_occupation('=== Occupations ===', occupation)
     else
-      call issue_warning('RESTART file: Occupations have changed')
-      restart_type = SMALL_RESTART
+      call issue_warning('RESTART file: Occupations are different. Keep those from the current MOLGW run.')
     endif
   endif
   deallocate(occupation_read)
@@ -288,19 +302,19 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
   allocate(energy_read(nstate_read, nspin_read))
   read(restartfile) energy_read(:, :)
   energy(:, :) = 1000.0_dp
-  energy(1:MIN(nstate, nstate_read), 1) = energy_read(1:MIN(nstate, nstate_read), 1)
-  energy(1:MIN(nstate, nstate_read), nspin) = energy_read(1:MIN(nstate, nstate_read), nspin_read)
+  energy(1:nstate_safe, 1)     = energy_read(1:nstate_safe, 1)
+  energy(1:nstate_safe, nspin) = energy_read(1:nstate_safe, nspin_read)
   deallocate(energy_read)
 
 
   ! Number of states written down in the RESTART file
-  read(restartfile) nstate_local
+  read(restartfile) nstate_stored
 
 
   ! Wavefunction coefficients C
-  allocate(c_matrix_read(basis_read%nbf, nstate_local, nspin_read))
+  allocate(c_matrix_read(basis_read%nbf, nstate_stored, nspin_read))
   do ispin=1, nspin_read
-    do istate=1, nstate_local
+    do istate=1, nstate_stored
       read(restartfile) c_matrix_read(:, istate, ispin)
     enddo
   enddo
@@ -308,23 +322,23 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
 
   if( same_basis ) then
     c_matrix(:, :, :) = 0.0_dp
-    do istate=1, MIN(nstate_local, nstate)
+    do istate=1, MIN(nstate_stored, nstate_safe)
       c_matrix(1:MIN(basis_read%nbf, basis%nbf), istate, 1) &
           = c_matrix_read(1:MIN(basis_read%nbf, basis%nbf), istate, 1)
     enddo
-    do istate=1, MIN(nstate_local, nstate)
+    do istate=1, MIN(nstate_stored, nstate_safe)
       c_matrix(1:MIN(basis_read%nbf, basis%nbf), istate, nspin) &
           = c_matrix_read(1:MIN(basis_read%nbf, basis%nbf), istate, nspin_read)
     enddo
 
     ! Fill the rest of the array with identity
-    if( nstate_local < nstate ) then
-      do istate=nstate_local+1, nstate
+    if( nstate_stored < nstate_safe ) then
+      do istate=nstate_stored+1, nstate_safe
         c_matrix(istate, istate, :) = 1.0_dp
       enddo
     endif
-  else
 
+  else
 
     allocate(s_matrix(basis%nbf, basis%nbf))
     allocate(overlapm1(basis%nbf, basis%nbf))
@@ -340,17 +354,17 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
     ! Be aware: this is a rectangular matrix
     allocate(overlap_mixedbasis(basis%nbf, basis_read%nbf))
     call setup_overlap_mixedbasis(basis, basis_read, overlap_mixedbasis)
-    c_matrix(:, 1:nstate_local, 1) = MATMUL(overlapm1(:, :), &
-                                         MATMUL(overlap_mixedbasis(:, :) , c_matrix_read(:, 1:nstate_local, 1) ) )
+    c_matrix(:, 1:nstate_stored, 1) = MATMUL(overlapm1(:, :), &
+                                         MATMUL(overlap_mixedbasis(:, :) , c_matrix_read(:, 1:nstate_stored, 1) ) )
 
     ! nspin == 2 take the second spin channel in the RESTART file if it exists
     !            else copy the first spin channel
     if( nspin == 2 ) then
-      c_matrix(:, 1:nstate_local, nspin) = MATMUL(overlapm1(:, :), &
-                                           MATMUL(overlap_mixedbasis(:, :) , c_matrix_read(:, 1:nstate_local, nspin_read) ) )
+      c_matrix(:, 1:nstate_stored, nspin) = MATMUL(overlapm1(:, :), &
+                                           MATMUL(overlap_mixedbasis(:, :) , c_matrix_read(:, 1:nstate_stored, nspin_read) ) )
     endif
     ! Fill the rest of the array with identity
-    do istate=nstate_local+1, nstate
+    do istate=nstate_stored+1, nstate_expected
       c_matrix(istate, istate, :) = 1.0_dp
     enddo
 
@@ -395,7 +409,7 @@ subroutine read_restart(restart_type, restart_filename, basis, occupation, c_mat
   endif
 
   ! the code should never reach that point.
-  call die('Internal error in the read_restart subroutine')
+  call die('read_restart: internal error in the read_restart subroutine')
 
 
 end subroutine read_restart
