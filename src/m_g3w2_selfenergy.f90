@@ -1009,10 +1009,6 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
 
   se%sigma(:, :, :) = factor_sox * SUM(sigma_sox(:, :, :, :), DIM=4 ) &
                      + factor_sosex * SUM(sigma_sosex(:, :, :, :), DIM=4)
-  !FBFB
-  !call issue_warning('FBFB analyze coding: 2SOX + 2SOSEX')
-  !se%sigma(:, :, :) =  factor_sosex * SUM(sigma_sox(:, :, :, :), DIM=4 ) &
-  !                   + factor_sosex * SUM(sigma_sosex(:, :, :, :), DIM=4)
 
 
   ! if( print_sigma_) then

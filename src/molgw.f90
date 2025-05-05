@@ -449,7 +449,7 @@ program molgw
 
       else
 
-        if(complex_scf == 'no') then ! By default we use the real solution of the SCF equations
+        if( .NOT. complex_scf_ ) then ! By default we use the real solution of the SCF equations
           call scf_loop(is_restart,                                     &
                         basis,                                          &
                         x_matrix, s_matrix,                              &
@@ -568,7 +568,7 @@ program molgw
   endif
 #endif
 
-  if ( (.NOT. x2c_) .AND. (complex_scf == 'no') ) then
+  if ( (.NOT. x2c_) .AND. (.NOT. complex_scf_) ) then
     !
     ! Evaluate spin contamination
     call evaluate_s2_operator(occupation, c_matrix, s_matrix)
@@ -783,9 +783,9 @@ program molgw
 
     call set_occupation(0.0_dp, electrons, magnetization, energy, occupation)
 
-    if( .not. x2c_ ) then ! non-relativistic
+    if( .NOT. x2c_ ) then ! non-relativistic
 
-      if( complex_scf == 'no' ) then ! real
+      if( .NOT. complex_scf_ ) then ! real
   
         if(has_auxil_basis) then
           call mp2_energy_ri(occupation, energy, c_matrix, en_gks%mp2)
