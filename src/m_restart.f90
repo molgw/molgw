@@ -285,9 +285,10 @@ subroutine read_restart(restart_type, restart_filename, basis, &
   ! Occupations
   allocate(occupation_read(nstate_read, nspin_read))
   read(restartfile) occupation_read(:, :)
-  if( ANY( ABS( occupation_read(1:nstate_safe, :) - occupation(1:nstate_safe, :) ) > 1.0e-5_dp ) ) then
+  if( ANY( ABS( occupation_read(1:nstate_safe, 1) - occupation(1:nstate_safe, 1) ) > 1.0e-5_dp ) ) then
     if( temperature > 1.0e-8_dp) then
-      occupation(1:nstate_safe, :) = occupation_read(1:nstate_safe, :)
+      occupation(1:nstate_safe, 1) = occupation_read(1:nstate_safe, 1)
+      occupation(1:nstate_safe, nspin) = occupation_read(1:nstate_safe, nspin_read)
       write(stdout,'(1xa)') "Reading occupations from a RESTART file"
       call dump_out_occupation('=== Occupations ===', occupation)
     else
