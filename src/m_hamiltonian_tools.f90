@@ -25,6 +25,11 @@ module m_hamiltonian_tools
     module procedure setup_density_matrix_cmplx
   end interface setup_density_matrix
 
+  interface p_ao_to_mo
+    module procedure p_ao_to_mo_real
+    module procedure p_ao_to_mo_cmplx
+  end interface p_ao_to_mo
+
 
 contains
 
@@ -93,7 +98,7 @@ subroutine setup_density_matrix_real(c_matrix, occupation, p_matrix)
       c_matrix_sqrtocc(:, istate) = c_matrix(:, istate, ispin) * SQRT(occupation(istate, ispin))
     enddo
 
-    call DSYRK('L', 'N', nbf, nocc, 1.0d0, c_matrix_sqrtocc, nbf, 0.0d0, p_matrix(1,1,ispin),nbf)
+    call DSYRK('L', 'N', nbf, nocc, 1.0d0, c_matrix_sqrtocc, nbf, 0.0d0, p_matrix(1, 1, ispin), nbf)
 
     ! Symmetrize
     do jbf=1, nbf
@@ -140,7 +145,7 @@ subroutine setup_density_matrix_cmplx(c_matrix_cmplx, occupation, p_matrix_cmplx
     do istate=1, nocc
       c_matrix_sqrtocc(:, istate) = c_matrix_cmplx(:, istate, ispin) * SQRT(occupation(istate, ispin))
     enddo
-    call ZHERK('L', 'N', nbf, nocc, 1.0d0, c_matrix_sqrtocc, nbf, 0.0d0, p_matrix_cmplx(1,1,ispin),nbf)
+    call ZHERK('L', 'N', nbf, nocc, 1.0d0, c_matrix_sqrtocc, nbf, 0.0d0, p_matrix_cmplx(1, 1, ispin), nbf)
 
 
     ! Hermitianize
@@ -158,149 +163,6 @@ subroutine setup_density_matrix_cmplx(c_matrix_cmplx, occupation, p_matrix_cmplx
 
 
 end subroutine setup_density_matrix_cmplx
-
-
-!=========================================================================
-subroutine setup_density_matrix_MO_cmplx(c_matrix, s_matrix, p_matrix_cmplx, p_matrix_MO_cmplx)
-  implicit none
-
-  real(dp), intent(in) :: c_matrix(:, :, :)
-  real(dp), intent(in) :: s_matrix(:, :)
-  complex(dp), intent(in) :: p_matrix_cmplx(:, :, :)
-  complex(dp), intent(out) :: p_matrix_MO_cmplx(:, :, :)
-  !=====
-  integer :: nbf, nstate
-  integer :: ispin
-  real(dp), allocatable :: SC_matrix_real(:, :)
-  complex(dp), allocatable :: SC_matrix_cmplx(:, :)
-  complex(dp), allocatable :: tmp_matrix_cmplx(:, :)
-  !=====
-
-  call start_clock(timing_density_matrix_MO)
-
-  ! P^{MO} = C^T S P^{AO} S C
-  ! P^{MO}: nstate x nstate
-  ! P^{AO}: nbf x nbf
-  ! C: nbf x nstate
-  ! S: nbf x nbf
-  !
-  ! Steps:
-  ! 1. Compute SC: nbf x nstate => real, DSYMM
-  ! 2. Compute P (SC): nbf x nstate => complex, ZHEMM
-  ! 3. Compute (SC)^T (PSC): nstate x nstate => complex, ZGEMMT
-
-  nbf    = SIZE(c_matrix(:, :, :), DIM=1)
-  nstate = SIZE(c_matrix(:, :, :), DIM=2)
-
-  allocate(SC_matrix_real(nbf, nstate))
-  allocate(SC_matrix_cmplx(nbf, nstate))
-  allocate(tmp_matrix_cmplx(nbf, nstate))
-
-  do ispin=1, nspin
-
-    ! Step 1
-    call DSYMM('L', 'U', nbf, nstate, 1.0d0, s_matrix(1,1), nbf, &
-               c_matrix(1, 1, ispin), nbf, 0.0d0, SC_matrix_real(1, 1), nbf)
-
-    SC_matrix_cmplx(:, :) = SC_matrix_real(:, :)
-
-    ! Step 2
-    call ZHEMM('L', 'U', nbf, nstate, (1.0d0, 0.0d0), p_matrix_cmplx(:,:,ispin), nbf, &
-               SC_matrix_cmplx, nbf, (0.0d0, 0.0d0), tmp_matrix_cmplx, nbf)
-
-    ! Step 3
-#if defined(HAVE_MKL)
-    call ZGEMMT('L', 'C', 'N', nstate, nbf, (1.0d0, 0.0d0), &
-                SC_matrix_cmplx(:, :), nbf, &
-                tmp_matrix_cmplx(:, :), nbf, (0.0d0, 0.0d0), &
-                p_matrix_MO_cmplx(:, :, ispin), nstate)
-    call matrix_lower_to_full(p_matrix_MO_cmplx(:, :, ispin))
-#else
-    call ZGEMM('C', 'N', nstate, nstate, nbf, (1.0d0, 0.0d0), &
-               SC_matrix_cmplx(:, :), nbf, &
-               tmp_matrix_cmplx(:, :), nbf, (0.0d0, 0.0d0), &
-               p_matrix_MO_cmplx(:, :, ispin), nstate)
-#endif
-
-  enddo
-
-  deallocate(SC_matrix_real)
-  deallocate(SC_matrix_cmplx)
-  deallocate(tmp_matrix_cmplx)
-
-  call stop_clock(timing_density_matrix_MO)
-
-
-end subroutine setup_density_matrix_MO_cmplx
-
-
-!=========================================================================
-subroutine setup_density_matrix_MO_real(c_matrix, s_matrix, p_matrix_real, p_matrix_MO_real)
-  implicit none
-
-  real(dp), intent(in) :: c_matrix(:, :, :)
-  real(dp), intent(in) :: s_matrix(:, :)
-  real(dp), intent(in) :: p_matrix_real(:, :, :)
-  real(dp), intent(out) :: p_matrix_MO_real(:, :, :)
-  !=====
-  integer :: nbf, nstate
-  integer :: ispin
-  real(dp), allocatable :: SC_matrix_real(:, :)
-  real(dp), allocatable :: tmp_matrix_real(:, :)
-  !=====
-
-  call start_clock(timing_density_matrix_MO)
-
-  ! P^{MO} = C^T S P^{AO} S C
-  ! P^{MO}: nstate x nstate
-  ! P^{AO}: nbf x nbf
-  ! C: nbf x nstate
-  ! S: nbf x nbf
-  !
-  ! Steps:
-  ! 1. Compute SC: nbf x nstate => real, DSYMM
-  ! 2. Compute P (SC): nbf x nstate => real, DSYMM
-  ! 3. Compute (SC)^T (PSC): nstate x nstate => real, DGEMMT
-
-  nbf    = SIZE(c_matrix(:, :, :), DIM=1)
-  nstate = SIZE(c_matrix(:, :, :), DIM=2)
-
-  allocate(SC_matrix_real(nbf, nstate))
-  allocate(tmp_matrix_real(nbf, nstate))
-
-  do ispin=1, nspin
-
-    ! Step 1
-    call DSYMM('L', 'L', nbf, nstate, 1.0d0, s_matrix(1,1), nbf, &
-               c_matrix(1, 1, ispin), nbf, 0.0d0, SC_matrix_real(1, 1), nbf)
-
-    ! Step 2
-    call DSYMM('L', 'L', nbf, nstate, 1.0d0, p_matrix_real(1,1,ispin), nbf, &
-               SC_matrix_real(1, 1), nbf, 0.0d0, tmp_matrix_real, nbf)
-
-    ! Step 3
-#if defined(HAVE_MKL)
-    call DGEMMT('L', 'T', 'N', nstate, nbf, 1.0d0, &
-                SC_matrix_real(1, 1), nbf, &
-                tmp_matrix_real(1, 1), nbf, 0.0d0, &
-                p_matrix_MO_real(1, 1, ispin), nstate)
-    call matrix_lower_to_full(p_matrix_MO_real(:, :, ispin))
-#else
-    call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, &
-               SC_matrix_real(1, 1), nbf, &
-               tmp_matrix_real(1, 1), nbf, 0.0d0, &
-               p_matrix_MO_real(1, 1, ispin), nstate)
-#endif
-
-  enddo
-
-  deallocate(SC_matrix_real)
-  deallocate(tmp_matrix_real)
-
-  call stop_clock(timing_density_matrix_MO)
-
-
-end subroutine setup_density_matrix_MO_real
 
 
 !=========================================================================
@@ -327,7 +189,7 @@ subroutine setup_energy_density_matrix(c_matrix, occupation, energy, q_matrix)
   do ispin=1, nspin
     do istate=1, nstate
       if( occupation(istate, ispin) < completely_empty ) cycle
-      call DSYR('L', nbf, occupation(istate, ispin)*energy(istate, ispin), c_matrix(:, istate, ispin), 1, q_matrix(:,:),nbf)
+      call DSYR('L', nbf, occupation(istate, ispin)*energy(istate, ispin), c_matrix(:, istate, ispin), 1, q_matrix(:, :), nbf)
     enddo
   enddo
 
@@ -369,8 +231,8 @@ subroutine test_density_matrix(p_matrix, s_matrix)
     matrix(:, :) = MATMUL( p_matrix(:, :, ispin), MATMUL( s_matrix(:, :) , p_matrix(:, :, ispin) ) )
 
 
-    !call dump_out_matrix(1,'=== PSP ===',matrix)
-    !call dump_out_matrix(1,'===  P  ===',p_matrix(:,:,ispin))
+    !call dump_out_matrix(1, '=== PSP ===', matrix)
+    !call dump_out_matrix(1, '===  P  ===', p_matrix(:, :, ispin))
 
   enddo
 
@@ -458,7 +320,7 @@ subroutine set_occupation(temperature, electrons_in, magnetization, energy, occu
       mu_change = -( electrons_mu - electrons_in ) / grad_electrons
       mu_change = MAX( MIN( mu_change , 0.10_dp / REAL(iter) ), -0.10_dp / REAL(iter) )
 
-      !     write(*,*) iter,mu,mu_change,0.10_dp / REAL(iter),electrons_mu
+      !     write(*, *) iter, mu, mu_change, 0.10_dp / REAL(iter), electrons_mu
 
     enddo
 
@@ -546,7 +408,7 @@ subroutine dump_out_energy(title, occupation, energy, is_x2c)
 
   nocc   = get_number_occupied_states(occupation)
   ! in case occupation and energy arrays have different sizes
-  nstate = MIN( SIZE(occupation,DIM=1) , SIZE(energy,DIM=1) )
+  nstate = MIN( SIZE(occupation, DIM=1) , SIZE(energy, DIM=1) )
 
   write(stdout, '(/,1x,a)') TRIM(title)
 
@@ -676,10 +538,13 @@ end subroutine output_homolumo
 
 
 !=========================================================================
-subroutine matrix_ao_to_mo_diag(c_matrix, matrix_in, diag_out)
+!
+! Get the MO diagonal from the hamiltonian-like matrix in AO basis
+!
+subroutine h_ao_to_mo_diag(c_matrix, h_ao, diag_out)
   implicit none
   real(dp), intent(in)  :: c_matrix(:, :, :)
-  real(dp), intent(in)  :: matrix_in(..)
+  real(dp), intent(in)  :: h_ao(..)
   real(dp), intent(out) :: diag_out(:, :)
   !=====
   integer              :: nbf, nstate, nspin_local
@@ -696,18 +561,18 @@ subroutine matrix_ao_to_mo_diag(c_matrix, matrix_in, diag_out)
 
   do ispin=1, nspin
 
-    !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
-    !diag_i =  DOT_PRODUCT( c_matrix_restart(:,istate,ispin) , MATMUL( hamiltonian_hartree(:,:) , c_matrix_restart(:,istate,ispin) ) )
+    !matrix_inout(1:nstate, 1:nstate, ispin) = MATMUL( TRANSPOSE( c_matrix(:, :, ispin) ) , MATMUL( matrix_inout(:, :, ispin) , c_matrix(:, :, ispin) ) )
+    !diag_i =  DOT_PRODUCT( c_matrix_restart(:, istate, ispin) , MATMUL( hamiltonian_hartree(:, :) , c_matrix_restart(:, istate, ispin) ) )
     do istate=1, nstate
 
       ! H * C_i
-      select rank(matrix_in)
+      select rank(h_ao)
         rank(2)
-        call DSYMV('L', nbf, 1.0d0, matrix_in(1, 1),nbf, &
+        call DSYMV('L', nbf, 1.0d0, h_ao(1, 1), nbf, &
                                 c_matrix(1, istate, ispin), 1,  &
                           0.0d0, vector_tmp, 1)
         rank(3)
-        call DSYMV('L', nbf, 1.0d0, matrix_in(1, 1, ispin),nbf, &
+        call DSYMV('L', nbf, 1.0d0, h_ao(1, 1, ispin), nbf, &
                                 c_matrix(1, istate, ispin), 1,  &
                           0.0d0, vector_tmp, 1)
       end select
@@ -718,16 +583,19 @@ subroutine matrix_ao_to_mo_diag(c_matrix, matrix_in, diag_out)
   enddo
   deallocate(vector_tmp)
 
-end subroutine matrix_ao_to_mo_diag
+end subroutine h_ao_to_mo_diag
 
 
 !=========================================================================
-subroutine matrix_ao_to_mo(c_matrix, matrix_in, matrix_out)
+!
+! Transforms a hamiltonian-like quantity from AO to MO basis
+!   H_MO = C**T * H_AO * C
+!
+subroutine h_ao_to_mo(c_matrix, h_ao, h_mo)
   implicit none
   real(dp), intent(in)  :: c_matrix(:, :, :)
-  real(dp), intent(in)  :: matrix_in(..)
-  !real(dp),intent(in)  :: matrix_in(:,:,:)
-  real(dp), intent(out) :: matrix_out(:, :, :)
+  real(dp), intent(in)  :: h_ao(..)
+  real(dp), intent(out) :: h_mo(:, :, :)
   !=====
   integer                 :: nbf, nstate, nspin_local
   integer                 :: ispin
@@ -742,44 +610,123 @@ subroutine matrix_ao_to_mo(c_matrix, matrix_in, matrix_out)
   allocate(matrix_tmp(nbf, nstate))
 
   do ispin=1, nspin_local
-    !matrix_inout(1:nstate,1:nstate,ispin) = MATMUL( TRANSPOSE( c_matrix(:,:,ispin) ) , MATMUL( matrix_inout(:,:,ispin) , c_matrix(:,:,ispin) ) )
+    !matrix_inout(1:nstate, 1:nstate, ispin) = MATMUL( TRANSPOSE( c_matrix(:, :, ispin) ) , MATMUL( matrix_inout(:, :, ispin) , c_matrix(:, :, ispin) ) )
 
     ! H * C
-    select rank(matrix_in)
+    select rank(h_ao)
       rank(2)
-      call DSYMM('L', 'L', nbf, nstate, 1.0d0, matrix_in(1,1),nbf, &
+      call DSYMM('L', 'L', nbf, nstate, 1.0d0, h_ao(1, 1), nbf, &
                                          c_matrix(1, 1, ispin), nbf,  &
                                    0.0d0, matrix_tmp(1, 1), nbf)
       rank(3)
-      call DSYMM('L', 'L', nbf, nstate, 1.0d0, matrix_in(1,1,ispin),nbf, &
+      call DSYMM('L', 'L', nbf, nstate, 1.0d0, h_ao(1, 1, ispin), nbf, &
                                          c_matrix(1, 1, ispin), nbf,  &
                                    0.0d0, matrix_tmp(1, 1), nbf)
     end select
 
     ! C**T * (H * C)
 #if defined(HAVE_MKL)
-    call DGEMMT('L', 'T', 'N', nstate, nbf, 1.0d0,c_matrix(1,1,ispin),nbf, &
+    call DGEMMT('L', 'T', 'N', nstate, nbf, 1.0d0, c_matrix(1, 1, ispin), nbf, &
                                             matrix_tmp(1, 1), nbf,          &
-                                      0.0d0, matrix_out(1, 1, ispin), nstate)
-    call matrix_lower_to_full(matrix_out(:, :, ispin))
+                                      0.0d0, h_mo(1, 1, ispin), nstate)
+    call matrix_lower_to_full(h_mo(:, :, ispin))
 #else
-    call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, c_matrix(1,1,ispin),nbf, &
+    call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, c_matrix(1, 1, ispin), nbf, &
                                               matrix_tmp(1, 1), nbf,          &
-                                        0.0d0, matrix_out(1, 1, ispin), nstate)
+                                        0.0d0, h_mo(1, 1, ispin), nstate)
 #endif
 
   enddo
   deallocate(matrix_tmp)
 
-end subroutine matrix_ao_to_mo
+end subroutine h_ao_to_mo
 
 
 !=========================================================================
-subroutine matrix_mo_to_ao(c_matrix, matrix_in, matrix_out)
+!
+! Transforms a hamiltonian-like quantity from MO to AO basis
+!   H_AO = S * C * H_MO * (S * C)**T
+!
+subroutine h_mo_to_ao(c_matrix, s_matrix, h_mo, h_ao)
+  implicit none
+
+  real(dp), intent(in) :: c_matrix(:, :, :)
+  real(dp), intent(in) :: s_matrix(:, :)
+  real(dp), intent(in) :: h_mo(:, :, :)
+  real(dp), intent(out) :: h_ao(:, :, :)
+  !=====
+  integer :: nbf, nstate
+  integer :: ispin
+  real(dp), allocatable :: SC_matrix_real(:, :)
+  real(dp), allocatable :: tmp_matrix_real(:, :)
+  !=====
+
+
+  ! H_MO = C * H_AO * C**T
+  !
+  ! H_MO: nstate x nstate
+  ! H_AO: nbf x nbf
+  ! C: nbf x nstate
+  ! S: nbf x nbf
+  !
+  ! Steps:
+  ! 1. Compute S * C: nbf x nstate => real, DSYMM
+  ! 2. Compute (S * C) * H: nbf x nstate => real, DSYMM
+  ! 3. Compute ( (S * C) * H ) * (S * C)**T: nbf x nbf => real, DGEMMT
+
+  nbf    = SIZE(c_matrix(:, :, :), DIM=1)
+  nstate = SIZE(c_matrix(:, :, :), DIM=2)
+
+  allocate(SC_matrix_real(nbf, nstate))
+  allocate(tmp_matrix_real(nbf, nstate))
+
+  do ispin=1, nspin
+
+    ! Step 1
+    call DSYMM('L', 'L', nbf, nstate, 1.0d0, &
+               s_matrix(1, 1), nbf, &
+               c_matrix(1, 1, ispin), nbf, &
+               0.0d0, SC_matrix_real(1, 1), nbf)
+
+    ! Step 2
+    call DSYMM('R', 'L', nbf, nstate, 1.0d0, &
+               h_mo(1, 1, ispin), nstate, &
+               SC_matrix_real(1, 1), nbf, &
+               0.0d0, tmp_matrix_real, nbf)
+
+    ! Step 3
+#if defined(HAVE_MKL)
+    call DGEMMT('L', 'N', 'T', nbf, nstate, 1.0d0, &
+                tmp_matrix_real(1, 1), nbf, &
+                SC_matrix_real(1, 1), nbf, &
+                0.0d0, h_ao(1, 1, ispin), nbf)
+    call matrix_lower_to_full(h_ao(:, :, ispin))
+#else
+    call DGEMM('N', 'T', nbf, nbf, nstate, 1.0d0, &
+               tmp_matrix_real(1, 1), nbf, &
+               SC_matrix_real(1, 1), nbf, &
+               0.0d0, h_ao(1, 1, ispin), nstate)
+#endif
+
+  enddo
+
+  deallocate(SC_matrix_real)
+  deallocate(tmp_matrix_real)
+
+
+end subroutine h_mo_to_ao
+
+
+!=========================================================================
+!
+! Transforms a density-matrix-like quantity from MO to AO basis
+!   P_AO = C**T * P_MO * C
+!
+subroutine p_mo_to_ao(c_matrix, p_mo, p_ao)
   implicit none
   real(dp), intent(in)  :: c_matrix(:, :, :)
-  real(dp), intent(in)  :: matrix_in(:, :, :)
-  real(dp), intent(out) :: matrix_out(:, :, :)
+  real(dp), intent(in)  :: p_mo(:, :, :)
+  real(dp), intent(out) :: p_ao(:, :, :)
   !=====
   integer              :: nbf, nstate
   integer              :: ispin
@@ -793,29 +740,180 @@ subroutine matrix_mo_to_ao(c_matrix, matrix_in, matrix_out)
   allocate(matrix_tmp(nbf, nstate))
 
   do ispin=1, nspin
-    !matrix_out(1:nbf,1:nbf,ispin) = MATMUL( c_matrix(:,:,ispin) , MATMUL( matrix_in(:,:,ispin) , TRANSPOSE( c_matrix(:,:,ispin) ) ) )
+    !p_ao(1:nbf, 1:nbf, ispin) = MATMUL( c_matrix(:, :, ispin) , MATMUL( p_mo(:, :, ispin) , TRANSPOSE( c_matrix(:, :, ispin) ) ) )
 
-    !  C * H
-    call DSYMM('R', 'L', nbf, nstate, 1.0d0, matrix_in(1,1,ispin),nstate, &
+    !  C * P
+    call DSYMM('R', 'L', nbf, nstate, 1.0d0, p_mo(1, 1, ispin), nstate, &
                                        c_matrix(1, 1, ispin), nbf,  &
                                  0.0d0, matrix_tmp(1, 1), nbf)
 
-    ! (C * H) * C**T
+    ! (C * P) * C**T
 #if defined(HAVE_MKL)
-    call DGEMMT('L', 'N', 'T', nbf, nstate, 1.0d0, matrix_tmp(1,1),nbf,          &
+    call DGEMMT('L', 'N', 'T', nbf, nstate, 1.0d0, matrix_tmp(1, 1), nbf, &
                                             c_matrix(1, 1, ispin), nbf, &
-                                      0.0d0, matrix_out(1, 1, ispin), nbf)
-    call matrix_lower_to_full(matrix_out(:, :, ispin))
+                                      0.0d0, p_ao(1, 1, ispin), nbf)
+    call matrix_lower_to_full(p_ao(:, :, ispin))
 #else
-    call DGEMM('N', 'T', nbf, nbf, nstate, 1.0d0, matrix_tmp(1,1),nbf,        &
+    call DGEMM('N', 'T', nbf, nbf, nstate, 1.0d0, matrix_tmp(1, 1), nbf, &
                                            c_matrix(1, 1, ispin), nbf,  &
-                                     0.0d0, matrix_out(1, 1, ispin), nbf)
+                                     0.0d0, p_ao(1, 1, ispin), nbf)
 #endif
 
   enddo
   deallocate(matrix_tmp)
 
-end subroutine matrix_mo_to_ao
+end subroutine p_mo_to_ao
+
+
+!=========================================================================
+!
+! Transforms a density-matrix-like quantity from AO to MO basis
+!   P_MO = (S * C)**T * P_AO * S * C
+!
+subroutine p_ao_to_mo_real(c_matrix, s_matrix, p_ao, p_mo)
+  implicit none
+
+  real(dp), intent(in) :: c_matrix(:, :, :)
+  real(dp), intent(in) :: s_matrix(:, :)
+  real(dp), intent(in) :: p_ao(:, :, :)
+  real(dp), intent(out) :: p_mo(:, :, :)
+  !=====
+  integer :: nbf, nstate
+  integer :: ispin
+  real(dp), allocatable :: SC_matrix_real(:, :)
+  real(dp), allocatable :: tmp_matrix_real(:, :)
+  !=====
+
+  call start_clock(timing_density_matrix_MO)
+
+  ! P_MO = C**T * S * P_AO * S * C
+  ! P_MO: nstate x nstate
+  ! P_AO: nbf x nbf
+  ! C: nbf x nstate
+  ! S: nbf x nbf
+  !
+  ! Steps:
+  ! 1. Compute S * C: nbf x nstate => real, DSYMM
+  ! 2. Compute P * (S * C): nbf x nstate => real, DSYMM
+  ! 3. Compute (S * C)**T (P * S * C): nstate x nstate => real, DGEMMT
+
+  nbf    = SIZE(c_matrix(:, :, :), DIM=1)
+  nstate = SIZE(c_matrix(:, :, :), DIM=2)
+
+  allocate(SC_matrix_real(nbf, nstate))
+  allocate(tmp_matrix_real(nbf, nstate))
+
+  do ispin=1, nspin
+
+    ! Step 1
+    call DSYMM('L', 'L', nbf, nstate, 1.0d0, s_matrix(1, 1), nbf, &
+               c_matrix(1, 1, ispin), nbf, 0.0d0, SC_matrix_real(1, 1), nbf)
+
+    ! Step 2
+    call DSYMM('L', 'L', nbf, nstate, 1.0d0, p_ao(1, 1, ispin), nbf, &
+               SC_matrix_real(1, 1), nbf, 0.0d0, tmp_matrix_real, nbf)
+
+    ! Step 3
+#if defined(HAVE_MKL)
+    call DGEMMT('L', 'T', 'N', nstate, nbf, 1.0d0, &
+                SC_matrix_real(1, 1), nbf, &
+                tmp_matrix_real(1, 1), nbf, 0.0d0, &
+                p_mo(1, 1, ispin), nstate)
+    call matrix_lower_to_full(p_mo(:, :, ispin))
+#else
+    call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, &
+               SC_matrix_real(1, 1), nbf, &
+               tmp_matrix_real(1, 1), nbf, 0.0d0, &
+               p_mo(1, 1, ispin), nstate)
+#endif
+
+  enddo
+
+  deallocate(SC_matrix_real)
+  deallocate(tmp_matrix_real)
+
+  call stop_clock(timing_density_matrix_MO)
+
+
+end subroutine p_ao_to_mo_real
+
+
+!=========================================================================
+!
+! Transforms a density-matrix-like quantity from AO to MO basis (complex version)
+!   P_MO = (S * C)**T * P_AO * S * C
+!
+subroutine p_ao_to_mo_cmplx(c_matrix, s_matrix, p_ao, p_mo)
+  implicit none
+
+  real(dp), intent(in) :: c_matrix(:, :, :)
+  real(dp), intent(in) :: s_matrix(:, :)
+  complex(dp), intent(in) :: p_ao(:, :, :)
+  complex(dp), intent(out) :: p_mo(:, :, :)
+  !=====
+  integer :: nbf, nstate
+  integer :: ispin
+  real(dp), allocatable :: SC_matrix_real(:, :)
+  complex(dp), allocatable :: SC_matrix_cmplx(:, :)
+  complex(dp), allocatable :: tmp_matrix_cmplx(:, :)
+  !=====
+
+  call start_clock(timing_density_matrix_MO)
+
+  ! P_MO = C**T * S * P_AO * S * C
+  ! P_MO: nstate x nstate
+  ! P_AO: nbf x nbf
+  ! C: nbf x nstate
+  ! S: nbf x nbf
+  !
+  ! Steps:
+  ! 1. Compute S * C: nbf x nstate => real, DSYMM
+  ! 2. Compute P (S * C): nbf x nstate => complex, ZHEMM
+  ! 3. Compute (S * C)**T (P * S * C): nstate x nstate => complex, ZGEMMT
+
+  nbf    = SIZE(c_matrix(:, :, :), DIM=1)
+  nstate = SIZE(c_matrix(:, :, :), DIM=2)
+
+  allocate(SC_matrix_real(nbf, nstate))
+  allocate(SC_matrix_cmplx(nbf, nstate))
+  allocate(tmp_matrix_cmplx(nbf, nstate))
+
+  do ispin=1, nspin
+
+    ! Step 1
+    call DSYMM('L', 'U', nbf, nstate, 1.0d0, s_matrix(1, 1), nbf, &
+               c_matrix(1, 1, ispin), nbf, 0.0d0, SC_matrix_real(1, 1), nbf)
+
+    SC_matrix_cmplx(:, :) = SC_matrix_real(:, :)
+
+    ! Step 2
+    call ZHEMM('L', 'U', nbf, nstate, (1.0d0, 0.0d0), p_ao(:, :, ispin), nbf, &
+               SC_matrix_cmplx, nbf, (0.0d0, 0.0d0), tmp_matrix_cmplx, nbf)
+
+    ! Step 3
+#if defined(HAVE_MKL)
+    call ZGEMMT('L', 'C', 'N', nstate, nbf, (1.0d0, 0.0d0), &
+                SC_matrix_cmplx(:, :), nbf, &
+                tmp_matrix_cmplx(:, :), nbf, (0.0d0, 0.0d0), &
+                p_mo(:, :, ispin), nstate)
+    call matrix_lower_to_full(p_mo(:, :, ispin))
+#else
+    call ZGEMM('C', 'N', nstate, nstate, nbf, (1.0d0, 0.0d0), &
+               SC_matrix_cmplx(:, :), nbf, &
+               tmp_matrix_cmplx(:, :), nbf, (0.0d0, 0.0d0), &
+               p_mo(:, :, ispin), nstate)
+#endif
+
+  enddo
+
+  deallocate(SC_matrix_real)
+  deallocate(SC_matrix_cmplx)
+  deallocate(tmp_matrix_cmplx)
+
+  call stop_clock(timing_density_matrix_MO)
+
+
+end subroutine p_ao_to_mo_cmplx
 
 
 !=========================================================================
@@ -829,7 +927,7 @@ subroutine evaluate_s2_operator(occupation, c_matrix, s_matrix)
   integer                 :: istate, jstate
   real(dp)                :: s2, s2_exact
   real(dp)                :: n1, n2, nmax, nmin
-  real(dp), allocatable   :: sc2_matrix(:,:), c1sc2_matrix(:,:)
+  real(dp), allocatable   :: sc2_matrix(:, :), c1sc2_matrix(:, :)
   !=====
 
   if(nspin /= 2) return
@@ -865,7 +963,7 @@ subroutine evaluate_s2_operator(occupation, c_matrix, s_matrix)
   
     do istate=1, nocc1
       do jstate=1, nocc2
-        s2 = s2 - ABS( c1sc2_matrix(istate,jstate) * occupation(istate, 1) * occupation(jstate, 2) )**2
+        s2 = s2 - ABS( c1sc2_matrix(istate, jstate) * occupation(istate, 1) * occupation(jstate, 2) )**2
       enddo
     enddo
 
@@ -1098,7 +1196,7 @@ end subroutine setup_sqrt_overlap
 subroutine orthogonalize_c_matrix(s_matrix, c_matrix)
   implicit none
 
-  real(dp), intent(in)    :: s_matrix(:,:)
+  real(dp), intent(in)    :: s_matrix(:, :)
   real(dp), intent(inout) :: c_matrix(:, :, :)
   !=====
   integer :: ibf, ispin, nbf, nstate, nspin
@@ -1328,7 +1426,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
         jglobal = INDXL2G(jlocal, block_col, ipcol, first_col, npcol)
         do ilocal=1, mc
           iglobal = INDXL2G(ilocal, block_row, iprow, first_row, nprow)
-          _s_matrix_local(ilocal, jlocal) = x_matrix(iglobal, jglobal)
+          s_matrix_local(ilocal, jlocal) = x_matrix(iglobal, jglobal)
         enddo
       enddo
 
@@ -1348,8 +1446,8 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
           enddo
         enddo
 
-        !       h_small(:,:) = MATMUL( TRANSPOSE(x_matrix(:,:)) , &
-        !                                MATMUL( hamiltonian(:,:,ispin) , x_matrix(:,:) ) )
+        !       h_small(:, :) = MATMUL( TRANSPOSE(x_matrix(:, :)) , &
+        !                                MATMUL( hamiltonian(:, :, ispin) , x_matrix(:, :) ) )
 
         !
         ! H_small = ^tS^{-1/2} H S^{-1/2}
@@ -1358,7 +1456,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
                     s_matrix_local, 1, 1, descc,             &
                     0.0_dp, c_matrix_local, 1, 1, descc)
 
-        call PDGEMM('T', 'N', nstate, nstate,nbf,             &
+        call PDGEMM('T', 'N', nstate, nstate, nbf,             &
                     1.0_dp, s_matrix_local, 1, 1, descc,      &
                     c_matrix_local, 1, 1, descc,             &
                     0.0_dp, h_small, 1, 1, descs)
@@ -1368,7 +1466,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
         call diagonalize_sca(scf_diago_flavor, h_small, descs, energy(:, ispin))
 
 
-        !       c_matrix(:,:,ispin) = MATMUL( x_matrix(:,:) , h_small(:,:) )
+        !       c_matrix(:, :, ispin) = MATMUL( x_matrix(:, :) , h_small(:, :) )
 
         !
         ! C = S^{-1/2} C_small
@@ -1418,28 +1516,28 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
       write(stdout, '(1x,a,i3)') 'Generalized diagonalization for spin: ', ispin
       call start_clock(timing_diago_hamiltonian)
 
-      !! h_small(:,:) = MATMUL( TRANSPOSE(x_matrix(:,:)) , &
-      !!                          MATMUL( hamiltonian(:,:,ispin) , x_matrix(:,:) ) )
-      call matrix_ao_to_mo(RESHAPE(x_matrix, [nbf, nstate, 1]), &
-                          hamiltonian(:, :, ispin), h_small2)
+      !! h_small(:, :) = MATMUL( TRANSPOSE(x_matrix(:, :)) , &
+      !!                          MATMUL( hamiltonian(:, :, ispin) , x_matrix(:, :) ) )
+      call h_ao_to_mo(RESHAPE(x_matrix, [nbf, nstate, 1]), &
+                      hamiltonian(:, :, ispin), h_small2)
 
-      !allocate(h_small(nbf,nstate))
+      !allocate(h_small(nbf, nstate))
       !! H * X
-      !call DGEMM('N','N',nbf,nstate,nbf,1.0d0,hamiltonian(1,1,ispin),nbf, &
-      !                                        x_matrix(1,1),nbf,      &
-      !                                  0.0d0,h_small(1,1),nbf)
+      !call DGEMM('N', 'N', nbf, nstate, nbf, 1.0d0, hamiltonian(1, 1, ispin), nbf, &
+      !                                        x_matrix(1, 1), nbf,      &
+      !                                  0.0d0, h_small(1, 1), nbf)
       !! X**T * (H * X)
-      !call DGEMM('T','N',nstate,nstate,nbf,1.0d0,x_matrix(1,1),nbf,  &
-      !                                           h_small(1,1),nbf,            &
-      !                                     0.0d0,h_small2(1,1,1),nstate)
+      !call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, x_matrix(1, 1), nbf,  &
+      !                                           h_small(1, 1), nbf,            &
+      !                                     0.0d0, h_small2(1, 1, 1), nstate)
       !deallocate(h_small)
 
       ! H * C' = C' * E
       call diagonalize(scf_diago_flavor, h_small2(:, :, 1), energy(:, ispin))
 
-      !c_matrix(:,1:nstate,ispin) = MATMUL( x_matrix(:,:) , h_small2(:,:,1) )
+      !c_matrix(:, 1:nstate, ispin) = MATMUL( x_matrix(:, :) , h_small2(:, :, 1) )
       ! C = X * C'
-      call DGEMM('N', 'N', nbf, nstate, nstate, 1.0d0, x_matrix(1,1),nbf,      &
+      call DGEMM('N', 'N', nbf, nstate, nstate, 1.0d0, x_matrix(1, 1), nbf,      &
                                                  h_small2(1, 1, 1), nstate, &
                                            0.0d0, c_matrix(1, 1, ispin), nbf)
 

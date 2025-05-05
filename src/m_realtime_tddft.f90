@@ -403,7 +403,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
 
     p_matrix_real(:, :, :) = p_matrix_cmplx(:, :, :)%re
 
-    call setup_density_matrix_MO_real(c_matrix, s_matrix, p_matrix_real, p_matrix_MO_real)
+    call p_ao_to_mo(c_matrix, s_matrix, p_matrix_real, p_matrix_MO_real)
     p_matrix_MO_block(:, :, :) = p_matrix_MO_real(1:nocc, nocc+1:nstate, :)
     deallocate(p_matrix_real, p_matrix_MO_real)
   end if
@@ -577,7 +577,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
         allocate(p_matrix_MO_real(nstate, nstate, nspin))
         p_matrix_real(:, :, :) = p_matrix_cmplx(:, :, :)%re
 
-        call setup_density_matrix_MO_real(c_matrix, s_matrix, p_matrix_real, p_matrix_MO_real)
+        call p_ao_to_mo(c_matrix, s_matrix, p_matrix_real, p_matrix_MO_real)
         p_matrix_MO_block(:, :, :) = p_matrix_MO_real(1:nocc, nocc+1:nstate, :)
         write(snap_name, '(a,i0)') 'snap_', iwrite_step
 #if defined(HAVE_HDF5)

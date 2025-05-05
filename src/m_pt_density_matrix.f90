@@ -944,7 +944,7 @@ subroutine update_density_matrix(occupation, c_matrix, p_matrix_mo, p_matrix)
       p_matrix_tmp(pstate, pstate, :) = p_matrix_mo(pstate, pstate, :) + occupation(pstate, :)
     enddo
     ! Transform from MO to AO
-    call matrix_mo_to_ao(c_matrix, p_matrix_tmp, p_matrix)
+    call p_mo_to_ao(c_matrix, p_matrix_tmp, p_matrix)
     deallocate(p_matrix_tmp)
 
   else
@@ -952,7 +952,7 @@ subroutine update_density_matrix(occupation, c_matrix, p_matrix_mo, p_matrix)
     write(stdout, *) 'An input Fock density matrix was provided. Use it now!'
     allocate(p_matrix_tmp(nbf, nbf, nspin))
     ! Transform from MO to AO
-    call matrix_mo_to_ao(c_matrix, p_matrix_mo, p_matrix_tmp)
+    call p_mo_to_ao(c_matrix, p_matrix_mo, p_matrix_tmp)
     p_matrix(:, :, :) = p_matrix(:, :, :) + p_matrix_tmp(:, :, :)
     deallocate(p_matrix_tmp)
 

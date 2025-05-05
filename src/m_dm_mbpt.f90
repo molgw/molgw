@@ -163,7 +163,8 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
                                                    c_matrix(1, 1, ispin), basis%nbf,  &
                                             0.0d0, c_matrix_tmp(1, 1, ispin), basis%nbf)
   enddo
-  call matrix_ao_to_mo(c_matrix_tmp, p_matrix_corr, p_matrix_mo)
+  ! TODO: Weird use of the h_ao_to_mo routine. Should be clarified and renamed
+  call h_ao_to_mo(c_matrix_tmp, p_matrix_corr, p_matrix_mo)
 
   if( rdm_filtering_no > 0 ) then
     call setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_matrix_mo)
@@ -244,11 +245,11 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     nocc = get_number_occupied_states(occupation)
     allocate(h_ii(nstate, nspin))
 
-    call matrix_ao_to_mo_diag(c_matrix, hamiltonian_hartree_corr, h_ii)
+    call h_ao_to_mo_diag(c_matrix, hamiltonian_hartree_corr, h_ii)
     call dump_out_energy('=== Hartree expectation value from correlated density matrix ===', occupation, h_ii)
     write(stdout, '(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):', h_ii(nocc, :) * Ha_eV
 
-    call matrix_ao_to_mo_diag(c_matrix, hamiltonian_exx_corr, h_ii)
+    call h_ao_to_mo_diag(c_matrix, hamiltonian_exx_corr, h_ii)
     call dump_out_energy('=== Exchange expectation value from correlated density matrix ===', occupation, h_ii)
     write(stdout, '(1x,a,2(3x,f12.6))') 'Exchange HOMO expectation (eV):', h_ii(nocc, :) * Ha_eV
     deallocate(h_ii)
@@ -315,7 +316,7 @@ subroutine fock_density_matrix(basis, occupation, energy, c_matrix, hfock, p_mat
   call clean_allocate('Density matrix P_MO', p_matrix_mo, nstate, nstate, nspin)
   call clean_allocate('Fock matrix F_MO', hfock_mo, nstate, nstate, nspin)
 
-  call matrix_ao_to_mo(c_matrix, hfock, hfock_mo)
+  call h_ao_to_mo(c_matrix, hfock, hfock_mo)
 
   p_matrix_mo(:, :, :) = 0.0_dp
   do pqspin=1, nspin
@@ -333,7 +334,7 @@ subroutine fock_density_matrix(basis, occupation, energy, c_matrix, hfock, p_mat
     enddo
   enddo
 
-  call matrix_mo_to_ao(c_matrix, p_matrix_mo, p_matrix)
+  call p_mo_to_ao(c_matrix, p_matrix_mo, p_matrix)
 
   call clean_deallocate('Density matrix P_MO', p_matrix_mo)
   call clean_deallocate('Fock matrix F_MO', hfock_mo)
@@ -373,7 +374,7 @@ subroutine fock_density_matrix_second_order(basis, occupation, energy, c_matrix,
 
   ! < p | Sigma_x - v_xc | q > = < p | H_fock - H_gKS | q >
   !                            = < p | H_fock | q >   - energy_p \delta_pq
-  call matrix_ao_to_mo(c_matrix, hfock, delta_sigma_mo)
+  call h_ao_to_mo(c_matrix, hfock, delta_sigma_mo)
   do pstate=1, nstate
     delta_sigma_mo(pstate, pstate, :) = delta_sigma_mo(pstate, pstate, :) - energy(pstate, :)
   enddo
@@ -436,7 +437,7 @@ subroutine fock_density_matrix_second_order(basis, occupation, energy, c_matrix,
     enddo
   enddo
 
-  call matrix_mo_to_ao(c_matrix, p_matrix_mo, p_matrix_ao)
+  call p_mo_to_ao(c_matrix, p_matrix_mo, p_matrix_ao)
 
   p_matrix(:, :, :) = p_matrix(:, :, :) + p_matrix_ao(:, :, :)
 

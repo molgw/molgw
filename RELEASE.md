@@ -7,6 +7,7 @@
 ### Overview
 
 - RESTART from a different basis made safer
+- RESTART from a optmized virtual orbital space
 - Linking with accelerated integral library `qcint`
 - Interface with CC4S
 
@@ -26,6 +27,7 @@
 - Adding an orthogonalization step when reading a RESTART file using a different basis
 
 ### Changes affecting the compilation
+
 - Possibility to linking against `qcint` or `libcint` without any change
 
 ### Changes affecting the developers
