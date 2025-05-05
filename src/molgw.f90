@@ -328,8 +328,9 @@ program molgw
     !
     ! Try to read a RESTART file if it exists
     if( read_restart_ ) then
-      call read_restart(restart_type, 'RESTART', basis, occupation, c_matrix, energy, hamiltonian_fock)
+      call read_restart(restart_type, restart_input, basis, occupation, c_matrix, energy, hamiltonian_fock)
       ! read_restart may have resized the arrays
+      ! occupation, energy and c_matrix should be consistent with nstate
       nstate = SIZE(occupation(:, :), DIM=1)
     else
       restart_type = NO_RESTART

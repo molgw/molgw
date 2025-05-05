@@ -649,6 +649,14 @@ read_restart:
   default: 'no'
   comment: Read the RESTART file and restart from it.
 
+restart_input:
+  family: io
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'RESTART'
+  comment: Specifies the name of the RESTART file that contains SCF data.
+
 yaml_output:
   family: io
   datatype: characters

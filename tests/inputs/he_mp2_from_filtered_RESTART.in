@@ -5,6 +5,7 @@
  auxil_basis='auto'
 
  read_restart='yes'
+ restart_input='RESTART_filtered'
 
  postscf='MP2'
 

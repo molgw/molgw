@@ -1184,5 +1184,5 @@ HF Total Energy           ,  -2.8616250222      , 0 , 1.0e-7
 Testing integral (11|11)  ,   1.02578575E+00    , 0 , 5.0e-7
 MP2 correlation           ,  -0.0355613477      , 0 , 1.0e-7
 
-he_mp2_from_filtered_RESTART.in, He atom: reading RESTART with filtered virtual orbitals, restart "mv RESTART_filtered RESTART"
+he_mp2_from_filtered_RESTART.in, He atom: reading RESTART with filtered virtual orbitals, restart
 MP2 correlation           ,  -0.0355613477      , 0 , 1.0e-7
