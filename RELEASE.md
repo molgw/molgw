@@ -21,6 +21,7 @@
 - Export data to CC4S for MP2 or coupled-cluster post-processing
 - Import Coulomb integrals and HF eigenvalues in the CC4S formats
 - Possibility to rename the yaml output file with `yaml_output` input variable
+- Possibility to rename the RESTART input file with `restart_input` input variable
 
 ### Changes affecting the results
 
