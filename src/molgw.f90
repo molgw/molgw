@@ -781,8 +781,6 @@ program molgw
   !
   if( calc_type%is_mp2 ) then
 
-    call set_occupation(0.0_dp, electrons, magnetization, energy, occupation)
-
     if( .NOT. x2c_ ) then ! non-relativistic
 
       if( .NOT. complex_scf_ ) then ! real
