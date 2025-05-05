@@ -66,8 +66,11 @@ def clean_run(inp, out, restart, command=""):
       os.remove('EIGVEC_CI_M')
     except FileNotFoundError:
       pass
+
   if len(command) > 0:
-    result = subprocess.run(command.split(), capture_output=True, text=True)
+    print(command)
+    #result = subprocess.run(command.split(), capture_output=True, text=True)
+    result = subprocess.run(command.split())
 
   fout = open(out, 'w')
   if len(mpirun) < 1:
@@ -391,12 +394,12 @@ for line in ftestsuite:
     input_files.append(parsing[0].strip())
     test_names.append(parsing[1].strip())
     testinfo.append([])
+    command.append(extract_between_quotes(parsing[2]))
+
     if 'restart' in parsing[2].lower():
       restarting.append(True)
-      command.append(extract_between_quotes(parsing[2]))
     else:
       restarting.append(False)
-      command.append("")
     if 'noparallel' in parsing[2].lower():
       parallel.append(False)
     else:
