@@ -256,7 +256,7 @@ program molgw
     ! c_matrix_rel and hamiltonian_kin_nuc_rel if the deviation from I is too large
     !
     if( x2c_ ) then
-      if( trim(check_CdSC_x2c)=='yes' ) then
+      if( TRIM(check_CdSC_x2c) == 'yes' ) then
         call check_CdaggerSC_I(basis, electrons, c_matrix_rel, s_matrix_rel, x_matrix_rel, energy_rel, &
         &  hamiltonian_kin_nuc_rel, s_matrix, x_matrix)
       endif
@@ -324,14 +324,16 @@ program molgw
     call clean_allocate('Kinetic operator T', hamiltonian_kinetic, basis%nbf, basis%nbf)
     call clean_allocate('Nucleus operator V', hamiltonian_nucleus, basis%nbf, basis%nbf)
     call clean_allocate('Fock operator F', hamiltonian_fock, basis%nbf, basis%nbf, nspin)
-    call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate, nspin)  ! not distributed right now
    
     !
     ! Try to read a RESTART file if it exists
     if( read_restart_ ) then
       call read_restart(restart_type, 'RESTART', basis, occupation, c_matrix, energy, hamiltonian_fock)
+      ! read_restart may have resized the arrays
+      nstate = SIZE(occupation(:, :), DIM=1)
     else
       restart_type = NO_RESTART
+      call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate, nspin)
     endif
     is_restart       = ( restart_type /= NO_RESTART )
     is_big_restart   = ( restart_type == BIG_RESTART )
@@ -353,7 +355,7 @@ program molgw
     !
     ! Nucleus-electron interaction
     call setup_nucleus(basis, hamiltonian_nucleus)
-    if( TRIM(parabolic_conf)=='yes' ) call setup_para_conf(basis, hamiltonian_nucleus)
+    if( TRIM(parabolic_conf) == 'yes' ) call setup_para_conf(basis, hamiltonian_nucleus)
    
     !
     ! External electric field
@@ -446,7 +448,7 @@ program molgw
 
       else
 
-        if(complex_scf=='no') then ! By default we use the real solution of the SCF equations
+        if(complex_scf == 'no') then ! By default we use the real solution of the SCF equations
           call scf_loop(is_restart,                                     &
                         basis,                                          &
                         x_matrix, s_matrix,                              &
@@ -565,14 +567,14 @@ program molgw
   endif
 #endif
 
-  if ( (.not. x2c_) .and. (complex_scf=='no') ) then
+  if ( (.NOT. x2c_) .AND. (complex_scf == 'no') ) then
     !
     ! Evaluate spin contamination
     call evaluate_s2_operator(occupation, c_matrix, s_matrix)
   endif
 
   ! Computing on top of a gaussian calculation
-  if( assume_scf_converged_ .AND. TRIM(init_hamiltonian)=='GAUSSIAN') then
+  if( assume_scf_converged_ .AND. TRIM(init_hamiltonian) == 'GAUSSIAN') then
     if( basis%nbf == nstate .AND. basis%gaussian_type == 'CART' ) then
       call read_guess_fchk(c_matrix, file_name, basis, nstate, nspin, energy=energy)
       call write_restart(SMALL_RESTART, 'RESTART', basis, occupation, c_matrix, energy)
@@ -782,7 +784,7 @@ program molgw
 
     if( .not. x2c_ ) then ! non-relativistic
 
-      if( complex_scf=='no' ) then ! real
+      if( complex_scf == 'no' ) then ! real
   
         if(has_auxil_basis) then
           call mp2_energy_ri(occupation, energy, c_matrix, en_gks%mp2)

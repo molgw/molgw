@@ -11,6 +11,7 @@
 #                                     need_scalapack  only working when SCALAPACK is available
 #                                     need_gradients  only working when LIBINT or LIBCINT gradients are available
 #                                     need_forces     only working when LIBINT gradients are available
+#                                     "  "            put bash command in between double quotes: "mv RESTART_filtered RESTART"
 #
 # 2. Test line comprises 4 commas:
 #    a. Text key to search in the out file
@@ -1178,8 +1179,12 @@ SCF Total Energy          ,  -2.8616250829      , 0 , 1.0e-7
 Testing integral (11|11)  ,   1.02578581E+00    , 0 , 5.0e-7
 MP2 correlation           ,  -0.0364058094      , 0 , 1.0e-7
 
-he_mp2_from_filtered.in   , He atom: reading CC4S files with filtered virtual orbitals, restart
+he_mp2_from_filtered_CC4S.in, He atom: reading CC4S files with filtered virtual orbitals, restart
 HF Total Energy           ,  -2.8616250222      , 0 , 1.0e-7
 Testing integral (11|11)  ,   1.02578575E+00    , 0 , 5.0e-7
 MP2 correlation           ,  -0.0355613477      , 0 , 1.0e-7
 
+he_mp2_from_filtered_RESTART.in, He atom: reading RESTART with filtered virtual orbitals, restart "mv RESTART_filtered RESTART"
+HF Total Energy           ,  -2.8616250222      , 0 , 1.0e-7
+Testing integral (11|11)  ,   1.02578575E+00    , 0 , 5.0e-7
+MP2 correlation           ,  -0.0355613477      , 0 , 1.0e-7

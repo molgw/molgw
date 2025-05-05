@@ -261,30 +261,37 @@ subroutine read_restart(restart_type, restart_filename, basis, &
   ! Nstate
   read(restartfile) nstate_read
 
+  nstate_safe = MIN(nstate_expected, nstate_read)
+
   if( nstate_expected /= nstate_read ) then
     call issue_warning('RESTART file: Number of states has changed')
-    !write(stdout, '(1x,a,i5,a,i5)') 'Resizing arrays to fit the new size ', nstate_read, ' -> ', nstate
-    !allocate(occupation_tmp(nstate, nspin))
-    !occupation_tmp(1:nstate, :) = occupation(1:nstate, :)
-    !deallocate(energy, occupation)
-    !allocate(energy(nstate, nspin), occupation(nstate, nspin))
-    !occupation(:, :) = occupation_tmp(:, :)
-    !deallocate(occupation_tmp)
+    if( same_basis ) then
+      write(stdout, '(1x,a,i5,a,i5)') 'Resizing arrays to fit the new size ', nstate_expected, ' -> ', nstate_read
+      allocate(occupation_tmp(nstate_expected, nspin))
+      occupation_tmp(1:nstate_expected, :) = occupation(1:nstate_expected, :)
+      deallocate(energy, occupation)
+      allocate(energy(nstate_read, nspin), occupation(nstate_read, nspin))
+      occupation(1:nstate_safe, :) = occupation_tmp(1:nstate_safe, :)
+      deallocate(occupation_tmp)
+      call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate_read, nspin)
+    else
+      call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate_expected, nspin)
+    endif
+  else
+    call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate_expected, nspin)
   endif
-  nstate_safe = MIN(nstate_expected, nstate_read)
 
 
   ! Occupations
   allocate(occupation_read(nstate_read, nspin_read))
-  read(restartfile) occupation_read(:,:)
-  if( ANY( ABS( occupation_read(1:nstate_safe,:) - occupation(1:nstate_safe,:) ) > 1.0e-5_dp ) ) then
+  read(restartfile) occupation_read(:, :)
+  if( ANY( ABS( occupation_read(1:nstate_safe, :) - occupation(1:nstate_safe, :) ) > 1.0e-5_dp ) ) then
     if( temperature > 1.0e-8_dp) then
-      occupation(1:nstate_safe,:) = occupation_read(1:nstate_safe,:)
+      occupation(1:nstate_safe, :) = occupation_read(1:nstate_safe, :)
       write(stdout,'(1xa)') "Reading occupations from a RESTART file"
-      call dump_out_occupation('=== Occupations ===',occupation)
+      call dump_out_occupation('=== Occupations ===', occupation)
     else
-      call issue_warning('RESTART file: Occupations have changed')
-      !occupation(1:nstate, :) = occupation_read(1:nstate, :)
+      call issue_warning('RESTART file: Occupations are different. Keep those from the current MOLGW run.')
     endif
   endif
   deallocate(occupation_read)
@@ -324,13 +331,13 @@ subroutine read_restart(restart_type, restart_filename, basis, &
     enddo
 
     ! Fill the rest of the array with identity
-    if( nstate_stored < nstate_expected ) then
-      do istate=nstate_stored+1, nstate_expected
+    if( nstate_stored < nstate_safe ) then
+      do istate=nstate_stored+1, nstate_safe
         c_matrix(istate, istate, :) = 1.0_dp
       enddo
     endif
-  else
 
+  else
 
     allocate(s_matrix(basis%nbf, basis%nbf))
     allocate(overlapm1(basis%nbf, basis%nbf))

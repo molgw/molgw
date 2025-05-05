@@ -4,6 +4,9 @@
  basis='cc-pV5Z'
  auxil_basis='auto'
 
+ print_restart='no'
+ print_bigrestart='no'
+
  init_hamiltonian='CC4S_FILES'
  cc4s_input='he_5Z_auto_'
 
