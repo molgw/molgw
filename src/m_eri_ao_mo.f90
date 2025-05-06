@@ -23,140 +23,140 @@ module m_eri_ao_mo
   logical, protected :: eri_3center_mo_stay_in_memory = .FALSE.
 
 
-  real(dp), protected, allocatable :: eri_3center_eigen(:, :, :, :)
+  real(dp), protected, allocatable :: eri_3center_mo(:, :, :, :)
 
-  real(dp), protected, allocatable :: eri_3center_eigen_lr(:, :, :, :)
+  real(dp), protected, allocatable :: eri_3center_mo_lr(:, :, :, :)
 
-  real(dp), protected, allocatable :: eri_4center_eigen_uks(:, :, :, :)
+  real(dp), protected, allocatable :: eri_4center_mo_uks(:, :, :, :)
 
-  complex(dp), protected, allocatable :: eri_3center_eigen_cmplx(:, :, :, :)
+  complex(dp), protected, allocatable :: eri_3center_mo_cmplx(:, :, :, :)
 
-  complex(dp), protected, allocatable :: eri_3center_eigen_lr_cmplx(:, :, :, :)
+  complex(dp), protected, allocatable :: eri_3center_mo_lr_cmplx(:, :, :, :)
 
 
 contains
 
 
 !=========================================================================
-function eri_eigen(istate, jstate, ijspin, kstate, lstate, klspin)
+function evaluate_eri_mo(istate, jstate, ijspin, kstate, lstate, klspin)
   implicit none
   integer, intent(in) :: ijspin, klspin
   integer, intent(in) :: istate, jstate, kstate, lstate
-  real(dp)           :: eri_eigen
+  real(dp)           :: evaluate_eri_mo
   !=====
 
   if(has_auxil_basis) then
-    eri_eigen = DOT_PRODUCT( eri_3center_eigen(:, istate, jstate, ijspin) , eri_3center_eigen(:, kstate, lstate, klspin) )
-    call auxil%sum(eri_eigen)
+    evaluate_eri_mo = DOT_PRODUCT( eri_3center_mo(:, istate, jstate, ijspin) , eri_3center_mo(:, kstate, lstate, klspin) )
+    call auxil%sum(evaluate_eri_mo)
   else
-    eri_eigen = eri_4center_eigen_uks(istate, jstate, kstate, lstate)
+    evaluate_eri_mo = eri_4center_mo_uks(istate, jstate, kstate, lstate)
   endif
 
 
-end function eri_eigen
+end function evaluate_eri_mo
 
 
 !=========================================================================
-function eri_eigen_ri(istate, jstate, ijspin, kstate, lstate, klspin)
+function evaluate_eri_mo_ri(istate, jstate, ijspin, kstate, lstate, klspin)
   implicit none
   integer, intent(in) :: ijspin, klspin
   integer, intent(in) :: istate, jstate, kstate, lstate
-  real(dp)           :: eri_eigen_ri
+  real(dp)           :: evaluate_eri_mo_ri
   !=====
 
-  eri_eigen_ri = DOT_PRODUCT( eri_3center_eigen(:, istate, jstate, ijspin) , eri_3center_eigen(:, kstate, lstate, klspin) )
+  evaluate_eri_mo_ri = DOT_PRODUCT( eri_3center_mo(:, istate, jstate, ijspin) , eri_3center_mo(:, kstate, lstate, klspin) )
 
-  call auxil%sum(eri_eigen_ri)
+  call auxil%sum(evaluate_eri_mo_ri)
 
-end function eri_eigen_ri
+end function evaluate_eri_mo_ri
 
 
 !=========================================================================
-function eri_eigen_ri_lr(istate, jstate, ijspin, kstate, lstate, klspin)
+function evaluate_eri_mo_ri_lr(istate, jstate, ijspin, kstate, lstate, klspin)
   implicit none
   integer, intent(in) :: ijspin, klspin
   integer, intent(in) :: istate, jstate, kstate, lstate
-  real(dp)           :: eri_eigen_ri_lr
+  real(dp)           :: evaluate_eri_mo_ri_lr
   !=====
 
-  eri_eigen_ri_lr = DOT_PRODUCT( eri_3center_eigen_lr(:, istate, jstate, ijspin) , eri_3center_eigen_lr(:, kstate, lstate, klspin) )
+  evaluate_eri_mo_ri_lr = DOT_PRODUCT( eri_3center_mo_lr(:, istate, jstate, ijspin) , eri_3center_mo_lr(:, kstate, lstate, klspin) )
 
-  call auxil%sum(eri_eigen_ri_lr)
+  call auxil%sum(evaluate_eri_mo_ri_lr)
 
-end function eri_eigen_ri_lr
+end function evaluate_eri_mo_ri_lr
 
 
 !=========================================================================
-function eri_eigen_ri_cmplx(istate, jstate, ijspin, kstate, lstate, klspin)
+function evaluate_eri_mo_ri_cmplx(istate, jstate, ijspin, kstate, lstate, klspin)
   implicit none
   integer, intent(in) :: ijspin, klspin
   integer, intent(in) :: istate, jstate, kstate, lstate
-  complex(dp)        :: eri_eigen_ri_cmplx
+  complex(dp)        :: evaluate_eri_mo_ri_cmplx
   !=====
 
-  eri_eigen_ri_cmplx = SUM( eri_3center_eigen_cmplx(:, istate, jstate, ijspin) &
-                            * eri_3center_eigen_cmplx(:, kstate, lstate, klspin) )
+  evaluate_eri_mo_ri_cmplx = SUM( eri_3center_mo_cmplx(:, istate, jstate, ijspin) &
+                            * eri_3center_mo_cmplx(:, kstate, lstate, klspin) )
 
-  call auxil%sum(eri_eigen_ri_cmplx)
+  call auxil%sum(evaluate_eri_mo_ri_cmplx)
 
-end function eri_eigen_ri_cmplx
+end function evaluate_eri_mo_ri_cmplx
  
 
 !=========================================================================
-function eri_eigen_ri_lr_cmplx(istate, jstate, ijspin, kstate, lstate, klspin)
+function evaluate_eri_mo_ri_lr_cmplx(istate, jstate, ijspin, kstate, lstate, klspin)
   implicit none
   integer, intent(in) :: ijspin, klspin
   integer, intent(in) :: istate, jstate, kstate, lstate
-  complex(dp)        :: eri_eigen_ri_lr_cmplx
+  complex(dp)        :: evaluate_eri_mo_ri_lr_cmplx
   !=====
 
- eri_eigen_ri_lr_cmplx=SUM( eri_3center_eigen_lr_cmplx(:, istate, jstate, ijspin) &
-                            * eri_3center_eigen_lr_cmplx(:, kstate, lstate, klspin))
+ evaluate_eri_mo_ri_lr_cmplx=SUM( eri_3center_mo_lr_cmplx(:, istate, jstate, ijspin) &
+                            * eri_3center_mo_lr_cmplx(:, kstate, lstate, klspin))
   
-  call auxil%sum(eri_eigen_ri_lr_cmplx)
+  call auxil%sum(evaluate_eri_mo_ri_lr_cmplx)
   
-end function eri_eigen_ri_lr_cmplx
+end function evaluate_eri_mo_ri_lr_cmplx
  
 
 !=========================================================================
-function eri_eigen_ri_x2c(istate, jstate, kstate, lstate)
+function evaluate_eri_mo_ri_x2c(istate, jstate, kstate, lstate)
   implicit none
   integer, intent(in) :: istate, jstate, kstate, lstate
-  complex(dp)        :: eri_eigen_ri_x2c
+  complex(dp)        :: evaluate_eri_mo_ri_x2c
   !=====
 
   ! La La La La,  Lb Lb Lb Lb, La Lb La Lb, and Lb La Lb La
   ! The rest of combinations (e.g. La La Lb La or La Lb Lb La, etc) are null due to tensor product definition
-  eri_eigen_ri_x2c=SUM( eri_3center_eigen_cmplx(:, istate, jstate, 1)*eri_3center_eigen_cmplx(:, kstate, lstate, 1) & ! <La tensor_prod La | La tensor_prod La>  
-  &               + eri_3center_eigen_cmplx(:, istate, jstate, 2)*eri_3center_eigen_cmplx(:, kstate, lstate, 2)     & ! <Lb tensor_prod Lb | Lb tensor_prod Lb>
-  &               + eri_3center_eigen_cmplx(:, istate, jstate, 1)*eri_3center_eigen_cmplx(:, kstate, lstate, 2)     & ! <La tensor_prod Lb | La tensor_prod Lb>
-  &               + eri_3center_eigen_cmplx(:, istate, jstate, 2)*eri_3center_eigen_cmplx(:, kstate, lstate, 1)    )  ! <Lb tensor_prod La | Lb tensor_prod La>
+  evaluate_eri_mo_ri_x2c=SUM( eri_3center_mo_cmplx(:, istate, jstate, 1)*eri_3center_mo_cmplx(:, kstate, lstate, 1) & ! <La tensor_prod La | La tensor_prod La>  
+                 + eri_3center_mo_cmplx(:, istate, jstate, 2)*eri_3center_mo_cmplx(:, kstate, lstate, 2)     & ! <Lb tensor_prod Lb | Lb tensor_prod Lb>
+                 + eri_3center_mo_cmplx(:, istate, jstate, 1)*eri_3center_mo_cmplx(:, kstate, lstate, 2)     & ! <La tensor_prod Lb | La tensor_prod Lb>
+                 + eri_3center_mo_cmplx(:, istate, jstate, 2)*eri_3center_mo_cmplx(:, kstate, lstate, 1)    )  ! <Lb tensor_prod La | Lb tensor_prod La>
 
-  call auxil%sum(eri_eigen_ri_x2c)
+  call auxil%sum(evaluate_eri_mo_ri_x2c)
 
-end function eri_eigen_ri_x2c
+end function evaluate_eri_mo_ri_x2c
 
 
 !=========================================================================
-pure function eri_eigen_ri_paral(istate, jstate, ijspin, kstate, lstate, klspin)
+pure function evaluate_eri_mo_ri_paral(istate, jstate, ijspin, kstate, lstate, klspin)
   implicit none
   integer, intent(in) :: ijspin, klspin
   integer, intent(in) :: istate, jstate, kstate, lstate
-  real(dp)           :: eri_eigen_ri_paral
+  real(dp)           :: evaluate_eri_mo_ri_paral
   !=====
 
-  eri_eigen_ri_paral = DOT_PRODUCT( eri_3center_eigen(:, istate, jstate, ijspin) , eri_3center_eigen(:, kstate, lstate, klspin) )
+  evaluate_eri_mo_ri_paral = DOT_PRODUCT( eri_3center_mo(:, istate, jstate, ijspin) , eri_3center_mo(:, kstate, lstate, klspin) )
 
-end function eri_eigen_ri_paral
+end function evaluate_eri_mo_ri_paral
 
 
 !=================================================================
-subroutine calculate_eri_4center_eigen(c_matrix, istate, ijspin, eri_eigenstate_i)
+subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_mo_i)
   implicit none
 
   integer, intent(in)     :: istate, ijspin
   real(dp), intent(in)    :: c_matrix(:, :, :)
-  real(dp), intent(inout) :: eri_eigenstate_i(:, :, :, :)
+  real(dp), intent(inout) :: eri_mo_i(:, :, :, :)
   !=====
   logical, save         :: disclaimer = .TRUE.
   integer, save         :: istate_previous=0
@@ -174,7 +174,7 @@ subroutine calculate_eri_4center_eigen(c_matrix, istate, ijspin, eri_eigenstate_
   nstate = SIZE(c_matrix, DIM=2)
 
   ! Check if the calculation can be skipped
-  if( istate_previous == istate .AND. ijspin_previous == ijspin .AND. ANY(ABS(eri_eigenstate_i(:, :, :, :))>1.0e-6_dp) ) then
+  if( istate_previous == istate .AND. ijspin_previous == ijspin .AND. ANY(ABS(eri_mo_i(:, :, :, :))>1.0e-6_dp) ) then
     return
   else
     istate_previous = istate
@@ -182,14 +182,14 @@ subroutine calculate_eri_4center_eigen(c_matrix, istate, ijspin, eri_eigenstate_
   endif
 
 
-  call start_clock(timing_eri_4center_eigen)
+  call start_clock(timing_eri_4center_ao2mo)
 
   allocate(eri_tmp1(nbf, nstate))
   call clean_allocate('TMP array', eri_tmp2, nstate, nbf, nbf)
   call clean_allocate('TMP array', eri_tmp3, nbf, nbf, nbf)
 
   eri_tmp3(:, :, :) = 0.0_dp
-  eri_eigenstate_i(:, :, :, :) = 0.0_dp
+  eri_mo_i(:, :, :, :) = 0.0_dp
 
 
   ! New implementation looping over the unique integrals
@@ -268,7 +268,7 @@ subroutine calculate_eri_4center_eigen(c_matrix, istate, ijspin, eri_eigenstate_
 
       call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, eri_tmp1, nbf,              &
                                                  c_matrix(1, 1, klspin), nbf,  &
-                                           0.0d0, eri_eigenstate_i(1, 1, lstate, klspin), nstate)
+                                           0.0d0, eri_mo_i(1, 1, lstate, klspin), nstate)
 
     enddo
   enddo !klspin
@@ -277,13 +277,13 @@ subroutine calculate_eri_4center_eigen(c_matrix, istate, ijspin, eri_eigenstate_
   call clean_deallocate('TMP array', eri_tmp2)
   call clean_deallocate('TMP array', eri_tmp3)
 
-  call stop_clock(timing_eri_4center_eigen)
+  call stop_clock(timing_eri_4center_ao2mo)
 
-end subroutine calculate_eri_4center_eigen
+end subroutine calculate_eri_4center_mo
 
 
 !=================================================================
-subroutine calculate_eri_4center_eigen_uks(c_matrix, nstate_min, nstate_max)
+subroutine calculate_eri_4center_mo_uks(c_matrix, nstate_min, nstate_max)
   implicit none
 
   real(dp), intent(in)    :: c_matrix(:, :, :)
@@ -304,15 +304,15 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix, nstate_min, nstate_max)
   write(stdout, '(/,1x,a)') 'Calculate all the 4-center MO integrals at once (using the 8 permutation symmetries)'
   write(stdout, '(1x,a,f9.3,a)') 'Make sure OMP_STACKSIZE is larger than ', REAL(nbf, dp)**3 * 8.0_dp / 1024.0_dp**2, ' (Mb)'
 
-  if( nspin /= 1 ) call die('calculate_eri_4center_eigen_uks: requires spin-restricted calculation')
+  if( nspin /= 1 ) call die('calculate_eri_4center_mo_uks: requires spin-restricted calculation')
   ! spin-unrestricted will be coded later
   ijspin = 1
 
-  call start_clock(timing_eri_4center_eigen)
+  call start_clock(timing_eri_4center_ao2mo)
 
-  call clean_allocate('4-center MO integrals', eri_4center_eigen_uks, &
+  call clean_allocate('4-center MO integrals', eri_4center_mo_uks, &
                       nstate_min, nstate_max, nstate_min, nstate_max, nstate_min, nstate_max, nstate_min, nstate_max)
-  eri_4center_eigen_uks(:, :, :, :) = 0.0_dp
+  eri_4center_mo_uks(:, :, :, :) = 0.0_dp
   nstate_maxmin = nstate_max - nstate_min + 1
 
   allocate(eri_tmp1(nstate_maxmin, nbf))
@@ -391,7 +391,7 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix, nstate_min, nstate_max)
         call DGEMM('N', 'N', nstate_maxmin, nstate_maxmin, nbf, &
                                               1.0d0, eri_tmp1(1, 1), nstate_maxmin,              &
                                                     c_matrix(1, nstate_min, klspin), nbf,  &
-                                              0.0d0, eri_4center_eigen_uks(nstate_min, nstate_min, jstate, istate), nstate_maxmin)
+                                              0.0d0, eri_4center_mo_uks(nstate_min, nstate_min, jstate, istate), nstate_maxmin)
       enddo
     enddo !klspin
 
@@ -402,27 +402,27 @@ subroutine calculate_eri_4center_eigen_uks(c_matrix, nstate_min, nstate_max)
   call clean_deallocate('TMP array', eri_tmp2)
   call clean_deallocate('TMP array', eri_tmp3)
 
-  call poorman%sum(eri_4center_eigen_uks)
+  call poorman%sum(eri_4center_mo_uks)
 
-  call stop_clock(timing_eri_4center_eigen)
+  call stop_clock(timing_eri_4center_ao2mo)
 
-end subroutine calculate_eri_4center_eigen_uks
+end subroutine calculate_eri_4center_mo_uks
 
 
 !=================================================================
-subroutine destroy_eri_4center_eigen_uks()
+subroutine destroy_eri_4center_mo_uks()
   implicit none
   !=====
   !=====
 
-  call clean_deallocate('4-center MO integrals', eri_4center_eigen_uks)
+  call clean_deallocate('4-center MO integrals', eri_4center_mo_uks)
 
-end subroutine destroy_eri_4center_eigen_uks
+end subroutine destroy_eri_4center_mo_uks
 
 
 !=================================================================
-subroutine calculate_eri_3center_eigen(c_matrix, mstate_min, mstate_max, nstate_min, nstate_max, timing, verbose, long_range, &
-                                       only_one_spin)
+subroutine calculate_eri_3center_mo(c_matrix, mstate_min, mstate_max, nstate_min, nstate_max, timing, verbose, long_range, &
+                                    only_one_spin)
   implicit none
   real(dp), intent(in)         :: c_matrix(:, :, :)
   integer, optional, intent(in) :: mstate_min, mstate_max, nstate_min, nstate_max
@@ -446,18 +446,18 @@ subroutine calculate_eri_3center_eigen(c_matrix, mstate_min, mstate_max, nstate_
   endif
 
   if( PRESENT(long_range) ) then
-    if( long_range .AND. (.NOT. ALLOCATED(eri_3center_eigen_lr)) ) lr_exists=.false.
+    if( long_range .AND. (.NOT. ALLOCATED(eri_3center_mo_lr)) ) lr_exists=.false.
   endif
 
-  ! eri_3center_eigen(_lr) is/are already allocated, then assume that you know what you are doing
-  if( ALLOCATED(eri_3center_eigen) .AND. lr_exists ) then
+  ! eri_3center_mo(_lr) is/are already allocated, then assume that you know what you are doing
+  if( ALLOCATED(eri_3center_mo) .AND. lr_exists ) then
     return
   endif
 
   if( PRESENT(timing) ) then
     call start_clock(timing)
   else
-    call start_clock(timing_eri_3center_eigen)
+    call start_clock(timing_eri_3center_ao2mo)
   endif
 
   if(PRESENT(verbose)) then
@@ -466,7 +466,7 @@ subroutine calculate_eri_3center_eigen(c_matrix, mstate_min, mstate_max, nstate_
     verbose_ = .TRUE.
   endif
   if(verbose_) then
-    write(stdout, '(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
+    write(stdout, '(/,a)') ' Calculate 3-center integrals on molecular orbitals: AO -> MO transform'
   endif
 
   nbf    = SIZE(c_matrix, DIM=1)
@@ -500,14 +500,14 @@ subroutine calculate_eri_3center_eigen(c_matrix, mstate_min, mstate_max, nstate_
   nstate_count_ = nstate_max_ - nstate_min_ + 1
 
   !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
-  call clean_allocate('3-center MO integrals', eri_3center_eigen, 1, nauxil_local, &
+  call clean_allocate('3-center MO integrals', eri_3center_mo, 1, nauxil_local, &
                      mstate_min_, mstate_max_, nstate_min_, nstate_max_, 1, nspin_, verbose_)
   if(PRESENT(long_range)) then
-    call clean_allocate('3-center_lr MO integrals', eri_3center_eigen_lr, 1, nauxil_local_lr, &
+    call clean_allocate('3-center_lr MO integrals', eri_3center_mo_lr, 1, nauxil_local_lr, &
                      mstate_min_, mstate_max_, nstate_min_, nstate_max_, 1, nspin_, verbose_)
-    eri_3center_eigen_lr(:, :, :, :) = 0.0_dp
+    eri_3center_mo_lr(:, :, :, :) = 0.0_dp
   endif
-  eri_3center_eigen(:, :, :, :) = 0.0_dp
+  eri_3center_mo(:, :, :, :) = 0.0_dp
 
   call clean_allocate('TMP 3-center ints', tmp1, nstate_min_, nstate_max_, 1, nbf, verbose_)
   call clean_allocate('TMP 3-center ints', c_t , nstate_min_, nstate_max_, 1, nbf, verbose_)
@@ -539,7 +539,7 @@ subroutine calculate_eri_3center_eigen(c_matrix, mstate_min, mstate_max, nstate_
                  0.0d0, tmp2(mstate_min_, nstate_min_), mstate_count_)
 
       ! Transposition (ij, P) -> (P, ij) happens here!
-      eri_3center_eigen(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
+      eri_3center_mo(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
                                   = tmp2(mstate_min_:mstate_max_, nstate_min_:nstate_max_)
 
     enddo !iauxil
@@ -567,7 +567,7 @@ subroutine calculate_eri_3center_eigen(c_matrix, mstate_min, mstate_max, nstate_
                    0.0d0, tmp2(mstate_min_, nstate_min_), mstate_count_)
 
         ! Transposition (ij, P) -> (P, ij) happens here!
-        eri_3center_eigen_lr(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
+        eri_3center_mo_lr(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
                                     = tmp2(mstate_min_:mstate_max_, nstate_min_:nstate_max_)
 
       enddo !iauxil_lr
@@ -579,21 +579,21 @@ subroutine calculate_eri_3center_eigen(c_matrix, mstate_min, mstate_max, nstate_
   call clean_deallocate('TMP 3-center ints', c_t, verbose_)
   call clean_deallocate('TMP 3-center ints', tmp1, verbose_)
 
-  call poorman%sum(eri_3center_eigen)
-  if( PRESENT(long_range) ) call poorman%sum(eri_3center_eigen_lr)
+  call poorman%sum(eri_3center_mo)
+  if( PRESENT(long_range) ) call poorman%sum(eri_3center_mo_lr)
 
   if( PRESENT(timing) ) then
     call stop_clock(timing)
   else
-    call stop_clock(timing_eri_3center_eigen)
+    call stop_clock(timing_eri_3center_ao2mo)
   endif
 
-end subroutine calculate_eri_3center_eigen
+end subroutine calculate_eri_3center_mo
 
 
 !=================================================================
-! Calculate LR Coulomb integrals and place them in eri_3center_eigen
-subroutine calculate_eri_3center_eigen_lr(c_matrix, mstate_min, mstate_max, nstate_min, nstate_max, timing, verbose)
+! Calculate LR Coulomb integrals and place them in eri_3center_mo
+subroutine calculate_eri_3center_mo_lr(c_matrix, mstate_min, mstate_max, nstate_min, nstate_max, timing, verbose)
   implicit none
   real(dp), intent(in)         :: c_matrix(:, :, :)
   integer, optional, intent(in) :: mstate_min, mstate_max, nstate_min, nstate_max
@@ -610,15 +610,15 @@ subroutine calculate_eri_3center_eigen_lr(c_matrix, mstate_min, mstate_max, nsta
   integer              :: ipair
   !=====
 
-  ! eri_3center_eigen is already allocated, then assume that you know what you are doing
-  if( ALLOCATED(eri_3center_eigen) ) then
+  ! eri_3center_mo is already allocated, then assume that you know what you are doing
+  if( ALLOCATED(eri_3center_mo) ) then
     return
   endif
 
   if( PRESENT(timing) ) then
     call start_clock(timing)
   else
-    call start_clock(timing_eri_3center_eigen)
+    call start_clock(timing_eri_3center_ao2mo)
   endif
 
   if(PRESENT(verbose)) then
@@ -627,7 +627,7 @@ subroutine calculate_eri_3center_eigen_lr(c_matrix, mstate_min, mstate_max, nsta
     verbose_ = .TRUE.
   endif
   if(verbose_) then
-    write(stdout, '(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
+    write(stdout, '(/,a)') ' Calculate 3-center integrals on molecular orbitals: AO -> MO transform'
   endif
 
   nbf    = SIZE(c_matrix, DIM=1)
@@ -662,9 +662,9 @@ subroutine calculate_eri_3center_eigen_lr(c_matrix, mstate_min, mstate_max, nsta
 
   nauxil_local_ = nauxil_local_lr
   !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
-  call clean_allocate('3-center MO integrals', eri_3center_eigen, 1, nauxil_local_, &
+  call clean_allocate('3-center MO integrals', eri_3center_mo, 1, nauxil_local_, &
                      mstate_min_, mstate_max_, nstate_min_, nstate_max_, 1, nspin, verbose_)
-  eri_3center_eigen(:, :, :, :) = 0.0_dp
+  eri_3center_mo(:, :, :, :) = 0.0_dp
 
   call clean_allocate('TMP 3-center ints', tmp1, mstate_min_, mstate_max_, 1, nbf, verbose_)
   call clean_allocate('TMP 3-center ints', c_t , mstate_min_, mstate_max_, 1, nbf, verbose_)
@@ -696,7 +696,7 @@ subroutine calculate_eri_3center_eigen_lr(c_matrix, mstate_min, mstate_max, nsta
                  0.0d0, tmp2(mstate_min_, nstate_min_), mstate_count_)
 
       ! Transposition happens here!
-      eri_3center_eigen(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
+      eri_3center_mo(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
                                   = tmp2(mstate_min_:mstate_max_, nstate_min_:nstate_max_)
 
     enddo !iauxil
@@ -707,20 +707,20 @@ subroutine calculate_eri_3center_eigen_lr(c_matrix, mstate_min, mstate_max, nsta
   call clean_deallocate('TMP 3-center ints', c_t, verbose_)
   call clean_deallocate('TMP 3-center ints', tmp1, verbose_)
 
-  call poorman%sum(eri_3center_eigen)
+  call poorman%sum(eri_3center_mo)
 
   if( PRESENT(timing) ) then
     call stop_clock(timing)
   else
-    call stop_clock(timing_eri_3center_eigen)
+    call stop_clock(timing_eri_3center_ao2mo)
   endif
 
-end subroutine calculate_eri_3center_eigen_lr
+end subroutine calculate_eri_3center_mo_lr
 
 
 !=================================================================
-subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, mstate_min, mstate_max, nstate_min, nstate_max, timing, verbose, &
-                                             long_range, only_one_spin)
+subroutine calculate_eri_3center_mo_cmplx(c_matrix_cmplx, mstate_min, mstate_max, nstate_min, nstate_max, timing, verbose, &
+                                          long_range, only_one_spin)
   implicit none
   complex(dp), intent(in)         :: c_matrix_cmplx(:, :, :)
   integer, optional, intent(in) :: mstate_min, mstate_max, nstate_min, nstate_max
@@ -744,18 +744,18 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, mstate_min, mstate_
   endif
 
   if( PRESENT(long_range) ) then
-    if( long_range .AND. (.NOT. ALLOCATED(eri_3center_eigen_lr_cmplx)) ) lr_exists=.false.
+    if( long_range .AND. (.NOT. ALLOCATED(eri_3center_mo_lr_cmplx)) ) lr_exists=.false.
   endif
 
-  ! eri_3center_eigen(_lr) is/are already allocated, then assume that you know what you are doing
-  if( ALLOCATED(eri_3center_eigen_cmplx) .AND. lr_exists ) then
+  ! eri_3center_mo(_lr) is/are already allocated, then assume that you know what you are doing
+  if( ALLOCATED(eri_3center_mo_cmplx) .AND. lr_exists ) then
     return
   endif
 
   if( PRESENT(timing) ) then
     call start_clock(timing)
   else
-    call start_clock(timing_eri_3center_eigen)
+    call start_clock(timing_eri_3center_ao2mo)
   endif
 
   if(PRESENT(verbose)) then
@@ -764,7 +764,7 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, mstate_min, mstate_
     verbose_ = .TRUE.
   endif
   if(verbose_) then
-    write(stdout, '(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
+    write(stdout, '(/,a)') ' Calculate 3-center integrals on molecular orbitals: AO -> MO transform'
   endif
 
   nbf    = SIZE(c_matrix_cmplx, DIM=1)
@@ -798,14 +798,14 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, mstate_min, mstate_
   nstate_count_ = nstate_max_ - nstate_min_ + 1
 
   !TODO merge the 2 last indexes to save a factor 2! (i<->j symmetry)
-  call clean_allocate('3-center MO integrals', eri_3center_eigen_cmplx, 1, nauxil_local, &
+  call clean_allocate('3-center MO integrals', eri_3center_mo_cmplx, 1, nauxil_local, &
                       mstate_min_, mstate_max_, nstate_min_, nstate_max_, 1, nspin_, verbose_)
   if(PRESENT(long_range)) then
-    call clean_allocate('3-center_lr MO integrals', eri_3center_eigen_lr_cmplx, 1, nauxil_local_lr, &
+    call clean_allocate('3-center_lr MO integrals', eri_3center_mo_lr_cmplx, 1, nauxil_local_lr, &
                      mstate_min_, mstate_max_, nstate_min_, nstate_max_, 1, nspin_, verbose_)
-    eri_3center_eigen_lr_cmplx(:, :, :, :) = (0.0_dp, 0.0_dp)
+    eri_3center_mo_lr_cmplx(:, :, :, :) = (0.0_dp, 0.0_dp)
   endif
-  eri_3center_eigen_cmplx(:, :, :, :) = (0.0_dp, 0.0_dp)
+  eri_3center_mo_cmplx(:, :, :, :) = (0.0_dp, 0.0_dp)
 
   call clean_allocate('TMP 3-center ints', tmp1_cmplx, mstate_min_, mstate_max_, 1, nbf, verbose_)
   call clean_allocate('TMP 3-center ints', c_t_cmplx , mstate_min_, mstate_max_, 1, nbf, verbose_)
@@ -837,7 +837,7 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, mstate_min, mstate_
                  complex_zero, tmp2_cmplx(mstate_min_, nstate_min_), mstate_count_)
 
       ! Transposition happens here!
-      eri_3center_eigen_cmplx(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
+      eri_3center_mo_cmplx(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
                                   = tmp2_cmplx(mstate_min_:mstate_max_, nstate_min_:nstate_max_)
 
     enddo !iauxil
@@ -865,7 +865,7 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, mstate_min, mstate_
                    complex_zero, tmp2_cmplx(mstate_min_, nstate_min_), mstate_count_)
   
         ! Transposition (ij, P) -> (P, ij) happens here!
-        eri_3center_eigen_lr_cmplx(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
+        eri_3center_mo_lr_cmplx(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
                                     = tmp2_cmplx(mstate_min_:mstate_max_, nstate_min_:nstate_max_)
     
       enddo !iauxil_lr
@@ -877,16 +877,16 @@ subroutine calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, mstate_min, mstate_
   call clean_deallocate('TMP 3-center ints', c_t_cmplx, verbose_)
   call clean_deallocate('TMP 3-center ints', tmp1_cmplx, verbose_)
 
-  call poorman%sum(eri_3center_eigen_cmplx)
-  if( PRESENT(long_range) ) call poorman%sum(eri_3center_eigen_lr_cmplx)
+  call poorman%sum(eri_3center_mo_cmplx)
+  if( PRESENT(long_range) ) call poorman%sum(eri_3center_mo_lr_cmplx)
 
   if( PRESENT(timing) ) then
     call stop_clock(timing)
   else
-    call stop_clock(timing_eri_3center_eigen)
+    call stop_clock(timing_eri_3center_ao2mo)
   endif
 
-end subroutine calculate_eri_3center_eigen_cmplx
+end subroutine calculate_eri_3center_mo_cmplx
 
 
 !=================================================================
@@ -920,7 +920,7 @@ subroutine calculate_eri_x2c(c_matrix_rel, nstate, nstate_min, nstate_max, mstat
     enddo
   enddo
 
-  call calculate_eri_3center_eigen_cmplx(c_matrix_LaorLb, nstate_min_, nstate_max_, mstate_min_, mstate_max_, verbose=x2c_verbose)
+  call calculate_eri_3center_mo_cmplx(c_matrix_LaorLb, nstate_min_, nstate_max_, mstate_min_, mstate_max_, verbose=x2c_verbose)
 
   deallocate(c_matrix_LaorLb)
 
@@ -928,7 +928,7 @@ end subroutine calculate_eri_x2c
 
 
 !=================================================================
-subroutine destroy_eri_3center_eigen(verbose, long_range, force)
+subroutine destroy_eri_3center_mo(verbose, long_range, force)
   implicit none
 
   logical, optional, intent(in) :: verbose, long_range, force
@@ -946,22 +946,22 @@ subroutine destroy_eri_3center_eigen(verbose, long_range, force)
     verbose_ = .TRUE.
   endif
 
-  if( ALLOCATED(eri_3center_eigen) ) then
-    if(verbose_) write(stdout, '(/,a)') ' Destroy 3-center integrals on eigenstates'
-    call clean_deallocate('3-center MO integrals', eri_3center_eigen, verbose_)
+  if( ALLOCATED(eri_3center_mo) ) then
+    if(verbose_) write(stdout, '(/,a)') ' Destroy 3-center integrals on MO'
+    call clean_deallocate('3-center MO integrals', eri_3center_mo, verbose_)
   endif
   if(PRESENT(long_range)) then
     if(long_range) then
-      if(verbose_) write(stdout, '(a,/)') ' Destroy 3-center_lr integrals on eigenstates'
-      call clean_deallocate('3-center_lr MO integrals', eri_3center_eigen_lr, verbose_)
+      if(verbose_) write(stdout, '(a,/)') ' Destroy 3-center_lr integrals on MO'
+      call clean_deallocate('3-center_lr MO integrals', eri_3center_mo_lr, verbose_)
     endif
   endif
 
-end subroutine destroy_eri_3center_eigen
+end subroutine destroy_eri_3center_mo
 
 
 !=================================================================
-subroutine destroy_eri_3center_eigen_cmplx(verbose, long_range)
+subroutine destroy_eri_3center_mo_cmplx(verbose, long_range)
   implicit none
 
   logical, optional, intent(in) :: verbose, long_range
@@ -975,29 +975,29 @@ subroutine destroy_eri_3center_eigen_cmplx(verbose, long_range)
     verbose_ = .TRUE.
   endif
 
-  if(verbose_) write(stdout, '(/,a)') ' Destroy 3-center integrals on eigenstates'
-  call clean_deallocate('3-center MO integrals', eri_3center_eigen_cmplx, verbose_)
+  if(verbose_) write(stdout, '(/,a)') ' Destroy 3-center integrals on MO'
+  call clean_deallocate('3-center MO integrals', eri_3center_mo_cmplx, verbose_)
   if(PRESENT(long_range)) then
     if(long_range) then
-      if(verbose_) write(stdout, '(a,/)') ' Destroy 3-center_lr integrals on eigenstates'
-      call clean_deallocate('3-center_lr MO integrals', eri_3center_eigen_lr_cmplx, verbose_)
+      if(verbose_) write(stdout, '(a,/)') ' Destroy 3-center_lr integrals on MO'
+      call clean_deallocate('3-center_lr MO integrals', eri_3center_mo_lr_cmplx, verbose_)
     endif
   endif
 
-end subroutine destroy_eri_3center_eigen_cmplx
+end subroutine destroy_eri_3center_mo_cmplx
 
 
 !=================================================================
-subroutine destroy_eri_3center_eigen_x2c()
+subroutine destroy_eri_3center_mo_x2c()
   implicit none
 
   !=====
   logical :: x2c_verbose=.FALSE.
   !=====
 
-  call clean_deallocate('3-center MO integrals', eri_3center_eigen_cmplx, x2c_verbose)
+  call clean_deallocate('3-center MO integrals', eri_3center_mo_cmplx, x2c_verbose)
 
-end subroutine destroy_eri_3center_eigen_x2c
+end subroutine destroy_eri_3center_mo_x2c
 
 
 !=================================================================
@@ -1163,7 +1163,7 @@ subroutine read_cc4s_coulombvertex(rootname)
   
   allocate(coulomb_vertex_ij(naux))
 
-  call clean_allocate('3-center MO integrals', eri_3center_eigen, 1, nauxil_local, 1, nstate, 1, nstate, 1, 1)
+  call clean_allocate('3-center MO integrals', eri_3center_mo, 1, nauxil_local, 1, nstate, 1, nstate, 1, 1)
 
 #if !defined(HAVE_MPI)
   write(stdout, '(/,1x,a)') 'Reading file ' // TRIM(rootname_) // 'CoulombVertex.elements with plain fortran'
@@ -1172,8 +1172,8 @@ subroutine read_cc4s_coulombvertex(rootname)
   do istate=1, nstate
     do jstate=1, nstate
       read(unitcv) coulomb_vertex_ij(:)
-      eri_3center_eigen(1:naux, istate, jstate, 1)      = coulomb_vertex_ij(:)%re
-      eri_3center_eigen(naux+1:2*naux, istate, jstate, 1) = coulomb_vertex_ij(:)%im
+      eri_3center_mo(1:naux, istate, jstate, 1)      = coulomb_vertex_ij(:)%re
+      eri_3center_mo(naux+1:2*naux, istate, jstate, 1) = coulomb_vertex_ij(:)%im
     enddo
   enddo
 
@@ -1233,14 +1233,14 @@ subroutine read_cc4s_coulombvertex(rootname)
                      nprow_cd, ' x ', npcol_cd, ')   to   (', &
                      nprow_eri3_mo, ' x ', npcol_eri3_mo, ')'
   call PDGEMR2D(nauxil_global, nstate2, eri_3center_tmp, 1, 1, desc_tmp, &
-                                      eri_3center_eigen, 1, 1, desc_mo, cntxt_eri3_mo)
+                                      eri_3center_mo, 1, 1, desc_mo, cntxt_eri3_mo)
 
   call clean_deallocate('Reading 3-center MO integrals', eri_3center_tmp)
 
   call MPI_FILE_CLOSE(unitcv, ierr)
 #endif
-  first_index = LBOUND(eri_3center_eigen, DIM=2)
-  rtmp = DOT_PRODUCT(eri_3center_eigen(:, first_index, first_index, 1), eri_3center_eigen(:, first_index, first_index, 1))
+  first_index = LBOUND(eri_3center_mo, DIM=2)
+  rtmp = DOT_PRODUCT(eri_3center_mo(:, first_index, first_index, 1), eri_3center_mo(:, first_index, first_index, 1))
   call auxil%sum(rtmp)
   write(stdout, '(1x,a,es16.8)') 'Testing integral (11|11) (Ha):', rtmp
 

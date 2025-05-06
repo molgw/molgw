@@ -1,0 +1,19 @@
+&molgw
+ comment='Do a MP2 calculation on top of ABINIT-generated files'
+
+ nscf=0
+ scf ='HF'
+ basis='cc-pVDZ'
+ auxil_basis='auto'
+
+ print_restart='no'
+ print_bigrestart='no'
+
+ init_hamiltonian='CC4S_FILES'
+ cc4s_input='../data_for_tests/lih_bulk08_'
+
+ postscf='MP2'
+
+ natom = 1
+/
+He  0. 0. 0.

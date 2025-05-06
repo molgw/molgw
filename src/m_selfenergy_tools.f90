@@ -216,7 +216,7 @@ subroutine find_qp_energy_linearization(se, exchange_m_vxc, energy0, energy_qp_z
 
   ! Then overwrite the interesting energy with the calculated GW one
   !$OMP PARALLEL
-  !$OMP DO PRIVATE(pspin,zz_p)
+  !$OMP DO PRIVATE(pspin, zz_p)
   do pstate=nsemin, nsemax
 
     if( se%nomega > 0 .AND. PRESENT(zz) ) then

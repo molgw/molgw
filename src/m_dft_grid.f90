@@ -326,7 +326,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
               rk(kcenter) = NORM2(rr_grid_tmp(:, ir)-xbasis(:, kcenter))
             enddo
 
-            !$OMP PARALLEL PRIVATE(mu,mu_aa,rtmp)
+            !$OMP PARALLEL PRIVATE(mu, mu_aa, rtmp)
             !$OMP DO
             do kcenter=1, ncenter_basis
               do jcenter=kcenter+1, ncenter_basis
@@ -666,7 +666,7 @@ subroutine calculate_basis_functions_r(basis, rr, basis_function_r)
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  !$OMP PARALLEL PRIVATE(li,ni_cart,ibf1,ibf1_cart,ibf2,basis_function_r_cart)
+  !$OMP PARALLEL PRIVATE(li, ni_cart, ibf1, ibf1_cart, ibf2, basis_function_r_cart)
   !$OMP DO
   do ishell=1, basis%nshell
     li        = basis%shell(ishell)%am
@@ -712,7 +712,7 @@ subroutine calculate_basis_functions_r_batch(basis, rr, basis_function_r)
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  !$OMP PARALLEL PRIVATE(li,ni_cart,ibf1,ibf1_cart,ibf2,basis_function_r_cart)
+  !$OMP PARALLEL PRIVATE(li, ni_cart, ibf1, ibf1_cart, ibf2, basis_function_r_cart)
   !$OMP DO
   do ishell=1, basis%nshell
     li      = basis%shell(ishell)%am
@@ -757,7 +757,7 @@ subroutine calculate_basis_functions_gradr(basis, rr, basis_function_gradr)
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  !$OMP PARALLEL PRIVATE(li,ni_cart,ibf1,ibf1_cart,ibf2,basis_function_gradr_cart)
+  !$OMP PARALLEL PRIVATE(li, ni_cart, ibf1, ibf1_cart, ibf2, basis_function_gradr_cart)
   !$OMP DO
   do ishell=1, basis%nshell
     li      = basis%shell(ishell)%am
@@ -805,7 +805,7 @@ subroutine calculate_basis_functions_gradr_batch(basis, rr, bf_gradx, bf_grady, 
   nr = SIZE(bf_gradx, DIM=2)
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  !$OMP PARALLEL PRIVATE(li,ni_cart,ibf1,ibf1_cart,ibf2,basis_function_gradr_cart)
+  !$OMP PARALLEL PRIVATE(li, ni_cart, ibf1, ibf1_cart, ibf2, basis_function_gradr_cart)
   !$OMP DO
   do ishell=1, basis%nshell
     li      = basis%shell(ishell)%am

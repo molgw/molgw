@@ -196,7 +196,7 @@ subroutine calc_PI_dens_grad_r_batch(occupation, dm2_JK, c_matrix, bfr, PIr, &
       call DGEMM('T', 'N', nocc, nr, nbf, 1.0d0, c_matrix(1, 1, ispin), nbf, bf_grady(1, 1), nbf, 0.d0, phir_grady(1,1),nocc)
       call DGEMM('T', 'N', nocc, nr, nbf, 1.0d0, c_matrix(1, 1, ispin), nbf, bf_gradz(1, 1), nbf, 0.d0, phir_gradz(1,1),nocc)
 
-      !$OMP PARALLEL DO PRIVATE(istate,jstate)  
+      !$OMP PARALLEL DO PRIVATE(istate, jstate)  
       do ir=1, nr
         rhor(ispin, ir)        = SUM( phir(:, ir)**2 * occupation(:nocc, ispin) )
         grad_rhor(ispin, ir, 1) = 2.0_dp * SUM(  phir(:, ir) * phir_gradx(:, ir) * occupation(:nocc, ispin) )
@@ -236,7 +236,7 @@ subroutine calc_PI_dens_grad_r_batch(occupation, dm2_JK, c_matrix, bfr, PIr, &
       call ZGEMM('T', 'N', nocc, nr, nbf, COMPLEX_ONE, c_matrix(1, 1, ispin), nbf, tmp_cmplx(1, 1), nbf, &
                  COMPLEX_ZERO, phir_gradz_cmplx(1,1),nocc)
 
-      !$OMP PARALLEL DO PRIVATE(istate,jstate)
+      !$OMP PARALLEL DO PRIVATE(istate, jstate)
       do ir=1, nr
         rhor(ispin, ir) = SUM( ABS(phir_cmplx(:, ir))**2 * occupation(:nocc, ispin) )
         grad_rhor(ispin, ir, 1) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir) &

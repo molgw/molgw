@@ -49,7 +49,7 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
     if( ncore == 0) ncore = atoms_core_states()
   endif
 
-  call calculate_eri_3center_eigen(c_matrix, ncore+1, nstate, ncore+1, nstate)
+  call calculate_eri_3center_mo(c_matrix, ncore+1, nstate, ncore+1, nstate)
 
   nstate_mp2 = MIN( nvirtualg-1, nstate )
 
@@ -101,12 +101,12 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
 
               energy_denom =  fact / energy_denom
 
-              tmp_iajb = eri_eigen_ri(istate, astate, iaspin, jstate, bstate, jbspin)
+              tmp_iajb = evaluate_eri_mo_ri(istate, astate, iaspin, jstate, bstate, jbspin)
 
               contrib1 = contrib1 + 0.5_dp * energy_denom * tmp_iajb**2
 
               if(iaspin==jbspin) then
-                tmp_ibja = eri_eigen_ri(istate, bstate, iaspin, jstate, astate, jbspin)
+                tmp_ibja = evaluate_eri_mo_ri(istate, bstate, iaspin, jstate, astate, jbspin)
                 contrib2 = contrib2 - 0.5_dp * energy_denom * tmp_iajb*tmp_ibja / spin_fact
               endif
 
@@ -131,7 +131,7 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
   write(stdout, '(a,f16.10)')   ' SOX diagram     :', contrib2
   write(stdout, '(a,f16.10,/)') ' MP2 correlation :', emp2
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
   call stop_clock(timing_mp2_energy)
 
 end subroutine mp2_energy_ri
@@ -166,7 +166,7 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
     if( ncore == 0) ncore = atoms_core_states()
   endif
 
-  call calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, ncore+1, nstate, ncore+1, nstate)
+  call calculate_eri_3center_mo_cmplx(c_matrix_cmplx, ncore+1, nstate, ncore+1, nstate)
 
   nstate_mp2 = MIN( nvirtualg-1, nstate )
 
@@ -214,12 +214,12 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
 
               energy_denom =  fact / energy_denom
 
-              tmp_iajb = eri_eigen_ri_cmplx(istate, astate, iaspin, jstate, bstate, jbspin)
+              tmp_iajb = evaluate_eri_mo_ri_cmplx(istate, astate, iaspin, jstate, bstate, jbspin)
 
               contrib1 = contrib1 + 0.5_dp * energy_denom * conjg(tmp_iajb)*tmp_iajb
 
               if(iaspin==jbspin) then
-                tmp_ibja = eri_eigen_ri_cmplx(istate, bstate, iaspin, jstate, astate, jbspin)
+                tmp_ibja = evaluate_eri_mo_ri_cmplx(istate, bstate, iaspin, jstate, astate, jbspin)
                 contrib2 = contrib2 - 0.5_dp * energy_denom * conjg(tmp_iajb)*tmp_ibja / spin_fact
               endif
 
@@ -244,7 +244,7 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
   write(stdout, '(a,f16.10)')   ' SOX diagram     :', real(contrib2)
   write(stdout, '(a,f16.10,/)') ' MP2 correlation :', emp2
 
-  call destroy_eri_3center_eigen_cmplx()
+  call destroy_eri_3center_mo_cmplx()
   call stop_clock(timing_mp2_energy)
 
 end subroutine mp2_energy_ri_cmplx
@@ -276,7 +276,7 @@ subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
   exx = 0.0_dp
   do istate=1, nocc
     do jstate=1, nocc ! Recall         r      r      r'     r'
-      exx=exx-real(eri_eigen_ri_x2c(istate, jstate, jstate, istate), dp)
+      exx=exx-real(evaluate_eri_mo_ri_x2c(istate, jstate, jstate, istate), dp)
     enddo
   enddo
   exx = 0.5_dp*exx
@@ -320,8 +320,8 @@ subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
              cycle
            endif
 
-           tmp_iajb = eri_eigen_ri_x2c(istate, astate, jstate, bstate)
-           tmp_ibja = eri_eigen_ri_x2c(istate, bstate, jstate, astate)
+           tmp_iajb = evaluate_eri_mo_ri_x2c(istate, astate, jstate, bstate)
+           tmp_ibja = evaluate_eri_mo_ri_x2c(istate, bstate, jstate, astate)
       
            contrib1 = contrib1 + conjg(tmp_iajb-tmp_ibja)*(tmp_iajb-tmp_ibja)/energy_denom
 
@@ -343,7 +343,7 @@ subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
   write(stdout, '(/,a,f16.10,/)') ' MP2 correlation :', emp2
 
   deallocate(energy_vec)
-  call destroy_eri_3center_eigen_x2c()
+  call destroy_eri_3center_mo_x2c()
   call stop_clock(timing_mp2_energy)
 
 end subroutine mp2_energy_ri_x2c
@@ -379,7 +379,7 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
     if( ncore == 0) ncore = atoms_core_states()
   endif
 
-  call calculate_eri_3center_eigen(c_matrix, ncore+1, nstate, ncore+1, nstate)
+  call calculate_eri_3center_mo(c_matrix, ncore+1, nstate, ncore+1, nstate)
 
   nstate_mp3 = MIN( nvirtualg-1, nstate )
 
@@ -412,8 +412,8 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
       do jstate=ncore+1, nocc(iaspin)
         do bstate=nocc(iaspin)+1, nstate_mp3
 
-          t_ijab_tilde = - 2.0_dp * ( 2.0_dp * eri_eigen_ri(istate, astate, iaspin, jstate, bstate, jbspin)  &
-                                     - eri_eigen_ri(istate, bstate, iaspin, jstate, astate, jbspin) ) &
+          t_ijab_tilde = - 2.0_dp * ( 2.0_dp * evaluate_eri_mo_ri(istate, astate, iaspin, jstate, bstate, jbspin)  &
+                                     - evaluate_eri_mo_ri(istate, bstate, iaspin, jstate, astate, jbspin) ) &
                                        / ( energy(astate, iaspin) + energy(bstate, jbspin) &
                                           - energy(istate, iaspin) - energy(jstate, jbspin) )
 
@@ -426,10 +426,10 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
           do cstate=nocc(iaspin)+1, nstate_mp3
             do dstate=nocc(iaspin)+1, nstate_mp3
 
-              t_ijcd = - eri_eigen_ri(istate, cstate, iaspin, jstate, dstate, jbspin)  &
+              t_ijcd = - evaluate_eri_mo_ri(istate, cstate, iaspin, jstate, dstate, jbspin)  &
                           / ( energy(cstate, iaspin) + energy(dstate, jbspin) - energy(istate, iaspin) - energy(jstate, jbspin) )
 
-              x_ijab = x_ijab + 0.5_dp * eri_eigen_ri(astate, cstate, iaspin, bstate, dstate, jbspin) * t_ijcd
+              x_ijab = x_ijab + 0.5_dp * evaluate_eri_mo_ri(astate, cstate, iaspin, bstate, dstate, jbspin) * t_ijcd
 
             enddo
           enddo
@@ -439,10 +439,10 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
           do kstate=ncore+1, nocc(iaspin)
             do lstate=ncore+1, nocc(iaspin)
 
-              t_klab = - eri_eigen_ri(kstate, astate, iaspin, lstate, bstate, jbspin)  &
+              t_klab = - evaluate_eri_mo_ri(kstate, astate, iaspin, lstate, bstate, jbspin)  &
                           / ( energy(astate, iaspin) + energy(bstate, jbspin) - energy(kstate, iaspin) - energy(lstate, jbspin) )
 
-              x_ijab = x_ijab + 0.5_dp * eri_eigen_ri(kstate, istate, iaspin, lstate, jstate, jbspin) * t_klab
+              x_ijab = x_ijab + 0.5_dp * evaluate_eri_mo_ri(kstate, istate, iaspin, lstate, jstate, jbspin) * t_klab
 
             enddo
           enddo
@@ -452,20 +452,20 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
           do kstate=ncore+1, nocc(iaspin)
             do cstate=nocc(iaspin)+1, nstate_mp3
 
-              t_ikac = - eri_eigen_ri(istate, astate, iaspin, kstate, cstate, jbspin)  &
+              t_ikac = - evaluate_eri_mo_ri(istate, astate, iaspin, kstate, cstate, jbspin)  &
                           / ( energy(astate, iaspin) + energy(cstate, jbspin) - energy(istate, iaspin) - energy(kstate, jbspin) )
 
-              x_ijab = x_ijab + ( 2.0_dp * eri_eigen_ri(bstate, jstate, iaspin, kstate, cstate, jbspin) &
-                                  - eri_eigen_ri(bstate, cstate, iaspin, kstate, jstate, jbspin) ) * t_ikac
+              x_ijab = x_ijab + ( 2.0_dp * evaluate_eri_mo_ri(bstate, jstate, iaspin, kstate, cstate, jbspin) &
+                                  - evaluate_eri_mo_ri(bstate, cstate, iaspin, kstate, jstate, jbspin) ) * t_ikac
 
 
-              t_kjac = - eri_eigen_ri(kstate, astate, iaspin, jstate, cstate, jbspin)  &
+              t_kjac = - evaluate_eri_mo_ri(kstate, astate, iaspin, jstate, cstate, jbspin)  &
                           / ( energy(astate, iaspin) + energy(cstate, jbspin) - energy(kstate, iaspin) - energy(jstate, jbspin) )
-              x_ijab = x_ijab - eri_eigen_ri(bstate, cstate, iaspin, kstate, istate, jbspin) * t_kjac
+              x_ijab = x_ijab - evaluate_eri_mo_ri(bstate, cstate, iaspin, kstate, istate, jbspin) * t_kjac
 
-              t_kiac = - eri_eigen_ri(kstate, astate, iaspin, istate, cstate, jbspin)  &
+              t_kiac = - evaluate_eri_mo_ri(kstate, astate, iaspin, istate, cstate, jbspin)  &
                           / ( energy(astate, iaspin) + energy(cstate, jbspin) - energy(kstate, iaspin) - energy(istate, jbspin) )
-              x_ijab = x_ijab - eri_eigen_ri(bstate, jstate, iaspin, kstate, cstate, jbspin) * t_kiac
+              x_ijab = x_ijab - evaluate_eri_mo_ri(bstate, jstate, iaspin, kstate, cstate, jbspin) * t_kiac
 
 
             enddo
@@ -492,7 +492,7 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
   ! write(stdout,'(a,f16.10)')   ' SOX diagram     :',contrib3
   ! write(stdout,'(a,f16.10,/)') ' MP3 correlation :',emp3
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
   call stop_clock(timing_mp2_energy)
 
 end subroutine mp3_energy_ri

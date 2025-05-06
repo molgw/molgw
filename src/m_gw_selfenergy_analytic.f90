@@ -66,7 +66,7 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
 
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
   endif
 
 
@@ -96,7 +96,7 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
       else
         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
         w_s(:, nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , &
-                                            eri_3center_eigen(:, nsemin:nsemax, istate, ispin) )
+                                            eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
         call auxil%sum(w_s)
       endif
 
@@ -182,7 +182,7 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
   call clean_deallocate('Temporary array', w_s)
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   endif
 
 
@@ -245,7 +245,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   endif
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
   endif
 
   mstate = nvirtual_G - ncore_G - 1
@@ -311,11 +311,11 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
 #if defined(HAVE_SCALAPACK)
         call PDGEMM('T', 'N', wpol%npole_reso, mstate,nauxil_global, &
                    1.0_dp, wpol%residue_left, 1, 1, desc_wpol,        &
-                          eri_3center_eigen(1, nsemin, istate, ispin), 1, 1, desc_eri,        &
+                          eri_3center_mo(1, nsemin, istate, ispin), 1, 1, desc_eri,        &
                    0.0_dp, matrix_wing, irecord+1, 1, desc_wing)
 #else
         matrix_wing(irecord+1:irecord+wpol%npole_reso, :) = &
-             MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , eri_3center_eigen(:, nsemin:nsemax, istate, ispin) )
+             MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
         call auxil%sum(matrix_wing(irecord+1:irecord+wpol%npole_reso, :))
 #endif
       endif
@@ -459,7 +459,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   call clean_deallocate('Matrix head', matrix_head)
   deallocate(matrix_diag)
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   endif
 
   call stop_clock(timing_gw_self)
@@ -519,7 +519,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
   end select
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timing_aomo_gw)
 
 
 
@@ -558,15 +558,15 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
                    first_row, first_col, cntxt_eri3_mo, MAX(1, mlocal), info)
 
       if( cntxt_eri3_mo > 0 ) then
-        call clean_allocate('TMP 3center eigen', eri_3tmp_auxil, mlocal, nlocal, verbose=.FALSE.)
+        call clean_allocate('TMP 3center MO', eri_3tmp_auxil, mlocal, nlocal, verbose=.FALSE.)
         do jlocal=1, nlocal
           jglobal = INDXL2G(jlocal, NB_eri3_mo, ipcol_eri3_mo, first_col, npcol_eri3_mo) + ncore_G
           do ilocal=1, mlocal
-            eri_3tmp_auxil(ilocal, jlocal) = eri_3center_eigen(ilocal, jglobal, pstate, pspin)
+            eri_3tmp_auxil(ilocal, jlocal) = eri_3center_mo(ilocal, jglobal, pstate, pspin)
           enddo
         enddo
       else
-        call clean_allocate('TMP 3center eigen', eri_3tmp_auxil, 1, 1, verbose=.FALSE.)
+        call clean_allocate('TMP 3center MO', eri_3tmp_auxil, 1, 1, verbose=.FALSE.)
       endif
       !
       ! Change data distribution
@@ -575,10 +575,10 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
       nlocal = NUMROC(nvirtual_G-ncore_G-1, block_col, ipcol_sd, first_col, npcol_sd)
       call DESCINIT(desc_3sd, nauxil_global, nvirtual_G-ncore_G-1, block_row, block_col, &
                    first_row, first_col, cntxt_sd, MAX(1, mlocal), info)
-      call clean_allocate('TMP 3center eigen', eri_3tmp_sd, mlocal, nlocal, verbose=.FALSE.)
+      call clean_allocate('TMP 3center MO', eri_3tmp_sd, mlocal, nlocal, verbose=.FALSE.)
       call PDGEMR2D(nauxil_global, nvirtual_G-ncore_G-1, eri_3tmp_auxil, 1, 1, desc_3auxil, &
                                                           eri_3tmp_sd, 1, 1, desc_3sd, cntxt_sd)
-      call clean_deallocate('TMP 3center eigen', eri_3tmp_auxil, verbose=.FALSE.)
+      call clean_deallocate('TMP 3center MO', eri_3tmp_auxil, verbose=.FALSE.)
 
 
       !
@@ -594,11 +594,11 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
                              1.0_dp, wresidue_sd, 1, 1, desc_wsd,    &
                                     eri_3tmp_sd, 1, 1, desc_3sd,    &
                              0.0_dp, w_s        , 1, 1, desc_w_s)
-      call clean_deallocate('TMP 3center eigen', eri_3tmp_sd, verbose=.FALSE.)
+      call clean_deallocate('TMP 3center MO', eri_3tmp_sd, verbose=.FALSE.)
 
 
 
-      !$OMP PARALLEL PRIVATE(istate,spole,fact_full_i,fact_empty_i)
+      !$OMP PARALLEL PRIVATE(istate, spole, fact_full_i, fact_empty_i)
       !$OMP DO REDUCTION(+:sigmagw)
       do jlocal=1, nlocal
         istate = INDXL2G(jlocal, block_col, ipcol_sd, first_col, npcol_sd) + ncore_G
@@ -638,7 +638,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
   write(stdout, '(a)') ' Sigma_c(omega) is calculated'
 
   call clean_deallocate('TMP distributed W', wresidue_sd)
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 
@@ -682,7 +682,7 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
 
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
   endif
 
   call clean_allocate('Temporary array', w_s, 1, wpol%npole_reso, nsemin, nsemax)
@@ -710,7 +710,7 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
       else
         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
         w_s(:, nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:, :)), &
-                                            eri_3center_eigen(:, nsemin:nsemax, istate, ispin) )
+                                            eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
         call auxil%sum(w_s)
       endif
 
@@ -787,7 +787,7 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
   call apply_qs_approximation(s_matrix, c_matrix, selfenergy_mo, selfenergy_ao)
 
 
-  if(has_auxil_basis) call destroy_eri_3center_eigen()
+  if(has_auxil_basis) call destroy_eri_3center_mo()
 
 
   call stop_clock(timing_gw_self)
@@ -815,7 +815,7 @@ subroutine dump_gw_ingredients(energy, c_matrix, wpol)
   write(stdout, '(/,1x,a)') 'Dump on file the GW ingredients'
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
   endif
 
   !
@@ -850,7 +850,7 @@ subroutine dump_gw_ingredients(energy, c_matrix, wpol)
     do qstate=ncore_G+1, nvirtual_G-1
       ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
       wcoeff(:, ncore_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , &
-                                                 eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, qstate, qspin) )
+                                                 eri_3center_mo(:, ncore_G+1:nvirtual_G-1, qstate, qspin) )
       call auxil%sum(wcoeff)
       write(file_w) wcoeff(:, :)
     enddo
@@ -871,7 +871,7 @@ subroutine dump_gw_ingredients(energy, c_matrix, wpol)
   open(newunit=file_v, file='v.bin', form='unformatted', access='stream', status='replace')
   do qspin=1, nspin
     do qstate=ncore_G+1, nvirtual_G-1
-      write(file_v) eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, qstate, qspin)
+      write(file_v) eri_3center_mo(:, ncore_G+1:nvirtual_G-1, qstate, qspin)
     enddo
   enddo
   close(file_v)

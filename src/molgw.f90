@@ -449,7 +449,7 @@ program molgw
 
       else
 
-        if(complex_scf == 'no') then ! By default we use the real solution of the SCF equations
+        if( .NOT. complex_scf_ ) then ! By default we use the real solution of the SCF equations
           call scf_loop(is_restart,                                     &
                         basis,                                          &
                         x_matrix, s_matrix,                              &
@@ -568,7 +568,7 @@ program molgw
   endif
 #endif
 
-  if ( (.NOT. x2c_) .AND. (complex_scf == 'no') ) then
+  if ( (.NOT. x2c_) .AND. (.NOT. complex_scf_) ) then
     !
     ! Evaluate spin contamination
     call evaluate_s2_operator(occupation, c_matrix, s_matrix)
@@ -598,9 +598,9 @@ program molgw
     call selfenergy_set_state_range(nstate, occupation)
     call write_cc4s_eigenenergies(occupation(ncore_G+1:nvirtual_G-1,:), &
                                   energy(ncore_G+1:nvirtual_G-1,:), cc4s_output)
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
-    call write_cc4s_coulombvertex(eri_3center_eigen, cc4s_output)
-    call destroy_eri_3center_eigen()
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call write_cc4s_coulombvertex(eri_3center_mo, cc4s_output)
+    call destroy_eri_3center_mo()
   endif
 
   if( print_multipole_ ) then
@@ -729,9 +729,9 @@ program molgw
       call calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_matrix)
     endif
     if(has_auxil_basis) then
-      call calculate_eri_3center_eigen(c_matrix)
+      call calculate_eri_3center_mo(c_matrix)
     else
-      call calculate_eri_4center_eigen_uks(c_matrix, 1, MIN(nstate, nvirtualg-1))  ! TODO set the nstate_min to a more finely tuned value
+      call calculate_eri_4center_mo_uks(c_matrix, 1, MIN(nstate, nvirtualg-1))  ! TODO set the nstate_min to a more finely tuned value
     endif
 
     call prepare_ci(basis, MIN(nstate, nvirtualg-1), ncoreg, c_matrix)
@@ -750,9 +750,9 @@ program molgw
 
 
     if(has_auxil_basis) then
-      call destroy_eri_3center_eigen()
+      call destroy_eri_3center_mo()
     else
-      call destroy_eri_4center_eigen_uks()
+      call destroy_eri_4center_mo_uks()
     endif
 
     call destroy_ci()
@@ -781,11 +781,9 @@ program molgw
   !
   if( calc_type%is_mp2 ) then
 
-    call set_occupation(0.0_dp, electrons, magnetization, energy, occupation)
+    if( .NOT. x2c_ ) then ! non-relativistic
 
-    if( .not. x2c_ ) then ! non-relativistic
-
-      if( complex_scf == 'no' ) then ! real
+      if( .NOT. complex_scf_ ) then ! real
   
         if(has_auxil_basis) then
           call mp2_energy_ri(occupation, energy, c_matrix, en_gks%mp2)
@@ -880,7 +878,7 @@ program molgw
   !
   ! Cleanly exiting the code
   !
-  call destroy_eri_3center_eigen(force=.TRUE.)
+  call destroy_eri_3center_mo(force=.TRUE.)
   call clean_deallocate('Full RKB wavefunctions C', c_matrix_rel)
   call clean_deallocate('Wavefunctions C_cmplx', c_matrix_cmplx)
   call clean_deallocate('Wavefunctions C', c_matrix)

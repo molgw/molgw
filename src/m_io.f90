@@ -1641,7 +1641,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
   allocate(energy_local(nstate, nspin))
 
   energy_local(:, :) = 0.0_dp
-  if(PRESENT(energy) .and. (complex_scf=='no' .and. x2c=='no') ) then
+  if( PRESENT(energy) .AND. (.NOT. complex_scf_) .AND. (.NOT. x2c_) ) then
     energy_local(:, :) = energy(:, :)
   endif
 
@@ -2516,7 +2516,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
         enddo
       enddo
       cube_density_start(:, :) = 0.0_dp
-      !$OMP PARALLEL PRIVATE(basis_function_r,phi_cmplx)
+      !$OMP PARALLEL PRIVATE(basis_function_r, phi_cmplx)
       !$OMP DO
       do ir=1, cube_nx*cube_ny*cube_nz
         if(MODULO(ir-1, world%nproc)/=world%rank) cycle
@@ -2567,7 +2567,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
       !call start_clock(timing_tmp0)
       dens_diff(:) = 0.0_dp
 
-      !$OMP PARALLEL PRIVATE(basis_function_r,phi_cmplx)
+      !$OMP PARALLEL PRIVATE(basis_function_r, phi_cmplx)
       !$OMP DO
       do ir=1, cube_nx*cube_ny*cube_nz
         if(MODULO(ir-1, world%nproc)/=world%rank) cycle
@@ -3891,7 +3891,7 @@ subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
     !                                                              eri_3center_ao
     mem = REAL(nhomo-ncore_W, dp) * REAL(nvirtual_W-nhomo-1, dp) * nspin * auxil_nbf
   else
-    !          eri_eigenstate_klmin(
+    !          eri_mo_klmin(
     mem = REAL(nbf, dp)**3 * nspin
   endif
   mem = mem * 8.0_dp / 1024_dp**3

@@ -79,9 +79,9 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
   endif
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
-    call calculate_eri_4center_eigen_uks(c_matrix, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_4center_mo_uks(c_matrix, ncore_G+1, nvirtual_G-1)
   endif
 
 
@@ -113,8 +113,8 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
 
           do pstate=nsemin, nsemax
 
-            vcoul1 = eri_eigen(pstate, istate, ispin, bstate, kstate, ispin)
-            vcoul2 = eri_eigen(istate, bstate, ispin, kstate, pstate, ispin)
+            vcoul1 = evaluate_eri_mo(pstate, istate, ispin, bstate, kstate, ispin)
+            vcoul2 = evaluate_eri_mo(istate, bstate, ispin, kstate, pstate, ispin)
             if( gwgamma_tddft_ ) then
               fxc = eval_fxc_rks_singlet(istate, bstate, ispin, kstate, pstate, ispin)
               call grid%sum(fxc)
@@ -147,8 +147,8 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
 
           do pstate=nsemin, nsemax
 
-            vcoul1 = eri_eigen(pstate, astate, ispin, jstate, cstate, ispin)
-            vcoul2 = eri_eigen(astate, jstate, ispin, cstate, pstate, ispin)
+            vcoul1 = evaluate_eri_mo(pstate, astate, ispin, jstate, cstate, ispin)
+            vcoul2 = evaluate_eri_mo(astate, jstate, ispin, cstate, pstate, ispin)
             if( gwgamma_tddft_ ) then
               fxc = eval_fxc_rks_singlet(astate, jstate, ispin, cstate, pstate, ispin)
               call grid%sum(fxc)
@@ -192,7 +192,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
         if(has_auxil_basis) then
           do pstate=ncore_G+1, MAX(nhomo_G, nsemax)
             ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-            w_s(:, pstate)     = MATMUL( wpol%residue_left(:, spole) , eri_3center_eigen(:, :, pstate, ispin) )
+            w_s(:, pstate)     = MATMUL( wpol%residue_left(:, spole) , eri_3center_mo(:, :, pstate, ispin) )
           enddo
           call auxil%sum(w_s)
         else
@@ -218,7 +218,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
               ! calculate only the diagonal !
               do pstate=nsemin, nsemax
 
-                vcoul = eri_eigen(istate, cstate, ispin, bstate, pstate, ispin)
+                vcoul = evaluate_eri_mo(istate, cstate, ispin, bstate, pstate, ispin)
                 if( gwgamma_tddft_ ) then
                   fxc = eval_fxc_rks_singlet(istate, cstate, ispin, bstate, pstate, ispin)
                   call grid%sum(fxc)
@@ -258,7 +258,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
               ! calculate only the diagonal !
               do pstate=nsemin, nsemax
 
-                vcoul = eri_eigen(jstate, kstate, ispin, astate, pstate, ispin)
+                vcoul = evaluate_eri_mo(jstate, kstate, ispin, astate, pstate, ispin)
                 if( gwgamma_tddft_ ) then
                   fxc = eval_fxc_rks_singlet(jstate, kstate, ispin, astate, pstate, ispin)
                   call grid%sum(fxc)
@@ -288,7 +288,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
               ! calculate only the diagonal !
               do pstate=nsemin, nsemax
 
-                vcoul = eri_eigen(astate, kstate, ispin, jstate, pstate, ispin)
+                vcoul = evaluate_eri_mo(astate, kstate, ispin, jstate, pstate, ispin)
                 if( gwgamma_tddft_ ) then
                   fxc = eval_fxc_rks_singlet(astate, kstate, ispin, jstate, pstate, ispin)
                   call grid%sum(fxc)
@@ -328,7 +328,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
               ! calculate only the diagonal !
               do pstate=nsemin, nsemax
 
-                vcoul = eri_eigen(astate, cstate, ispin, jstate, pstate, ispin)
+                vcoul = evaluate_eri_mo(astate, cstate, ispin, jstate, pstate, ispin)
                 if( gwgamma_tddft_ ) then
                   fxc = eval_fxc_rks_singlet(astate, cstate, ispin, jstate, pstate, ispin)
                   call grid%sum(fxc)
@@ -394,9 +394,9 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
   call clean_deallocate('Temporary array', w_s)
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   else
-    call destroy_eri_4center_eigen_uks()
+    call destroy_eri_4center_mo_uks()
   endif
 
   if( gwgamma_tddft_ ) then
@@ -474,7 +474,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
 
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
     call die('sosex_selfenergy_analyzed: auxil_basis is compulsory')
   endif
@@ -492,7 +492,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
     nstate2 = state_range * ( nsemax - nsemin +1 )
     do pstate=nsemin, nsemax
       do ustate=ncore_G+1, nvirtual_G-1
-        up(:, ustate, pstate) = eri_3center_eigen(:, ustate, pstate, 1)
+        up(:, ustate, pstate) = eri_3center_mo(:, ustate, pstate, 1)
       enddo
     enddo
     call DGEMM('T', 'N', nauxil_global, nstate2, nauxil_global, &
@@ -505,7 +505,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
     allocate(chi_up(nauxil_global, ncore_G+1:nvirtual_G-1, nsemin:nsemax))
     do pstate=nsemin, nsemax
       do ustate=ncore_G+1, nvirtual_G-1
-        chi_up(:, ustate, pstate) = eri_3center_eigen(:, ustate, pstate, 1)
+        chi_up(:, ustate, pstate) = eri_3center_mo(:, ustate, pstate, 1)
       enddo
     enddo
   endif
@@ -583,9 +583,9 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
           ! calculate only the diagonal!
           qstate = pstate
 
-          !vcoul1 = eri_eigen(pstate,istate,pspin,bstate,kstate,pspin)
-          vcoul1 = DOT_PRODUCT(chi_up(:, istate, pstate), eri_3center_eigen(:, bstate, kstate, pspin))
-          vcoul2 = eri_eigen(istate, bstate, pspin, kstate, qstate, pspin)
+          !vcoul1 = evaluate_eri_mo(pstate,istate,pspin,bstate,kstate,pspin)
+          vcoul1 = DOT_PRODUCT(chi_up(:, istate, pstate), eri_3center_mo(:, bstate, kstate, pspin))
+          vcoul2 = evaluate_eri_mo(istate, bstate, pspin, kstate, qstate, pspin)
 
           sigma_sox(:, pstate, pspin, 1) = sigma_sox(:, pstate, pspin, 1) &
               - vcoul1 * vcoul2 / ( omega(:) - ei + eb - ek - ieta )
@@ -615,8 +615,8 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
           ! calculate only the diagonal!
           qstate = pstate
 
-          vcoul1 = eri_eigen(pstate, istate, pspin, bstate, kstate, pspin)
-          vcoul2 = eri_eigen(kstate, bstate, pspin, istate, qstate, pspin)
+          vcoul1 = evaluate_eri_mo(pstate, istate, pspin, bstate, kstate, pspin)
+          vcoul2 = evaluate_eri_mo(kstate, bstate, pspin, istate, qstate, pspin)
 
           w_ovo_hhp_ring(kstate, tpole, pstate) = w_ovo_hhp_ring(kstate, tpole, pstate) &
                         + spin_fact * vcoul1 * vcoul2
@@ -644,9 +644,9 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
           ! calculate only the diagonal!
           qstate = pstate
 
-          !vcoul1 = eri_eigen(pstate,astate,pspin,jstate,cstate,pspin)
-          vcoul1 = DOT_PRODUCT(chi_up(:, astate, pstate), eri_3center_eigen(:, jstate, cstate, pspin))
-          vcoul2 = eri_eigen(astate, jstate, pspin, cstate, qstate, pspin)
+          !vcoul1 = evaluate_eri_mo(pstate,astate,pspin,jstate,cstate,pspin)
+          vcoul1 = DOT_PRODUCT(chi_up(:, astate, pstate), eri_3center_mo(:, jstate, cstate, pspin))
+          vcoul2 = evaluate_eri_mo(astate, jstate, pspin, cstate, qstate, pspin)
 
           sigma_sox(:, pstate, pspin, 2) = sigma_sox(:, pstate, pspin, 2) &
               - vcoul1 * vcoul2 / ( omega(:) - ea + ej - ec + ieta )
@@ -675,8 +675,8 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
           ! calculate only the diagonal!
           qstate = pstate
 
-          vcoul1 = eri_eigen(pstate, astate, pspin, jstate, cstate, pspin)
-          vcoul2 = eri_eigen(cstate, jstate, pspin, astate, qstate, pspin)
+          vcoul1 = evaluate_eri_mo(pstate, astate, pspin, jstate, cstate, pspin)
+          vcoul2 = evaluate_eri_mo(cstate, jstate, pspin, astate, qstate, pspin)
 
           w_vov_pph_ring(cstate, tpole, pstate) = w_vov_pph_ring(cstate, tpole, pstate) &
                         + spin_fact * vcoul1 * vcoul2
@@ -704,7 +704,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
       if( has_auxil_basis ) then
         do pstate=ncore_G+1, MAX(nhomo_G, nsemax)
           ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-          w_s(:, pstate)     = MATMUL( wpol%residue_left(:, spole) , eri_3center_eigen(:, :, pstate, pspin) )
+          w_s(:, pstate)     = MATMUL( wpol%residue_left(:, spole) , eri_3center_mo(:, :, pstate, pspin) )
         enddo
         call auxil%sum(w_s)
       endif
@@ -754,8 +754,8 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
               ! calculate only the diagonal !
               qstate = pstate
 
-              !vcoul = eri_eigen(istate,pstate,pspin,bstate,kstate,pspin)
-              vcoul = DOT_PRODUCT(chi_up(:, istate, pstate), eri_3center_eigen(:, bstate, kstate, pspin))
+              !vcoul = evaluate_eri_mo(istate,pstate,pspin,bstate,kstate,pspin)
+              vcoul = DOT_PRODUCT(chi_up(:, istate, pstate), eri_3center_mo(:, bstate, kstate, pspin))
 
 !             sigma_sosex(:,pstate,pspin,1) = sigma_sosex(:,pstate,pspin,1) &
 !                       + w_s(kstate,qstate) * w_s(bstate,istate) * vcoul &
@@ -813,8 +813,8 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
               ! calculate only the diagonal !
               qstate = pstate
 
-              !vcoul = eri_eigen(astate,pstate,pspin,jstate,cstate,pspin)
-              vcoul = DOT_PRODUCT(chi_up(:, astate, pstate), eri_3center_eigen(:, jstate, cstate, pspin))
+              !vcoul = evaluate_eri_mo(astate,pstate,pspin,jstate,cstate,pspin)
+              vcoul = DOT_PRODUCT(chi_up(:, astate, pstate), eri_3center_mo(:, jstate, cstate, pspin))
 
               !sigma_sosex(:,pstate,pspin,2) = sigma_sosex(:,pstate,pspin,2) &
               !         + w_s(cstate,qstate) * w_s(astate,jstate) * vcoul &
@@ -864,8 +864,8 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
               ! calculate only the diagonal !
               qstate = pstate
 
-              !vcoul = eri_eigen(istate,pstate,pspin,bstate,cstate,pspin)
-              vcoul = DOT_PRODUCT(chi_up(:, istate, pstate), eri_3center_eigen(:, bstate, cstate, pspin))
+              !vcoul = evaluate_eri_mo(istate,pstate,pspin,bstate,cstate,pspin)
+              vcoul = DOT_PRODUCT(chi_up(:, istate, pstate), eri_3center_mo(:, bstate, cstate, pspin))
 
               sigma_sosex(:, pstate, pspin, 3) = sigma_sosex(:, pstate, pspin, 3) &
                        + w_s(cstate, qstate) * w_s(bstate, istate) * vcoul &
@@ -896,8 +896,8 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
               ! calculate only the diagonal !
               qstate = pstate
 
-              !vcoul = eri_eigen(astate,pstate,pspin,jstate,kstate,pspin)
-              vcoul = DOT_PRODUCT(chi_up(:, astate, pstate), eri_3center_eigen(:, jstate, kstate, pspin))
+              !vcoul = evaluate_eri_mo(astate,pstate,pspin,jstate,kstate,pspin)
+              vcoul = DOT_PRODUCT(chi_up(:, astate, pstate), eri_3center_mo(:, jstate, kstate, pspin))
 
               sigma_sosex(:, pstate, pspin, 4) = sigma_sosex(:, pstate, pspin, 4) &
                        + w_s(kstate, qstate) * w_s(astate, jstate) * vcoul &
@@ -1009,10 +1009,6 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
 
   se%sigma(:, :, :) = factor_sox * SUM(sigma_sox(:, :, :, :), DIM=4 ) &
                      + factor_sosex * SUM(sigma_sosex(:, :, :, :), DIM=4)
-  !FBFB
-  !call issue_warning('FBFB analyze coding: 2SOX + 2SOSEX')
-  !se%sigma(:, :, :) =  factor_sosex * SUM(sigma_sox(:, :, :, :), DIM=4 ) &
-  !                   + factor_sosex * SUM(sigma_sosex(:, :, :, :), DIM=4)
 
 
   ! if( print_sigma_) then
@@ -1042,9 +1038,9 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
   call clean_deallocate('Temporary array', w_s)
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   else
-    call destroy_eri_4center_eigen_uks()
+    call destroy_eri_4center_mo_uks()
   endif
 
   if( gwgamma_tddft_ ) then
@@ -1104,7 +1100,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
   end select
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
   call clean_allocate('Temporary array', w_s, ncore_G+1, nvirtual_G-1, ncore_G+1, MAX(nhomo_G, nsemax))
 
@@ -1148,7 +1144,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
   nstate2 = state_range * ( nsemax - nsemin +1 )
   do pstate=nsemin, nsemax
     do ustate=ncore_G+1, nvirtual_G-1
-      up(:, ustate, pstate) = eri_3center_eigen(:, ustate, pstate, 1)
+      up(:, ustate, pstate) = eri_3center_mo(:, ustate, pstate, 1)
     enddo
   enddo
   call DGEMM('T', 'N', nauxil_global, nstate2, nauxil_global, &
@@ -1180,17 +1176,17 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
 
           do pstate=nsemin, nsemax
 
-            !v_1 = eri_eigen(pstate,istate,ispin,bstate,kstate,ispin)
-            !v_2 = eri_eigen(istate,bstate,ispin,kstate,pstate,ispin)
+            !v_1 = evaluate_eri_mo(pstate,istate,ispin,bstate,kstate,ispin)
+            !v_2 = evaluate_eri_mo(istate,bstate,ispin,kstate,pstate,ispin)
 
-            ip(:) = eri_3center_eigen(:, pstate, istate, ispin)
-            bk(:) = eri_3center_eigen(:, bstate, kstate, ispin)
+            ip(:) = eri_3center_mo(:, pstate, istate, ispin)
+            bk(:) = eri_3center_mo(:, bstate, kstate, ispin)
             v_1  = DOT_PRODUCT( ip(:) , bk(:) )
             !w0_1 = DOT_PRODUCT( ip(:) , MATMUL( chi_static(:,:) , bk(:) ) )
             w0_1 = DOT_PRODUCT( bk(:) , chi_up(:, istate, pstate) )
 
-            ib(:) = eri_3center_eigen(:, istate, bstate, ispin)
-            kp(:) = eri_3center_eigen(:, kstate, pstate, ispin)
+            ib(:) = eri_3center_mo(:, istate, bstate, ispin)
+            kp(:) = eri_3center_mo(:, kstate, pstate, ispin)
             !w0_2 = DOT_PRODUCT( ib(:) , MATMUL( chi_static(:,:) , kp(:) ) )
             w0_2 = DOT_PRODUCT( ib(:) , chi_up(:, kstate, pstate) )
 
@@ -1221,17 +1217,17 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
 
           do pstate=nsemin, nsemax
 
-            !v_1 = eri_eigen(pstate,astate,ispin,jstate,cstate,ispin)
-            !v_2 = eri_eigen(astate,jstate,ispin,cstate,pstate,ispin)
+            !v_1 = evaluate_eri_mo(pstate,astate,ispin,jstate,cstate,ispin)
+            !v_2 = evaluate_eri_mo(astate,jstate,ispin,cstate,pstate,ispin)
 
-            pa(:) = eri_3center_eigen(:, pstate, astate, ispin)
-            jc(:) = eri_3center_eigen(:, jstate, cstate, ispin)
+            pa(:) = eri_3center_mo(:, pstate, astate, ispin)
+            jc(:) = eri_3center_mo(:, jstate, cstate, ispin)
             v_1  = DOT_PRODUCT( pa(:) , jc(:) )
             !w0_1 = DOT_PRODUCT( pa(:) , MATMUL( chi_static(:,:) , jc(:) ) )
             w0_1 = DOT_PRODUCT( jc(:) , chi_up(:, astate, pstate) )
 
-            aj(:) = eri_3center_eigen(:, astate, jstate, ispin)
-            cp(:) = eri_3center_eigen(:, cstate, pstate, ispin)
+            aj(:) = eri_3center_mo(:, astate, jstate, ispin)
+            cp(:) = eri_3center_mo(:, cstate, pstate, ispin)
             !w0_2 = DOT_PRODUCT( aj(:) , MATMUL( chi_static(:,:) , cp(:) ) )
             w0_2 = DOT_PRODUCT( aj(:) , chi_up(:, cstate, pstate) )
 
@@ -1278,7 +1274,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
         if(has_auxil_basis) then
           do pstate=ncore_G+1, MAX(nhomo_G, nsemax)
             ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-            w_s(:, pstate)     = MATMUL( wpol%residue_left(:, spole) , eri_3center_eigen(:, :, pstate, ispin) )
+            w_s(:, pstate)     = MATMUL( wpol%residue_left(:, spole) , eri_3center_mo(:, :, pstate, ispin) )
           enddo
           call auxil%sum(w_s)
         else
@@ -1302,9 +1298,9 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
               ! calculate only the diagonal !
               do pstate=nsemin, nsemax
 
-                !v_2 = eri_eigen(istate,kstate,ispin,bstate,pstate,ispin)
-                ik(:) = eri_3center_eigen(:, istate, kstate, ispin)
-                !bp(:) = eri_3center_eigen(:,bstate,pstate,ispin)
+                !v_2 = evaluate_eri_mo(istate,kstate,ispin,bstate,pstate,ispin)
+                ik(:) = eri_3center_mo(:, istate, kstate, ispin)
+                !bp(:) = eri_3center_mo(:,bstate,pstate,ispin)
                 !w0_2 = DOT_PRODUCT( ik(:) , MATMUL( chi_static(:,:) , bp(:) ) )
                 w0_2 = DOT_PRODUCT( ik(:) , chi_up(:, bstate, pstate) )
 
@@ -1332,9 +1328,9 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
               ! calculate only the diagonal !
               do pstate=nsemin, nsemax
 
-                !v_2 = eri_eigen(istate,cstate,ispin,bstate,pstate,ispin)
-                ic(:) = eri_3center_eigen(:, istate, cstate, ispin)
-                !bp(:) = eri_3center_eigen(:,bstate,pstate,ispin)
+                !v_2 = evaluate_eri_mo(istate,cstate,ispin,bstate,pstate,ispin)
+                ic(:) = eri_3center_mo(:, istate, cstate, ispin)
+                !bp(:) = eri_3center_mo(:,bstate,pstate,ispin)
                 !w0_2 = DOT_PRODUCT( ic(:) , MATMUL( chi_static(:,:) , bp(:) ) )
                 w0_2 = DOT_PRODUCT( ic(:) , chi_up(:, bstate, pstate) )
 
@@ -1371,9 +1367,9 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
               ! calculate only the diagonal !
               do pstate=nsemin, nsemax
 
-                !v_2 = eri_eigen(astate,kstate,ispin,jstate,pstate,ispin)
-                ak(:) = eri_3center_eigen(:, astate, kstate, ispin)
-                !jp(:) = eri_3center_eigen(:,jstate,pstate,ispin)
+                !v_2 = evaluate_eri_mo(astate,kstate,ispin,jstate,pstate,ispin)
+                ak(:) = eri_3center_mo(:, astate, kstate, ispin)
+                !jp(:) = eri_3center_mo(:,jstate,pstate,ispin)
                 !w0_2 = DOT_PRODUCT( ak(:) , MATMUL( chi_static(:,:) , jp(:) ) )
                 w0_2 = DOT_PRODUCT( ak(:) , chi_up(:, jstate, pstate) )
 
@@ -1410,9 +1406,9 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
               ! calculate only the diagonal !
               do pstate=nsemin, nsemax
 
-                !v_2 = eri_eigen(astate,cstate,ispin,jstate,pstate,ispin)
-                ac(:) = eri_3center_eigen(:, astate, cstate, ispin)
-                !jp(:) = eri_3center_eigen(:,jstate,pstate,ispin)
+                !v_2 = evaluate_eri_mo(astate,cstate,ispin,jstate,pstate,ispin)
+                ac(:) = eri_3center_mo(:, astate, cstate, ispin)
+                !jp(:) = eri_3center_mo(:,jstate,pstate,ispin)
                 !w0_2 = DOT_PRODUCT( ac(:) , MATMUL( chi_static(:,:) , jp(:) ) )
                 w0_2 = DOT_PRODUCT( ac(:) , chi_up(:, jstate, pstate) )
 
@@ -1493,7 +1489,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
 
   call clean_deallocate('Temporary array', w_s)
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call clean_deallocate('chi static', chi_static)
 
@@ -1541,7 +1537,7 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
   endif
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
     call die('not implemented')
   endif
@@ -1571,7 +1567,7 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
       if(has_auxil_basis) then
         do pstate=ncore_G+1, nvirtual_G-1
           ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v) in MO
-          w_s(:, pstate)     = MATMUL( wpol%residue_left(:, spole) , eri_3center_eigen(:, :, pstate, pqspin) )
+          w_s(:, pstate)     = MATMUL( wpol%residue_left(:, spole) , eri_3center_mo(:, :, pstate, pqspin) )
         enddo
       endif
 
@@ -1581,7 +1577,7 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
         if(has_auxil_basis) then
           do pstate=ncore_G+1, nvirtual_G-1
             ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v) in MO
-            w_t(:, pstate)     = MATMUL( wpol%residue_left(:, tpole) , eri_3center_eigen(:, :, pstate, pqspin) )
+            w_t(:, pstate)     = MATMUL( wpol%residue_left(:, tpole) , eri_3center_mo(:, :, pstate, pqspin) )
           enddo
         endif
 
@@ -1869,7 +1865,7 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
   call clean_deallocate('Temporary array', w_s)
   call clean_deallocate('Temporary array', w_t)
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
 
   call stop_clock(timing_gwgamma_self)
@@ -1930,7 +1926,7 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
   write(stdout, '(1x,a,f12.3)') 'Fermi energy mu (eV): ', mu*Ha_eV
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
 
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate, occupation, 0, grid_type=NO_GRID)
@@ -1971,10 +1967,10 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
             !do wstate=nhomo_G+1,nvirtual_G-1
               ieta_w = (0.0, 1.0_dp) * SIGN(eta, energy(wstate, pqspin) - mu)
 
-              qw(:) = eri_3center_eigen(:, qstate, wstate, pqspin)
-              uv(:) = eri_3center_eigen(:, ustate, vstate, pqspin)
-              up(:) = eri_3center_eigen(:, ustate, pstate, pqspin)
-              vw(:) = eri_3center_eigen(:, vstate, wstate, pqspin)
+              qw(:) = eri_3center_mo(:, qstate, wstate, pqspin)
+              uv(:) = eri_3center_mo(:, ustate, vstate, pqspin)
+              up(:) = eri_3center_mo(:, ustate, pstate, pqspin)
+              vw(:) = eri_3center_mo(:, vstate, wstate, pqspin)
               num1 = DOT_PRODUCT( vw(:) , MATMUL( chi_omegap(:, :), up(:) ) )
               num2 = DOT_PRODUCT( uv(:) , MATMUL( chi_omegapp(:, :) , qw(:) ) )
 
@@ -2012,7 +2008,7 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
   deallocate(sigmag3w2)
 
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 
@@ -2064,7 +2060,7 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   nstate = SIZE(energy, DIM=1)
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
 
   call wpol_imag%init(nstate, occupation, nomega_chi_imag, grid_type=IMAGINARY_QUAD)
   if( analytic_chi_ ) then
@@ -2104,12 +2100,12 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
 
           call DGEMM('N', 'N', nauxil_global, nvirtual_G-ncore_G-1,nauxil_global, &
                          1.0_dp, wpol_imag%chi(:, :, iomegap), nauxil_global, &
-                                eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, pstate, pqspin), nauxil_global, &
+                                eri_3center_mo(:, ncore_G+1:nvirtual_G-1, pstate, pqspin), nauxil_global, &
                          0.0_dp, chi_omegap_up, nauxil_global)
 
           call DGEMM('N', 'N', nauxil_global, nvirtual_G-ncore_G-1,nauxil_global, &
                          1.0_dp, wpol_imag%chi(:, :, iomegapp), nauxil_global, &
-                                eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, qstate, pqspin), nauxil_global, &
+                                eri_3center_mo(:, ncore_G+1:nvirtual_G-1, qstate, pqspin), nauxil_global, &
                          0.0_dp, chi_omegapp_wq, nauxil_global)
 
           do ustate=ncore_G+1, nvirtual_G-1
@@ -2118,12 +2114,12 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
 
 
                 ! v * chi( +/- iw') * v
-                vw(:) = eri_3center_eigen(:, vstate, wstate, pqspin)
+                vw(:) = eri_3center_mo(:, vstate, wstate, pqspin)
                 braket1 = DOT_PRODUCT( vw(:), chi_omegap_up(:, ustate) )
 
 
                 ! v * chi( +/- iw'') * v
-                uv(:) = eri_3center_eigen(:, ustate, vstate, pqspin)
+                uv(:) = eri_3center_mo(:, ustate, vstate, pqspin)
                 braket2 = DOT_PRODUCT( uv(:) , chi_omegapp_wq(:, wstate) )
 
 
@@ -2197,7 +2193,7 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   deallocate(sigmag3w2)
   call wpol_imag%destroy()
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 
@@ -2257,7 +2253,7 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   nstate = SIZE(energy, DIM=1)
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
 
   !
   ! Initialize wpol_imag any way to obtain the quadrature grid points and weights
@@ -2320,14 +2316,14 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
             allocate(tmp(nauxil_global, ncore_G+1:nhomo_G))
             allocate(braket1_ri(ncore_G+1:nvirtual_G-1, ncore_G+1:nhomo_G))
             allocate(braket2_ri(ncore_G+1:nvirtual_G-1, ncore_G+1:nhomo_G))
-            eri3_i_m(:, :) = eri_3center_eigen(:, ncore_G+1:nhomo_G, mstate, mpspin)
-            eri3_r_m(:, :) = eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, mstate, mpspin)
+            eri3_i_m(:, :) = eri_3center_mo(:, ncore_G+1:nhomo_G, mstate, mpspin)
+            eri3_r_m(:, :) = eri_3center_mo(:, ncore_G+1:nvirtual_G-1, mstate, mpspin)
 
             do astate=nhomo_G+1, nvirtual_G-1
               if( MODULO( astate - (nhomo_G+1) , poorman%nproc) /= poorman%rank ) cycle
 
-              eri3_i_a(:, :) = eri_3center_eigen(:, ncore_G+1:nhomo_G, astate, mpspin)
-              eri3_r_a(:, :) = eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, astate, mpspin)
+              eri3_i_a(:, :) = eri_3center_mo(:, ncore_G+1:nhomo_G, astate, mpspin)
+              eri3_r_a(:, :) = eri_3center_mo(:, ncore_G+1:nvirtual_G-1, astate, mpspin)
 
               !
               ! Fix mstate and astate and then use BLAS level 3 for rstate, istate
@@ -2390,13 +2386,13 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
             allocate(braket1_ra(ncore_G+1:nvirtual_G-1, nhomo_G+1:nvirtual_G-1))
             allocate(braket2_ra(ncore_G+1:nvirtual_G-1, nhomo_G+1:nvirtual_G-1))
             allocate(tmp(nauxil_global, nhomo_G+1:nvirtual_G-1))
-            eri3_a_m(:, :) = eri_3center_eigen(:, nhomo_G+1:nvirtual_G-1, mstate, mpspin)
+            eri3_a_m(:, :) = eri_3center_mo(:, nhomo_G+1:nvirtual_G-1, mstate, mpspin)
 
             do istate=ncore_G+1, nhomo_G
               if( MODULO( istate - (ncore_G+1) , poorman%nproc) /= poorman%rank ) cycle
 
-              eri3_a_i(:, :) = eri_3center_eigen(:, nhomo_G+1:nvirtual_G-1, istate, mpspin)
-              eri3_r_i(:, :) = eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, istate, mpspin)
+              eri3_a_i(:, :) = eri_3center_mo(:, nhomo_G+1:nvirtual_G-1, istate, mpspin)
+              eri3_r_i(:, :) = eri_3center_mo(:, ncore_G+1:nvirtual_G-1, istate, mpspin)
 
               !
               ! Fix mstate and istate and then use BLAS level 3 for rstate, astate
@@ -2480,7 +2476,7 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   call wpol_imag%destroy()
   if( analytic_chi_ ) call wpol_analytic%destroy()
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 
@@ -2523,7 +2519,7 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
   write(stdout, '(1x,a)') '========================================================'
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
 
 
@@ -2548,8 +2544,8 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
 
           do pstate=nsemin, nsemax
 
-            vcoul1 = eri_eigen(pstate, istate, ispin, bstate, kstate, ispin)
-            vcoul2 = eri_eigen(istate, bstate, ispin, kstate, pstate, ispin)
+            vcoul1 = evaluate_eri_mo(pstate, istate, ispin, bstate, kstate, ispin)
+            vcoul2 = evaluate_eri_mo(istate, bstate, ispin, kstate, pstate, ispin)
 
             do iomega_sigma=first_omega, last_omega
               sigma_sox(iomega_sigma, pstate, ispin) = sigma_sox(iomega_sigma, pstate, ispin) &
@@ -2571,8 +2567,8 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
 
           do pstate=nsemin, nsemax
 
-            vcoul1 = eri_eigen(pstate, astate, ispin, jstate, cstate, ispin)
-            vcoul2 = eri_eigen(astate, jstate, ispin, cstate, pstate, ispin)
+            vcoul1 = evaluate_eri_mo(pstate, astate, ispin, jstate, cstate, ispin)
+            vcoul2 = evaluate_eri_mo(astate, jstate, ispin, cstate, pstate, ispin)
 
             do iomega_sigma=first_omega, last_omega
               sigma_sox(iomega_sigma, pstate, ispin) = sigma_sox(iomega_sigma, pstate, ispin) &
@@ -2596,7 +2592,7 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
 
   deallocate(sigma_gw, sigma_sox)
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 
@@ -2632,7 +2628,7 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
   write(stdout, *) 'Perform a one-shot GW+2SOSEX PDF calculation'
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
   endif
 
   call clean_allocate('Store w_s', w_s, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
@@ -2642,7 +2638,7 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
     !do qstate=ncore_G+1, nvirtual_G-1
     !  ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
     !  w_s(:, ncore_G+1:nvirtual_G-1, qstate) = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , &
-    !                                             eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, qstate, qspin) )
+    !                                             eri_3center_mo(:, ncore_G+1:nvirtual_G-1, qstate, qspin) )
     !  call auxil%sum(w_s)
     !enddo
 
@@ -2651,7 +2647,7 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
     nstate2 = ( nvirtual_G - ncore_G - 1 )**2
     call DGEMM('T', 'N', wpol%npole_reso, nstate2, nauxil_local, &
                 1.0_dp, wpol%residue_left(1, 1), nauxil_local, &
-                        eri_3center_eigen(1, ncore_G+1, ncore_G+1, 1), nauxil_local, &
+                        eri_3center_mo(1, ncore_G+1, ncore_G+1, 1), nauxil_local, &
                 0.0_dp, w_s(1, ncore_G+1, ncore_G+1), wpol%npole_reso)
     call auxil%sum(w_s)
 
@@ -2675,8 +2671,8 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
           iastate = iastate + 1
           if( MODULO( iastate - 1 , poorman%nproc ) /= poorman%rank ) cycle
 
-          v_paik = DOT_PRODUCT( eri_3center_eigen(:, pstate, astate, qspin), eri_3center_eigen(:, istate, kstate, qspin) )
-          v_piak = DOT_PRODUCT( eri_3center_eigen(:, pstate, istate, qspin), eri_3center_eigen(:, astate, kstate, qspin) )
+          v_paik = DOT_PRODUCT( eri_3center_mo(:, pstate, astate, qspin), eri_3center_mo(:, istate, kstate, qspin) )
+          v_piak = DOT_PRODUCT( eri_3center_mo(:, pstate, istate, qspin), eri_3center_mo(:, astate, kstate, qspin) )
 
           do spole=1, wpol%npole_reso
             Omega_s = wpol%pole(spole)
@@ -2702,8 +2698,8 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
           iastate = iastate + 1
           if( MODULO( iastate - 1 , poorman%nproc ) /= poorman%rank ) cycle
 
-          v_paic = DOT_PRODUCT( eri_3center_eigen(:, pstate, astate, qspin), eri_3center_eigen(:, istate, cstate, qspin) )
-          v_piac = DOT_PRODUCT( eri_3center_eigen(:, pstate, istate, qspin), eri_3center_eigen(:, astate, cstate, qspin) )
+          v_paic = DOT_PRODUCT( eri_3center_mo(:, pstate, astate, qspin), eri_3center_mo(:, istate, cstate, qspin) )
+          v_piac = DOT_PRODUCT( eri_3center_mo(:, pstate, istate, qspin), eri_3center_mo(:, astate, cstate, qspin) )
 
           do spole=1, wpol%npole_reso
             Omega_s = wpol%pole(spole)
@@ -2840,7 +2836,7 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
 
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   endif
 
   call stop_clock(timing_gwgamma_self)

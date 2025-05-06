@@ -833,7 +833,7 @@ subroutine setup_exchange_longrange_ri(occupation, c_matrix, p_matrix, exchange_
     do iauxil=1, nauxil_local_lr
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp(:, :) = 0.0_dp
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -915,7 +915,7 @@ subroutine setup_exchange_ri_cmplx(occupation, c_matrix, p_matrix, exchange_ao, 
     do iauxil=1, nauxil_local
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -994,7 +994,7 @@ subroutine setup_exchange_ri_x2c_1(occupation, c_matrix, exchange_ao)
     do iauxil=1, nauxil_local
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1076,8 +1076,8 @@ subroutine setup_exchange_ri_x2c_2(occupation, c_matrix, exchange_ao)
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx1(:, :) = (0.0_dp, 0.0_dp)
       tmp_cmplx2(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
-      !$OMP DO REDUCTION(+:tmp_cmplx1,tmp_cmplx2)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
+      !$OMP DO REDUCTION(+:tmp_cmplx1, tmp_cmplx2)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
         jbf = index_basis(2, ipair)
@@ -1149,7 +1149,7 @@ subroutine setup_exchange_longrange_ri_cmplx(occupation, c_matrix, p_matrix, exc
     do iauxil=1, nauxil_local_lr
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1228,7 +1228,7 @@ subroutine setup_lr_exchange_ri_x2c_1(occupation, c_matrix, exchange_ao)
     do iauxil=1, nauxil_local_lr
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1310,8 +1310,8 @@ subroutine setup_lr_exchange_ri_x2c_2(occupation, c_matrix, exchange_ao)
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx1(:, :) = (0.0_dp, 0.0_dp)
       tmp_cmplx2(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
-      !$OMP DO REDUCTION(+:tmp_cmplx1,tmp_cmplx2)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
+      !$OMP DO REDUCTION(+:tmp_cmplx1, tmp_cmplx2)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
         jbf = index_basis(2, ipair)
@@ -1381,7 +1381,7 @@ subroutine setup_exchange_genuine_ri(occupation, c_matrix, p_matrix, exchange_ao
     ! GUILLAUME
     ! tmp_{i \alpha P} = \sum_\gamma C_\gamma i (\alpha \gamma | 1 / r12 | P )
     do iauxil_local=1, nauxil_local
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1462,7 +1462,7 @@ subroutine setup_exchange_genuine_ri_cmplx(occupation, c_matrix, p_matrix, excha
     ! GUILLAUME
     ! tmp_{i \alpha P} = \sum_\gamma C_\gamma i (\alpha \gamma | 1 / r12 | P )
     do iauxil_local=1, nauxil_local
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1640,7 +1640,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
       call calc_PI_dens_grad_r_batch(occupation, dm2_JK, c_matrix, basis_function_r_batch, PIr_batch, &
       &                              bf_gradx_batch, bf_grady_batch, bf_gradz_batch, rhor_batch, grad_rhor_batch)
 
-      !$OMP PARALLEL DO PRIVATE(rho_r_tot,s_rho_r,grad_rho_r_tot,factor_r,icoord)
+      !$OMP PARALLEL DO PRIVATE(rho_r_tot, s_rho_r, grad_rho_r_tot, factor_r, icoord)
       do ir=1, nr
         rho_r_tot=rhor_batch(1, ir)+rhor_batch(2, ir)
         if( abs(rho_r_tot) > 1d-6 ) then
@@ -2059,12 +2059,12 @@ subroutine setup_hartree_mo(occupation, vhartree_mo, ehartree)
   nocc = get_number_occupied_states(occupation)
   allocate(x_vector(nauxil_local))
 
-  if( .NOT. ALLOCATED(eri_3center_eigen)) call die('setup_hartree_mo: MO integrals are not available')
+  if( .NOT. ALLOCATED(eri_3center_mo)) call die('setup_hartree_mo: MO integrals are not available')
 
   x_vector(:) = 0.0_dp
   do ispin=1, nspin
     do istate=1, nocc
-      x_vector(:) = x_vector(:) + occupation(istate, ispin) * eri_3center_eigen(:, istate, istate, ispin)
+      x_vector(:) = x_vector(:) + occupation(istate, ispin) * eri_3center_mo(:, istate, istate, ispin)
     enddo
   enddo
   !if( auxil%nproc > 1) call die('not coded yet how to find G=0')
@@ -2073,7 +2073,7 @@ subroutine setup_hartree_mo(occupation, vhartree_mo, ehartree)
   do ispin=1, nspin
     do jstate=1, nstate
       do istate=1, nstate
-        vhartree_mo(istate, jstate, ispin) = SUM( eri_3center_eigen(:, istate, jstate, ispin) * x_vector(:) )
+        vhartree_mo(istate, jstate, ispin) = SUM( eri_3center_mo(:, istate, jstate, ispin) * x_vector(:) )
       enddo
     enddo
   enddo
@@ -2106,13 +2106,13 @@ subroutine setup_exchange_mo(occupation, sigx_mo, eexchange)
   nstate = SIZE(occupation, DIM=1)
   nocc = get_number_occupied_states(occupation)
 
-  if( .NOT. ALLOCATED(eri_3center_eigen)) call die('setup_exchange_mo: MO integrals are not available')
+  if( .NOT. ALLOCATED(eri_3center_mo)) call die('setup_exchange_mo: MO integrals are not available')
 
   sigx_mo(:, :, :) = 0.0_dp
   do ispin=1, nspin
     do istate=1, nocc
       call DSYRK('L', 'T', nstate, nauxil_local, -occupation(istate, ispin) / spin_fact, &
-                 eri_3center_eigen(1, 1, istate, ispin), nauxil_local, &
+                 eri_3center_mo(1, 1, istate, ispin), nauxil_local, &
                  1.0d0, sigx_mo(1, 1, ispin), nstate)
     enddo
     call matrix_lower_to_full(sigx_mo(:, :, ispin))

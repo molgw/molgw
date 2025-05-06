@@ -1186,3 +1186,10 @@ MP2 correlation           ,  -0.0355613477      , 0 , 1.0e-7
 
 he_mp2_from_filtered_RESTART.in, He atom: reading RESTART with filtered virtual orbitals, restart
 MP2 correlation           ,  -0.0355613477      , 0 , 1.0e-7
+
+lih_bulk08_abinit_mp2.in  , MP2 correlation for bulk LiH with 8 atoms generated from ABINIT
+MP2 Energy                ,  -0.0772686571      , 0 , 1.0e-7
+
+lih_bulk08_abinit_rpa.in  , RPA correlation for bulk LiH with 8 atoms generated from ABINIT
+RPA correlation           ,  -0.1152301335      , 0 , 1.0e-7
+
