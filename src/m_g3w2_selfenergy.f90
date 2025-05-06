@@ -79,9 +79,9 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
   endif
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
-    call calculate_eri_4center_eigen_uks(c_matrix, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_4center_mo_uks(c_matrix, ncore_G+1, nvirtual_G-1)
   endif
 
 
@@ -394,7 +394,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
   call clean_deallocate('Temporary array', w_s)
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   else
     call destroy_eri_4center_eigen_uks()
   endif
@@ -474,7 +474,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
 
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
     call die('sosex_selfenergy_analyzed: auxil_basis is compulsory')
   endif
@@ -1038,7 +1038,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
   call clean_deallocate('Temporary array', w_s)
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   else
     call destroy_eri_4center_eigen_uks()
   endif
@@ -1100,7 +1100,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
   end select
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
   call clean_allocate('Temporary array', w_s, ncore_G+1, nvirtual_G-1, ncore_G+1, MAX(nhomo_G, nsemax))
 
@@ -1489,7 +1489,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
 
   call clean_deallocate('Temporary array', w_s)
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call clean_deallocate('chi static', chi_static)
 
@@ -1537,7 +1537,7 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
   endif
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
     call die('not implemented')
   endif
@@ -1865,7 +1865,7 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
   call clean_deallocate('Temporary array', w_s)
   call clean_deallocate('Temporary array', w_t)
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
 
   call stop_clock(timing_gwgamma_self)
@@ -1926,7 +1926,7 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
   write(stdout, '(1x,a,f12.3)') 'Fermi energy mu (eV): ', mu*Ha_eV
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
 
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate, occupation, 0, grid_type=NO_GRID)
@@ -2008,7 +2008,7 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
   deallocate(sigmag3w2)
 
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 
@@ -2060,7 +2060,7 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   nstate = SIZE(energy, DIM=1)
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
 
   call wpol_imag%init(nstate, occupation, nomega_chi_imag, grid_type=IMAGINARY_QUAD)
   if( analytic_chi_ ) then
@@ -2193,7 +2193,7 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   deallocate(sigmag3w2)
   call wpol_imag%destroy()
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 
@@ -2253,7 +2253,7 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   nstate = SIZE(energy, DIM=1)
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
 
   !
   ! Initialize wpol_imag any way to obtain the quadrature grid points and weights
@@ -2476,7 +2476,7 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   call wpol_imag%destroy()
   if( analytic_chi_ ) call wpol_analytic%destroy()
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 
@@ -2519,7 +2519,7 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
   write(stdout, '(1x,a)') '========================================================'
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
 
 
@@ -2592,7 +2592,7 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
 
   deallocate(sigma_gw, sigma_sox)
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 
@@ -2628,7 +2628,7 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
   write(stdout, *) 'Perform a one-shot GW+2SOSEX PDF calculation'
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
   endif
 
   call clean_allocate('Store w_s', w_s, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
@@ -2836,7 +2836,7 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
 
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   endif
 
   call stop_clock(timing_gwgamma_self)

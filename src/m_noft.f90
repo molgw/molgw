@@ -593,7 +593,7 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
     if(present(ERImol) .and. present(ERImolJsr) .and. present(ERImolLsr)) then
       ERImol(:, :, :, :)=zero; ERImolJsr(:, :, :)=zero; ERImolLsr(:, :, :)=zero
       if(has_auxil_basis) then ! RI case
-        call calculate_eri_3center_eigen(tmp_c_matrix, 1, nstate_noft, 1, nstate_kji, verbose=noft_verbose, long_range=long_range, &
+        call calculate_eri_3center_mo(tmp_c_matrix, 1, nstate_noft, 1, nstate_kji, verbose=noft_verbose, long_range=long_range, &
          &   only_one_spin=noft_1_spin)
         ! <pk| [alpha+beta*erf(gamma r12)]/r12 |ji> format used for ERImol
         ! Hartree : <pi|ji>^sr = <pi| 1/r12 |ji> - <pi| [alpha+beta*erf(gamma r12)]/r12 |ji>
@@ -619,7 +619,7 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
             enddo
           enddo
         enddo
-        call destroy_eri_3center_eigen(verbose=noft_verbose, long_range=long_range)
+        call destroy_eri_3center_mo(verbose=noft_verbose, long_range=long_range)
       else            ! Normal case (not using RI)
         !TODO
         write(msgw, '(a)') 'LR exchange requires RI for RS-NOFT (hint: include the RI basis).'
@@ -630,7 +630,7 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
     if(present(ERImol_cmplx) .and. present(ERImolJsr_cmplx) .and. present(ERImolLsr_cmplx)) then
       ERImol_cmplx(:, :, :, :)=complex_zero; ERImolJsr_cmplx(:, :, :)=complex_zero; ERImolLsr_cmplx(:, :, :)=complex_zero
       if(has_auxil_basis) then ! RI case
-        call calculate_eri_3center_eigen_cmplx(tmp_c_matrix_cmplx, 1, nstate_noft, 1, nstate_kji, verbose=noft_verbose, &
+        call calculate_eri_3center_mo_cmplx(tmp_c_matrix_cmplx, 1, nstate_noft, 1, nstate_kji, verbose=noft_verbose, &
          &   long_range=long_range, only_one_spin=noft_1_spin)
         ! <pk| [alpha+beta*erf(gamma r12)]/r12 |ji> format used for ERImol
         ! Hartree : <pi|ji>^sr = <pi| 1/r12 |ji> - <pi| [alpha+beta*erf(gamma r12)]/r12 |ji>
@@ -656,7 +656,7 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
             enddo
           enddo
         enddo
-        call destroy_eri_3center_eigen_cmplx(verbose=noft_verbose, long_range=long_range)
+        call destroy_eri_3center_mo_cmplx(verbose=noft_verbose, long_range=long_range)
       else            ! Normal case (not using RI)
         !TODO
         write(msgw, '(a)') 'LR exchange requires RI for RS-NOFT (hint: include the RI basis).'
@@ -671,7 +671,7 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
       if(present(ERImol_cmplx)) then
         ERImol_cmplx(:, :, :, :)=complex_zero
         if(has_auxil_basis) then ! RI case
-          call calculate_eri_3center_eigen_cmplx(tmp_c_matrix_cmplx, 1, nstate_noft, 1, nstate_kji, verbose=noft_verbose)
+          call calculate_eri_3center_mo_cmplx(tmp_c_matrix_cmplx, 1, nstate_noft, 1, nstate_kji, verbose=noft_verbose)
           if(all_ERIs_in .and. nstate_noft==nstate_kji) then
            do istate=1, nstate_noft
             do jstate=1, nstate_noft
@@ -693,7 +693,7 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
              enddo
            enddo
           endif
-          call destroy_eri_3center_eigen_cmplx(noft_verbose)
+          call destroy_eri_3center_mo_cmplx(noft_verbose)
         else            ! Normal case (not using RI)
           call form_erimol(nbf, nstate_noft, nstate_kji, c_matrix_cmplx=tmp_c_matrix_cmplx, ERImol_cmplx=ERImol_cmplx)
         endif
@@ -704,7 +704,7 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
       if(present(ERImol)) then
         ERImol(:, :, :, :)=zero
         if(has_auxil_basis) then ! RI case
-          call calculate_eri_3center_eigen(tmp_c_matrix, 1, nstate_noft, 1, nstate_kji, verbose=noft_verbose)
+          call calculate_eri_3center_mo(tmp_c_matrix, 1, nstate_noft, 1, nstate_kji, verbose=noft_verbose)
           if(all_ERIs_in .and. nstate_noft==nstate_kji) then
            do istate=1, nstate_noft
             do jstate=1, nstate_noft
@@ -726,7 +726,7 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
              enddo
            enddo
           endif
-          call destroy_eri_3center_eigen(noft_verbose)
+          call destroy_eri_3center_mo(noft_verbose)
         else            ! Normal case (not using RI)
           call form_erimol(nbf, nstate_noft, nstate_kji, c_matrix=tmp_c_matrix, ERImol=ERImol)
         endif
@@ -792,7 +792,7 @@ subroutine mo_ints_x2c(nstate_occ, nstate_kji, NO_COEF_x2c, hCORE_x2c, ERImol_x2
        enddo
      enddo
     endif
-    call destroy_eri_3center_eigen_x2c()
+    call destroy_eri_3center_mo_x2c()
   else            ! TODO: Normal case (not using RI)
     call die("NOFT X2C needs an auxiliary basis")
   endif

@@ -88,7 +88,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
 
   ! Faster when the largest range (virtual states, occupied states) comes first
   if( has_auxil_basis ) then
-    call calculate_eri_3center_eigen(c_matrix, nlumo_W, nvirtual_W-1, ncore_W+1, nhomo_W, &
+    call calculate_eri_3center_mo(c_matrix, nlumo_W, nvirtual_W-1, ncore_W+1, nhomo_W, &
                                      timing=timing_aomo_pola)
   endif
 
@@ -197,7 +197,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
   call clean_deallocate('(1-Chi0)**-1', one_m_chi0m1)
   call clean_deallocate('Chi0',chi0)
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   write(stdout, '(/,1x,a,f16.10)') 'RPA correlation energy (Ha): ', erpa
   write(stdout, '(1x,a,f16.10)')   'GW  correlation energy (Ha): ', egw
@@ -257,7 +257,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
 #endif
 
 
-  if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timing_aomo_gw)
+  if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timing_aomo_gw)
 
 
   prange = nvirtual_G - ncore_G - 1
@@ -331,7 +331,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
   call clean_deallocate('TMP 3-center MO integrals', eri3_sca)
   call clean_deallocate('TMP 3-center MO integrals', chi_eri3_sca)
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 
@@ -379,7 +379,7 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
   nstate = SIZE(energy, DIM=1)
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
 
   call wpol_imag%init(nstate, occupation, nomega_chi_imag, grid_type=IMAGINARY_QUAD)
   call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.TRUE.)
@@ -545,7 +545,7 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
   call wpol_real%destroy()
   call wpol_imag%destroy()
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 
@@ -592,7 +592,7 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
   nstate = SIZE(energy, DIM=1)
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
 
   !
   ! Initialize wpol_imag any way to store chi(:,:,iomegap)
@@ -666,7 +666,7 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
   call wpol_imag%destroy()
   if( analytic_chi_ ) call wpol_analytic%destroy()
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 
@@ -721,7 +721,7 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
   nstate = SIZE(energy, DIM=1)
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
 
   !
   ! Initialize wpol_imag any way to obtain the quadrature grid points and weights
@@ -957,7 +957,7 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
   call wpol_imag%destroy()
   if( analytic_chi_ ) call wpol_analytic%destroy()
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 

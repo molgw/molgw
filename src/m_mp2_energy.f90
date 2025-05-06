@@ -49,7 +49,7 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
     if( ncore == 0) ncore = atoms_core_states()
   endif
 
-  call calculate_eri_3center_eigen(c_matrix, ncore+1, nstate, ncore+1, nstate)
+  call calculate_eri_3center_mo(c_matrix, ncore+1, nstate, ncore+1, nstate)
 
   nstate_mp2 = MIN( nvirtualg-1, nstate )
 
@@ -131,7 +131,7 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
   write(stdout, '(a,f16.10)')   ' SOX diagram     :', contrib2
   write(stdout, '(a,f16.10,/)') ' MP2 correlation :', emp2
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
   call stop_clock(timing_mp2_energy)
 
 end subroutine mp2_energy_ri
@@ -166,7 +166,7 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
     if( ncore == 0) ncore = atoms_core_states()
   endif
 
-  call calculate_eri_3center_eigen_cmplx(c_matrix_cmplx, ncore+1, nstate, ncore+1, nstate)
+  call calculate_eri_3center_mo_cmplx(c_matrix_cmplx, ncore+1, nstate, ncore+1, nstate)
 
   nstate_mp2 = MIN( nvirtualg-1, nstate )
 
@@ -244,7 +244,7 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
   write(stdout, '(a,f16.10)')   ' SOX diagram     :', real(contrib2)
   write(stdout, '(a,f16.10,/)') ' MP2 correlation :', emp2
 
-  call destroy_eri_3center_eigen_cmplx()
+  call destroy_eri_3center_mo_cmplx()
   call stop_clock(timing_mp2_energy)
 
 end subroutine mp2_energy_ri_cmplx
@@ -343,7 +343,7 @@ subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
   write(stdout, '(/,a,f16.10,/)') ' MP2 correlation :', emp2
 
   deallocate(energy_vec)
-  call destroy_eri_3center_eigen_x2c()
+  call destroy_eri_3center_mo_x2c()
   call stop_clock(timing_mp2_energy)
 
 end subroutine mp2_energy_ri_x2c
@@ -379,7 +379,7 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
     if( ncore == 0) ncore = atoms_core_states()
   endif
 
-  call calculate_eri_3center_eigen(c_matrix, ncore+1, nstate, ncore+1, nstate)
+  call calculate_eri_3center_mo(c_matrix, ncore+1, nstate, ncore+1, nstate)
 
   nstate_mp3 = MIN( nvirtualg-1, nstate )
 
@@ -492,7 +492,7 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
   ! write(stdout,'(a,f16.10)')   ' SOX diagram     :',contrib3
   ! write(stdout,'(a,f16.10,/)') ' MP3 correlation :',emp3
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
   call stop_clock(timing_mp2_energy)
 
 end subroutine mp3_energy_ri

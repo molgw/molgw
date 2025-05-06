@@ -227,7 +227,7 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
       write(stdout, '(1x,a,f12.8)')   'Energy(lambda): ', erpa_singlet
       en_mbpt%rpa = en_mbpt%rpa + erpa_singlet * wlambda(ilambda)
     enddo
-    if(has_auxil_basis) call destroy_eri_3center_eigen()
+    if(has_auxil_basis) call destroy_eri_3center_mo()
 
     call clean_deallocate('X matrix', x_matrix)
     call clean_deallocate('Y matrix', y_matrix)
@@ -290,7 +290,7 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
     enddo
     call wpol%destroy()
 
-    if(has_auxil_basis) call destroy_eri_3center_eigen()
+    if(has_auxil_basis) call destroy_eri_3center_mo()
 
     call clean_deallocate('X matrix', x_matrix)
     call clean_deallocate('Y matrix', y_matrix)
@@ -349,7 +349,7 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
       write(stdout, '(1x,a,f12.8)')   'Energy(lambda): ', ebse_singlet
       en_mbpt%bse = en_mbpt%bse + ebse_singlet * wlambda(ilambda)
     enddo
-    if(has_auxil_basis) call destroy_eri_3center_eigen()
+    if(has_auxil_basis) call destroy_eri_3center_mo()
 
     call clean_deallocate('X matrix', x_matrix)
     call clean_deallocate('Y matrix', y_matrix)

@@ -32,11 +32,11 @@ module m_timing
   integer, parameter :: timing_rpa_static          = 11
   integer, parameter :: timing_mp2_energy          = 12
   integer, parameter :: timing_pt_self             = 13
-  integer, parameter :: timing_eri_4center_eigen   = 14
+  integer, parameter :: timing_eri_4center_ao2mo   = 14
   integer, parameter :: timing_overlap_grad        = 15
   integer, parameter :: timing_eri_2center         = 16
   integer, parameter :: timing_eri_3center         = 17
-  integer, parameter :: timing_eri_3center_eigen   = 18
+  integer, parameter :: timing_eri_3center_ao2mo   = 18
   integer, parameter :: timing_vchiv               = 19
   integer, parameter :: timing_build_h2p           = 20
   integer, parameter :: timing_restart_file        = 21
@@ -301,11 +301,11 @@ subroutine output_timing()
   call output_timing_line('Sigma_x - Vxc', timing_x_m_vxc, 1)
 
   ! Linear response polarization RPA or TDDFT or BSE
-  call output_timing_line('3-center AO to MO transform', timing_eri_3center_eigen, 1)
+  call output_timing_line('3-center AO to MO transform', timing_eri_3center_ao2mo, 1)
   call output_timing_line('Response function chi on grid', timing_rpa_dynamic, 1)
   call output_timing_line('Response function chi', timing_pola, 1)
   call output_timing_line('3-center AO to MO transform in chi', timing_aomo_pola, 2)
-  call output_timing_line('4-center AO to MO transform', timing_eri_4center_eigen, 2)
+  call output_timing_line('4-center AO to MO transform', timing_eri_4center_ao2mo, 2)
   call output_timing_line('Static polarization for BSE', timing_rpa_static, 2)
   call output_timing_line('Build 2-particle Hamiltonian', timing_build_h2p, 2)
   call output_timing_line('RPA part', timing_build_common, 3)

@@ -54,9 +54,9 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
   if( nspin /= 1 ) call die('pt2_density_matrix: only implemented for spin restricted calculations')
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
-    call calculate_eri_4center_eigen_uks(c_matrix, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_4center_mo_uks(c_matrix, ncore_G+1, nvirtual_G-1)
   endif
 
 
@@ -174,7 +174,7 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
 
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   else
     call destroy_eri_4center_eigen_uks()
   endif
@@ -211,9 +211,9 @@ subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
   if( nspin /= 1 ) call die('pt2_density_matrix: only implemented for spin restricted calculations')
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
-    call calculate_eri_4center_eigen_uks(c_matrix, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_4center_mo_uks(c_matrix, ncore_G+1, nvirtual_G-1)
   endif
 
 
@@ -327,7 +327,7 @@ subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
 
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   else
     call destroy_eri_4center_eigen_uks()
   endif
@@ -370,9 +370,9 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
   if( .NOT. has_auxil_basis)  call die('gw_density_matrix: only implemented without RI')
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
-    call calculate_eri_4center_eigen_uks(c_matrix, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_4center_mo_uks(c_matrix, ncore_G+1, nvirtual_G-1)
   endif
 
 
@@ -521,7 +521,7 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
   endif
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   else
     call destroy_eri_4center_eigen_uks()
   endif
@@ -579,7 +579,7 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
 #endif
 
 
-  if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
 
   mrange = nvirtual_G - ncore_G - 1
@@ -695,7 +695,7 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
   call clean_deallocate('TMP 3-center MO integrals', eri3_sca_q)
   call clean_deallocate('TMP 3-center MO integrals', chi_eri3_sca_q)
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_mbpt_dm)
 
@@ -751,7 +751,7 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
 #endif
 
 
-  if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
 
   mrange = nvirtual_G - ncore_G - 1
@@ -907,7 +907,7 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
   call clean_deallocate('TMP 3-center MO integrals', eri3_sca_q)
   call clean_deallocate('TMP 3-center MO integrals', chi_eri3_sca_q)
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_mbpt_dm)
 

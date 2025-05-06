@@ -95,18 +95,18 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
   if( has_auxil_basis ) then
     if( calc_type%is_lr_mbpt ) then
-      call calculate_eri_3center_eigen_lr(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola)
+      call calculate_eri_3center_mo_lr(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola)
     else
       if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' ) ) then
         eri_3center_mo_available = ( ALLOCATED(eri_3center_eigen) .AND. ALLOCATED(eri_3center_eigen_lr) )
         if( .NOT. eri_3center_mo_available ) then
-          call calculate_eri_3center_eigen(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola, &
+          call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola, &
                   long_range=long_range_true)
         endif
       else
         eri_3center_mo_available = ALLOCATED(eri_3center_eigen)
         if( .NOT. eri_3center_mo_available ) then
-          call calculate_eri_3center_eigen(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola)
+          call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola)
         endif
       endif
     endif
@@ -304,7 +304,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     amb_matrix(:, :) = apb_matrix(:, :)
   endif
   ! Construction done!
-  !if(has_auxil_basis) call destroy_eri_3center_eigen()
+  !if(has_auxil_basis) call destroy_eri_3center_mo()
 
   call stop_clock(timing_build_h2p)
 
@@ -324,7 +324,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     call clean_deallocate('A+B', apb_matrix)
     call clean_deallocate('A-B', amb_matrix)
     if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
-      call destroy_eri_3center_eigen(long_range=(beta_hybrid>1.0e-6_dp))
+      call destroy_eri_3center_mo(long_range=(beta_hybrid>1.0e-6_dp))
     endif
     deallocate(amb_diag_rpa, energy_qp)
     write(stdout, *) ' Skipping diagonalization after building A and B matrices'
@@ -392,7 +392,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
   write(stdout, '(/,a,f12.6)') ' Lowest neutral excitation energy (eV):', MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
 
-  !if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timing_aomo_pola)
+  !if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timing_aomo_pola)
 
   !
   ! Calculate the optical sprectrum
@@ -449,7 +449,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   call clean_deallocate('X+Y', xpy_matrix)
 
   if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
-    call destroy_eri_3center_eigen(long_range=(beta_hybrid>1.0e-6_dp))
+    call destroy_eri_3center_mo(long_range=(beta_hybrid>1.0e-6_dp))
   endif
 
   if(ALLOCATED(eigenvalue)) deallocate(eigenvalue)
@@ -574,7 +574,7 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
   endif
 #endif
 
-  call destroy_eri_3center_eigen(long_range=(beta_hybrid>1.0e-6_dp)) ! Was built in polarizability subroutine or before  
+  call destroy_eri_3center_mo(long_range=(beta_hybrid>1.0e-6_dp)) ! Was built in polarizability subroutine or before  
   call clean_deallocate('Tmp_Mat', tmp_matrix)
   call clean_deallocate('(A+B)^-1', inv_apb_matrix)
 
@@ -597,7 +597,7 @@ subroutine polarizability_onering(basis, energy, c_matrix, vchi0v)
   nstate = SIZE(energy, DIM=1)
   call allocate_spectral_function(nauxil_local, vchi0v)
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_W+1, nhomo_W, nlumo_W, nvirtual_W-1, timing=timing_aomo_pola)
+  call calculate_eri_3center_mo(c_matrix, ncore_W+1, nhomo_W, nlumo_W, nvirtual_W-1, timing=timing_aomo_pola)
 
 
   do t_jb=1, vchi0v%npole_reso
@@ -610,7 +610,7 @@ subroutine polarizability_onering(basis, energy, c_matrix, vchi0v)
 
   enddo
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
 end subroutine polarizability_onering
 
@@ -705,7 +705,7 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
 
   allocate(eri_eigenstate_klmin(nbf, nbf, nbf, nspin))
   ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals
-  ! If removed, calculate_eri_4center_eigen might not calculate the first term!
+  ! If removed, calculate_eri_4center_mo might not calculate the first term!
   eri_eigenstate_klmin(:, :, :, :) = 0.0_dp
 
   nprodbasis = index_prodstate(nvirtual_W-1, nvirtual_W-1) * nspin
@@ -725,7 +725,7 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
 
     kbstate_min = MIN(jstate, bstate)
     kbstate_max = MAX(jstate, bstate)
-    call calculate_eri_4center_eigen(c_matrix, kbstate_min, jbspin, eri_eigenstate_klmin)
+    call calculate_eri_4center_mo(c_matrix, kbstate_min, jbspin, eri_eigenstate_klmin)
 
 
     ! COLLAPSE is used because nspin is much smaller than number of threads.

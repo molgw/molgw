@@ -825,7 +825,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
   !   if not, then calculate them
   eri_3center_mo_available = ALLOCATED(eri_3center_eigen)
   if( .NOT. eri_3center_mo_available ) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_W+1, nhomo_W, nlumo_W, nvirtual_W-1, timing=timing_aomo_pola)
+    call calculate_eri_3center_mo(c_matrix, ncore_W+1, nhomo_W, nlumo_W, nvirtual_W-1, timing=timing_aomo_pola)
   else
     ! eri_3center_eigen is already available
     ! check if it has the correct dimensions
@@ -939,7 +939,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
   call clean_deallocate('Chi0', chi0, verbose=verbose_)
 
   if( .NOT. eri_3center_mo_available ) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   endif
 
   if( PRESENT(verbose) ) then

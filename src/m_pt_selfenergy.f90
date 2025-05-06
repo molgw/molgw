@@ -64,7 +64,7 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
 
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
     allocate(eri_eigenstate_i(nstate, nstate, nstate, nspin))
   endif
@@ -83,7 +83,7 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
       if( MODULO( istate - (ncore_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
       if( .NOT. has_auxil_basis ) then
-        call calculate_eri_4center_eigen(c_matrix, istate, pqispin, eri_eigenstate_i)
+        call calculate_eri_4center_mo(c_matrix, istate, pqispin, eri_eigenstate_i)
       endif
 
       fi = occupation(istate, pqispin)
@@ -209,7 +209,7 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
   if( ALLOCATED(eri_eigenstate_i) ) deallocate(eri_eigenstate_i)
   deallocate(selfenergy_ring)
   deallocate(selfenergy_sox)
-  if(has_auxil_basis) call destroy_eri_3center_eigen()
+  if(has_auxil_basis) call destroy_eri_3center_mo()
 
   call stop_clock(timing_pt_self)
 
@@ -306,7 +306,7 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
 
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
     allocate(eri_eigenstate_i(nstate, nstate, nstate, nspin))
   endif
@@ -325,7 +325,7 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
       if( MODULO( istate - (ncore_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
       if( .NOT. has_auxil_basis ) then
-        call calculate_eri_4center_eigen(c_matrix, istate, pqispin, eri_eigenstate_i)
+        call calculate_eri_4center_mo(c_matrix, istate, pqispin, eri_eigenstate_i)
       endif
 
       fi = occupation(istate, pqispin)
@@ -433,7 +433,7 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
   if( ALLOCATED(eri_eigenstate_i) ) deallocate(eri_eigenstate_i)
   deallocate(selfenergy_ring)
   deallocate(selfenergy_sox)
-  if(has_auxil_basis) call destroy_eri_3center_eigen()
+  if(has_auxil_basis) call destroy_eri_3center_mo()
 
   call stop_clock(timing_pt_self)
 
@@ -507,9 +507,9 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
   if( nspin /= 1 ) call die('pt3_selfenergy: only implemented for spin restricted calculations')
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
-    call calculate_eri_4center_eigen_uks(c_matrix, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_4center_mo_uks(c_matrix, ncore_G+1, nvirtual_G-1)
   endif
 
 
@@ -1075,7 +1075,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
   deallocate(selfenergy1, selfenergy2, selfenergy0)
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   else
     call destroy_eri_4center_eigen_uks()
   endif

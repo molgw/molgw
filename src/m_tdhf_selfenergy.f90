@@ -72,7 +72,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     write(stdout, '(5x,a)')   'using poor man parallelization'
   endif
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
   allocate(uq(nauxil_global, ncore_G+1:nvirtual_G-1, nsemin:nsemax))
   do qstate=nsemin, nsemax
@@ -423,7 +423,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
   call clean_deallocate('Y matrix', y_matrix)
 
   deallocate(sigma_tdhf)
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
   call wpol%destroy()
 
   if( gwgamma_tddft_ ) then
@@ -485,7 +485,7 @@ subroutine tdhf_vacondio_selfenergy(basis, occupation, energy, c_matrix, se)
   call polarizability(.FALSE., .TRUE., basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol, &
                        a_matrix=a_matrix, b_matrix=b_matrix, x_matrix=x_matrix, y_matrix=y_matrix)
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
   allocate(sigma_tdhf(-se%nomega:se%nomega, nsemin:nsemax, nspin))
   allocate(xpy_matrix(nmat, nmat))
@@ -609,7 +609,7 @@ subroutine tdhf_vacondio_selfenergy(basis, occupation, energy, c_matrix, se)
   call clean_deallocate('B matrix', b_matrix)
 
   deallocate(sigma_tdhf)
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
   call wpol%destroy()
 
   call stop_clock(timing_gw_self)

@@ -66,7 +66,7 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
 
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
   endif
 
 
@@ -182,7 +182,7 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
   call clean_deallocate('Temporary array', w_s)
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   endif
 
 
@@ -245,7 +245,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   endif
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
   endif
 
   mstate = nvirtual_G - ncore_G - 1
@@ -459,7 +459,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   call clean_deallocate('Matrix head', matrix_head)
   deallocate(matrix_diag)
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   endif
 
   call stop_clock(timing_gw_self)
@@ -519,7 +519,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
   end select
 
 
-  call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timing_aomo_gw)
 
 
 
@@ -638,7 +638,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
   write(stdout, '(a)') ' Sigma_c(omega) is calculated'
 
   call clean_deallocate('TMP distributed W', wresidue_sd)
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
 
@@ -682,7 +682,7 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
 
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
   endif
 
   call clean_allocate('Temporary array', w_s, 1, wpol%npole_reso, nsemin, nsemax)
@@ -786,7 +786,7 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
 
   call clean_deallocate('Temporary array', w_s)
 
-  if(has_auxil_basis) call destroy_eri_3center_eigen()
+  if(has_auxil_basis) call destroy_eri_3center_mo()
 
 
   call stop_clock(timing_gw_self)
@@ -814,7 +814,7 @@ subroutine dump_gw_ingredients(energy, c_matrix, wpol)
   write(stdout, '(/,1x,a)') 'Dump on file the GW ingredients'
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
   endif
 
   !
