@@ -425,8 +425,8 @@ subroutine identify_negligible_shellpair(basis)
     coeff2(:) = basis%shell(jshell)%coeff(:)
     x02(:) = basis%shell(jshell)%x0(:)
 
-    !$OMP PARALLEL PRIVATE(ami,ni,am1,n1c,ng1,alpha1,coeff1,x01, &
-    !$OMP                  shls,info,int_shell,integrals)
+    !$OMP PARALLEL PRIVATE(ami, ni, am1, n1c, ng1, alpha1, coeff1, x01, &
+    !$OMP                  shls, info, int_shell, integrals)
     !$OMP DO
     do ishell=1, basis%nshell
       if( ANY(basis%shell(ishell)%v0(:) > 1e-6) .OR. ANY(basis%shell(jshell)%v0(:) > 1e-6) ) then

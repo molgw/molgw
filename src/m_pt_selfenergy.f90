@@ -92,7 +92,7 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
       !$OMP PARALLEL
       !$OMP DO PRIVATE(qstate, fj, ej, fk, ek, fact_occ1, fact_occ2, coul_ipkj, coul_iqjk, &
       !$OMP&           coul_ijkq, omega, fact_comp, fact_energy) &
-      !$OMP REDUCTION(+:emp2_ring,emp2_sox)
+      !$OMP REDUCTION(+:emp2_ring, emp2_sox)
       do pstate=nsemin, nsemax ! external loop ( bra )
         qstate=pstate         ! external loop ( ket )
 
@@ -664,7 +664,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
         selfenergy2(:) = (0.0_dp, 0.0_dp)
 
         ! B1 i,j    a
-        !$OMP DO COLLAPSE(2) REDUCTION(+:selfenergy1,selfenergy2)
+        !$OMP DO COLLAPSE(2) REDUCTION(+:selfenergy1, selfenergy2)
         do istate=ncore_G+1, nhomo_G
           do jstate=ncore_G+1, nhomo_G
 
@@ -691,7 +691,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
         selfenergy2(:) = (0.0_dp, 0.0_dp)
 
         ! B2 i    a,b
-        !$OMP DO COLLAPSE(2) REDUCTION(+:selfenergy1,selfenergy2)
+        !$OMP DO COLLAPSE(2) REDUCTION(+:selfenergy1, selfenergy2)
         do istate=ncore_G+1, nhomo_G
           do bstate=nhomo_G+1, nvirtual_G-1
 
@@ -727,7 +727,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           selfenergy1(:) = (0.0_dp, 0.0_dp)
           selfenergy2(:) = (0.0_dp, 0.0_dp)
 
-          !$OMP DO REDUCTION(+:selfenergy1,selfenergy2)
+          !$OMP DO REDUCTION(+:selfenergy1, selfenergy2)
           do bstate=nhomo_G+1, nvirtual_G-1
             eri_paib = evaluate_eri_mo(pstate, astate, pqspin, istate, bstate, pqspin)
             eri_pbia = evaluate_eri_mo(pstate, bstate, pqspin, istate, astate, pqspin)
@@ -762,7 +762,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
 
           selfenergy1(:) = (0.0_dp, 0.0_dp)
           selfenergy2(:) = (0.0_dp, 0.0_dp)
-          !$OMP DO REDUCTION(+:selfenergy1,selfenergy2)
+          !$OMP DO REDUCTION(+:selfenergy1, selfenergy2)
           do bstate=nhomo_G+1, nvirtual_G-1
             eri_paib = evaluate_eri_mo(pstate, astate, pqspin, istate, bstate, pqspin)
             eri_pbia = evaluate_eri_mo(pstate, bstate, pqspin, istate, astate, pqspin)
@@ -796,7 +796,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
 
           selfenergy1(:) = (0.0_dp, 0.0_dp)
           selfenergy2(:) = (0.0_dp, 0.0_dp)
-          !$OMP DO REDUCTION(+:selfenergy1,selfenergy2)
+          !$OMP DO REDUCTION(+:selfenergy1, selfenergy2)
           do jstate=ncore_G+1, nhomo_G
             eri_pija = evaluate_eri_mo(pstate, istate, pqspin, jstate, astate, pqspin)
             eri_pjia = evaluate_eri_mo(pstate, jstate, pqspin, istate, astate, pqspin)
@@ -829,7 +829,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
 
           selfenergy1(:) = (0.0_dp, 0.0_dp)
           selfenergy2(:) = (0.0_dp, 0.0_dp)
-          !$OMP DO REDUCTION(+:selfenergy1,selfenergy2)
+          !$OMP DO REDUCTION(+:selfenergy1, selfenergy2)
           do lstate=ncore_G+1, nhomo_G
             eri_pkla = evaluate_eri_mo(pstate, kstate, pqspin, lstate, astate, pqspin)
             eri_plka = evaluate_eri_mo(pstate, lstate, pqspin, kstate, astate, pqspin)
@@ -867,7 +867,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           selfenergy0(:) = (0.0_dp, 0.0_dp)
           selfenergy1(:) = (0.0_dp, 0.0_dp)
           selfenergy2(:) = (0.0_dp, 0.0_dp)
-          !$OMP DO REDUCTION(+:selfenergy0,selfenergy1,selfenergy2)
+          !$OMP DO REDUCTION(+:selfenergy0, selfenergy1, selfenergy2)
           do cstate=nhomo_G+1, nvirtual_G-1
             do jstate=ncore_G+1, nhomo_G
               eri_iajc = evaluate_eri_mo(istate, astate, pqspin, jstate, cstate, pqspin)
@@ -913,7 +913,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           selfenergy0(:) = (0.0_dp, 0.0_dp)
           selfenergy1(:) = (0.0_dp, 0.0_dp)
           selfenergy2(:) = (0.0_dp, 0.0_dp)
-          !$OMP DO REDUCTION(+:selfenergy0,selfenergy1,selfenergy2)
+          !$OMP DO REDUCTION(+:selfenergy0, selfenergy1, selfenergy2)
           do bstate=nhomo_G+1, nvirtual_G-1
             do jstate=ncore_G+1, nhomo_G
               num2a = evaluate_eri_mo(astate, istate, pqspin, bstate, jstate, pqspin)
@@ -958,7 +958,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           selfenergy0(:) = (0.0_dp, 0.0_dp)
           selfenergy1(:) = (0.0_dp, 0.0_dp)
           selfenergy2(:) = (0.0_dp, 0.0_dp)
-          !$OMP DO REDUCTION(+:selfenergy0,selfenergy1,selfenergy2)
+          !$OMP DO REDUCTION(+:selfenergy0, selfenergy1, selfenergy2)
           do bstate=nhomo_G+1, nvirtual_G-1
             do jstate=ncore_G+1, nhomo_G
               num2a = evaluate_eri_mo(jstate, astate, pqspin, istate, bstate, pqspin)
@@ -1003,7 +1003,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           selfenergy0(:) = (0.0_dp, 0.0_dp)
           selfenergy1(:) = (0.0_dp, 0.0_dp)
           selfenergy2(:) = (0.0_dp, 0.0_dp)
-          !$OMP DO REDUCTION(+:selfenergy0,selfenergy1,selfenergy2)
+          !$OMP DO REDUCTION(+:selfenergy0, selfenergy1, selfenergy2)
           do bstate=nhomo_G+1, nvirtual_G-1
             do jstate=ncore_G+1, nhomo_G
               num2a = evaluate_eri_mo(istate, astate, pqspin, bstate, jstate, pqspin)

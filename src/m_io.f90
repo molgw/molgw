@@ -2516,7 +2516,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
         enddo
       enddo
       cube_density_start(:, :) = 0.0_dp
-      !$OMP PARALLEL PRIVATE(basis_function_r,phi_cmplx)
+      !$OMP PARALLEL PRIVATE(basis_function_r, phi_cmplx)
       !$OMP DO
       do ir=1, cube_nx*cube_ny*cube_nz
         if(MODULO(ir-1, world%nproc)/=world%rank) cycle
@@ -2567,7 +2567,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
       !call start_clock(timing_tmp0)
       dens_diff(:) = 0.0_dp
 
-      !$OMP PARALLEL PRIVATE(basis_function_r,phi_cmplx)
+      !$OMP PARALLEL PRIVATE(basis_function_r, phi_cmplx)
       !$OMP DO
       do ir=1, cube_nx*cube_ny*cube_nz
         if(MODULO(ir-1, world%nproc)/=world%rank) cycle

@@ -598,7 +598,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
 
 
 
-      !$OMP PARALLEL PRIVATE(istate,spole,fact_full_i,fact_empty_i)
+      !$OMP PARALLEL PRIVATE(istate, spole, fact_full_i, fact_empty_i)
       !$OMP DO REDUCTION(+:sigmagw)
       do jlocal=1, nlocal
         istate = INDXL2G(jlocal, block_col, ipcol_sd, first_col, npcol_sd) + ncore_G

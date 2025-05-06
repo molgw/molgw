@@ -193,7 +193,7 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
   !
   ! Set up the diagonal of A-B in the RPA approximation
   !
-  !$OMP PARALLEL DO PRIVATE(istate,astate,iaspin)
+  !$OMP PARALLEL DO PRIVATE(istate, astate, iaspin)
   do t_ia_global=1, nmat
     istate = wpol%transition_table(1, t_ia_global)
     astate = wpol%transition_table(2, t_ia_global)

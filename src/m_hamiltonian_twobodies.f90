@@ -833,7 +833,7 @@ subroutine setup_exchange_longrange_ri(occupation, c_matrix, p_matrix, exchange_
     do iauxil=1, nauxil_local_lr
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp(:, :) = 0.0_dp
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -915,7 +915,7 @@ subroutine setup_exchange_ri_cmplx(occupation, c_matrix, p_matrix, exchange_ao, 
     do iauxil=1, nauxil_local
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -994,7 +994,7 @@ subroutine setup_exchange_ri_x2c_1(occupation, c_matrix, exchange_ao)
     do iauxil=1, nauxil_local
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1076,8 +1076,8 @@ subroutine setup_exchange_ri_x2c_2(occupation, c_matrix, exchange_ao)
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx1(:, :) = (0.0_dp, 0.0_dp)
       tmp_cmplx2(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
-      !$OMP DO REDUCTION(+:tmp_cmplx1,tmp_cmplx2)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
+      !$OMP DO REDUCTION(+:tmp_cmplx1, tmp_cmplx2)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
         jbf = index_basis(2, ipair)
@@ -1149,7 +1149,7 @@ subroutine setup_exchange_longrange_ri_cmplx(occupation, c_matrix, p_matrix, exc
     do iauxil=1, nauxil_local_lr
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1228,7 +1228,7 @@ subroutine setup_lr_exchange_ri_x2c_1(occupation, c_matrix, exchange_ao)
     do iauxil=1, nauxil_local_lr
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1310,8 +1310,8 @@ subroutine setup_lr_exchange_ri_x2c_2(occupation, c_matrix, exchange_ao)
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx1(:, :) = (0.0_dp, 0.0_dp)
       tmp_cmplx2(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
-      !$OMP DO REDUCTION(+:tmp_cmplx1,tmp_cmplx2)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
+      !$OMP DO REDUCTION(+:tmp_cmplx1, tmp_cmplx2)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
         jbf = index_basis(2, ipair)
@@ -1381,7 +1381,7 @@ subroutine setup_exchange_genuine_ri(occupation, c_matrix, p_matrix, exchange_ao
     ! GUILLAUME
     ! tmp_{i \alpha P} = \sum_\gamma C_\gamma i (\alpha \gamma | 1 / r12 | P )
     do iauxil_local=1, nauxil_local
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1462,7 +1462,7 @@ subroutine setup_exchange_genuine_ri_cmplx(occupation, c_matrix, p_matrix, excha
     ! GUILLAUME
     ! tmp_{i \alpha P} = \sum_\gamma C_\gamma i (\alpha \gamma | 1 / r12 | P )
     do iauxil_local=1, nauxil_local
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1640,7 +1640,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
       call calc_PI_dens_grad_r_batch(occupation, dm2_JK, c_matrix, basis_function_r_batch, PIr_batch, &
       &                              bf_gradx_batch, bf_grady_batch, bf_gradz_batch, rhor_batch, grad_rhor_batch)
 
-      !$OMP PARALLEL DO PRIVATE(rho_r_tot,s_rho_r,grad_rho_r_tot,factor_r,icoord)
+      !$OMP PARALLEL DO PRIVATE(rho_r_tot, s_rho_r, grad_rho_r_tot, factor_r, icoord)
       do ir=1, nr
         rho_r_tot=rhor_batch(1, ir)+rhor_batch(2, ir)
         if( abs(rho_r_tot) > 1d-6 ) then

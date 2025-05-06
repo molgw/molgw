@@ -345,7 +345,7 @@ subroutine setup_gos_fourier(basis_p, basis_t, qvec, gos_ao)
 
   allocate(gos_ao(basis_p%nbf, basis_t%nbf))
 
-  !$OMP PARALLEL PRIVATE(li,lj,ni_cart,nj_cart,ibf1,ibf1_cart,ibf2,jbf1,jbf1_cart,jbf2,gos_cart)
+  !$OMP PARALLEL PRIVATE(li, lj, ni_cart, nj_cart, ibf1, ibf1_cart, ibf2, jbf1, jbf1_cart, jbf2, gos_cart)
   !$OMP DO
   do jshell=1, basis_t%nshell
     lj        = basis_t%shell(jshell)%am
