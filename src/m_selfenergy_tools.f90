@@ -808,11 +808,15 @@ end subroutine setup_exchange_m_vxc
 
 
 !=========================================================================
-subroutine apply_qs_approximation(s_matrix, c_matrix, selfenergy)
+! Hermitianize selfenergy
+! and perform a MO to AO transform
+!
+subroutine apply_qs_approximation(s_matrix, c_matrix, selfenergy_mo, selfenergy_ao)
   implicit none
 
   real(dp), intent(in)    :: s_matrix(:, :), c_matrix(:, :, :)
-  real(dp), intent(inout) :: selfenergy(:, :, :)
+  real(dp), intent(inout) :: selfenergy_mo(:, :, :)
+  real(dp), intent(out)   :: selfenergy_ao(:, :, :)
   !=====
   integer :: ispin
   !=====
@@ -821,18 +825,11 @@ subroutine apply_qs_approximation(s_matrix, c_matrix, selfenergy)
   ! Kotani's Hermitianization trick
   !
   do ispin=1, nspin
-    selfenergy(:, :, ispin) = 0.5_dp * ( selfenergy(:, :, ispin) + TRANSPOSE(selfenergy(:, :, ispin)) )
-
-    ! Transform the matrix elements back to the AO basis
-    ! do not forget the overlap matrix S
-    ! C^T S C = I
-    ! the inverse of C is C^T S
-    ! the inverse of C^T is S C
-    selfenergy(:, :, ispin) = MATMUL( MATMUL( s_matrix(:, :) , c_matrix(:, nsemin:nsemax, ispin) ) , &
-                               MATMUL( selfenergy(nsemin:nsemax, nsemin:nsemax, ispin), &
-                                 MATMUL( TRANSPOSE(c_matrix(:, nsemin:nsemax, ispin)), s_matrix(:, :) ) ) )
-
+    selfenergy_mo(:, :, ispin) = 0.5_dp * ( selfenergy_mo(:, :, ispin) + TRANSPOSE(selfenergy_mo(:, :, ispin)) )
   enddo
+
+  ! Transform the matrix elements back to the AO basis
+  call h_mo_to_ao(c_matrix, s_matrix, selfenergy_mo, selfenergy_ao)
 
 end subroutine apply_qs_approximation
 

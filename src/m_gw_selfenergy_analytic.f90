@@ -648,19 +648,19 @@ end subroutine gw_selfenergy_scalapack
 
 
 !=========================================================================
-subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfenergy)
+subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfenergy_ao)
   implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
   real(dp), intent(in)                :: s_matrix(:, :)
   type(spectral_function), intent(in) :: wpol
-  real(dp), intent(out)               :: selfenergy(:, :, :)
+  real(dp), intent(out)               :: selfenergy_ao(:, :, :)
   !=====
   integer               :: nstate
   integer               :: ipstate, pstate, qstate, istate
   integer               :: ispin, spole
-  real(dp), allocatable  :: w_s(:, :)
+  real(dp), allocatable  :: w_s(:, :), selfenergy_mo(:, :, :)
   real(dp)              :: fact_full_i, fact_empty_i
   !=====
 
@@ -687,8 +687,9 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
 
   call clean_allocate('Temporary array', w_s, 1, wpol%npole_reso, nsemin, nsemax)
 
+  allocate(selfenergy_mo(nstate, nstate, nspin))
 
-  selfenergy(:, :, :)  = 0.0_dp
+  selfenergy_mo(:, :, :)  = 0.0_dp
   do ispin=1, nspin
     do istate=ncore_G+1, nvirtual_G-1 !INNER LOOP of G
 
@@ -734,7 +735,7 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
           do qstate=nsemin, nsemax
             do pstate=nsemin, nsemax
 
-              selfenergy(pstate, qstate, ispin) = selfenergy(pstate, qstate, ispin) &
+              selfenergy_mo(pstate, qstate, ispin) = selfenergy_mo(pstate, qstate, ispin) &
                         + w_s(spole, pstate) * w_s(spole, qstate)                            &
                           * ( REAL(  fact_full_i  / ( energy(qstate, ispin) - ieta  &
                                                      - energy(istate, ispin) + wpol%pole(spole) ) , dp ) &
@@ -753,14 +754,14 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
               !
               ! SEX
               !
-              selfenergy(pstate, qstate, ispin) = selfenergy(pstate, qstate, ispin) &
+              selfenergy_mo(pstate, qstate, ispin) = selfenergy_mo(pstate, qstate, ispin) &
                         + w_s(spole, pstate) * w_s(spole, qstate)                                &
                               * fact_full_i / wpol%pole(spole) * 2.0_dp
 
               !
               ! COH
               !
-              selfenergy(pstate, qstate, ispin) = selfenergy(pstate, qstate, ispin) &
+              selfenergy_mo(pstate, qstate, ispin) = selfenergy_mo(pstate, qstate, ispin) &
                         - w_s(spole, pstate) * w_s(spole, qstate) &
                               / wpol%pole(spole)
             enddo
@@ -777,14 +778,14 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
   enddo !ispin
 
   ! Sum up the contribution from different poles (= different procs)
-  call world%sum(selfenergy)
+  call world%sum(selfenergy_mo)
+
+  call clean_deallocate('Temporary array', w_s)
 
 
   ! Kotani's hermitianization trick
-  call apply_qs_approximation(s_matrix, c_matrix, selfenergy)
+  call apply_qs_approximation(s_matrix, c_matrix, selfenergy_mo, selfenergy_ao)
 
-
-  call clean_deallocate('Temporary array', w_s)
 
   if(has_auxil_basis) call destroy_eri_3center_mo()
 
