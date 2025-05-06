@@ -558,7 +558,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
                    first_row, first_col, cntxt_eri3_mo, MAX(1, mlocal), info)
 
       if( cntxt_eri3_mo > 0 ) then
-        call clean_allocate('TMP 3center eigen', eri_3tmp_auxil, mlocal, nlocal, verbose=.FALSE.)
+        call clean_allocate('TMP 3center MO', eri_3tmp_auxil, mlocal, nlocal, verbose=.FALSE.)
         do jlocal=1, nlocal
           jglobal = INDXL2G(jlocal, NB_eri3_mo, ipcol_eri3_mo, first_col, npcol_eri3_mo) + ncore_G
           do ilocal=1, mlocal
@@ -566,7 +566,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
           enddo
         enddo
       else
-        call clean_allocate('TMP 3center eigen', eri_3tmp_auxil, 1, 1, verbose=.FALSE.)
+        call clean_allocate('TMP 3center MO', eri_3tmp_auxil, 1, 1, verbose=.FALSE.)
       endif
       !
       ! Change data distribution
@@ -575,10 +575,10 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
       nlocal = NUMROC(nvirtual_G-ncore_G-1, block_col, ipcol_sd, first_col, npcol_sd)
       call DESCINIT(desc_3sd, nauxil_global, nvirtual_G-ncore_G-1, block_row, block_col, &
                    first_row, first_col, cntxt_sd, MAX(1, mlocal), info)
-      call clean_allocate('TMP 3center eigen', eri_3tmp_sd, mlocal, nlocal, verbose=.FALSE.)
+      call clean_allocate('TMP 3center MO', eri_3tmp_sd, mlocal, nlocal, verbose=.FALSE.)
       call PDGEMR2D(nauxil_global, nvirtual_G-ncore_G-1, eri_3tmp_auxil, 1, 1, desc_3auxil, &
                                                           eri_3tmp_sd, 1, 1, desc_3sd, cntxt_sd)
-      call clean_deallocate('TMP 3center eigen', eri_3tmp_auxil, verbose=.FALSE.)
+      call clean_deallocate('TMP 3center MO', eri_3tmp_auxil, verbose=.FALSE.)
 
 
       !
@@ -594,7 +594,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
                              1.0_dp, wresidue_sd, 1, 1, desc_wsd,    &
                                     eri_3tmp_sd, 1, 1, desc_3sd,    &
                              0.0_dp, w_s        , 1, 1, desc_w_s)
-      call clean_deallocate('TMP 3center eigen', eri_3tmp_sd, verbose=.FALSE.)
+      call clean_deallocate('TMP 3center MO', eri_3tmp_sd, verbose=.FALSE.)
 
 
 

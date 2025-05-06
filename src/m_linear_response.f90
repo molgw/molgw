@@ -690,8 +690,8 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
   integer                               :: kbstate_min
   integer                               :: kbstate_max
   integer                               :: nmat, nprodbasis
-  real(dp)                              :: eri_eigen_klij
-  real(dp), allocatable                  :: eri_eigenstate_klmin(:, :, :, :)
+  real(dp)                              :: eri_mo_klij
+  real(dp), allocatable                 :: eri_mo_klmin(:, :, :, :)
   !=====
 
   call start_clock(timing_vchiv)
@@ -703,10 +703,10 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
     call die('you should not be here')
   endif
 
-  allocate(eri_eigenstate_klmin(nbf, nbf, nbf, nspin))
+  allocate(eri_mo_klmin(nbf, nbf, nbf, nspin))
   ! Set this to zero and then enforce the calculation of the first array of Coulomb integrals
   ! If removed, calculate_eri_4center_mo might not calculate the first term!
-  eri_eigenstate_klmin(:, :, :, :) = 0.0_dp
+  eri_mo_klmin(:, :, :, :) = 0.0_dp
 
   nprodbasis = index_prodstate(nvirtual_W-1, nvirtual_W-1) * nspin
   call allocate_spectral_function(nprodbasis, wpol)
@@ -725,12 +725,12 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
 
     kbstate_min = MIN(jstate, bstate)
     kbstate_max = MAX(jstate, bstate)
-    call calculate_eri_4center_mo(c_matrix, kbstate_min, jbspin, eri_eigenstate_klmin)
+    call calculate_eri_4center_mo(c_matrix, kbstate_min, jbspin, eri_mo_klmin)
 
 
     ! COLLAPSE is used because nspin is much smaller than number of threads.
     !$OMP PARALLEL
-    !$OMP DO PRIVATE(eri_eigen_klij,mpstate_spin) COLLAPSE(2)
+    !$OMP DO PRIVATE(eri_mo_klij, mpstate_spin) COLLAPSE(2)
     do mpspin=1, nspin
       do pstate=1, nstate
         do mstate = 1, pstate
@@ -738,13 +738,13 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
           ! Unique ordering for mpstate_spin so to please OPENMP
           mpstate_spin = ( mpspin - 1 ) * ( nstate * ( nstate + 1 ) ) / 2 + ( ( pstate - 1 ) * pstate ) / 2 + mstate
 
-          eri_eigen_klij = eri_eigenstate_klmin(kbstate_max, mstate, pstate, mpspin)
+          eri_mo_klij = eri_mo_klmin(kbstate_max, mstate, pstate, mpspin)
 
           ! Use the symmetry ( k l | i j ) to regroup (kl) and (lk) contributions
           ! and the block structure of eigenvector | X  Y |
           !                                        | Y  X |
           wpol%residue_left(mpstate_spin, :) = wpol%residue_left(mpstate_spin, :) &
-                               + eri_eigen_klij * xpy_matrix(t_jb, :)
+                               + eri_mo_klij * xpy_matrix(t_jb, :)
 
         enddo
       enddo
@@ -759,7 +759,7 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
   !$OMP END PARALLEL WORKSHARE
 
 
-  if(ALLOCATED(eri_eigenstate_klmin)) deallocate(eri_eigenstate_klmin)
+  if(ALLOCATED(eri_mo_klmin)) deallocate(eri_mo_klmin)
 
   call stop_clock(timing_vchiv)
 

@@ -151,12 +151,12 @@ end function evaluate_eri_mo_ri_paral
 
 
 !=================================================================
-subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_eigenstate_i)
+subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_mo_i)
   implicit none
 
   integer, intent(in)     :: istate, ijspin
   real(dp), intent(in)    :: c_matrix(:, :, :)
-  real(dp), intent(inout) :: eri_eigenstate_i(:, :, :, :)
+  real(dp), intent(inout) :: eri_mo_i(:, :, :, :)
   !=====
   logical, save         :: disclaimer = .TRUE.
   integer, save         :: istate_previous=0
@@ -174,7 +174,7 @@ subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_eigenstate_i)
   nstate = SIZE(c_matrix, DIM=2)
 
   ! Check if the calculation can be skipped
-  if( istate_previous == istate .AND. ijspin_previous == ijspin .AND. ANY(ABS(eri_eigenstate_i(:, :, :, :))>1.0e-6_dp) ) then
+  if( istate_previous == istate .AND. ijspin_previous == ijspin .AND. ANY(ABS(eri_mo_i(:, :, :, :))>1.0e-6_dp) ) then
     return
   else
     istate_previous = istate
@@ -189,7 +189,7 @@ subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_eigenstate_i)
   call clean_allocate('TMP array', eri_tmp3, nbf, nbf, nbf)
 
   eri_tmp3(:, :, :) = 0.0_dp
-  eri_eigenstate_i(:, :, :, :) = 0.0_dp
+  eri_mo_i(:, :, :, :) = 0.0_dp
 
 
   ! New implementation looping over the unique integrals
@@ -268,7 +268,7 @@ subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_eigenstate_i)
 
       call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, eri_tmp1, nbf,              &
                                                  c_matrix(1, 1, klspin), nbf,  &
-                                           0.0d0, eri_eigenstate_i(1, 1, lstate, klspin), nstate)
+                                           0.0d0, eri_mo_i(1, 1, lstate, klspin), nstate)
 
     enddo
   enddo !klspin
@@ -466,7 +466,7 @@ subroutine calculate_eri_3center_mo(c_matrix, mstate_min, mstate_max, nstate_min
     verbose_ = .TRUE.
   endif
   if(verbose_) then
-    write(stdout, '(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
+    write(stdout, '(/,a)') ' Calculate 3-center integrals on molecular orbitals: AO -> MO transform'
   endif
 
   nbf    = SIZE(c_matrix, DIM=1)
@@ -627,7 +627,7 @@ subroutine calculate_eri_3center_mo_lr(c_matrix, mstate_min, mstate_max, nstate_
     verbose_ = .TRUE.
   endif
   if(verbose_) then
-    write(stdout, '(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
+    write(stdout, '(/,a)') ' Calculate 3-center integrals on molecular orbitals: AO -> MO transform'
   endif
 
   nbf    = SIZE(c_matrix, DIM=1)
@@ -764,7 +764,7 @@ subroutine calculate_eri_3center_mo_cmplx(c_matrix_cmplx, mstate_min, mstate_max
     verbose_ = .TRUE.
   endif
   if(verbose_) then
-    write(stdout, '(/,a)') ' Calculate 3-center integrals on eigenstates: AO -> MO transform'
+    write(stdout, '(/,a)') ' Calculate 3-center integrals on molecular orbitals: AO -> MO transform'
   endif
 
   nbf    = SIZE(c_matrix_cmplx, DIM=1)
@@ -947,12 +947,12 @@ subroutine destroy_eri_3center_mo(verbose, long_range, force)
   endif
 
   if( ALLOCATED(eri_3center_mo) ) then
-    if(verbose_) write(stdout, '(/,a)') ' Destroy 3-center integrals on eigenstates'
+    if(verbose_) write(stdout, '(/,a)') ' Destroy 3-center integrals on MO'
     call clean_deallocate('3-center MO integrals', eri_3center_mo, verbose_)
   endif
   if(PRESENT(long_range)) then
     if(long_range) then
-      if(verbose_) write(stdout, '(a,/)') ' Destroy 3-center_lr integrals on eigenstates'
+      if(verbose_) write(stdout, '(a,/)') ' Destroy 3-center_lr integrals on MO'
       call clean_deallocate('3-center_lr MO integrals', eri_3center_mo_lr, verbose_)
     endif
   endif
@@ -975,11 +975,11 @@ subroutine destroy_eri_3center_mo_cmplx(verbose, long_range)
     verbose_ = .TRUE.
   endif
 
-  if(verbose_) write(stdout, '(/,a)') ' Destroy 3-center integrals on eigenstates'
+  if(verbose_) write(stdout, '(/,a)') ' Destroy 3-center integrals on MO'
   call clean_deallocate('3-center MO integrals', eri_3center_mo_cmplx, verbose_)
   if(PRESENT(long_range)) then
     if(long_range) then
-      if(verbose_) write(stdout, '(a,/)') ' Destroy 3-center_lr integrals on eigenstates'
+      if(verbose_) write(stdout, '(a,/)') ' Destroy 3-center_lr integrals on MO'
       call clean_deallocate('3-center_lr MO integrals', eri_3center_mo_lr_cmplx, verbose_)
     endif
   endif

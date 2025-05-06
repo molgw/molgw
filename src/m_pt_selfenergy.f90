@@ -47,7 +47,7 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
   complex(dp)             :: fact_comp
   real(dp)                :: fact_energy
   real(dp)                :: emp2_sox, emp2_ring
-  real(dp), allocatable    :: eri_eigenstate_i(:, :, :, :)
+  real(dp), allocatable   :: eri_mo_i(:, :, :, :)
   real(dp)                :: coul_iqjk, coul_ijkq, coul_ipkj
   !=====
 
@@ -66,7 +66,7 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
-    allocate(eri_eigenstate_i(nstate, nstate, nstate, nspin))
+    allocate(eri_mo_i(nstate, nstate, nstate, nspin))
   endif
 
 
@@ -83,14 +83,15 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
       if( MODULO( istate - (ncore_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
       if( .NOT. has_auxil_basis ) then
-        call calculate_eri_4center_mo(c_matrix, istate, pqispin, eri_eigenstate_i)
+        call calculate_eri_4center_mo(c_matrix, istate, pqispin, eri_mo_i)
       endif
 
       fi = occupation(istate, pqispin)
       ei = energy(istate, pqispin)
 
       !$OMP PARALLEL
-      !$OMP DO PRIVATE(qstate,fj,ej,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq,omega,fact_comp,fact_energy) &
+      !$OMP DO PRIVATE(qstate, fj, ej, fk, ek, fact_occ1, fact_occ2, coul_ipkj, coul_iqjk, &
+      !$OMP&           coul_ijkq, omega, fact_comp, fact_energy) &
       !$OMP REDUCTION(+:emp2_ring,emp2_sox)
       do pstate=nsemin, nsemax ! external loop ( bra )
         qstate=pstate         ! external loop ( ket )
@@ -116,10 +117,10 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
                   coul_ijkq = evaluate_eri_mo_ri(istate, jstate, pqispin, kstate, qstate, pqispin)
                 endif
               else
-                coul_ipkj = eri_eigenstate_i(pstate, kstate, jstate, jkspin)
-                coul_iqjk = eri_eigenstate_i(qstate, jstate, kstate, jkspin)
+                coul_ipkj = eri_mo_i(pstate, kstate, jstate, jkspin)
+                coul_iqjk = eri_mo_i(qstate, jstate, kstate, jkspin)
                 if( pqispin == jkspin ) then
-                  coul_ijkq = eri_eigenstate_i(jstate, kstate, qstate, pqispin)
+                  coul_ijkq = eri_mo_i(jstate, kstate, qstate, pqispin)
                 endif
               endif
 
@@ -206,7 +207,7 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
     enddo
   enddo
 
-  if( ALLOCATED(eri_eigenstate_i) ) deallocate(eri_eigenstate_i)
+  if( ALLOCATED(eri_mo_i) ) deallocate(eri_mo_i)
   deallocate(selfenergy_ring)
   deallocate(selfenergy_sox)
   if(has_auxil_basis) call destroy_eri_3center_mo()
@@ -289,7 +290,7 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
   complex(dp)             :: fact_comp
   real(dp)                :: fact_energy
   real(dp)                :: emp2_sox, emp2_ring
-  real(dp), allocatable    :: eri_eigenstate_i(:, :, :, :)
+  real(dp), allocatable   :: eri_mo_i(:, :, :, :)
   real(dp)                :: coul_iqjk, coul_ijkq, coul_ipkj
   !=====
 
@@ -308,7 +309,7 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
-    allocate(eri_eigenstate_i(nstate, nstate, nstate, nspin))
+    allocate(eri_mo_i(nstate, nstate, nstate, nspin))
   endif
 
 
@@ -325,15 +326,15 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
       if( MODULO( istate - (ncore_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
       if( .NOT. has_auxil_basis ) then
-        call calculate_eri_4center_mo(c_matrix, istate, pqispin, eri_eigenstate_i)
+        call calculate_eri_4center_mo(c_matrix, istate, pqispin, eri_mo_i)
       endif
 
       fi = occupation(istate, pqispin)
       ei = energy(istate, pqispin)
 
       !$OMP PARALLEL
-      !$OMP DO PRIVATE(fj,ej,fk,ek,fact_occ1,fact_occ2,coul_ipkj,coul_iqjk,coul_ijkq,ep,eq,fact_comp,fact_energy)   &
-      !$OMP REDUCTION(+:emp2_ring,emp2_sox) COLLAPSE(2)
+      !$OMP DO PRIVATE(fj, ej, fk, ek, fact_occ1, fact_occ2, coul_ipkj, coul_iqjk, coul_ijkq, ep, eq, fact_comp, fact_energy) &
+      !$OMP REDUCTION(+:emp2_ring, emp2_sox) COLLAPSE(2)
       do pstate=nsemin, nsemax ! external loop ( bra )
         do qstate=nsemin, nsemax   ! external loop ( ket )
 
@@ -358,10 +359,10 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
                     coul_ijkq = evaluate_eri_mo_ri(istate, jstate, pqispin, kstate, qstate, pqispin)
                   endif
                 else
-                  coul_ipkj = eri_eigenstate_i(pstate, kstate, jstate, jkspin)
-                  coul_iqjk = eri_eigenstate_i(qstate, jstate, kstate, jkspin)
+                  coul_ipkj = eri_mo_i(pstate, kstate, jstate, jkspin)
+                  coul_iqjk = eri_mo_i(qstate, jstate, kstate, jkspin)
                   if( pqispin == jkspin ) then
-                    coul_ijkq = eri_eigenstate_i(jstate, kstate, qstate, pqispin)
+                    coul_ijkq = eri_mo_i(jstate, kstate, qstate, pqispin)
                   endif
                 endif
 
@@ -430,7 +431,7 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
   call apply_qs_approximation(s_matrix, c_matrix, selfenergy)
 
 
-  if( ALLOCATED(eri_eigenstate_i) ) deallocate(eri_eigenstate_i)
+  if( ALLOCATED(eri_mo_i) ) deallocate(eri_mo_i)
   deallocate(selfenergy_ring)
   deallocate(selfenergy_sox)
   if(has_auxil_basis) call destroy_eri_3center_mo()
@@ -537,12 +538,12 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
     endif
 
     !$OMP PARALLEL &
-    !$OMP& PRIVATE(eri_pqjk,eri_pjqk,eri_pqbc,eri_pbqc,eri_pqjc,eri_pjqc,eri_pqkb,eri_pkqb, &
-    !$OMP&         eri_paib,eri_pbia,eri_iajc,eri_ijac,eri_qcjb,eri_qbjc, &
-    !$OMP&         eri_pija,eri_pjia,eri_qija,eri_qaib,eri_pkla,eri_plka, &
-    !$OMP&         eri_qjbc,eri_qjkb,eri_qkjb,eri_qbik,eri_qkib, &
-    !$OMP&         eri_kaib,eri_icja,eri_acib,eri_ikja, &
-    !$OMP&         denom1,denom2,num1,num2,num3,num1a,num1b,num2a,num2b,num3a,num3b,omega)
+    !$OMP& PRIVATE(eri_pqjk, eri_pjqk, eri_pqbc, eri_pbqc, eri_pqjc, eri_pjqc, eri_pqkb, eri_pkqb, &
+    !$OMP&         eri_paib, eri_pbia, eri_iajc, eri_ijac, eri_qcjb, eri_qbjc, &
+    !$OMP&         eri_pija, eri_pjia, eri_qija, eri_qaib, eri_pkla, eri_plka, &
+    !$OMP&         eri_qjbc, eri_qjkb, eri_qkjb, eri_qbik, eri_qkib, &
+    !$OMP&         eri_kaib, eri_icja, eri_acib, eri_ikja, &
+    !$OMP&         denom1, denom2, num1, num2, num3, num1a, num1b, num2a, num2b, num3a, num3b, omega)
 
     !
     ! A diagrams family
@@ -556,7 +557,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
         selfenergy3 = 0.0_dp
         selfenergy4 = 0.0_dp
 
-        !$OMP DO REDUCTION(+:selfenergy3,selfenergy4)
+        !$OMP DO REDUCTION(+:selfenergy3, selfenergy4)
         do bstate=nhomo_G+1, nvirtual_G-1
 
           ! A1   i,j,k   a,b

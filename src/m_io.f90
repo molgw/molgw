@@ -3891,7 +3891,7 @@ subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
     !                                                              eri_3center_ao
     mem = REAL(nhomo-ncore_W, dp) * REAL(nvirtual_W-nhomo-1, dp) * nspin * auxil_nbf
   else
-    !          eri_eigenstate_klmin(
+    !          eri_mo_klmin(
     mem = REAL(nbf, dp)**3 * nspin
   endif
   mem = mem * 8.0_dp / 1024_dp**3
