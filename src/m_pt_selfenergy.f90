@@ -263,7 +263,7 @@ end subroutine onering_selfenergy
 
 
 !=========================================================================
-subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, selfenergy, emp2)
+subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, selfenergy_ao, emp2)
   use m_definitions
   use m_mpi
   use m_warning
@@ -277,12 +277,13 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
   real(dp), intent(in)        :: occupation(:, :), energy(:, :)
   real(dp), intent(in)        :: c_matrix(:, :, :)
   real(dp), intent(in)        :: s_matrix(:, :)
-  real(dp), intent(out)       :: selfenergy(:, :, :)
+  real(dp), intent(out)       :: selfenergy_ao(:, :, :)
   real(dp), intent(out)       :: emp2
   !=====
   integer                 :: pstate, qstate, nstate
   complex(dp), allocatable :: selfenergy_ring(:, :, :)
   complex(dp), allocatable :: selfenergy_sox(:, :, :)
+  real(dp), allocatable   :: selfenergy_mo(:, :, :)
   integer                 :: istate, jstate, kstate
   integer                 :: pqispin, jkspin
   real(dp)                :: fact_occ1, fact_occ2
@@ -316,8 +317,10 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
 
   allocate(selfenergy_ring (nsemin:nsemax, nsemin:nsemax, nspin))
   allocate(selfenergy_sox  (nsemin:nsemax, nsemin:nsemax, nspin))
+  allocate(selfenergy_mo(nstate, nstate, nspin))
 
 
+  selfenergy_mo(:, :, :) = 0.0_dp
   selfenergy_ring(:, :, :) = 0.0_dp
   selfenergy_sox(:, :, :)  = 0.0_dp
 
@@ -424,11 +427,11 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
 
   !$OMP PARALLEL
   !$OMP WORKSHARE
-  selfenergy(:, :, :) = REAL( selfenergy_ring(:, :, :) + selfenergy_sox(:, :, :) , dp)
+  selfenergy_mo(nsemin:nsemax, nsemin:nsemax, :) = selfenergy_ring(:, :, :)%re + selfenergy_sox(:, :, :)%re
   !$OMP END WORKSHARE
   !$OMP END PARALLEL
 
-  call apply_qs_approximation(s_matrix, c_matrix, selfenergy)
+  call apply_qs_approximation(s_matrix, c_matrix, selfenergy_mo, selfenergy_ao)
 
 
   if( ALLOCATED(eri_mo_i) ) deallocate(eri_mo_i)
