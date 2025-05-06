@@ -215,7 +215,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   integer              :: irecord
   integer              :: fu, info
   integer              :: desc_wing(NDEL), desc_eri(NDEL), desc_wpol(NDEL)
-  integer              :: nauxil_local, ilocal, mwing_local
+  integer              :: nauxil_local_, ilocal, mwing_local
 #if defined(HAVE_SCALAPACK)
   integer              :: desc_matrix(NDEL)
   real(dp)             :: work(1), nelect, rtmp
@@ -255,12 +255,12 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   !
   ! Temporary descriptors
   ! desc_wpol for wpol%residue_left
-  nauxil_local = NUMROC(nauxil_global, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
+  nauxil_local_ = NUMROC(nauxil_global, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
   call DESCINIT(desc_wpol, nauxil_global, wpol%npole_reso, MB_eri3_mo, NB_eri3_mo, first_row, first_col, &
-                cntxt_eri3_mo, MAX(1, nauxil_local), info)
+                cntxt_eri3_mo, MAX(1, nauxil_local_), info)
   ! desc_eri for wpol%residue_left
   call DESCINIT(desc_eri, nauxil_global, mstate, MB_eri3_mo, NB_eri3_mo, first_row, first_col, &
-                cntxt_eri3_mo, MAX(1, nauxil_local), info)
+                cntxt_eri3_mo, MAX(1, nauxil_local_), info)
 
   ! desc_wing for matrix_wing
   mwing_local = NUMROC(mwing, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)

@@ -1900,7 +1900,7 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
   !=====
   domega = eta * 0.5_dp
 
-  call start_clock(timing_gw_self)
+  call start_clock(timing_gwgamma_self)
 
   if( nspin > 1 ) then
     call die('g3w2_selfenergy_real_grid only for spin restricted')
@@ -2010,7 +2010,7 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gw_self)
+  call stop_clock(timing_gwgamma_self)
 
 
 
@@ -2048,7 +2048,7 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
-  call start_clock(timing_gw_self)
+  call start_clock(timing_gwgamma_self)
 
   write(stdout, '(/,1x,a)') 'G3W2 self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
@@ -2195,7 +2195,7 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gw_self)
+  call stop_clock(timing_gwgamma_self)
 
 end subroutine g3w2_selfenergy_imag_grid
 
@@ -2235,7 +2235,7 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
-  call start_clock(timing_gw_self)
+  call start_clock(timing_gwgamma_self)
 
   write(stdout, '(/,1x,a)') 'SOSEX self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
@@ -2478,7 +2478,7 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gw_self)
+  call stop_clock(timing_gwgamma_self)
 
 end subroutine sosex_selfenergy_imag_grid
 
@@ -2509,7 +2509,7 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
-  call start_clock(timing_gw_self)
+  call start_clock(timing_gwgamma_self)
 
   write(stdout, '(/,1x,a)') 'SOX self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
@@ -2594,7 +2594,7 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gw_self)
+  call stop_clock(timing_gwgamma_self)
 
 end subroutine sox_selfenergy_imag_grid
 
@@ -2616,7 +2616,7 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
   integer               :: file_v, file_w, file_e, file_omega
   real(dp)              :: v_paik, v_piak, v_paic, v_piac, ei, ea, Omega_s
   ! DEBUG flag
-  character(len=32), parameter :: selfenergy = 'PSD' ! 'GW+2SOX+2SOSEX' ! 'GW+SOSEX' ! 'PSD'  ! 'GW'
+  character(len=32), parameter :: selfenergy_switch = 'PSD' ! 'GW+2SOX+2SOSEX' ! 'GW+SOSEX' ! 'PSD'  ! 'GW'
   !=====
 
   if(.NOT. has_auxil_basis) return
@@ -2631,7 +2631,7 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
   endif
 
-  call clean_allocate('Store w_s', w_s, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  call clean_allocate('GW Lehman amplitudes w_s', w_s, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
   do qspin=1, nspin
 
@@ -2642,7 +2642,7 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
     !  call auxil%sum(w_s)
     !enddo
 
-    ! w_s^{mn} = w_s^P * ( m n | P)
+    ! w_s^{mn} = \sum_P w_s^P * ( P | m n )
     ! Collapse the 2nd and 3rd indices
     nstate2 = ( nvirtual_G - ncore_G - 1 )**2
     call DGEMM('T', 'N', wpol%npole_reso, nstate2, nauxil_local, &
@@ -2655,7 +2655,7 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
   qspin = 1
 
 
-  call clean_allocate('Store ~w_s', w_s_tilde, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, nsemin, nsemax)
+  call clean_allocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, nsemin, nsemax)
 
 
   w_s_tilde(:, :, :) = 0.0_dp
@@ -2723,7 +2723,7 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
   allocate(sigma, MOLD=se%sigma)
   sigma(:, :, :) = 0.0_dp
 
-  select case(TRIM(selfenergy))
+  select case(TRIM(selfenergy_switch))
   case('GW')
     !$OMP PARALLEL PRIVATE(Omega_s)
     !$OMP DO REDUCTION(+:sigma)
@@ -2828,8 +2828,8 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
 
   end select
 
-  call clean_deallocate('Store ~w_s', w_s_tilde)
-  call clean_deallocate('Store w_s', w_s)
+  call clean_deallocate('GW Lehman amplitudes w_s', w_s)
+  call clean_deallocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde)
 
   se%sigma(:, :, :) = sigma(:, :, :)
   deallocate(sigma)
@@ -2843,6 +2843,286 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
 
 
 end subroutine psd_gw2sosex_selfenergy
+
+
+!=========================================================================
+subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol, exchange_m_vxc)
+  implicit none
+
+  real(dp), intent(in)                 :: occupation(:, :), energy(:, :)
+  real(dp), intent(in)                 :: c_matrix(:, :, :), exchange_m_vxc(:, :, :)
+  type(spectral_function), intent(in)  :: wpol
+  !=====
+  character(len=4)     :: ctmp
+  integer              :: nstate, nstate2
+  integer              :: pstate
+  integer              :: qstate, qspin
+  real(dp)             :: sign_i, mu
+  real(dp)             :: weight
+  real(dp), allocatable :: matrix_wing(:, :), matrix_head(:, :), matrix_diag(:)
+  real(dp), allocatable :: super_matrix(:, :), eigval(:)
+  integer              :: nmat, mwing, imat, jmat
+  integer              :: mstate, astate, iastate, cstate, istate, kstate, spole
+  integer              :: irecord
+  integer              :: fu
+  real(dp)             :: ea, ei, v_paik, v_piak, Omega_s, v_paic, v_piac
+  real(dp), allocatable :: w_s(:, :, :), w_s_tilde(:, :, :)
+  ! DEBUG flag
+  character(len=32), parameter :: selfenergy_switch = 'PSD' ! 'PSD' ! 'GW'
+  !=====
+
+  call start_clock(timing_gwgamma_self)
+
+  nstate = SIZE(energy, DIM=1)
+
+  write(stdout, *)
+  select case(TRIM(selfenergy_switch))
+  case('GW')
+    write(stdout, *) 'Perform a one-shot PSD-ized GW+2SOSEX calculation with super matrix formulation'
+  case('PSD')
+    write(stdout, *) 'Perform a one-shot GW calculation with super matrix formulation'
+  case default
+    call die('psd_gw2sosex_selfenergy_upfolding: invalid choice')
+  end select
+
+  if( nspin > 1 ) call die('psd_gw2sosex_selfenergy_upfolding: not functional for nspin>1')
+
+  if( nsemin /= ncore_G+1 .OR. nsemax /= nvirtual_G-1 ) then
+    write(stdout, '(1x,a,i5,1x,i5)') 'nsemin ?= ncore_G+1    ', nsemin, ncore_G+1
+    write(stdout, '(1x,a,i5,1x,i5)') 'nsemax ?= nvirtual_G-1 ', nsemax, nvirtual_G-1
+    call die('psd_gw2sosex_selfenergy_upfolding: selfenergy state range should contain all the active states')
+  endif
+
+  if(has_auxil_basis) then
+    call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  else
+    call die('psd_gw2sosex_selfenergy_upfolding: only works with an auxiliary basis')
+  endif
+
+
+  !
+  ! Firstly, prepare w_s^{mn}
+  !
+  call clean_allocate('GW Lehman amplitudes w_s', w_s, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+
+  do qspin=1, nspin
+    ! w_s^{mn} = \sum_P w_s^P * ( P | m n)
+    ! Collapse the 2nd and 3rd indices
+    nstate2 = ( nvirtual_G - ncore_G - 1 )**2
+    call DGEMM('T', 'N', wpol%npole_reso, nstate2, nauxil_local, &
+                1.0_dp, wpol%residue_left(1, 1), nauxil_local, &
+                        eri_3center_mo(1, ncore_G+1, ncore_G+1, 1), nauxil_local, &
+                0.0_dp, w_s(1, ncore_G+1, ncore_G+1), wpol%npole_reso)
+    call auxil%sum(w_s)
+  enddo
+
+  !
+  ! Secondly, prepare tilde w_s^{mn}
+  !
+  call clean_allocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, nsemin, nsemax)
+
+  w_s_tilde(:, :, :) = 0.0_dp
+  do qspin=1, nspin
+    do pstate=nsemin, nsemax
+      !$OMP PARALLEL DO PRIVATE(ei, ea, v_paik, v_piak, Omega_s)
+      do kstate=ncore_G+1, nhomo_G
+
+        iastate = 0
+        do istate=ncore_G+1, nhomo_G
+          ei = energy(istate, qspin)
+          do astate=nhomo_G+1, nvirtual_G-1
+            ea = energy(astate, qspin)
+            iastate = iastate + 1
+            if( MODULO( iastate - 1 , poorman%nproc ) /= poorman%rank ) cycle
+
+            v_paik = DOT_PRODUCT( eri_3center_mo(:, pstate, astate, qspin), eri_3center_mo(:, istate, kstate, qspin) )
+            v_piak = DOT_PRODUCT( eri_3center_mo(:, pstate, istate, qspin), eri_3center_mo(:, astate, kstate, qspin) )
+
+            do spole=1, wpol%npole_reso
+              Omega_s = wpol%pole(spole)
+              w_s_tilde(spole, kstate, pstate) = w_s_tilde(spole, kstate, pstate) &
+                  + w_s(spole, astate, istate) &
+                        * (  v_paik * REAL( 1.0_dp / ( ea - ei + Omega_s - ieta) ) &
+                           + v_piak * REAL( 1.0_dp / ( ea - ei - Omega_s - ieta) ) )
+            enddo
+
+          enddo
+        enddo
+      enddo
+      !$OMP END PARALLEL DO
+
+      !$OMP PARALLEL DO PRIVATE(ei, ea, v_paic, v_piac, Omega_s)
+      do cstate=nhomo_G+1, nvirtual_G-1
+
+        iastate = 0
+        do istate=ncore_G+1, nhomo_G
+          ei = energy(istate, qspin)
+          do astate=nhomo_G+1, nvirtual_G-1
+            ea = energy(astate, qspin)
+            iastate = iastate + 1
+            if( MODULO( iastate - 1 , poorman%nproc ) /= poorman%rank ) cycle
+
+            v_paic = DOT_PRODUCT( eri_3center_mo(:, pstate, astate, qspin), eri_3center_mo(:, istate, cstate, qspin) )
+            v_piac = DOT_PRODUCT( eri_3center_mo(:, pstate, istate, qspin), eri_3center_mo(:, astate, cstate, qspin) )
+
+            do spole=1, wpol%npole_reso
+              Omega_s = wpol%pole(spole)
+              w_s_tilde(spole, cstate, pstate) = w_s_tilde(spole, cstate, pstate) &
+                  + w_s(spole, astate, istate) &
+                        * (  v_paic * REAL( 1.0_dp / ( ea - ei - Omega_s - ieta) ) &
+                           + v_piac * REAL( 1.0_dp / ( ea - ei + Omega_s - ieta) ) )
+            enddo
+
+          enddo
+        enddo
+      enddo
+      !$OMP END PARALLEL DO
+
+    enddo
+  enddo
+
+  call poorman%sum(w_s_tilde)
+
+
+  mstate = nvirtual_G - ncore_G - 1
+  nmat   = mstate * ( 1 + wpol%npole_reso)
+  mwing  = mstate * wpol%npole_reso
+
+  !    | M_head | M_wing**T |
+  !    | M_wing | M_diag    |
+
+  call clean_allocate('Matrix head', matrix_head, mstate, mstate)
+  call clean_allocate('Matrix wing', matrix_wing, mwing, mstate)
+
+
+  allocate(matrix_diag(mwing))
+  matrix_head(:, :) = 0.0_dp
+  matrix_wing(:, :) = 0.0_dp
+  matrix_diag(:)    = 0.0_dp
+
+  matrix_head(:, :) = exchange_m_vxc(ncore_G+1:nvirtual_G-1, ncore_G+1:nvirtual_G-1, 1)  ! spin index set to 1
+
+  write(stdout, '(/,1x,a,i8,a,i8)') 'Diagonalization problem of size: ', nmat, ' x ', nmat
+
+  do qspin=1, nspin
+    do qstate=ncore_G+1, nvirtual_G-1 ! INNER LOOP of G
+
+      if( MODULO( qstate - (ncore_G+1) , poorman%nproc) /= poorman%rank ) cycle
+      !
+      ! indeces
+      pstate = qstate - ncore_G
+      sign_i = MERGE(-1.0_dp, 1.0_dp, occupation(qstate, qspin) / spin_fact > completely_empty )
+      irecord = ( pstate - 1 ) * wpol%npole_reso
+
+      !
+      ! Head
+      matrix_head(pstate, pstate) = matrix_head(pstate, pstate) + energy(qstate, qspin)
+
+      !
+      ! Diagonal
+      matrix_diag(irecord+1:irecord+wpol%npole_reso) = energy(qstate, qspin) + sign_i * wpol%pole(:)
+
+      !
+      ! Wing
+      ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
+      select case(TRIM(selfenergy_switch))
+      case('GW')
+        matrix_wing(irecord+1:irecord+wpol%npole_reso, :) = w_s(1:wpol%npole_reso, qstate, ncore_G+1:nvirtual_G-1)
+      case('PSD')
+        matrix_wing(irecord+1:irecord+wpol%npole_reso, :) = w_s(1:wpol%npole_reso, qstate, ncore_G+1:nvirtual_G-1) &
+                                                           + w_s_tilde(1:wpol%npole_reso, qstate, ncore_G+1:nvirtual_G-1)
+      end select
+
+
+    enddo ! qstate
+  enddo ! qspin
+
+  call clean_deallocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde)
+  call clean_deallocate('GW Lehman amplitudes w_s', w_s)
+
+  write(stdout, '(a)') ' Matrix is setup'
+
+  if( .FALSE. ) then
+    !
+    ! Dump the super_matrix on files (1 file per SCALAPACK thread)
+    write(stdout, *) 'Dump the large sparse super_matrix on disk'
+    write(ctmp, '(i4.4)') world%rank
+    open(newunit=fu, file='MATRIX_'//ctmp, form='formatted', action='write')
+
+    ! only master writes the head and the long diagonal
+    if( is_iomaster) then
+      do jmat=1, mstate
+        do imat=1, jmat
+          write(fu, '(1x,i7,1x,i7,1x,e16.8)') imat, jmat, matrix_head(imat, jmat)*Ha_eV
+        enddo
+      enddo
+      do imat=1, mwing
+        write(fu, '(1x,i7,1x,i7,1x,e16.8)') imat + mstate, imat+mstate, matrix_diag(imat)*Ha_eV
+      enddo
+    endif
+
+    do jmat=1, mstate
+      do imat=1, mwing
+        write(fu, '(1x,i7,1x,i7,1x,e16.8)') mstate + imat, jmat, matrix_wing(imat, jmat)*Ha_eV
+      enddo
+    enddo
+    close(fu)
+  endif
+
+  !
+  ! If the super_matrix is small enough, then diagonalize it!
+  !
+  if( nmat < 30001 ) then
+
+    mu = ( MINVAL(energy(nhomo_G+1, :)) + MAXVAL(energy(nhomo_G, :)) ) / 2.0_dp
+    write(stdout, '(1x,a,f12.6)') 'Center of the HOMO-LUMO gap (eV): ', mu * Ha_eV
+    allocate(eigval(nmat))
+
+    write(stdout, *) 'Diagonalize the large sparse super_matrix as if it were dense'
+    call clean_allocate('Super matrix', super_matrix, nmat, nmat)
+    super_matrix(:, :)                    = 0.0_dp
+    super_matrix(1:mstate, 1:mstate)      = matrix_head(:, :)
+    super_matrix(1:mstate, mstate+1:nmat) = TRANSPOSE(matrix_wing(:, :))
+    super_matrix(mstate+1:nmat, 1:mstate) = matrix_wing(:, :)
+    do imat=mstate+1, nmat
+      super_matrix(imat, imat) = matrix_diag(imat-mstate)
+    enddo
+    call diagonalize('R', super_matrix, eigval)
+
+    write(stdout, '(1x,a,i8)') 'Number of non-negligible poles: ', COUNT( SUM(super_matrix(1:mstate, :)**2, DIM=1) > 1.0e-3_dp )
+    write(stdout, *) '============== Poles in eV , weight ==============='
+    open(newunit=fu, file='GREENS_FUNCTION', action='write')
+    do jmat=1, nmat
+      weight = SUM(super_matrix(1:mstate, jmat)**2)
+      if( weight > 5.0e-2_dp ) then
+        pstate = MAXLOC(ABS(super_matrix(1:mstate, jmat)), DIM=1)
+        write(stdout, '(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ', pstate, ': ', eigval(jmat)*Ha_eV, weight
+      endif
+      write(fu, '(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV, SUM(super_matrix(1:mstate, jmat)**2)
+    enddo
+    close(fu)
+    ! If eigenvalue lower than the middle of the HOMO-LUMO gap,
+    ! then consider the excitation is occupied
+    write(stdout, '(1x,a,f12.6)') 'Number of electrons: ', & 
+             spin_fact * SUM( SUM(super_matrix(1:mstate, :)**2, DIM=1), MASK=(eigval(:) < mu) )
+    write(stdout, *) '==================================================='
+
+    call clean_deallocate('Super matrix', super_matrix)
+    deallocate(eigval)
+
+  endif
+
+  call clean_deallocate('Matrix wing', matrix_wing)
+  call clean_deallocate('Matrix head', matrix_head)
+  deallocate(matrix_diag)
+  if(has_auxil_basis) then
+    call destroy_eri_3center_mo()
+  endif
+
+  call stop_clock(timing_gwgamma_self)
+
+
+end subroutine psd_gw2sosex_selfenergy_upfolding
 
 
 end module m_g3w2_selfenergy

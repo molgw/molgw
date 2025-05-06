@@ -242,6 +242,10 @@ subroutine init_calculation_type(scf, postscf)
     case('GW2SOSEXPSD', 'GW+2SOSEXPSD', 'GW+2SOSEX_PSD')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GW2SOSEXPSD
+    case('GW2SOSEXPSD_DYSON')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = GW2SOSEXPSD
+      calc_type%selfenergy_technique = exact_dyson
     case('GW+GWGWG', 'GW+G3W2')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = G3W2

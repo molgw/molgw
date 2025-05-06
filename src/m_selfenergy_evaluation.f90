@@ -410,10 +410,14 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
           call se%add(se_g3w2)
 
         case(GW2SOSEXPSD)
-          call psd_gw2sosex_selfenergy(energy_g, c_matrix, wpol, se_g3w2)
-          call se%reset()
-          call se%add(se_g3w2)
-          call se_g3w2%destroy()
+          if( calc_type%selfenergy_technique == exact_dyson ) then
+            call psd_gw2sosex_selfenergy_upfolding(occupation, energy_g, c_matrix, wpol, exchange_m_vxc)
+          else
+            call psd_gw2sosex_selfenergy(energy_g, c_matrix, wpol, se_g3w2)
+            call se%reset()
+            call se%add(se_g3w2)
+            call se_g3w2%destroy()
+          endif
 
         case(G3W2)
           call sosex_selfenergy(basis, occupation, energy_g, c_matrix, wpol, se_g3w2)
