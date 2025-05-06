@@ -96,7 +96,7 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
       else
         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
         w_s(:, nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , &
-                                            eri_3center_eigen(:, nsemin:nsemax, istate, ispin) )
+                                            eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
         call auxil%sum(w_s)
       endif
 
@@ -311,11 +311,11 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
 #if defined(HAVE_SCALAPACK)
         call PDGEMM('T', 'N', wpol%npole_reso, mstate,nauxil_global, &
                    1.0_dp, wpol%residue_left, 1, 1, desc_wpol,        &
-                          eri_3center_eigen(1, nsemin, istate, ispin), 1, 1, desc_eri,        &
+                          eri_3center_mo(1, nsemin, istate, ispin), 1, 1, desc_eri,        &
                    0.0_dp, matrix_wing, irecord+1, 1, desc_wing)
 #else
         matrix_wing(irecord+1:irecord+wpol%npole_reso, :) = &
-             MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , eri_3center_eigen(:, nsemin:nsemax, istate, ispin) )
+             MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
         call auxil%sum(matrix_wing(irecord+1:irecord+wpol%npole_reso, :))
 #endif
       endif
@@ -562,7 +562,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
         do jlocal=1, nlocal
           jglobal = INDXL2G(jlocal, NB_eri3_mo, ipcol_eri3_mo, first_col, npcol_eri3_mo) + ncore_G
           do ilocal=1, mlocal
-            eri_3tmp_auxil(ilocal, jlocal) = eri_3center_eigen(ilocal, jglobal, pstate, pspin)
+            eri_3tmp_auxil(ilocal, jlocal) = eri_3center_mo(ilocal, jglobal, pstate, pspin)
           enddo
         enddo
       else
@@ -709,7 +709,7 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
       else
         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
         w_s(:, nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:, :)), &
-                                            eri_3center_eigen(:, nsemin:nsemax, istate, ispin) )
+                                            eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
         call auxil%sum(w_s)
       endif
 
@@ -849,7 +849,7 @@ subroutine dump_gw_ingredients(energy, c_matrix, wpol)
     do qstate=ncore_G+1, nvirtual_G-1
       ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
       wcoeff(:, ncore_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , &
-                                                 eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, qstate, qspin) )
+                                                 eri_3center_mo(:, ncore_G+1:nvirtual_G-1, qstate, qspin) )
       call auxil%sum(wcoeff)
       write(file_w) wcoeff(:, :)
     enddo
@@ -870,7 +870,7 @@ subroutine dump_gw_ingredients(energy, c_matrix, wpol)
   open(newunit=file_v, file='v.bin', form='unformatted', access='stream', status='replace')
   do qspin=1, nspin
     do qstate=ncore_G+1, nvirtual_G-1
-      write(file_v) eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, qstate, qspin)
+      write(file_v) eri_3center_mo(:, ncore_G+1:nvirtual_G-1, qstate, qspin)
     enddo
   enddo
   close(file_v)

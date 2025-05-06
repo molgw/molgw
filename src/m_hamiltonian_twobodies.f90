@@ -2059,12 +2059,12 @@ subroutine setup_hartree_mo(occupation, vhartree_mo, ehartree)
   nocc = get_number_occupied_states(occupation)
   allocate(x_vector(nauxil_local))
 
-  if( .NOT. ALLOCATED(eri_3center_eigen)) call die('setup_hartree_mo: MO integrals are not available')
+  if( .NOT. ALLOCATED(eri_3center_mo)) call die('setup_hartree_mo: MO integrals are not available')
 
   x_vector(:) = 0.0_dp
   do ispin=1, nspin
     do istate=1, nocc
-      x_vector(:) = x_vector(:) + occupation(istate, ispin) * eri_3center_eigen(:, istate, istate, ispin)
+      x_vector(:) = x_vector(:) + occupation(istate, ispin) * eri_3center_mo(:, istate, istate, ispin)
     enddo
   enddo
   !if( auxil%nproc > 1) call die('not coded yet how to find G=0')
@@ -2073,7 +2073,7 @@ subroutine setup_hartree_mo(occupation, vhartree_mo, ehartree)
   do ispin=1, nspin
     do jstate=1, nstate
       do istate=1, nstate
-        vhartree_mo(istate, jstate, ispin) = SUM( eri_3center_eigen(:, istate, jstate, ispin) * x_vector(:) )
+        vhartree_mo(istate, jstate, ispin) = SUM( eri_3center_mo(:, istate, jstate, ispin) * x_vector(:) )
       enddo
     enddo
   enddo
@@ -2106,13 +2106,13 @@ subroutine setup_exchange_mo(occupation, sigx_mo, eexchange)
   nstate = SIZE(occupation, DIM=1)
   nocc = get_number_occupied_states(occupation)
 
-  if( .NOT. ALLOCATED(eri_3center_eigen)) call die('setup_exchange_mo: MO integrals are not available')
+  if( .NOT. ALLOCATED(eri_3center_mo)) call die('setup_exchange_mo: MO integrals are not available')
 
   sigx_mo(:, :, :) = 0.0_dp
   do ispin=1, nspin
     do istate=1, nocc
       call DSYRK('L', 'T', nstate, nauxil_local, -occupation(istate, ispin) / spin_fact, &
-                 eri_3center_eigen(1, 1, istate, ispin), nauxil_local, &
+                 eri_3center_mo(1, 1, istate, ispin), nauxil_local, &
                  1.0d0, sigx_mo(1, 1, ispin), nstate)
     enddo
     call matrix_lower_to_full(sigx_mo(:, :, ispin))

@@ -322,10 +322,10 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
               den_cb_ij = energy(istate, ispin) + energy(jstate, ispin) - energy(bstate, ispin) - energy(cstate, ispin)
               den_ca_ij = energy(istate, ispin) + energy(jstate, ispin) - energy(astate, ispin) - energy(cstate, ispin)
 
-              eri_ci_aj = eri_eigen(cstate, istate, ispin, astate, jstate, ispin) * spin_fact &
-                          - eri_eigen(cstate, jstate, ispin, astate, istate, ispin)
-              eri_ci_bj = eri_eigen(cstate, istate, ispin, bstate, jstate, ispin) * spin_fact &
-                         - eri_eigen(cstate, jstate, ispin, bstate, istate, ispin)
+              eri_ci_aj = evaluate_eri_mo(cstate, istate, ispin, astate, jstate, ispin) * spin_fact &
+                          - evaluate_eri_mo(cstate, jstate, ispin, astate, istate, ispin)
+              eri_ci_bj = evaluate_eri_mo(cstate, istate, ispin, bstate, jstate, ispin) * spin_fact &
+                         - evaluate_eri_mo(cstate, jstate, ispin, bstate, istate, ispin)
 
               p_matrix_mp2(astate-nsemax, bstate-nsemax) = &
                   p_matrix_mp2(astate-nsemax, bstate-nsemax)  &
@@ -411,7 +411,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
   if(has_auxil_basis) then
     call destroy_eri_3center_mo()
   else
-    call destroy_eri_4center_eigen_uks()
+    call destroy_eri_4center_mo_uks()
   endif
 
   write(stdout, '(1x,a)') 'Optimized empty states with Frozen Natural Orbitals'
@@ -579,7 +579,7 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
     call calculate_eri_3center_mo(c_matrix_nvo, 1, nstate_filtered, 1, nstate_filtered)
 
     call write_cc4s_eigenenergies(occupation, ehf_filtered, cc4s_output)
-    call write_cc4s_coulombvertex(eri_3center_eigen, cc4s_output)
+    call write_cc4s_coulombvertex(eri_3center_mo, cc4s_output)
 
     call destroy_eri_3center_mo()
   endif

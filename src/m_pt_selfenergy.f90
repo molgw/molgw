@@ -110,10 +110,10 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
               if( fact_occ1 < completely_empty .AND. fact_occ2 < completely_empty ) cycle
 
               if( has_auxil_basis ) then
-                coul_ipkj = eri_eigen_ri(istate, pstate, pqispin, kstate, jstate, jkspin)
-                coul_iqjk = eri_eigen_ri(istate, qstate, pqispin, jstate, kstate, jkspin)
+                coul_ipkj = evaluate_eri_mo_ri(istate, pstate, pqispin, kstate, jstate, jkspin)
+                coul_iqjk = evaluate_eri_mo_ri(istate, qstate, pqispin, jstate, kstate, jkspin)
                 if( pqispin == jkspin ) then
-                  coul_ijkq = eri_eigen_ri(istate, jstate, pqispin, kstate, qstate, pqispin)
+                  coul_ijkq = evaluate_eri_mo_ri(istate, jstate, pqispin, kstate, qstate, pqispin)
                 endif
               else
                 coul_ipkj = eri_eigenstate_i(pstate, kstate, jstate, jkspin)
@@ -352,10 +352,10 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
                 if( fact_occ1 < completely_empty .AND. fact_occ2 < completely_empty ) cycle
 
                 if( has_auxil_basis ) then
-                  coul_ipkj = eri_eigen_ri(istate, pstate, pqispin, kstate, jstate, jkspin)
-                  coul_iqjk = eri_eigen_ri(istate, qstate, pqispin, jstate, kstate, jkspin)
+                  coul_ipkj = evaluate_eri_mo_ri(istate, pstate, pqispin, kstate, jstate, jkspin)
+                  coul_iqjk = evaluate_eri_mo_ri(istate, qstate, pqispin, jstate, kstate, jkspin)
                   if( pqispin == jkspin ) then
-                    coul_ijkq = eri_eigen_ri(istate, jstate, pqispin, kstate, qstate, pqispin)
+                    coul_ijkq = evaluate_eri_mo_ri(istate, jstate, pqispin, kstate, qstate, pqispin)
                   endif
                 else
                   coul_ipkj = eri_eigenstate_i(pstate, kstate, jstate, jkspin)
@@ -562,16 +562,16 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           ! A1   i,j,k   a,b
           do istate=ncore_G+1, nhomo_G
             do jstate=ncore_G+1, nhomo_G
-              num2 = 2.0_dp * eri_eigen(jstate, astate, pqspin, istate, bstate, pqspin) &
-                    - eri_eigen(jstate, bstate, pqspin, istate, astate, pqspin)
+              num2 = 2.0_dp * evaluate_eri_mo(jstate, astate, pqspin, istate, bstate, pqspin) &
+                    - evaluate_eri_mo(jstate, bstate, pqspin, istate, astate, pqspin)
               denom1 = energy(jstate, pqspin) +  energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
 
               do kstate=ncore_G+1, nhomo_G
                 denom2 = energy(kstate, pqspin) +  energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
-                eri_pqjk = eri_eigen(pstate, qstate, pqspin, jstate, kstate, pqspin)
-                eri_pjqk = eri_eigen(pstate, jstate, pqspin, kstate, qstate, pqspin)
+                eri_pqjk = evaluate_eri_mo(pstate, qstate, pqspin, jstate, kstate, pqspin)
+                eri_pjqk = evaluate_eri_mo(pstate, jstate, pqspin, kstate, qstate, pqspin)
 
-                eri_kaib = eri_eigen(astate, kstate, pqspin, bstate, istate, pqspin)
+                eri_kaib = evaluate_eri_mo(astate, kstate, pqspin, bstate, istate, pqspin)
 
                 selfenergy3 = selfenergy3 - 2.0_dp * eri_pqjk * num2 * eri_kaib / ( denom1 * denom2 )
                 selfenergy4 = selfenergy4 +          eri_pjqk * num2 * eri_kaib / ( denom1 * denom2 )
@@ -581,17 +581,17 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
 
           ! A2   i,j   a,b,c
           do cstate=nhomo_G+1, nvirtual_G-1
-            eri_pqbc = eri_eigen(pstate, qstate, pqspin, cstate, bstate, pqspin)
-            eri_pbqc = eri_eigen(pstate, bstate, pqspin, qstate, cstate, pqspin)
+            eri_pqbc = evaluate_eri_mo(pstate, qstate, pqspin, cstate, bstate, pqspin)
+            eri_pbqc = evaluate_eri_mo(pstate, bstate, pqspin, qstate, cstate, pqspin)
 
             do istate=ncore_G+1, nhomo_G
               do jstate=ncore_G+1, nhomo_G
                 denom1 = energy(jstate, pqspin) +  energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
                 denom2 = energy(jstate, pqspin) +  energy(istate, pqspin) - energy(astate, pqspin) - energy(cstate, pqspin)
 
-                num2 = 2.0_dp * eri_eigen(jstate, astate, pqspin, istate, bstate, pqspin) &
-                      - eri_eigen(jstate, bstate, pqspin, istate, astate, pqspin)
-                eri_icja = eri_eigen(istate, cstate, pqspin, jstate, astate, pqspin)
+                num2 = 2.0_dp * evaluate_eri_mo(jstate, astate, pqspin, istate, bstate, pqspin) &
+                      - evaluate_eri_mo(jstate, bstate, pqspin, istate, astate, pqspin)
+                eri_icja = evaluate_eri_mo(istate, cstate, pqspin, jstate, astate, pqspin)
 
                 selfenergy3 = selfenergy3 + 2.0_dp * eri_pqbc * num2 * eri_icja / ( denom1 * denom2 )
                 selfenergy4 = selfenergy4 -          eri_pbqc * num2 * eri_icja / ( denom1 * denom2 )
@@ -602,16 +602,16 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           ! A3,A4   i,j   a,b,c
           do istate=ncore_G+1, nhomo_G
             do jstate=ncore_G+1, nhomo_G
-              num2 = 2.0_dp * eri_eigen(jstate, astate, pqspin, istate, bstate, pqspin) &
-                    - eri_eigen(jstate, bstate, pqspin, istate, astate, pqspin)
+              num2 = 2.0_dp * evaluate_eri_mo(jstate, astate, pqspin, istate, bstate, pqspin) &
+                    - evaluate_eri_mo(jstate, bstate, pqspin, istate, astate, pqspin)
               denom1 = energy(jstate, pqspin) +  energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
 
               do cstate=nhomo_G+1, nvirtual_G-1
                 denom2 = energy(jstate, pqspin) - energy(cstate, pqspin)
-                eri_pqjc = eri_eigen(pstate, qstate, pqspin, jstate, cstate, pqspin)
-                eri_pjqc = eri_eigen(pstate, jstate, pqspin, qstate, cstate, pqspin)
+                eri_pqjc = evaluate_eri_mo(pstate, qstate, pqspin, jstate, cstate, pqspin)
+                eri_pjqc = evaluate_eri_mo(pstate, jstate, pqspin, qstate, cstate, pqspin)
 
-                eri_acib = eri_eigen(astate, cstate, pqspin, istate, bstate, pqspin)
+                eri_acib = evaluate_eri_mo(astate, cstate, pqspin, istate, bstate, pqspin)
 
                 selfenergy3 = selfenergy3 + 4.0_dp * eri_pqjc * num2 * eri_acib / ( denom1 * denom2 )
                 selfenergy4 = selfenergy4 - 2.0_dp * eri_pjqc * num2 * eri_acib / ( denom1 * denom2 )
@@ -622,16 +622,16 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           ! A5,A6   i,j,k   a,b
           do istate=ncore_G+1, nhomo_G
             do jstate=ncore_G+1, nhomo_G
-              num2 = 2.0_dp * eri_eigen(jstate, astate, pqspin, istate, bstate, pqspin) &
-                    - eri_eigen(jstate, bstate, pqspin, istate, astate, pqspin)
+              num2 = 2.0_dp * evaluate_eri_mo(jstate, astate, pqspin, istate, bstate, pqspin) &
+                    - evaluate_eri_mo(jstate, bstate, pqspin, istate, astate, pqspin)
               denom1 = energy(jstate, pqspin) +  energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
 
               do kstate=ncore_G+1, nhomo_G
                 denom2 = energy(kstate, pqspin) - energy(bstate, pqspin)
-                eri_pqkb = eri_eigen(pstate, qstate, pqspin, kstate, bstate, pqspin)
-                eri_pkqb = eri_eigen(pstate, kstate, pqspin, bstate, qstate, pqspin)
+                eri_pqkb = evaluate_eri_mo(pstate, qstate, pqspin, kstate, bstate, pqspin)
+                eri_pkqb = evaluate_eri_mo(pstate, kstate, pqspin, bstate, qstate, pqspin)
 
-                eri_ikja = eri_eigen(istate, kstate, pqspin, jstate, astate, pqspin)
+                eri_ikja = evaluate_eri_mo(istate, kstate, pqspin, jstate, astate, pqspin)
 
                 selfenergy3 = selfenergy3 - 4.0_dp * eri_pqkb  * num2 * eri_ikja / ( denom1 * denom2 )
                 selfenergy4 = selfenergy4 + 2.0_dp * eri_pkqb  * num2 * eri_ikja / ( denom1 * denom2 )
@@ -667,9 +667,9 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
         do istate=ncore_G+1, nhomo_G
           do jstate=ncore_G+1, nhomo_G
 
-            eri_pija = eri_eigen(pstate, istate, pqspin, jstate, astate, pqspin)
-            eri_pjia = eri_eigen(pstate, jstate, pqspin, istate, astate, pqspin)
-            eri_qija = eri_eigen(qstate, istate, pqspin, jstate, astate, pqspin)
+            eri_pija = evaluate_eri_mo(pstate, istate, pqspin, jstate, astate, pqspin)
+            eri_pjia = evaluate_eri_mo(pstate, jstate, pqspin, istate, astate, pqspin)
+            eri_qija = evaluate_eri_mo(qstate, istate, pqspin, jstate, astate, pqspin)
             do iomega=-se%nomega, se%nomega
               omega = se%energy0(qstate, pqspin) + se%omega(iomega)
               denom1 = omega + energy(astate, pqspin) - energy(istate, pqspin) - energy(jstate, pqspin) - ieta
@@ -694,9 +694,9 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
         do istate=ncore_G+1, nhomo_G
           do bstate=nhomo_G+1, nvirtual_G-1
 
-            eri_paib = eri_eigen(pstate, astate, pqspin, istate, bstate, pqspin)
-            eri_pbia = eri_eigen(pstate, bstate, pqspin, istate, astate, pqspin)
-            eri_qaib = eri_eigen(pstate, astate, pqspin, istate, bstate, pqspin)
+            eri_paib = evaluate_eri_mo(pstate, astate, pqspin, istate, bstate, pqspin)
+            eri_pbia = evaluate_eri_mo(pstate, bstate, pqspin, istate, astate, pqspin)
+            eri_qaib = evaluate_eri_mo(pstate, astate, pqspin, istate, bstate, pqspin)
             do iomega=-se%nomega, se%nomega
               omega = se%energy0(qstate, pqspin) + se%omega(iomega)
               denom1 = omega + energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin) + ieta
@@ -728,13 +728,13 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
 
           !$OMP DO REDUCTION(+:selfenergy1,selfenergy2)
           do bstate=nhomo_G+1, nvirtual_G-1
-            eri_paib = eri_eigen(pstate, astate, pqspin, istate, bstate, pqspin)
-            eri_pbia = eri_eigen(pstate, bstate, pqspin, istate, astate, pqspin)
+            eri_paib = evaluate_eri_mo(pstate, astate, pqspin, istate, bstate, pqspin)
+            eri_pbia = evaluate_eri_mo(pstate, bstate, pqspin, istate, astate, pqspin)
 
             do cstate=nhomo_G+1, nvirtual_G-1
               do dstate=nhomo_G+1, nvirtual_G-1
-                num2 = eri_eigen(astate, cstate, pqspin, bstate, dstate, pqspin)
-                num3 = eri_eigen(qstate, cstate, pqspin, istate, dstate, pqspin)
+                num2 = evaluate_eri_mo(astate, cstate, pqspin, bstate, dstate, pqspin)
+                num3 = evaluate_eri_mo(qstate, cstate, pqspin, istate, dstate, pqspin)
                 do iomega=-se%nomega, se%nomega
                   omega = se%energy0(qstate, pqspin) + se%omega(iomega)
                   denom1 = omega + energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin) + ieta
@@ -763,13 +763,13 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           selfenergy2(:) = (0.0_dp, 0.0_dp)
           !$OMP DO REDUCTION(+:selfenergy1,selfenergy2)
           do bstate=nhomo_G+1, nvirtual_G-1
-            eri_paib = eri_eigen(pstate, astate, pqspin, istate, bstate, pqspin)
-            eri_pbia = eri_eigen(pstate, bstate, pqspin, istate, astate, pqspin)
+            eri_paib = evaluate_eri_mo(pstate, astate, pqspin, istate, bstate, pqspin)
+            eri_pbia = evaluate_eri_mo(pstate, bstate, pqspin, istate, astate, pqspin)
 
             do jstate=ncore_G+1, nhomo_G
               do kstate=ncore_G+1, nhomo_G
-                num2 = eri_eigen(astate, jstate, pqspin, bstate, kstate, pqspin)
-                num3 = eri_eigen(qstate, jstate, pqspin, istate, kstate, pqspin)
+                num2 = evaluate_eri_mo(astate, jstate, pqspin, bstate, kstate, pqspin)
+                num3 = evaluate_eri_mo(qstate, jstate, pqspin, istate, kstate, pqspin)
                 denom2 = energy(jstate, pqspin) + energy(kstate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
                 do iomega=-se%nomega, se%nomega
                   omega = se%energy0(qstate, pqspin) + se%omega(iomega)
@@ -797,12 +797,12 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           selfenergy2(:) = (0.0_dp, 0.0_dp)
           !$OMP DO REDUCTION(+:selfenergy1,selfenergy2)
           do jstate=ncore_G+1, nhomo_G
-            eri_pija = eri_eigen(pstate, istate, pqspin, jstate, astate, pqspin)
-            eri_pjia = eri_eigen(pstate, jstate, pqspin, istate, astate, pqspin)
+            eri_pija = evaluate_eri_mo(pstate, istate, pqspin, jstate, astate, pqspin)
+            eri_pjia = evaluate_eri_mo(pstate, jstate, pqspin, istate, astate, pqspin)
             do bstate=nhomo_G+1, nvirtual_G-1
               do cstate=nhomo_G+1, nvirtual_G-1
-                num2 = eri_eigen(istate, bstate, pqspin, jstate, cstate, pqspin)
-                num3 = eri_eigen(qstate, bstate, pqspin, astate, cstate, pqspin)
+                num2 = evaluate_eri_mo(istate, bstate, pqspin, jstate, cstate, pqspin)
+                num3 = evaluate_eri_mo(qstate, bstate, pqspin, astate, cstate, pqspin)
                 do iomega=-se%nomega, se%nomega
                   omega = se%energy0(qstate, pqspin) + se%omega(iomega)
                   denom1 = omega + energy(astate, pqspin) - energy(istate, pqspin) - energy(jstate, pqspin) - ieta
@@ -830,12 +830,12 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           selfenergy2(:) = (0.0_dp, 0.0_dp)
           !$OMP DO REDUCTION(+:selfenergy1,selfenergy2)
           do lstate=ncore_G+1, nhomo_G
-            eri_pkla = eri_eigen(pstate, kstate, pqspin, lstate, astate, pqspin)
-            eri_plka = eri_eigen(pstate, lstate, pqspin, kstate, astate, pqspin)
+            eri_pkla = evaluate_eri_mo(pstate, kstate, pqspin, lstate, astate, pqspin)
+            eri_plka = evaluate_eri_mo(pstate, lstate, pqspin, kstate, astate, pqspin)
             do istate=ncore_G+1, nhomo_G
               do jstate=ncore_G+1, nhomo_G
-                num2 = eri_eigen(kstate, istate, pqspin, lstate, jstate, pqspin)
-                num3 = eri_eigen(qstate, istate, pqspin, astate, jstate, pqspin)
+                num2 = evaluate_eri_mo(kstate, istate, pqspin, lstate, jstate, pqspin)
+                num3 = evaluate_eri_mo(qstate, istate, pqspin, astate, jstate, pqspin)
                 do iomega=-se%nomega, se%nomega
                   omega = se%energy0(qstate, pqspin) + se%omega(iomega)
                   denom1 = omega + energy(astate, pqspin) - energy(istate, pqspin) - energy(jstate, pqspin) - ieta
@@ -869,13 +869,13 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           !$OMP DO REDUCTION(+:selfenergy0,selfenergy1,selfenergy2)
           do cstate=nhomo_G+1, nvirtual_G-1
             do jstate=ncore_G+1, nhomo_G
-              eri_iajc = eri_eigen(istate, astate, pqspin, jstate, cstate, pqspin)
-              eri_ijac = eri_eigen(istate, jstate, pqspin, astate, cstate, pqspin)
+              eri_iajc = evaluate_eri_mo(istate, astate, pqspin, jstate, cstate, pqspin)
+              eri_ijac = evaluate_eri_mo(istate, jstate, pqspin, astate, cstate, pqspin)
               do bstate=nhomo_G+1, nvirtual_G-1
-                eri_paib = eri_eigen(pstate, astate, pqspin, istate, bstate, pqspin)
-                eri_pbia = eri_eigen(pstate, bstate, pqspin, istate, astate, pqspin)
-                eri_qcjb = eri_eigen(qstate, cstate, pqspin, jstate, bstate, pqspin)
-                eri_qbjc = eri_eigen(qstate, bstate, pqspin, jstate, cstate, pqspin)
+                eri_paib = evaluate_eri_mo(pstate, astate, pqspin, istate, bstate, pqspin)
+                eri_pbia = evaluate_eri_mo(pstate, bstate, pqspin, istate, astate, pqspin)
+                eri_qcjb = evaluate_eri_mo(qstate, cstate, pqspin, jstate, bstate, pqspin)
+                eri_qbjc = evaluate_eri_mo(qstate, bstate, pqspin, jstate, cstate, pqspin)
                 num3a = eri_qcjb - 2.0_dp * eri_qbjc
                 num3b = eri_qbjc - 2.0_dp * eri_qcjb
                 do iomega=-se%nomega, se%nomega
@@ -915,13 +915,13 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           !$OMP DO REDUCTION(+:selfenergy0,selfenergy1,selfenergy2)
           do bstate=nhomo_G+1, nvirtual_G-1
             do jstate=ncore_G+1, nhomo_G
-              num2a = eri_eigen(astate, istate, pqspin, bstate, jstate, pqspin)
-              num2b = eri_eigen(astate, jstate, pqspin, bstate, istate, pqspin)
+              num2a = evaluate_eri_mo(astate, istate, pqspin, bstate, jstate, pqspin)
+              num2b = evaluate_eri_mo(astate, jstate, pqspin, bstate, istate, pqspin)
               do cstate=nhomo_G+1, nvirtual_G-1
-                num1a = eri_eigen(pstate, cstate, pqspin, istate, astate, pqspin)
-                num1b = eri_eigen(pstate, astate, pqspin, istate, cstate, pqspin)
-                eri_qcjb = eri_eigen(qstate, cstate, pqspin, jstate, bstate, pqspin)
-                eri_qjbc = eri_eigen(qstate, jstate, pqspin, bstate, cstate, pqspin)
+                num1a = evaluate_eri_mo(pstate, cstate, pqspin, istate, astate, pqspin)
+                num1b = evaluate_eri_mo(pstate, astate, pqspin, istate, cstate, pqspin)
+                eri_qcjb = evaluate_eri_mo(qstate, cstate, pqspin, jstate, bstate, pqspin)
+                eri_qjbc = evaluate_eri_mo(qstate, jstate, pqspin, bstate, cstate, pqspin)
                 num3a = eri_qjbc - 2.0_dp * eri_qcjb
                 num3b = eri_qcjb - 2.0_dp * eri_qjbc
                 denom2 = energy(jstate, pqspin) + energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin) + ieta
@@ -960,13 +960,13 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           !$OMP DO REDUCTION(+:selfenergy0,selfenergy1,selfenergy2)
           do bstate=nhomo_G+1, nvirtual_G-1
             do jstate=ncore_G+1, nhomo_G
-              num2a = eri_eigen(jstate, astate, pqspin, istate, bstate, pqspin)
-              num2b = eri_eigen(jstate, bstate, pqspin, istate, astate, pqspin)
+              num2a = evaluate_eri_mo(jstate, astate, pqspin, istate, bstate, pqspin)
+              num2b = evaluate_eri_mo(jstate, bstate, pqspin, istate, astate, pqspin)
               do kstate=ncore_G+1, nhomo_G
-                num1a = eri_eigen(pstate, kstate, pqspin, astate, jstate, pqspin)
-                num1b = eri_eigen(pstate, jstate, pqspin, astate, kstate, pqspin)
-                eri_qbik = eri_eigen(qstate, bstate, pqspin, istate, kstate, pqspin)
-                eri_qkib = eri_eigen(qstate, kstate, pqspin, istate, bstate, pqspin)
+                num1a = evaluate_eri_mo(pstate, kstate, pqspin, astate, jstate, pqspin)
+                num1b = evaluate_eri_mo(pstate, jstate, pqspin, astate, kstate, pqspin)
+                eri_qbik = evaluate_eri_mo(qstate, bstate, pqspin, istate, kstate, pqspin)
+                eri_qkib = evaluate_eri_mo(qstate, kstate, pqspin, istate, bstate, pqspin)
                 num3a = eri_qbik - 2.0_dp * eri_qkib
                 num3b = eri_qkib - 2.0_dp * eri_qbik
                 denom2 = energy(istate, pqspin) + energy(jstate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin) + ieta
@@ -1005,14 +1005,14 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           !$OMP DO REDUCTION(+:selfenergy0,selfenergy1,selfenergy2)
           do bstate=nhomo_G+1, nvirtual_G-1
             do jstate=ncore_G+1, nhomo_G
-              num2a = eri_eigen(istate, astate, pqspin, bstate, jstate, pqspin)
-              num2b = eri_eigen(istate, jstate, pqspin, bstate, astate, pqspin)
+              num2a = evaluate_eri_mo(istate, astate, pqspin, bstate, jstate, pqspin)
+              num2b = evaluate_eri_mo(istate, jstate, pqspin, bstate, astate, pqspin)
 
               do kstate=ncore_G+1, nhomo_G
-                num1a = eri_eigen(pstate, kstate, pqspin, astate, istate, pqspin)
-                num1b = eri_eigen(pstate, istate, pqspin, astate, kstate, pqspin)
-                eri_qjkb = eri_eigen(qstate, jstate, pqspin, kstate, bstate, pqspin)
-                eri_qkjb = eri_eigen(qstate, kstate, pqspin, jstate, bstate, pqspin)
+                num1a = evaluate_eri_mo(pstate, kstate, pqspin, astate, istate, pqspin)
+                num1b = evaluate_eri_mo(pstate, istate, pqspin, astate, kstate, pqspin)
+                eri_qjkb = evaluate_eri_mo(qstate, jstate, pqspin, kstate, bstate, pqspin)
+                eri_qkjb = evaluate_eri_mo(qstate, kstate, pqspin, jstate, bstate, pqspin)
                 num3a = eri_qjkb - 2.0_dp * eri_qkjb
                 num3b = eri_qkjb - 2.0_dp * eri_qjkb
                 do iomega=-se%nomega, se%nomega
@@ -1077,7 +1077,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
   if(has_auxil_basis) then
     call destroy_eri_3center_mo()
   else
-    call destroy_eri_4center_eigen_uks()
+    call destroy_eri_4center_mo_uks()
   endif
 
   call stop_clock(timing_pt_self)

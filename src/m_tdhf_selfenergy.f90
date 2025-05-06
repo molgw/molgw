@@ -77,7 +77,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
   allocate(uq(nauxil_global, ncore_G+1:nvirtual_G-1, nsemin:nsemax))
   do qstate=nsemin, nsemax
     do ustate=ncore_G+1, nvirtual_G-1
-      uq(:, ustate, qstate) = eri_3center_eigen(:, ustate, qstate, 1)
+      uq(:, ustate, qstate) = eri_3center_mo(:, ustate, qstate, 1)
     enddo
   enddo
 
@@ -168,13 +168,13 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     !    astate = wpol%transition_table(2,imat)
 
     !    ! Store ( i a | j p ) ( and ( i a | j q ) for off-diagonal terms)
-    !    eri_tmp1o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,astate,1), eri_3center_eigen(:,jstate,pstate,1) )
+    !    eri_tmp1o(imat,jstate) = DOT_PRODUCT( eri_3center_mo(:,istate,astate,1), eri_3center_mo(:,jstate,pstate,1) )
 
     !    ! Store ( i j | a q ) which should be set to zero to recover GW
-    !    eri_tmp2o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,jstate,1), uq(:,astate,qstate) )
+    !    eri_tmp2o(imat,jstate) = DOT_PRODUCT( eri_3center_mo(:,istate,jstate,1), uq(:,astate,qstate) )
 
     !    ! Store ( a j | i q ) which should be set to zero to recover GW
-    !    eri_tmp3o(imat,jstate) = DOT_PRODUCT( eri_3center_eigen(:,astate,jstate,1), uq(:,istate,qstate) )
+    !    eri_tmp3o(imat,jstate) = DOT_PRODUCT( eri_3center_mo(:,astate,jstate,1), uq(:,istate,qstate) )
 
     !  enddo
     !enddo
@@ -186,11 +186,11 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     do imat=1, nmat
       istate = wpol%transition_table(1, imat)
       astate = wpol%transition_table(2, imat)
-      eri_P_ia(:, imat) = eri_3center_eigen(:, istate, astate, 1)
+      eri_P_ia(:, imat) = eri_3center_mo(:, istate, astate, 1)
     enddo
     call DGEMM('T', 'N', nmat, nmoo, nauxil_global, &
                1.0d0, eri_P_ia(:, :), nauxil_global, &
-               eri_3center_eigen(:, ncore_G+1:, pstate, 1), nauxil_global, &
+               eri_3center_mo(:, ncore_G+1:, pstate, 1), nauxil_global, &
                0.0d0, eri_tmp1o(:, :), nmat)
     deallocate(eri_P_ia)
 
@@ -199,7 +199,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     allocate(eri_i_a(ncore_G+1:nhomo_G, nhomo_G+1:nvirtual_G-1))
     do jstate=ncore_G+1, nhomo_G
       call DGEMM('T', 'N', nmoo, nmov, nauxil_global, &
-                 1.0d0, eri_3center_eigen(:, ncore_G+1:nhomo_G, jstate, 1), nauxil_global, &
+                 1.0d0, eri_3center_mo(:, ncore_G+1:nhomo_G, jstate, 1), nauxil_global, &
                  uq(:, nhomo_G+1:nvirtual_G-1, qstate), nauxil_global, &
                  0.0d0, eri_i_a(:, :), nmoo)
       do imat=1, nmat
@@ -218,7 +218,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     allocate(eri_a_i(nhomo_G+1:nvirtual_G-1, ncore_G+1:nhomo_G))
     do jstate=ncore_G+1, nhomo_G
       call DGEMM('T', 'N', nmov, nmoo, nauxil_global, &
-                 1.0d0, eri_3center_eigen(:, nhomo_G+1:nvirtual_G-1, jstate, 1), nauxil_global, &
+                 1.0d0, eri_3center_mo(:, nhomo_G+1:nvirtual_G-1, jstate, 1), nauxil_global, &
                  uq(:, ncore_G+1:nhomo_G, qstate), nauxil_global, &
                  0.0d0, eri_a_i(:, :), nmov)
       do imat=1, nmat
@@ -295,13 +295,13 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     !    astate = wpol%transition_table(2,imat)
     !
     !    ! Store ( i a | b p ) ( and ( i a | b q ) for off-diagonal terms)
-    !    eri_tmp1v(imat,bstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,astate,1), eri_3center_eigen(:,bstate,pstate,1) )
+    !    eri_tmp1v(imat,bstate) = DOT_PRODUCT( eri_3center_mo(:,istate,astate,1), eri_3center_mo(:,bstate,pstate,1) )
     !
     !    ! Store ( i b | a q ) which should be set to zero to recover GW
-    !    eri_tmp2v(imat,bstate) = DOT_PRODUCT( eri_3center_eigen(:,istate,bstate,1), uq(:,astate,qstate) )
+    !    eri_tmp2v(imat,bstate) = DOT_PRODUCT( eri_3center_mo(:,istate,bstate,1), uq(:,astate,qstate) )
     !
     !    ! Store ( a b | i q ) which should be set to zero to recover GW
-    !    eri_tmp3v(imat,bstate) = DOT_PRODUCT( eri_3center_eigen(:,astate,bstate,1), uq(:,istate,qstate) )
+    !    eri_tmp3v(imat,bstate) = DOT_PRODUCT( eri_3center_mo(:,astate,bstate,1), uq(:,istate,qstate) )
     !  enddo
     !enddo
 
@@ -312,11 +312,11 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     do imat=1, nmat
       istate = wpol%transition_table(1, imat)
       astate = wpol%transition_table(2, imat)
-      eri_P_ia(:, imat) = eri_3center_eigen(:, istate, astate, 1)
+      eri_P_ia(:, imat) = eri_3center_mo(:, istate, astate, 1)
     enddo
     call DGEMM('T', 'N', nmat, nmov, nauxil_global, &
                1.0d0, eri_P_ia(:, :), nauxil_global, &
-               eri_3center_eigen(:, nhomo_G+1:, pstate, 1), nauxil_global, &
+               eri_3center_mo(:, nhomo_G+1:, pstate, 1), nauxil_global, &
                0.0d0, eri_tmp1v(:, :), nmat)
     deallocate(eri_P_ia)
 
@@ -325,7 +325,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     allocate(eri_i_a(ncore_G+1:nhomo_G, nhomo_G+1:nvirtual_G-1))
     do bstate=nhomo_G+1, nvirtual_G-1
       call DGEMM('T', 'N', nmoo, nmov, nauxil_global, &
-                 1.0d0, eri_3center_eigen(:, ncore_G+1:nhomo_G, bstate, 1), nauxil_global, &
+                 1.0d0, eri_3center_mo(:, ncore_G+1:nhomo_G, bstate, 1), nauxil_global, &
                  uq(:, nhomo_G+1:nvirtual_G-1, qstate), nauxil_global, &
                  0.0d0, eri_i_a(:, :), nmoo)
       do imat=1, nmat
@@ -344,7 +344,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     allocate(eri_a_i(nhomo_G+1:nvirtual_G-1, ncore_G+1:nhomo_G))
     do bstate=nhomo_G+1, nvirtual_G-1
       call DGEMM('T', 'N', nmov, nmoo, nauxil_global, &
-                 1.0d0, eri_3center_eigen(:, nhomo_G+1:nvirtual_G-1, bstate, 1), nauxil_global, &
+                 1.0d0, eri_3center_mo(:, nhomo_G+1:nvirtual_G-1, bstate, 1), nauxil_global, &
                  uq(:, ncore_G+1:nhomo_G, qstate), nauxil_global, &
                  0.0d0, eri_a_i(:, :), nmov)
       do imat=1, nmat
@@ -509,9 +509,9 @@ subroutine tdhf_vacondio_selfenergy(basis, occupation, energy, c_matrix, se)
         istate = wpol%transition_table(1, imat)
         astate = wpol%transition_table(2, imat)
 
-        eri_tmp1(imat, jstate) = eri_eigen(istate, astate, 1, jstate, pstate, 1)
-        eri_tmp2(imat, jstate) = eri_eigen(istate, jstate, 1, astate, pstate, 1)  ! set to zero to recover GW
-        eri_tmp3(imat, jstate) = eri_eigen(astate, jstate, 1, istate, pstate, 1)  ! set to zero to recover GW
+        eri_tmp1(imat, jstate) = evaluate_eri_mo(istate, astate, 1, jstate, pstate, 1)
+        eri_tmp2(imat, jstate) = evaluate_eri_mo(istate, jstate, 1, astate, pstate, 1)  ! set to zero to recover GW
+        eri_tmp3(imat, jstate) = evaluate_eri_mo(astate, jstate, 1, istate, pstate, 1)  ! set to zero to recover GW
      enddo
    enddo
 
@@ -530,9 +530,9 @@ subroutine tdhf_vacondio_selfenergy(basis, occupation, energy, c_matrix, se)
   !        istate = wpol%transition_table(1,imat)
   !        astate = wpol%transition_table(2,imat)
 
-  !        eri_iajp = eri_eigen(istate,astate,1,jstate,pstate,1)
-  !        eri_ijap = eri_eigen(istate,jstate,1,astate,pstate,1)  ! set to zero to recover GW
-  !        eri_ajip = eri_eigen(astate,jstate,1,istate,pstate,1)  ! set to zero to recover GW
+  !        eri_iajp = evaluate_eri_mo(istate,astate,1,jstate,pstate,1)
+  !        eri_ijap = evaluate_eri_mo(istate,jstate,1,astate,pstate,1)  ! set to zero to recover GW
+  !        eri_ajip = evaluate_eri_mo(astate,jstate,1,istate,pstate,1)  ! set to zero to recover GW
 
   !        num1 = num1 + 2.0 * x_matrix(imat,spole) * eri_iajp - x_matrix(imat,spole) * eri_ijap  &
   !                    + 2.0 * y_matrix(imat,spole) * eri_iajp - y_matrix(imat,spole) * eri_ajip 
@@ -554,9 +554,9 @@ subroutine tdhf_vacondio_selfenergy(basis, occupation, energy, c_matrix, se)
         istate = wpol%transition_table(1, imat)
         astate = wpol%transition_table(2, imat)
 
-        eri_tmp1v(imat, bstate) = eri_eigen(istate, astate, 1, bstate, pstate, 1)
-        eri_tmp2v(imat, bstate) = eri_eigen(istate, bstate, 1, astate, pstate, 1)  ! set to zero to recover GW
-        eri_tmp3v(imat, bstate) = eri_eigen(astate, bstate, 1, istate, pstate, 1)  ! set to zero to recover GW
+        eri_tmp1v(imat, bstate) = evaluate_eri_mo(istate, astate, 1, bstate, pstate, 1)
+        eri_tmp2v(imat, bstate) = evaluate_eri_mo(istate, bstate, 1, astate, pstate, 1)  ! set to zero to recover GW
+        eri_tmp3v(imat, bstate) = evaluate_eri_mo(astate, bstate, 1, istate, pstate, 1)  ! set to zero to recover GW
      enddo
    enddo
    num_tmp2v(:, :) = MATMUL( TRANSPOSE(xpy_matrix(:, :)) , eri_tmp1v(:, :) )
@@ -580,9 +580,9 @@ subroutine tdhf_vacondio_selfenergy(basis, occupation, energy, c_matrix, se)
     !      istate = wpol%transition_table(1,imat)
     !      astate = wpol%transition_table(2,imat)
 
-    !      eri_iabp = eri_eigen(istate,astate,1,bstate,pstate,1)
-    !      eri_ibap = eri_eigen(istate,bstate,1,astate,pstate,1)  ! set to zero to recover GW
-    !      eri_abip = eri_eigen(astate,bstate,1,istate,pstate,1)  ! set to zero to recover GW
+    !      eri_iabp = evaluate_eri_mo(istate,astate,1,bstate,pstate,1)
+    !      eri_ibap = evaluate_eri_mo(istate,bstate,1,astate,pstate,1)  ! set to zero to recover GW
+    !      eri_abip = evaluate_eri_mo(astate,bstate,1,istate,pstate,1)  ! set to zero to recover GW
 
     !      num1 = num1 + 2.0 * x_matrix(imat,spole) * eri_iabp - x_matrix(imat,spole) * eri_ibap  &
     !                  + 2.0 * y_matrix(imat,spole) * eri_iabp - y_matrix(imat,spole) * eri_abip

@@ -98,13 +98,13 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
       call calculate_eri_3center_mo_lr(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola)
     else
       if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' ) ) then
-        eri_3center_mo_available = ( ALLOCATED(eri_3center_eigen) .AND. ALLOCATED(eri_3center_eigen_lr) )
+        eri_3center_mo_available = ( ALLOCATED(eri_3center_mo) .AND. ALLOCATED(eri_3center_mo_lr) )
         if( .NOT. eri_3center_mo_available ) then
           call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola, &
                   long_range=long_range_true)
         endif
       else
-        eri_3center_mo_available = ALLOCATED(eri_3center_eigen)
+        eri_3center_mo_available = ALLOCATED(eri_3center_mo)
         if( .NOT. eri_3center_mo_available ) then
           call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola)
         endif
@@ -605,7 +605,7 @@ subroutine polarizability_onering(basis, energy, c_matrix, vchi0v)
     bstate = vchi0v%transition_table(2, t_jb)
     jbspin = vchi0v%transition_table(3, t_jb)
 
-    vchi0v%residue_left(:, t_jb) = eri_3center_eigen(:, jstate, bstate, jbspin) * SQRT(spin_fact)
+    vchi0v%residue_left(:, t_jb) = eri_3center_mo(:, jstate, bstate, jbspin) * SQRT(spin_fact)
     vchi0v%pole(t_jb)           = energy(bstate, jbspin) - energy(jstate, jbspin)
 
   enddo
@@ -803,7 +803,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol, ener
     jstate = wpol%transition_table(1, t_jb)
     bstate = wpol%transition_table(2, t_jb)
     jbspin = wpol%transition_table(3, t_jb)
-    eri_3tmp(:, t_jb) = eri_3center_eigen(:, jstate, bstate, jbspin)
+    eri_3tmp(:, t_jb) = eri_3center_mo(:, jstate, bstate, jbspin)
   enddo
 
   ! Use the symmetry ( I | k l ) to regroup (kl) and (lk) contributions
@@ -829,7 +829,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol, ener
     jstate = wpol%transition_table(1, t_jb)
     bstate = wpol%transition_table(2, t_jb)
     jbspin = wpol%transition_table(3, t_jb)
-    eri_3tmp(:, t_jb) = eri_3center_eigen(:, jstate, bstate, jbspin)
+    eri_3tmp(:, t_jb) = eri_3center_mo(:, jstate, bstate, jbspin)
   enddo
 
   !
@@ -875,7 +875,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol, ener
     jstate = wpol%transition_table(1, t_jb_global)
     bstate = wpol%transition_table(2, t_jb_global)
     jbspin = wpol%transition_table(3, t_jb_global)
-    energy_gm = energy_gm - SUM( eri_3center_eigen(:, jstate, bstate, jbspin)**2 ) * spin_fact * 0.5_dp
+    energy_gm = energy_gm - SUM( eri_3center_mo(:, jstate, bstate, jbspin)**2 ) * spin_fact * 0.5_dp
   enddo
 
   energy_gm = energy_gm + 0.5_dp * ( SUM( wpol%residue_left(:, :)**2 ) )
@@ -942,7 +942,7 @@ subroutine static_polarizability(occupation, energy, wpol_out)
     eri_3center_ij(:) = 0.0_dp
     do ibf_auxil_local=1, nauxil_local
       ibf_auxil = ibf_auxil_g(ibf_auxil_local)
-      eri_3center_ij(ibf_auxil) = eri_3center_eigen(ibf_auxil_local, istate, astate, iaspin)
+      eri_3center_ij(ibf_auxil) = eri_3center_mo(ibf_auxil_local, istate, astate, iaspin)
     enddo
     call auxil%sum(eri_3center_ij)
 

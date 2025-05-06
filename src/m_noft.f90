@@ -603,18 +603,18 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
           do jstate=1, nstate_occ
             do pstate=1, nstate_noft
               ! Hartree: <pi|ji> format used for ERImol
-              ERI_pkji=eri_eigen_ri(pstate, jstate, 1, istate, istate, 1)
+              ERI_pkji=evaluate_eri_mo_ri(pstate, jstate, 1, istate, istate, 1)
               ERImol(pstate, istate, jstate, istate)=alpha_hybrid*ERI_pkji &
-               +beta_hybrid*eri_eigen_ri_lr(pstate, jstate, 1, istate, istate, 1)
+               +beta_hybrid*evaluate_eri_mo_ri_lr(pstate, jstate, 1, istate, istate, 1)
               ERImolJsr(pstate, istate, jstate)=ERI_pkji-ERImol(pstate, istate, jstate, istate)
               ! Exchange: <pj|ji> format used for ERImol
-              ERI_pkji=eri_eigen_ri(pstate, jstate, 1, jstate, istate, 1)
+              ERI_pkji=evaluate_eri_mo_ri(pstate, jstate, 1, jstate, istate, 1)
               ERImol(pstate, jstate, jstate, istate)=alpha_hybrid*ERI_pkji &
-               +beta_hybrid*eri_eigen_ri_lr(pstate, jstate, 1, jstate, istate, 1)
+               +beta_hybrid*evaluate_eri_mo_ri_lr(pstate, jstate, 1, jstate, istate, 1)
               ! Time-rev: <pi|jj> format used for ERImol
-              ERI_pkji=eri_eigen_ri(pstate, jstate, 1, istate, jstate, 1)
+              ERI_pkji=evaluate_eri_mo_ri(pstate, jstate, 1, istate, jstate, 1)
               ERImol(pstate, istate, jstate, jstate)=alpha_hybrid*ERI_pkji &
-               +beta_hybrid*eri_eigen_ri_lr(pstate, jstate, 1, istate, jstate, 1)
+               +beta_hybrid*evaluate_eri_mo_ri_lr(pstate, jstate, 1, istate, jstate, 1)
               ERImolLsr(pstate, istate, jstate)=ERI_pkji-ERImol(pstate, istate, jstate, jstate)
             enddo
           enddo
@@ -640,18 +640,18 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
           do jstate=1, nstate_occ
             do pstate=1, nstate_noft
               ! Hartree: <pi|ji> format used for ERImol
-              ERI_pkji_cmplx=eri_eigen_ri_cmplx(pstate, jstate, 1, istate, istate, 1)
+              ERI_pkji_cmplx=evaluate_eri_mo_ri_cmplx(pstate, jstate, 1, istate, istate, 1)
               ERImol_cmplx(pstate, istate, jstate, istate)=alpha_hybrid*ERI_pkji_cmplx &
-               +beta_hybrid*eri_eigen_ri_lr_cmplx(pstate, jstate, 1, istate, istate, 1)
+               +beta_hybrid*evaluate_eri_mo_ri_lr_cmplx(pstate, jstate, 1, istate, istate, 1)
               ERImolJsr_cmplx(pstate, istate, jstate)=ERI_pkji_cmplx-ERImol_cmplx(pstate, istate, jstate, istate)
               ! Exchange: <pj|ji> format used for ERImol
-              ERI_pkji_cmplx=eri_eigen_ri_cmplx(pstate, jstate, 1, jstate, istate, 1)
+              ERI_pkji_cmplx=evaluate_eri_mo_ri_cmplx(pstate, jstate, 1, jstate, istate, 1)
               ERImol_cmplx(pstate, jstate, jstate, istate)=alpha_hybrid*ERI_pkji_cmplx &
-               +beta_hybrid*eri_eigen_ri_lr_cmplx(pstate, jstate, 1, jstate, istate, 1)
+               +beta_hybrid*evaluate_eri_mo_ri_lr_cmplx(pstate, jstate, 1, jstate, istate, 1)
               ! Time-rev: <pi|jj> -> <pj|ji> format used for ERImol 
-              ERI_pkji_cmplx=eri_eigen_ri_cmplx(pstate, jstate, 1, jstate, istate, 1)      ! Using K
+              ERI_pkji_cmplx=evaluate_eri_mo_ri_cmplx(pstate, jstate, 1, jstate, istate, 1)      ! Using K
               ERImol_cmplx(pstate, istate, jstate, jstate)=alpha_hybrid*ERI_pkji_cmplx & 
-               +beta_hybrid*eri_eigen_ri_lr_cmplx(pstate, jstate, 1, jstate, istate, 1)    ! Using K
+               +beta_hybrid*evaluate_eri_mo_ri_lr_cmplx(pstate, jstate, 1, jstate, istate, 1)    ! Using K
               ERImolLsr_cmplx(pstate, istate, jstate)=ERI_pkji-ERImol_cmplx(pstate, istate, jstate, jstate)
             enddo
           enddo
@@ -677,7 +677,7 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
             do jstate=1, nstate_noft
              do pstate=1, nstate_noft
               do qstate=1, nstate_noft
-               ERImol_cmplx(qstate, pstate, jstate, istate)=eri_eigen_ri_cmplx(qstate, jstate, 1, pstate, istate, 1)
+               ERImol_cmplx(qstate, pstate, jstate, istate)=evaluate_eri_mo_ri_cmplx(qstate, jstate, 1, pstate, istate, 1)
               enddo
              enddo
             enddo
@@ -686,9 +686,9 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
            do istate=1, nstate_occ
              do jstate=1, nstate_occ
                do pstate=1, nstate_noft
-                 ERImol_cmplx(pstate, istate, jstate, istate)=eri_eigen_ri_cmplx(pstate, jstate, 1, istate, istate, 1) ! <pi|ji> format used for ERImol
-                 ERImol_cmplx(pstate, jstate, jstate, istate)=eri_eigen_ri_cmplx(pstate, jstate, 1, jstate, istate, 1) ! <pj|ji> format used for ERImol
-                 ERImol_cmplx(pstate, istate, jstate, jstate)=eri_eigen_ri_cmplx(pstate, jstate, 1, istate, jstate, 1) ! <pi|jj> format used for ERImol
+                 ERImol_cmplx(pstate, istate, jstate, istate)=evaluate_eri_mo_ri_cmplx(pstate, jstate, 1, istate, istate, 1) ! <pi|ji> format used for ERImol
+                 ERImol_cmplx(pstate, jstate, jstate, istate)=evaluate_eri_mo_ri_cmplx(pstate, jstate, 1, jstate, istate, 1) ! <pj|ji> format used for ERImol
+                 ERImol_cmplx(pstate, istate, jstate, jstate)=evaluate_eri_mo_ri_cmplx(pstate, jstate, 1, istate, jstate, 1) ! <pi|jj> format used for ERImol
                enddo
              enddo
            enddo
@@ -710,7 +710,7 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
             do jstate=1, nstate_noft
              do pstate=1, nstate_noft
               do qstate=1, nstate_noft
-               ERImol(qstate, pstate, jstate, istate)=eri_eigen_ri(qstate, jstate, 1, pstate, istate, 1)
+               ERImol(qstate, pstate, jstate, istate)=evaluate_eri_mo_ri(qstate, jstate, 1, pstate, istate, 1)
               enddo
              enddo
             enddo
@@ -719,9 +719,9 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
            do istate=1, nstate_occ
              do jstate=1, nstate_occ
                do pstate=1, nstate_noft
-                 ERImol(pstate, istate, jstate, istate)=eri_eigen_ri(pstate, jstate, 1, istate, istate, 1) ! <pi|ji> format used for ERImol
-                 ERImol(pstate, jstate, jstate, istate)=eri_eigen_ri(pstate, jstate, 1, jstate, istate, 1) ! <pj|ji> format used for ERImol
-                 ERImol(pstate, istate, jstate, jstate)=eri_eigen_ri(pstate, jstate, 1, istate, jstate, 1) ! <pi|jj> format used for ERImol
+                 ERImol(pstate, istate, jstate, istate)=evaluate_eri_mo_ri(pstate, jstate, 1, istate, istate, 1) ! <pi|ji> format used for ERImol
+                 ERImol(pstate, jstate, jstate, istate)=evaluate_eri_mo_ri(pstate, jstate, 1, jstate, istate, 1) ! <pj|ji> format used for ERImol
+                 ERImol(pstate, istate, jstate, jstate)=evaluate_eri_mo_ri(pstate, jstate, 1, istate, jstate, 1) ! <pi|jj> format used for ERImol
                enddo
              enddo
            enddo
@@ -769,7 +769,7 @@ subroutine mo_ints_x2c(nstate_occ, nstate_kji, NO_COEF_x2c, hCORE_x2c, ERImol_x2
       do jstate=1, nstate_noft
        do pstate=1, nstate_noft
         do qstate=1, nstate_noft
-         ERImol_x2c(qstate, pstate, jstate, istate)=eri_eigen_ri_x2c(qstate, jstate, pstate, istate)
+         ERImol_x2c(qstate, pstate, jstate, istate)=evaluate_eri_mo_ri_x2c(qstate, jstate, pstate, istate)
         enddo
        enddo
       enddo
@@ -779,15 +779,15 @@ subroutine mo_ints_x2c(nstate_occ, nstate_kji, NO_COEF_x2c, hCORE_x2c, ERImol_x2
        do jstate=1, nstate_occ    ! Delta_ij contributions (Hartee and exchange terms incl. ubar and bar)
          do pstate=1, nstate_noft
            ! For 2nd, 4th, and 5th terms in Eq. 64 Rel-RDMFT paper SciPost Chem. 1, 004 (2022)
-           ERImol_x2c(pstate, istate, jstate, istate)=eri_eigen_ri_x2c(pstate, jstate, istate, istate) ! <li|ji> format used for ERImol
-           ERImol_x2c(pstate, jstate, jstate, istate)=eri_eigen_ri_x2c(pstate, jstate, jstate, istate) ! <lj|ji> format used for ERImol
+           ERImol_x2c(pstate, istate, jstate, istate)=evaluate_eri_mo_ri_x2c(pstate, jstate, istate, istate) ! <li|ji> format used for ERImol
+           ERImol_x2c(pstate, jstate, jstate, istate)=evaluate_eri_mo_ri_x2c(pstate, jstate, jstate, istate) ! <lj|ji> format used for ERImol
          enddo
        enddo
        do jstate=1, nstate_occ/2  ! Pi_ij contributions (i.e. <\ubar{i} \bar{i} | \ubar{j} \bar{j}>, <\bar{i} \ubar{i} | \bar{j} \ubar{j}>,
          do pstate=1, nstate_noft ! <\ubar{i} \bar{i} | \bar{j} \ubar{j}>, and <\bar{i} \ubar{i} | \ubar{j} \bar{j}>)
            ! For 6th and 7th terms in Eq. 64 Rel-RDMFT paper SciPost Chem. 1, 004 (2022) NOTE: Focus on the types of 2-RDM elements NOT on the integrals of Eq. 64
-           ERImol_x2c(pstate, istate, 2*jstate-1, 2*jstate  )=eri_eigen_ri_x2c(pstate, 2*jstate-1, istate, 2*jstate  ) ! <li|\ubar{j} \bar{j} > format used for ERImol
-           ERImol_x2c(pstate, istate, 2*jstate  , 2*jstate-1)=eri_eigen_ri_x2c(pstate, 2*jstate  , istate, 2*jstate-1) ! <li|\bar{j} \ubar{j} > format used for ERImol
+           ERImol_x2c(pstate, istate, 2*jstate-1, 2*jstate  )=evaluate_eri_mo_ri_x2c(pstate, 2*jstate-1, istate, 2*jstate  ) ! <li|\ubar{j} \bar{j} > format used for ERImol
+           ERImol_x2c(pstate, istate, 2*jstate  , 2*jstate-1)=evaluate_eri_mo_ri_x2c(pstate, 2*jstate  , istate, 2*jstate-1) ! <li|\bar{j} \ubar{j} > format used for ERImol
          enddo
        enddo
      enddo

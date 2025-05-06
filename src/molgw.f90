@@ -599,7 +599,7 @@ program molgw
     call write_cc4s_eigenenergies(occupation(ncore_G+1:nvirtual_G-1,:), &
                                   energy(ncore_G+1:nvirtual_G-1,:), cc4s_output)
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
-    call write_cc4s_coulombvertex(eri_3center_eigen, cc4s_output)
+    call write_cc4s_coulombvertex(eri_3center_mo, cc4s_output)
     call destroy_eri_3center_mo()
   endif
 
@@ -752,7 +752,7 @@ program molgw
     if(has_auxil_basis) then
       call destroy_eri_3center_mo()
     else
-      call destroy_eri_4center_eigen_uks()
+      call destroy_eri_4center_mo_uks()
     endif
 
     call destroy_ci()

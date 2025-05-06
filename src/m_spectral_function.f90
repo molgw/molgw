@@ -823,17 +823,17 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
 
   ! Check if (I | p q) integrals are already available
   !   if not, then calculate them
-  eri_3center_mo_available = ALLOCATED(eri_3center_eigen)
+  eri_3center_mo_available = ALLOCATED(eri_3center_mo)
   if( .NOT. eri_3center_mo_available ) then
     call calculate_eri_3center_mo(c_matrix, ncore_W+1, nhomo_W, nlumo_W, nvirtual_W-1, timing=timing_aomo_pola)
   else
-    ! eri_3center_eigen is already available
+    ! eri_3center_mo is already available
     ! check if it has the correct dimensions
-    if(    LBOUND(eri_3center_eigen, DIM=2) > ncore_W+1      &
-      .OR. UBOUND(eri_3center_eigen, DIM=2) < nhomo_W        &
-      .OR. LBOUND(eri_3center_eigen, DIM=3) > nlumo_W        &
-      .OR. UBOUND(eri_3center_eigen, DIM=3) > nvirtual_W-1 ) then
-      call die('sf_vsqrt_chi_vsqrt_rpa: eri_3center_eigen does not contain all the needed states')
+    if(    LBOUND(eri_3center_mo, DIM=2) > ncore_W+1      &
+      .OR. UBOUND(eri_3center_mo, DIM=2) < nhomo_W        &
+      .OR. LBOUND(eri_3center_mo, DIM=3) > nlumo_W        &
+      .OR. UBOUND(eri_3center_mo, DIM=3) > nvirtual_W-1 ) then
+      call die('sf_vsqrt_chi_vsqrt_rpa: eri_3center_mo does not contain all the needed states')
     endif
   endif
 
@@ -867,8 +867,8 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
       de   = energy(astate, iaspin)     - energy(istate, iaspin)
       factor = REAL( 2.0_dp * docc * de / ( sf%omega(iomega)**2 - de**2 ) )
 
-      eri3_t1(:, t_ia) = eri_3center_eigen(:, istate, astate, iaspin) * factor
-      eri3_t2(:, t_ia) = eri_3center_eigen(:, istate, astate, iaspin)
+      eri3_t1(:, t_ia) = eri_3center_mo(:, istate, astate, iaspin) * factor
+      eri3_t2(:, t_ia) = eri_3center_mo(:, istate, astate, iaspin)
 
     enddo
 
