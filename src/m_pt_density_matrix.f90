@@ -962,5 +962,6 @@ subroutine update_density_matrix(occupation, c_matrix, p_matrix_mo, p_matrix)
 end subroutine update_density_matrix
 
 
+!=========================================================================
 end module m_pt_density_matrix
 !=========================================================================

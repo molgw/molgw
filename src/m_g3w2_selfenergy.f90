@@ -2600,13 +2600,15 @@ end subroutine sox_selfenergy_imag_grid
 
 
 !=========================================================================
-subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
+subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se, p_matrix)
   implicit none
 
-  real(dp), intent(in)                 :: energy(:, :)
+  real(dp), intent(in)                 :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :)
   type(spectral_function), intent(in)  :: wpol
+  real(dp), intent(out)                :: ecorr
   type(selfenergy_grid), intent(inout) :: se
+  real(dp), intent(out), optional      :: p_matrix(:, :, :)
   !=====
   integer               :: qspin, spole, pstate, istate, astate, iastate
   integer               :: kstate, cstate
@@ -2624,7 +2626,7 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
 
   call start_clock(timing_gwgamma_self)
 
-  write(stdout, *) 'Perform a one-shot GW+2SOSEX PDF calculation'
+  write(stdout, *) 'Perform a one-shot GW+2SOSEX PSD calculation'
 
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
@@ -2717,11 +2719,31 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
 
   call poorman%sum(w_s_tilde)
 
+  ! First evaluate the GW correlation energy as it comes for free
+  ecorr = 0.0_dp
+  do astate=nhomo_G+1, nvirtual_G-1
+    do istate=ncore_G+1, nhomo_G
+      ecorr = ecorr - spin_fact * SUM( w_s(:, istate, astate)**2 / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
+    enddo
+  enddo
+  write(stdout, '(1x,a,f19.10)') 'GW correlation energy (Ha): ', ecorr
+
+  ecorr = 0.0_dp
+  do astate=nhomo_G+1, nvirtual_G-1
+    do istate=ncore_G+1, nhomo_G
+      ecorr = ecorr - spin_fact * SUM( ( w_s(:, istate, astate) + w_s_tilde(:, istate, astate) )**2 &
+                     / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
+    enddo
+  enddo
+  write(stdout, '(1x,a,f19.10)') 'GW+2SOSEX_PSD correlation energy (Ha): ', ecorr
 
 
   allocate(sigma, MOLD=se%sigma)
   sigma(:, :, :) = 0.0_dp
 
+  !
+  ! Evaluate the self-energy
+  !
   select case(TRIM(selfenergy_switch))
   case('GW')
     !$OMP PARALLEL PRIVATE(Omega_s)
@@ -2824,14 +2846,28 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
     !$OMP END DO
     !$OMP END PARALLEL
 
-
   end select
 
-  call clean_deallocate('GW Lehman amplitudes w_s', w_s)
-  call clean_deallocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde)
 
   se%sigma(:, :, :) = sigma(:, :, :)
   deallocate(sigma)
+
+  !
+  ! Evaluate the density matrix if requested
+  !
+  if( PRESENT(p_matrix) ) then
+    if( nsemin > ncore_G+1 .OR. nsemax < nvirtual_G-1 ) then
+      call die('psd_gw2sosex_selfenergy: selfenergy_state_range too narrow to evaluate the density matrix')
+    endif
+    !
+    ! Tweak w_s here: it will never be the same again
+    !
+    w_s(:, :, :) = w_s(:, :, :) + w_s_tilde(:, :, :)
+    call selfenergy_lehmann_to_density_matrix(occupation, energy, c_matrix, w_s, wpol%pole, p_matrix)
+  endif
+
+  call clean_deallocate('GW Lehman amplitudes w_s', w_s)
+  call clean_deallocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde)
 
 
   if(has_auxil_basis) then
@@ -2845,13 +2881,14 @@ end subroutine psd_gw2sosex_selfenergy
 
 
 !=========================================================================
-subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol, exchange_m_vxc, p_matrix)
+subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol, exchange_m_vxc, ecorr, p_matrix)
   implicit none
 
   real(dp), intent(in)                 :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :), exchange_m_vxc(:, :, :)
   type(spectral_function), intent(in)  :: wpol
   real(dp), intent(out), optional      :: p_matrix(:, :, :)
+  real(dp), intent(out)                :: ecorr
   !=====
   character(len=4)     :: ctmp
   integer              :: nstate, nstate2, nbf
@@ -2865,7 +2902,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
   integer              :: mstate, astate, iastate, cstate, istate, kstate, spole
   integer              :: irecord
   integer              :: fu
-  real(dp)             :: ea, ei, v_paik, v_piak, Omega_s, v_paic, v_piac, ecorr
+  real(dp)             :: ea, ei, v_paik, v_piak, Omega_s, v_paic, v_piac
   real(dp), allocatable :: w_s(:, :, :), w_s_tilde(:, :, :)
   ! DEBUG flag
   character(len=32), parameter :: selfenergy_switch = 'PSD' ! 'PSD' ! 'GW'
@@ -2879,9 +2916,9 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
   write(stdout, *)
   select case(TRIM(selfenergy_switch))
   case('GW')
-    write(stdout, *) 'Perform a one-shot GW calculation with super matrix formulation'
+    write(stdout, *) 'Perform a one-shot GW calculation with super-matrix formulation'
   case('PSD')
-    write(stdout, *) 'Perform a one-shot PSD-ized GW+2SOSEX calculation with super matrix formulation'
+    write(stdout, *) 'Perform a one-shot PSD-ized GW+2SOSEX calculation with super-matrix formulation'
   case default
     call die('psd_gw2sosex_selfenergy_upfolding: invalid choice')
   end select
@@ -2984,6 +3021,24 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
 
   call poorman%sum(w_s_tilde)
 
+  ! First evaluate the GW correlation energy as it comes for free
+  ecorr = 0.0_dp
+  do astate=nhomo_G+1, nvirtual_G-1
+    do istate=ncore_G+1, nhomo_G
+      ecorr = ecorr - spin_fact * SUM( w_s(:, istate, astate)**2 / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
+    enddo
+  enddo
+  write(stdout, '(1x,a,f19.10)') 'GW correlation energy (Ha): ', ecorr
+
+  ecorr = 0.0_dp
+  do astate=nhomo_G+1, nvirtual_G-1
+    do istate=ncore_G+1, nhomo_G
+      ecorr = ecorr - spin_fact * SUM( ( w_s(:, istate, astate) + w_s_tilde(:, istate, astate) )**2 &
+                     / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
+    enddo
+  enddo
+  write(stdout, '(1x,a,f19.10)') 'GW+2SOSEX_PSD correlation energy (Ha): ', ecorr
+
 
   mstate = nvirtual_G - ncore_G - 1
   nmat   = mstate * ( 1 + wpol%npole_reso)
@@ -3037,24 +3092,6 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
 
     enddo ! qstate
   enddo ! qspin
-
-  ecorr = 0.0_dp
-  do astate=nhomo_G+1, nvirtual_G-1
-    do istate=ncore_G+1, nhomo_G
-      ecorr = ecorr - spin_fact * SUM( w_s(:, istate, astate)**2 / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
-    enddo
-  enddo
-  write(stdout,*) 'FBFB E correlation GW: ', ecorr
-
-  ecorr = 0.0_dp
-  do astate=nhomo_G+1, nvirtual_G-1
-    do istate=ncore_G+1, nhomo_G
-      ecorr = ecorr - spin_fact * SUM( ( w_s(:, istate, astate) + w_s_tilde(:, istate, astate) )**2 &
-                     / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
-    enddo
-  enddo
-  write(stdout,*) 'FBFB E correlation PSD: ', ecorr
-
 
   write(stdout, '(a)') ' Matrix is setup'
 
@@ -3151,5 +3188,6 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
 end subroutine psd_gw2sosex_selfenergy_upfolding
 
 
+!=========================================================================
 end module m_g3w2_selfenergy
 !=========================================================================

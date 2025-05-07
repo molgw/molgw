@@ -1202,32 +1202,31 @@ end subroutine se_reset
 
 !=========================================================================
 subroutine greensfunction_supermatrix_to_density_matrix(occupation, energy, c_matrix, &
-                                                        g_supermatrix, g_poles, p_matrix)
+                                                        g_supermatrix, g_pole, p_matrix)
   implicit none
 
   real(dp), intent(in) :: occupation(:, :), energy(:, :)
   real(dp), intent(in) :: c_matrix(:, :, :)
-  real(dp), intent(in) :: g_supermatrix(:, :), g_poles(:)
+  real(dp), intent(in) :: g_supermatrix(:, :), g_pole(:)
   real(dp), intent(out) :: p_matrix(:, :, :)
   !=====
   real(dp), allocatable :: p_matrix_mo(:, :, :)
   real(dp), allocatable :: p_matrix_mo_active(:, :)
   real(dp) :: mu
-  integer :: nbf, nstate, mstate, nmat, npoles_occ
+  integer :: nstate, mstate, nmat, npoles_occ
   integer :: pstate
   !=====
 
-  nbf = SIZE(p_matrix, DIM=1)
   nstate = SIZE(occupation, DIM=1)
   mstate = nvirtual_G - ncore_G - 1
-  nmat = SIZE(g_poles)
+  nmat = SIZE(g_pole)
 
   mu = ( MINVAL(energy(nhomo_G+1, :)) + MAXVAL(energy(nhomo_G, :)) ) / 2.0_dp
 
   allocate(p_matrix_mo_active(mstate, mstate))
 
 
-  npoles_occ = COUNT(g_poles(:) < mu, DIM=1)
+  npoles_occ = COUNT(g_pole(:) < mu, DIM=1)
   write(stdout, '(1x,a,i6)') 'Greens function occupied poles: ', npoles_occ
 
   call DSYRK('L', 'N', mstate, npoles_occ, spin_fact, &
@@ -1241,10 +1240,7 @@ subroutine greensfunction_supermatrix_to_density_matrix(occupation, energy, c_ma
   allocate(p_matrix_mo(nstate, nstate, nspin))
   p_matrix_mo(:, :, :) = 0.0_dp
   do pstate=1, ncore_G
-    p_matrix_mo(pstate, pstate, :) = spin_fact
-  enddo
-  do pstate=nvirtual_G, nstate
-    p_matrix_mo(pstate, pstate, :) = spin_fact
+    p_matrix_mo(pstate, pstate, :) = occupation(pstate, :)
   enddo
   p_matrix_mo(ncore_G+1:nvirtual_G-1, ncore_G+1:nvirtual_G-1, 1) = p_matrix_mo_active(:, :)
  
@@ -1257,7 +1253,95 @@ subroutine greensfunction_supermatrix_to_density_matrix(occupation, energy, c_ma
 
   deallocate(p_matrix_mo)
 
+
 end subroutine greensfunction_supermatrix_to_density_matrix
+
+
+!=========================================================================
+subroutine selfenergy_lehmann_to_density_matrix(occupation, energy, c_matrix, w_s, w_pole, p_matrix)
+  implicit none
+
+  real(dp), intent(in) :: occupation(:, :), energy(:, :)
+  real(dp), intent(in) :: c_matrix(:, :, :)
+  real(dp), intent(in) ::  w_pole(:)
+  real(dp), intent(in) :: w_s(:, ncore_G+1:, ncore_G+1:)
+  real(dp), intent(out) :: p_matrix(:, :, :)
+  !=====
+  real(dp), allocatable :: p_matrix_mo(:, :, :)
+  integer :: nstate, npole, npoles_occ, qspin
+  integer :: astate, bstate, istate, jstate, pstate
+  !=====
+
+  nstate = SIZE(energy, DIM=1)
+  npole = SIZE(w_pole)
+
+  qspin = 1
+
+  allocate(p_matrix_mo(nstate, nstate, nspin))
+
+  p_matrix_mo(:, :, :) = 0.0_dp
+  do istate=1, nhomo_G
+    p_matrix_mo(istate, istate, :) = occupation(istate, :)
+  enddo
+
+  !
+  ! occ - occ block
+  do jstate=ncore_G+1, nhomo_G
+    do istate=ncore_G+1, nhomo_G
+      do astate=nhomo_G+1, nvirtual_G-1
+        p_matrix_mo(istate, jstate, qspin) = p_matrix_mo(istate, jstate, qspin) &
+                - spin_fact * SUM( w_s(:, astate, istate) * w_s(:, astate, jstate) &
+                       / ( energy(istate, qspin) - energy(astate, qspin) - w_pole(:) ) &
+                       / ( energy(jstate, qspin) - energy(astate, qspin) - w_pole(:) ) )
+      enddo
+    enddo
+  enddo
+  !
+  ! virt - virt block
+  do bstate=nhomo_G+1, nvirtual_G-1
+    do astate=nhomo_G+1, nvirtual_G-1
+      do istate=ncore_G+1, nhomo_G
+        p_matrix_mo(astate, bstate, qspin) = p_matrix_mo(astate, bstate, qspin) &
+                + spin_fact * SUM( w_s(:, istate, astate) * w_s(:, istate, bstate) &
+                       / ( energy(istate, qspin) - energy(astate, qspin) - w_pole(:) ) &
+                       / ( energy(istate, qspin) - energy(bstate, qspin) - w_pole(:) ) )
+      enddo
+    enddo
+  enddo
+  !
+  ! virt - occ  block
+  do bstate=nhomo_G+1, nvirtual_G-1
+    do istate=ncore_G+1, nhomo_G
+      do astate=nhomo_G+1, nvirtual_G-1
+        p_matrix_mo(istate, bstate, qspin) = p_matrix_mo(istate, bstate, qspin) &
+                + spin_fact * SUM( w_s(:, astate, istate) * w_s(:, astate, bstate) &
+                       / ( energy(istate, qspin) - energy(astate, qspin) - w_pole(:) ) ) &
+                  / ( energy(istate, qspin) - energy(bstate, qspin) )
+      enddo
+      do jstate=ncore_G+1, nhomo_G
+        p_matrix_mo(istate, bstate, qspin) = p_matrix_mo(istate, bstate, qspin) &
+                - spin_fact * SUM( w_s(:, jstate, istate) * w_s(:, jstate, bstate) &
+                       / ( energy(jstate, qspin) - energy(bstate, qspin) - w_pole(:) ) ) &
+                  / ( energy(istate, qspin) - energy(bstate, qspin) )
+      enddo
+    enddo
+  enddo
+  ! occ - virt  block
+  do bstate=nhomo_G+1, nvirtual_G-1
+    do istate=ncore_G+1, nhomo_G
+      p_matrix_mo(bstate, istate, qspin) = p_matrix_mo(istate, bstate, qspin)
+    enddo
+  enddo
+
+
+  write(stdout, '(1x,a,f12.6)') 'Trace of the density matrix: ', matrix_trace(p_matrix_mo(:, :, 1))
+
+  ! Transform the density matrix to the AO basis
+  call p_mo_to_ao(c_matrix, p_matrix_mo, p_matrix)
+
+  deallocate(p_matrix_mo)
+
+end subroutine selfenergy_lehmann_to_density_matrix
 
 
 !=========================================================================
