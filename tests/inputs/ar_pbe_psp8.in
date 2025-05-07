@@ -5,7 +5,7 @@
   ecp_elements                   = 'Ar'
   ecp_type                       = 'pseudodojo_PBE.psp8'
   natom                          = 1
-  basis_path                     = '../inputs/'
+  basis_path                     = '../data_for_tests/'
 /
 Ar  0.0000  0.0000  0.0000
 

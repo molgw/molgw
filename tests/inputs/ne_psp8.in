@@ -1,7 +1,7 @@
 &molgw
  scf='lda'
 
- basis_path='../inputs/'
+ basis_path='../data_for_tests/'
  ecp_basis='test'
  auxil_basis='AUTO'
 
