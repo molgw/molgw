@@ -871,7 +871,7 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
     enddo
   enddo
 
-  ec_gm = 0.5_dp *ec_gm
+  ec_gm = 0.5_dp * ec_gm
   write(stdout, '(/,a)')       ' Galitskii-Migdal formula on the Imag. axis 1/(4*pi) int [G0(iw) * Sigma_c(iw)] dw:'
   write(stdout, '(a,f19.10,/)') ' GM correlation energy (Ha): ', ec_gm
 

@@ -37,7 +37,7 @@ contains
 subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m_vxc, en_mbpt)
   implicit none
 
-  type(basis_set), intent(in) :: basis
+  type(basis_set), intent(inout) :: basis
   real(dp), intent(in)        :: occupation(:, :)
   real(dp), intent(inout)     :: energy(:, :)
   real(dp), intent(inout)     :: c_matrix(:, :, :)
@@ -58,6 +58,8 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
   real(dp), allocatable    :: exchange_m_vxc_diag(:, :)
   real(dp), allocatable    :: energy_g(:, :)
   real(dp), allocatable    :: energy_w(:, :)
+  type(energy_contributions) :: en_dm_corr
+  real(dp), allocatable    :: htmp(:, :), hexx(:, :, :), h_ii(:, :), p_matrix(:, :, :)
   !=====
 
   write(stdout, '(/,/,1x,a)') '=================================================='
@@ -411,7 +413,51 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
 
         case(GW2SOSEXPSD)
           if( calc_type%selfenergy_technique == exact_dyson ) then
-            call psd_gw2sosex_selfenergy_upfolding(occupation, energy_g, c_matrix, wpol, exchange_m_vxc)
+            if( print_hartree_ .OR. use_correlated_density_matrix_ ) then
+              allocate(p_matrix(basis%nbf, basis%nbf, nspin))
+              call psd_gw2sosex_selfenergy_upfolding(occupation, energy_g, c_matrix, wpol, exchange_m_vxc, p_matrix)
+
+              !
+              ! Evaluate the total energy fragments
+              !
+              allocate(htmp(basis%nbf, basis%nbf))
+              allocate(hexx(basis%nbf, basis%nbf, nspin))
+              call nucleus_nucleus_energy(en_dm_corr%nuc_nuc)
+              call setup_kinetic(basis, htmp)
+              en_dm_corr%kinetic = SUM( htmp(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
+              call setup_nucleus(basis, htmp)
+              en_dm_corr%nucleus = SUM( htmp(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
+
+              ! Hartree
+              call calculate_hartree(basis, p_matrix, htmp, eh=en_dm_corr%hartree)
+              allocate(h_ii(nstate, nspin))
+              call h_ao_to_mo_diag(c_matrix, htmp, h_ii)
+              call dump_out_energy('=== Hartree expectation value from correlated density matrix ===', occupation, h_ii)
+              write(stdout, '(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):', h_ii(nhomo_G, :) * Ha_eV
+
+              ! Exchange
+              call calculate_exchange(basis, p_matrix, hexx, ex=en_dm_corr%exx)
+              call h_ao_to_mo_diag(c_matrix, hexx, h_ii)
+              call dump_out_energy('=== Exchange expectation value from correlated density matrix ===', occupation, h_ii)
+              write(stdout, '(1x,a,2(3x,f12.6))') 'Exchange HOMO expectation (eV):', h_ii(nhomo_G, :) * Ha_eV
+              deallocate(h_ii)
+
+
+              en_dm_corr%totalexx = en_dm_corr%nuc_nuc + en_dm_corr%kinetic + en_dm_corr%nucleus +  en_dm_corr%hartree + en_dm_corr%exx
+              write(stdout, '(/,1x,a)') 'Energies from correlated density matrix'
+              write(stdout, '(a35,1x,f19.10)')   'Kinetic Energy (Ha):', en_dm_corr%kinetic
+              write(stdout, '(a35,1x,f19.10)')   'Nucleus Energy (Ha):', en_dm_corr%nucleus
+              write(stdout, '(a35,1x,f19.10)')   'Hartree Energy (Ha):', en_dm_corr%hartree
+              write(stdout, '(a35,1x,f19.10)')  'Exchange Energy (Ha):', en_dm_corr%exx
+              write(stdout, '(a35,1x,f19.10)') 'Total EXX Energy (Ha):', en_dm_corr%totalexx
+
+              deallocate(htmp, hexx)
+              deallocate(p_matrix)
+
+            else
+              call psd_gw2sosex_selfenergy_upfolding(occupation, energy_g, c_matrix, wpol, exchange_m_vxc)
+            endif
+
           else
             call psd_gw2sosex_selfenergy(energy_g, c_matrix, wpol, se_g3w2)
             call se%reset()

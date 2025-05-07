@@ -211,9 +211,6 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
 
   if( print_hartree_ .OR. use_correlated_density_matrix_ ) then
 
-
-
-
     !
     ! Nucleus-nucleus repulsion contribution to the energy
     call nucleus_nucleus_energy(en_dm_corr%nuc_nuc)

@@ -2608,12 +2608,11 @@ subroutine psd_gw2sosex_selfenergy(energy, c_matrix, wpol, se)
   type(spectral_function), intent(in)  :: wpol
   type(selfenergy_grid), intent(inout) :: se
   !=====
-  integer               :: qstate, qspin, spole, pstate, istate, astate, iastate
+  integer               :: qspin, spole, pstate, istate, astate, iastate
   integer               :: kstate, cstate
   integer               :: nstate2
   complex(dp), allocatable :: sigma(:, :, :)
   real(dp), allocatable :: w_s(:, :, :), w_s_tilde(:, :, :)
-  integer               :: file_v, file_w, file_e, file_omega
   real(dp)              :: v_paik, v_piak, v_paic, v_piac, ei, ea, Omega_s
   ! DEBUG flag
   character(len=32), parameter :: selfenergy_switch = 'PSD' ! 'GW+2SOX+2SOSEX' ! 'GW+SOSEX' ! 'PSD'  ! 'GW'
@@ -2846,15 +2845,16 @@ end subroutine psd_gw2sosex_selfenergy
 
 
 !=========================================================================
-subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol, exchange_m_vxc)
+subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol, exchange_m_vxc, p_matrix)
   implicit none
 
   real(dp), intent(in)                 :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :), exchange_m_vxc(:, :, :)
   type(spectral_function), intent(in)  :: wpol
+  real(dp), intent(out), optional      :: p_matrix(:, :, :)
   !=====
   character(len=4)     :: ctmp
-  integer              :: nstate, nstate2
+  integer              :: nstate, nstate2, nbf
   integer              :: pstate
   integer              :: qstate, qspin
   real(dp)             :: sign_i, mu
@@ -2865,7 +2865,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
   integer              :: mstate, astate, iastate, cstate, istate, kstate, spole
   integer              :: irecord
   integer              :: fu
-  real(dp)             :: ea, ei, v_paik, v_piak, Omega_s, v_paic, v_piac
+  real(dp)             :: ea, ei, v_paik, v_piak, Omega_s, v_paic, v_piac, ecorr
   real(dp), allocatable :: w_s(:, :, :), w_s_tilde(:, :, :)
   ! DEBUG flag
   character(len=32), parameter :: selfenergy_switch = 'PSD' ! 'PSD' ! 'GW'
@@ -2874,13 +2874,14 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
   call start_clock(timing_gwgamma_self)
 
   nstate = SIZE(energy, DIM=1)
+  nbf = SIZE(c_matrix, DIM=1)
 
   write(stdout, *)
   select case(TRIM(selfenergy_switch))
   case('GW')
-    write(stdout, *) 'Perform a one-shot PSD-ized GW+2SOSEX calculation with super matrix formulation'
-  case('PSD')
     write(stdout, *) 'Perform a one-shot GW calculation with super matrix formulation'
+  case('PSD')
+    write(stdout, *) 'Perform a one-shot PSD-ized GW+2SOSEX calculation with super matrix formulation'
   case default
     call die('psd_gw2sosex_selfenergy_upfolding: invalid choice')
   end select
@@ -3037,8 +3038,23 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     enddo ! qstate
   enddo ! qspin
 
-  call clean_deallocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde)
-  call clean_deallocate('GW Lehman amplitudes w_s', w_s)
+  ecorr = 0.0_dp
+  do astate=nhomo_G+1, nvirtual_G-1
+    do istate=ncore_G+1, nhomo_G
+      ecorr = ecorr - spin_fact * SUM( w_s(:, istate, astate)**2 / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
+    enddo
+  enddo
+  write(stdout,*) 'FBFB E correlation GW: ', ecorr
+
+  ecorr = 0.0_dp
+  do astate=nhomo_G+1, nvirtual_G-1
+    do istate=ncore_G+1, nhomo_G
+      ecorr = ecorr - spin_fact * SUM( ( w_s(:, istate, astate) + w_s_tilde(:, istate, astate) )**2 &
+                     / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
+    enddo
+  enddo
+  write(stdout,*) 'FBFB E correlation PSD: ', ecorr
+
 
   write(stdout, '(a)') ' Matrix is setup'
 
@@ -3087,14 +3103,15 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     do imat=mstate+1, nmat
       super_matrix(imat, imat) = matrix_diag(imat-mstate)
     enddo
-    call diagonalize('R', super_matrix, eigval)
+    call diagonalize(postscf_diago_flavor, super_matrix, eigval)
 
     write(stdout, '(1x,a,i8)') 'Number of non-negligible poles: ', COUNT( SUM(super_matrix(1:mstate, :)**2, DIM=1) > 1.0e-3_dp )
-    write(stdout, *) '============== Poles in eV , weight ==============='
+
+    write(stdout, '(/,a)') '============== Poles in eV , weight ==============='
     open(newunit=fu, file='GREENS_FUNCTION', action='write')
     do jmat=1, nmat
       weight = SUM(super_matrix(1:mstate, jmat)**2)
-      if( weight > 5.0e-2_dp ) then
+      if( weight > 1.0e-2_dp ) then
         pstate = MAXLOC(ABS(super_matrix(1:mstate, jmat)), DIM=1)
         write(stdout, '(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ', pstate, ': ', eigval(jmat)*Ha_eV, weight
       endif
@@ -3107,10 +3124,19 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
              spin_fact * SUM( SUM(super_matrix(1:mstate, :)**2, DIM=1), MASK=(eigval(:) < mu) )
     write(stdout, *) '==================================================='
 
+
+    if( PRESENT(p_matrix) ) then
+      write(stdout, '(/,1x,a)') 'Evaluate the density-matrix P'
+      call greensfunction_supermatrix_to_density_matrix(occupation, energy, c_matrix, super_matrix, eigval, p_matrix)
+    endif
+
     call clean_deallocate('Super matrix', super_matrix)
     deallocate(eigval)
 
   endif
+
+  call clean_deallocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde)
+  call clean_deallocate('GW Lehman amplitudes w_s', w_s)
 
   call clean_deallocate('Matrix wing', matrix_wing)
   call clean_deallocate('Matrix head', matrix_head)

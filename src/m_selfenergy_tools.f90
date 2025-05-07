@@ -1201,5 +1201,65 @@ end subroutine se_reset
 
 
 !=========================================================================
+subroutine greensfunction_supermatrix_to_density_matrix(occupation, energy, c_matrix, &
+                                                        g_supermatrix, g_poles, p_matrix)
+  implicit none
+
+  real(dp), intent(in) :: occupation(:, :), energy(:, :)
+  real(dp), intent(in) :: c_matrix(:, :, :)
+  real(dp), intent(in) :: g_supermatrix(:, :), g_poles(:)
+  real(dp), intent(out) :: p_matrix(:, :, :)
+  !=====
+  real(dp), allocatable :: p_matrix_mo(:, :, :)
+  real(dp), allocatable :: p_matrix_mo_active(:, :)
+  real(dp) :: mu
+  integer :: nbf, nstate, mstate, nmat, npoles_occ
+  integer :: pstate
+  !=====
+
+  nbf = SIZE(p_matrix, DIM=1)
+  nstate = SIZE(occupation, DIM=1)
+  mstate = nvirtual_G - ncore_G - 1
+  nmat = SIZE(g_poles)
+
+  mu = ( MINVAL(energy(nhomo_G+1, :)) + MAXVAL(energy(nhomo_G, :)) ) / 2.0_dp
+
+  allocate(p_matrix_mo_active(mstate, mstate))
+
+
+  npoles_occ = COUNT(g_poles(:) < mu, DIM=1)
+  write(stdout, '(1x,a,i6)') 'Greens function occupied poles: ', npoles_occ
+
+  call DSYRK('L', 'N', mstate, npoles_occ, spin_fact, &
+             g_supermatrix(:, :), nmat, 0.0d0, &
+             p_matrix_mo_active(:, :), mstate)
+
+
+  call matrix_lower_to_full(p_matrix_mo_active)
+
+
+  allocate(p_matrix_mo(nstate, nstate, nspin))
+  p_matrix_mo(:, :, :) = 0.0_dp
+  do pstate=1, ncore_G
+    p_matrix_mo(pstate, pstate, :) = spin_fact
+  enddo
+  do pstate=nvirtual_G, nstate
+    p_matrix_mo(pstate, pstate, :) = spin_fact
+  enddo
+  p_matrix_mo(ncore_G+1:nvirtual_G-1, ncore_G+1:nvirtual_G-1, 1) = p_matrix_mo_active(:, :)
+ 
+  deallocate(p_matrix_mo_active)
+
+  write(stdout, '(1x,a,f12.6)') 'Trace of the density matrix: ', matrix_trace(p_matrix_mo(:, :, 1))
+
+  ! Transform the density matrix to the AO basis
+  call p_mo_to_ao(c_matrix, p_matrix_mo, p_matrix)
+
+  deallocate(p_matrix_mo)
+
+end subroutine greensfunction_supermatrix_to_density_matrix
+
+
+!=========================================================================
 end module m_selfenergy_tools
 !=========================================================================
