@@ -1,0 +1,14 @@
+&molgw
+  scf='HF'
+  postscf='RPA'
+
+  ecp_elements='Kr'
+  ecp_type='ccECP.nwchem'
+  ecp_basis='aug-cc-pVTZ'
+  ecp_auxil_basis='auto'
+  basis_path='../data_for_tests/'
+
+
+  natom=1
+/
+Kr  0. 0. 0.
