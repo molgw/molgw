@@ -351,8 +351,8 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
   integer  :: istate, jstate
   integer  :: astate, bstate
   integer  :: pqspin
-  integer  :: ipole
-  integer  :: npole_local, ipole_local
+  integer  :: spole
+  integer  :: npole_local, spole_local
   integer  :: nstate_occ, nstate_virt
   integer  :: file_density_matrix
   real(dp), allocatable :: p_matrix_gw(:, :, :)
@@ -400,13 +400,13 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
                           0.0_dp, w_s_occ(1, ncore_G+1), wpol%npole_reso)
     call auxil%sum(w_s_occ)
 
-    ipole_local = 0
-    do ipole=1, wpol%npole_reso
-      if( MODULO( ipole-1 , auxil%nproc ) /= auxil%rank ) cycle
-      ipole_local = ipole_local + 1
+    spole_local = 0
+    do spole=1, wpol%npole_reso
+      if( MODULO( spole-1 , auxil%nproc ) /= auxil%rank ) cycle
+      spole_local = spole_local + 1
       do jstate=ncore_G+1, nhomo_G
-        w_s_occ_local(ipole_local, jstate) = w_s_occ(ipole, jstate) &
-                                             / ( energy(jstate, pqspin) - energy(astate, pqspin) - wpol%pole(ipole) )
+        w_s_occ_local(spole_local, jstate) = w_s_occ(spole, jstate) &
+                                             / ( energy(jstate, pqspin) - energy(astate, pqspin) - wpol%pole(spole) )
       enddo
     enddo
 
@@ -423,12 +423,12 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
                           0.0_dp, w_s_virt(1, nhomo_G+1), wpol%npole_reso)
     call auxil%sum(w_s_virt)
 
-    ipole_local = 0
-    do ipole=1, wpol%npole_reso
-      if( MODULO( ipole-1 , auxil%nproc ) /= auxil%rank ) cycle
-      ipole_local = ipole_local + 1
+    spole_local = 0
+    do spole=1, wpol%npole_reso
+      if( MODULO( spole-1 , auxil%nproc ) /= auxil%rank ) cycle
+      spole_local = spole_local + 1
       do bstate=nhomo_G+1, nvirtual_G-1
-        w_s_virt_local(ipole_local, bstate) = w_s_virt(ipole, bstate)
+        w_s_virt_local(spole_local, bstate) = w_s_virt(spole, bstate)
       enddo
     enddo
 
@@ -448,13 +448,13 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
                           0.0_dp, w_s_virt(1, nhomo_G+1), wpol%npole_reso)
     call auxil%sum(w_s_virt)
 
-    ipole_local = 0
-    do ipole=1, wpol%npole_reso
-      if( MODULO( ipole-1 , auxil%nproc ) /= auxil%rank ) cycle
-      ipole_local = ipole_local + 1
+    spole_local = 0
+    do spole=1, wpol%npole_reso
+      if( MODULO( spole-1 , auxil%nproc ) /= auxil%rank ) cycle
+      spole_local = spole_local + 1
       do bstate=nhomo_G+1, nvirtual_G-1
-        w_s_virt_local(ipole_local, bstate) = w_s_virt(ipole, bstate) &
-                                             / ( energy(istate, pqspin) - energy(bstate, pqspin) - wpol%pole(ipole) )
+        w_s_virt_local(spole_local, bstate) = w_s_virt(spole, bstate) &
+                                             / ( energy(istate, pqspin) - energy(bstate, pqspin) - wpol%pole(spole) )
       enddo
     enddo
 
@@ -470,12 +470,12 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
                           0.0_dp, w_s_occ(1, ncore_G+1), wpol%npole_reso)
     call auxil%sum(w_s_occ)
 
-    ipole_local = 0
-    do ipole=1, wpol%npole_reso
-      if( MODULO( ipole-1 , auxil%nproc ) /= auxil%rank ) cycle
-      ipole_local = ipole_local + 1
+    spole_local = 0
+    do spole=1, wpol%npole_reso
+      if( MODULO( spole-1 , auxil%nproc ) /= auxil%rank ) cycle
+      spole_local = spole_local + 1
       do jstate=ncore_G+1, nhomo_G
-        w_s_occ_local(ipole_local, jstate) = w_s_occ(ipole, jstate)
+        w_s_occ_local(spole_local, jstate) = w_s_occ(spole, jstate)
       enddo
     enddo
 

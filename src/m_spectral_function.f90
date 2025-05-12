@@ -423,7 +423,7 @@ subroutine write_spectral_function(sf)
   integer(kind=MPI_OFFSET_KIND) :: disp
 #endif
   !=====
-  integer :: ipole
+  integer :: spole
   !=====
 
   write(stdout, '(/,a,/)') ' Writing the spectral function on file: SCREENED_COULOMB'
@@ -439,8 +439,8 @@ subroutine write_spectral_function(sf)
     write(wfile) sf%nprodbasis_total
     write(wfile) sf%npole_reso
     write(wfile) sf%pole(:)
-    do ipole=1, sf%npole_reso
-      write(wfile) sf%w_s(:, ipole)
+    do spole=1, sf%npole_reso
+      write(wfile) sf%w_s(:, spole)
     enddo
 
     close(wfile)
@@ -521,7 +521,7 @@ subroutine read_spectral_function(sf, reading_status)
   integer(kind=MPI_OFFSET_KIND) :: disp
   real(dp), allocatable :: buffer(:)
 #else
-  integer :: ipole_read
+  integer :: spole_read
 #endif
   !=====
 
@@ -546,8 +546,8 @@ subroutine read_spectral_function(sf, reading_status)
 
 
   read(wfile) sf%pole(:)
-  do ipole_read=1, npole_read
-    read(wfile) sf%w_s(:, ipole_read)
+  do spole_read=1, npole_read
+    read(wfile) sf%w_s(:, spole_read)
   enddo
 
   reading_status=0
@@ -629,7 +629,7 @@ subroutine sf_evaluate_several_omegas(sf, omega_cmplx, chi)
   complex(dp), intent(in) :: omega_cmplx(:)
   real(dp), intent(out) :: chi(:, :, :)
   !=====
-  integer :: nomega, iomega, ipole
+  integer :: nomega, iomega, spole
   integer :: jauxil, iauxil
   real(dp), allocatable :: tmp(:, :)
   !=====
@@ -645,12 +645,12 @@ subroutine sf_evaluate_several_omegas(sf, omega_cmplx, chi)
   !
   if( ANY( ABS(omega_cmplx(:)%re) > 1.0e-6_dp ) ) then
     do iomega=1, nomega
-      do ipole=1, sf%npole_reso
+      do spole=1, sf%npole_reso
         do jauxil=1, sf%nprodbasis
           chi(:, jauxil, iomega) = chi(:, jauxil, iomega) &
-                 + sf%w_s(:, ipole) * sf%w_s(jauxil, ipole) &
-                       * REAL( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + ieta ) &
-                              -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - ieta ) )
+                 + sf%w_s(:, spole) * sf%w_s(jauxil, spole) &
+                       * REAL( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(spole) + ieta ) &
+                              -1.0_dp / ( omega_cmplx(iomega) + sf%pole(spole) - ieta ) )
         enddo
       enddo
     enddo
@@ -661,8 +661,8 @@ subroutine sf_evaluate_several_omegas(sf, omega_cmplx, chi)
 
     do iomega=1, nomega
       tmp(:, :) = sf%w_s(:, :)
-      do ipole=1, sf%npole_reso
-        tmp(:, ipole) = tmp(:, ipole) * SQRT( 2.0_dp * sf%pole(ipole) / ( ABS(omega_cmplx(iomega))**2 + sf%pole(ipole)**2 ) )
+      do spole=1, sf%npole_reso
+        tmp(:, spole) = tmp(:, spole) * SQRT( 2.0_dp * sf%pole(spole) / ( ABS(omega_cmplx(iomega))**2 + sf%pole(spole)**2 ) )
       enddo
 
       call DSYRK('L', 'N', nauxil_global, sf%npole_reso, -1.0d0, tmp, nauxil_global, 0.0d0, chi(:, :, iomega),nauxil_global)
@@ -688,7 +688,7 @@ subroutine sf_evaluate_one_real_omega(sf, omega_real, chi)
   real(dp), intent(in) :: omega_real
   complex(dp), intent(out) :: chi(:, :)
   !=====
-  integer :: ipole
+  integer :: spole
   integer :: jauxil
   !=====
   if( nauxil_global /= nauxil_local ) call die('sf_evaluate_one_omega: not implemented with distributed auxiliary basis')
@@ -700,12 +700,12 @@ subroutine sf_evaluate_one_real_omega(sf, omega_real, chi)
   !
   ! for real frequencies, use a naive implementation
   !
-  do ipole=1, sf%npole_reso
+  do spole=1, sf%npole_reso
     do jauxil=1, sf%nprodbasis
       chi(:, jauxil) = chi(:, jauxil) &
-             + sf%w_s(:, ipole) * sf%w_s(jauxil, ipole) &
-                   * ( 1.0_dp / ( omega_real - sf%pole(ipole) + ieta ) &
-                      -1.0_dp / ( omega_real + sf%pole(ipole) - ieta ) )
+             + sf%w_s(:, spole) * sf%w_s(jauxil, spole) &
+                   * ( 1.0_dp / ( omega_real - sf%pole(spole) + ieta ) &
+                      -1.0_dp / ( omega_real + sf%pole(spole) - ieta ) )
     enddo
   enddo
 
@@ -722,7 +722,7 @@ subroutine sf_evaluate_one_omega(sf, omega_cmplx, chi)
   complex(dp), intent(in) :: omega_cmplx
   real(dp), intent(out) :: chi(:, :)
   !=====
-  integer :: ipole
+  integer :: spole
   integer :: jauxil, iauxil
   real(dp), allocatable :: tmp(:, :)
   !=====
@@ -736,12 +736,12 @@ subroutine sf_evaluate_one_omega(sf, omega_cmplx, chi)
   ! for real frequencies, use a naive implementation
   !
   if( ABS(omega_cmplx%re) > 1.0e-6_dp  ) then
-      do ipole=1, sf%npole_reso
+      do spole=1, sf%npole_reso
         do jauxil=1, sf%nprodbasis
           chi(:, jauxil) = chi(:, jauxil) &
-                 + sf%w_s(:, ipole) * sf%w_s(jauxil, ipole) &
-                       * REAL( 1.0_dp / ( omega_cmplx - sf%pole(ipole) + ieta ) &
-                              -1.0_dp / ( omega_cmplx + sf%pole(ipole) - ieta ) )
+                 + sf%w_s(:, spole) * sf%w_s(jauxil, spole) &
+                       * REAL( 1.0_dp / ( omega_cmplx - sf%pole(spole) + ieta ) &
+                              -1.0_dp / ( omega_cmplx + sf%pole(spole) - ieta ) )
         enddo
       enddo
 
@@ -750,8 +750,8 @@ subroutine sf_evaluate_one_omega(sf, omega_cmplx, chi)
     allocate(tmp, MOLD=sf%w_s)
 
     tmp(:, :) = sf%w_s(:, :)
-    do ipole=1, sf%npole_reso
-      tmp(:, ipole) = tmp(:, ipole) * SQRT( 2.0_dp * sf%pole(ipole) / ( ABS(omega_cmplx)**2 + sf%pole(ipole)**2 ) )
+    do spole=1, sf%npole_reso
+      tmp(:, spole) = tmp(:, spole) * SQRT( 2.0_dp * sf%pole(spole) / ( ABS(omega_cmplx)**2 + sf%pole(spole)**2 ) )
     enddo
 
     call DSYRK('L', 'N', nauxil_global, sf%npole_reso, -1.0d0, tmp, nauxil_global, 0.0d0, chi(:,:),nauxil_global)

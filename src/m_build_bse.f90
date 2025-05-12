@@ -699,7 +699,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
   integer              :: iaspin, jbspin
   real(dp)             :: wtmp, wtmp2=0.0e0_dp
   integer              :: jstate_min, jstate_max
-  integer              :: ipole, ibf_auxil, jbf_auxil, ibf_auxil_global, jbf_auxil_global
+  integer              :: spole, ibf_auxil, jbf_auxil, ibf_auxil_global, jbf_auxil_global
   real(dp), allocatable :: wp0(:, :, :, :), wp0_lr(:, :, :, :), w0_local(:)
   integer              :: iprow, ipcol, irank
   integer              :: m_apb_block, n_apb_block
@@ -762,11 +762,11 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
       else if( ALLOCATED(wpol_static%w_s) ) then
 
         vsqrt_chi_vsqrt(:, :) = 0.0_dp
-        do ipole=1, wpol_static%npole_reso
+        do spole=1, wpol_static%npole_reso
           do jbf_auxil=1, nauxil_global
             vsqrt_chi_vsqrt(:, jbf_auxil) = vsqrt_chi_vsqrt(:, jbf_auxil) &
-                     - wpol_static%w_s(:, ipole)                 &
-                       * wpol_static%w_s(jbf_auxil, ipole) * 2.0_dp / wpol_static%pole(ipole)
+                     - wpol_static%w_s(:, spole)                 &
+                       * wpol_static%w_s(jbf_auxil, spole) * 2.0_dp / wpol_static%pole(spole)
           enddo
         enddo
 
@@ -832,9 +832,9 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
           call auxil%sum(w_s)
 
           vsqrt_chi_vsqrt_i(:) = 0.0_dp
-          do ipole=1, wpol_static%npole_reso
+          do spole=1, wpol_static%npole_reso
             vsqrt_chi_vsqrt_i(:) = vsqrt_chi_vsqrt_i(:) &
-                     - w_s(ipole) * wpol_static%w_s(:, ipole) * 2.0_dp / wpol_static%pole(ipole)
+                     - w_s(spole) * wpol_static%w_s(:, spole) * 2.0_dp / wpol_static%pole(spole)
           enddo
           !
           ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
