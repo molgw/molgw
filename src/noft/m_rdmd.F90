@@ -50,6 +50,7 @@ module m_rdmd
   integer::Ngammas                 ! Number of gammas (independet variables used in occ optimization procedure)
   integer::Namplitudes             ! Number of t and z pCCD amplitudes
   real(dp)::Lpower=0.53d0          ! Power functional exponent
+  real(dp)::PNOF7sup=-1.0d0        ! Coef. PNOF7 sup. that goes in front of L integrals
   real(dp)::Hcut=0.02d0*dsqrt(two) ! Hcut parameter defined in GNOF to determine the Ecorr type (i.e. dyn or nondyn)
 ! arrays 
   real(dp),allocatable,dimension(:)::occ,chempot_orb,occ_dyn
@@ -122,13 +123,14 @@ CONTAINS  !=====================================================================
 !! SOURCE
 
 subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
-&  Ncoupled,Nbeta_elect,Nalpha_elect,irs_noft,Lpower)
+&  Ncoupled,Nbeta_elect,Nalpha_elect,irs_noft,Lpower,PNOF7sup)
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)::INOF,Ista,irs_noft
  integer,intent(in)::NBF_tot,NBF_occ,Nfrozen,Npairs,Ncoupled
  integer,intent(in)::Nbeta_elect,Nalpha_elect
  real(dp),optional,intent(in)::Lpower
+ real(dp),optional,intent(in)::PNOF7sup
  type(rdm_t),intent(inout)::RDMd
 !Local variables ------------------------------
 !scalars
@@ -139,9 +141,14 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
 
  if(irs_noft/=0) RDMd%irange_sep=irs_noft
  RDMd%INOF=INOF
- if(RDMd%INOF==101 .or. RDMd%INOF==70) then
+ if(RDMd%INOF==101) then
   if(present(Lpower)) then
    RDMd%Lpower=Lpower
+  endif
+ endif
+ if(RDMd%INOF==70) then
+  if(present(PNOF7sup)) then
+   RDMd%PNOF7sup=PNOF7sup
   endif
  endif
  RDMd%Ista=Ista

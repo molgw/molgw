@@ -1596,10 +1596,10 @@ subroutine dm2_pnof7_sup(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J
   do iorb1=1,RDMd%NBF_occ
    DM2_J(iorb,iorb1) = two*RDMd%occ(iorb)*RDMd%occ(iorb1)
    DM2_K(iorb,iorb1) = -RDMd%occ(iorb)*RDMd%occ(iorb1) 
-   DM2_L(iorb,iorb1) = -RDMd%Lpower*FIs(iorb)*FIs(iorb1)
+   DM2_L(iorb,iorb1) = -RDMd%PNOF7sup*FIs(iorb)*FIs(iorb1)
    DDM2_gamma_J(iorb,iorb1,:) = two*Docc_gamma(iorb,:)*RDMd%occ(iorb1)
    DDM2_gamma_K(iorb,iorb1,:) = -Docc_gamma(iorb,:)*RDMd%occ(iorb1)
-   DDM2_gamma_L(iorb,iorb1,:) = -RDMd%Lpower*DFIs(iorb,:)*FIs(iorb1)
+   DDM2_gamma_L(iorb,iorb1,:) = -RDMd%PNOF7sup*DFIs(iorb,:)*FIs(iorb1)
   enddo
  enddo
  deallocate(FIs,DFIs)
@@ -1615,22 +1615,22 @@ subroutine dm2_pnof7_sup(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J
    DM2_J(iorb4,iorb3) = zero
    DM2_K(iorb3,iorb4) = zero
    DM2_K(iorb4,iorb3) = zero
-   DM2_L(iorb3,iorb4) = -sqrt_occ(iorb3)*sqrt_occ(iorb4)
-   DM2_L(iorb4,iorb3) = -sqrt_occ(iorb4)*sqrt_occ(iorb3)
+   DM2_L(iorb3,iorb4) = -RDMd%PNOF7sup*sqrt_occ(iorb3)*sqrt_occ(iorb4)
+   DM2_L(iorb4,iorb3) = -RDMd%PNOF7sup*sqrt_occ(iorb4)*sqrt_occ(iorb3)
    DDM2_gamma_J(iorb3,iorb4,:) = zero
    DDM2_gamma_J(iorb4,iorb3,:) = zero
    DDM2_gamma_K(iorb3,iorb4,:) = zero
    DDM2_gamma_K(iorb4,iorb3,:) = zero
-   DDM2_gamma_L(iorb3,iorb4,:) = -Dsqrt_occ_gamma(iorb3,:)*sqrt_occ(iorb4)
-   DDM2_gamma_L(iorb4,iorb3,:) = -Dsqrt_occ_gamma(iorb4,:)*sqrt_occ(iorb3)
+   DDM2_gamma_L(iorb3,iorb4,:) = -RDMd%PNOF7sup*Dsqrt_occ_gamma(iorb3,:)*sqrt_occ(iorb4)
+   DDM2_gamma_L(iorb4,iorb3,:) = -RDMd%PNOF7sup*Dsqrt_occ_gamma(iorb4,:)*sqrt_occ(iorb3)
    do iorb=RDMd%Npairs_p_sing+RDMd%Ncoupled*(RDMd%Npairs-iorb2)+1,RDMd%Npairs_p_sing+RDMd%Ncoupled*(RDMd%Npairs-iorb2+1)
     iorb5 = RDMd%Nfrozen+iorb
     DM2_J(iorb5,iorb4) = zero
     DM2_K(iorb5,iorb4) = zero
-    DM2_L(iorb5,iorb4) = sqrt_occ(iorb5)*sqrt_occ(iorb4)
+    DM2_L(iorb5,iorb4) = RDMd%PNOF7sup*sqrt_occ(iorb5)*sqrt_occ(iorb4)
     DDM2_gamma_J(iorb5,iorb4,:) = zero
     DDM2_gamma_K(iorb5,iorb4,:) = zero
-    DDM2_gamma_L(iorb5,iorb4,:) = Dsqrt_occ_gamma(iorb5,:)*sqrt_occ(iorb4)
+    DDM2_gamma_L(iorb5,iorb4,:) = RDMd%PNOF7sup*Dsqrt_occ_gamma(iorb5,:)*sqrt_occ(iorb4)
    enddo
   enddo
  enddo

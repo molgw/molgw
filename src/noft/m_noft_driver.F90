@@ -90,8 +90,8 @@ contains
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,&
 &  iprintints,itolLambda,ndiis,Enof,tolE_in,Vnn,AOverlap_in,occ_inout,mo_ints,ofile_name,NO_COEF,NO_COEF_cmplx,&
-&  lowmemERI,restart,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,Lpower,fcidump,irange_sep,& ! Optional
-&  hessian)                                                                                                            ! Optional
+&  lowmemERI,restart,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,PNOF7sup,Lpower,fcidump,&   ! Optional
+&  irange_sep,hessian)                                                                                                 ! Optional
 !Arguments ------------------------------------
 !scalars
  logical,optional,intent(in)::restart,lowmemERI,fcidump,hessian
@@ -100,6 +100,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,itolLambda,ndiis  
  integer,intent(in)::Nbeta_elect_in,Nalpha_elect_in
  real(dp),optional,intent(in)::Lpower
+ real(dp),optional,intent(in)::PNOF7sup
  real(dp),intent(in)::Vnn,tolE_in
  real(dp),intent(inout)::Enof
  interface
@@ -212,10 +213,18 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  endif
 
  ! Initialize RDMd, INTEGd, ELAGd, and HESSIANd objects.
- if(INOF_in==101 .or. INOF_in==70) then
+ if(INOF_in==101) then
   if(present(Lpower)) then
    call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
 &  Nbeta_elect_in,Nalpha_elect_in,irs_noft,Lpower=Lpower)
+  else
+   call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
+&  Nbeta_elect_in,Nalpha_elect_in,irs_noft)
+  endif
+ else if(INOF_in==70) then
+  if(present(PNOF7sup)) then
+   call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
+&  Nbeta_elect_in,Nalpha_elect_in,irs_noft,PNOF7sup=PNOF7sup)
   else
    call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
 &  Nbeta_elect_in,Nalpha_elect_in,irs_noft)

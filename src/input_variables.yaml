@@ -1823,6 +1823,14 @@ noft_Lpower:
   default: 0.53
   comment: Power functional approximation exponent used in NOFT calcs.
 
+noft_sup7:
+  family: noft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: -1.0
+  comment: PNOF7 superconductivity functional approximation sign to be used in NOFT calcs.
+
 noft_npairs:
   family: noft
   datatype: integer
