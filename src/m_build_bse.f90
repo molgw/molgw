@@ -650,18 +650,18 @@ subroutine build_amb_apb_bse(wpol, wpol_static, m_apb, n_apb, amb_matrix, apb_ma
       if( iaspin /= jbspin ) cycle
 
       kbf = index_prodstate(istate, jstate) + nprodbasis * (iaspin-1)
-      bra(:) = wpol_static%residue_left(kbf, :)
+      bra(:) = wpol_static%w_s(kbf, :)
       kbf = index_prodstate(astate, bstate) + nprodbasis * (jbspin-1)
-      ket(:) = wpol_static%residue_left(kbf, :)
+      ket(:) = wpol_static%w_s(kbf, :)
 
       wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
       apb_matrix(t_ia, t_jb) =  apb_matrix(t_ia, t_jb) - wtmp
       amb_matrix(t_ia, t_jb) =  amb_matrix(t_ia, t_jb) - wtmp
 
       kbf = index_prodstate(istate, bstate) + nprodbasis * (iaspin-1)
-      bra(:) = wpol_static%residue_left(kbf, :)
+      bra(:) = wpol_static%w_s(kbf, :)
       kbf = index_prodstate(astate, jstate) + nprodbasis * (jbspin-1)
-      ket(:) = wpol_static%residue_left(kbf, :)
+      ket(:) = wpol_static%w_s(kbf, :)
 
       wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
       apb_matrix(t_ia, t_jb) =  apb_matrix(t_ia, t_jb) - wtmp
@@ -706,7 +706,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
   real(dp), allocatable :: amb_block(:, :)
   real(dp), allocatable :: apb_block(:, :)
 #if defined(HAVE_SCALAPACK)
-  real(dp), allocatable :: vsqrt_chi_vsqrt_i(:), residue_i(:), wp0_i(:, :)
+  real(dp), allocatable :: vsqrt_chi_vsqrt_i(:), w_s(:), wp0_i(:, :)
 #else
   real(dp), allocatable :: vsqrt_chi_vsqrt(:, :)
 #endif
@@ -721,7 +721,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
 
   nmat = desc_apb(M_)
   ! Is it an exchange or a screened exchange calculation
-  is_bse = ALLOCATED(wpol_static%chi) .OR. ALLOCATED(wpol_static%residue_left)
+  is_bse = ALLOCATED(wpol_static%chi) .OR. ALLOCATED(wpol_static%w_s)
 
 
   !
@@ -759,14 +759,14 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
 
         vsqrt_chi_vsqrt(:, :) = wpol_static%chi(:, :, 1)
 
-      else if( ALLOCATED(wpol_static%residue_left) ) then
+      else if( ALLOCATED(wpol_static%w_s) ) then
 
         vsqrt_chi_vsqrt(:, :) = 0.0_dp
         do ipole=1, wpol_static%npole_reso
           do jbf_auxil=1, nauxil_global
             vsqrt_chi_vsqrt(:, jbf_auxil) = vsqrt_chi_vsqrt(:, jbf_auxil) &
-                     - wpol_static%residue_left(:, ipole)                 &
-                       * wpol_static%residue_left(jbf_auxil, ipole) * 2.0_dp / wpol_static%pole(ipole)
+                     - wpol_static%w_s(:, ipole)                 &
+                       * wpol_static%w_s(jbf_auxil, ipole) * 2.0_dp / wpol_static%pole(ipole)
           enddo
         enddo
 
@@ -816,25 +816,25 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
         deallocate(wp0_i)
         deallocate(w0_local)
 
-      else if( ALLOCATED(wpol_static%residue_left) ) then
+      else if( ALLOCATED(wpol_static%w_s) ) then
 
         allocate(vsqrt_chi_vsqrt_i(nauxil_local))
-        allocate(residue_i(wpol_static%npole_reso))
+        allocate(w_s(wpol_static%npole_reso))
         allocate(wp0_i(ncore_W+1:nvirtual_W-1, jstate_min:jstate_max))
 
         do ibf_auxil=1, nauxil_global
 
           if( iproc_ibf_auxil(ibf_auxil) == auxil%rank ) then
-            residue_i(:) = wpol_static%residue_left(ibf_auxil_l(ibf_auxil), :)
+            w_s(:) = wpol_static%w_s(ibf_auxil_l(ibf_auxil), :)
           else
-            residue_i(:) = 0.0_dp
+            w_s(:) = 0.0_dp
           endif
-          call auxil%sum(residue_i)
+          call auxil%sum(w_s)
 
           vsqrt_chi_vsqrt_i(:) = 0.0_dp
           do ipole=1, wpol_static%npole_reso
             vsqrt_chi_vsqrt_i(:) = vsqrt_chi_vsqrt_i(:) &
-                     - residue_i(ipole) * wpol_static%residue_left(:, ipole) * 2.0_dp / wpol_static%pole(ipole)
+                     - w_s(ipole) * wpol_static%w_s(:, ipole) * 2.0_dp / wpol_static%pole(ipole)
           enddo
           !
           ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
@@ -851,7 +851,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
 
         enddo
 
-        deallocate(vsqrt_chi_vsqrt_i, residue_i, wp0_i)
+        deallocate(vsqrt_chi_vsqrt_i, w_s, wp0_i)
 
       endif
 

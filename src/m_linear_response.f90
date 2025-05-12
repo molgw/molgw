@@ -605,8 +605,8 @@ subroutine polarizability_onering(basis, energy, c_matrix, vchi0v)
     bstate = vchi0v%transition_table(2, t_jb)
     jbspin = vchi0v%transition_table(3, t_jb)
 
-    vchi0v%residue_left(:, t_jb) = eri_3center_mo(:, jstate, bstate, jbspin) * SQRT(spin_fact)
-    vchi0v%pole(t_jb)           = energy(bstate, jbspin) - energy(jstate, jbspin)
+    vchi0v%w_s(:, t_jb) = eri_3center_mo(:, jstate, bstate, jbspin) * SQRT(spin_fact)
+    vchi0v%pole(t_jb)   = energy(bstate, jbspin) - energy(jstate, jbspin)
 
   enddo
 
@@ -715,7 +715,7 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
 
   nmat = wpol%npole_reso
 
-  wpol%residue_left(:, :) = 0.0_dp
+  wpol%w_s(:, :) = 0.0_dp
 
 
   do t_jb=1, nmat
@@ -743,7 +743,7 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
           ! Use the symmetry ( k l | i j ) to regroup (kl) and (lk) contributions
           ! and the block structure of eigenvector | X  Y |
           !                                        | Y  X |
-          wpol%residue_left(mpstate_spin, :) = wpol%residue_left(mpstate_spin, :) &
+          wpol%w_s(mpstate_spin, :) = wpol%w_s(mpstate_spin, :) &
                                + eri_mo_klij * xpy_matrix(t_jb, :)
 
         enddo
@@ -755,7 +755,7 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
   enddo
 
   !$OMP PARALLEL WORKSHARE
-  wpol%residue_left(:, :) = wpol%residue_left(:, :) * SQRT(spin_fact)
+  wpol%w_s(:, :) = wpol%w_s(:, :) * SQRT(spin_fact)
   !$OMP END PARALLEL WORKSHARE
 
 
@@ -810,14 +810,14 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol, ener
   ! and the block structure of eigenvector | X  Y |
   !                                        | Y  X |
   ! => only needs (X+Y)
-  !wpol%residue_left(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
+  !wpol%w_s(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
   call DGEMM('N', 'N', nauxil_local, nmat, nmat, DSQRT(spin_fact), eri_3tmp,nauxil_local, &
                                                              xpy_matrix, nmat, &
-                                                       0.0d0, wpol%residue_left, nauxil_local)
+                                                       0.0d0, wpol%w_s, nauxil_local)
 
-  energy_gm = 0.5_dp * ( SUM( wpol%residue_left(:, :)**2 ) - spin_fact * SUM( eri_3tmp(:, :)**2 ) )
+  energy_gm = 0.5_dp * ( SUM( wpol%w_s(:, :)**2 ) - spin_fact * SUM( eri_3tmp(:, :)**2 ) )
   !
-  ! Since wpol%residue_left and eri_3tmp are distributed, we have to sum up
+  ! Since wpol%w_s and eri_3tmp are distributed, we have to sum up
   call auxil%sum(energy_gm)
 
   deallocate(eri_3tmp)
@@ -860,11 +860,11 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol, ener
 
 
   call PDGEMR2D(nauxil_global, nmat, vsqrt_xpy, 1, 1, desc_sd, &
-                             wpol%residue_left, 1, 1, desc_auxil, cntxt_sd)
+                             wpol%w_s, 1, 1, desc_auxil, cntxt_sd)
   !
   ! Do not forget ortho parallelization direction
   if( poorman%nproc > 1 ) then
-    call poorman%bcast(0, wpol%residue_left)
+    call poorman%bcast(0, wpol%w_s)
   endif
 
   call clean_deallocate('TMP v**1/2 * (X+Y)', vsqrt_xpy)
@@ -878,7 +878,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol, ener
     energy_gm = energy_gm - SUM( eri_3center_mo(:, jstate, bstate, jbspin)**2 ) * spin_fact * 0.5_dp
   enddo
 
-  energy_gm = energy_gm + 0.5_dp * ( SUM( wpol%residue_left(:, :)**2 ) )
+  energy_gm = energy_gm + 0.5_dp * ( SUM( wpol%w_s(:, :)**2 ) )
   call auxil%sum(energy_gm)
 
 
