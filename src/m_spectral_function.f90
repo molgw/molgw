@@ -55,10 +55,11 @@ module m_spectral_function
     !
     integer              :: npole_reso
     integer, allocatable  :: transition_table(:, :)  ! correspondance table from
-                                                   ! transition index to state pair indexes
+                                                     ! transition index to state pair indexes
 
     real(dp), allocatable :: pole(:)
-    real(dp), allocatable :: residue_left(:, :)       ! first index runs on n, second index on i
+    real(dp), allocatable :: w_s(:, :)      ! first index runs on auxiliary basis or MO pairs
+                                            ! second index on poles
 
     !
     ! Static or Dynamic W might be stored directly in the auxiliary basis
@@ -345,7 +346,7 @@ subroutine allocate_spectral_function(nprodbasis, sf)
   write(stdout, '(a,i8)')   ' Spectral function initialized with resonant poles         : ', sf%npole_reso
 
   allocate(sf%pole(sf%npole_reso))
-  call clean_allocate('Left residue', sf%residue_left, sf%nprodbasis, sf%npole_reso)
+  call clean_allocate('Self-energy Lehman weight', sf%w_s, sf%nprodbasis, sf%npole_reso)
 
 
 end subroutine allocate_spectral_function
@@ -391,8 +392,8 @@ subroutine sf_destroy(sf, verbose)
 
   if(ALLOCATED(sf%transition_table)) deallocate(sf%transition_table)
   if(ALLOCATED(sf%pole))             deallocate(sf%pole)
-  if(ALLOCATED(sf%residue_left)) then
-    call clean_deallocate('Left residue', sf%residue_left, verbose=verbose_)
+  if(ALLOCATED(sf%w_s)) then
+    call clean_deallocate('Self-energy Lehman weight', sf%w_s, verbose=verbose_)
   endif
   if(ALLOCATED(sf%chi)) then
     call clean_deallocate('Chi', sf%chi, verbose=verbose_)
@@ -422,7 +423,7 @@ subroutine write_spectral_function(sf)
   integer(kind=MPI_OFFSET_KIND) :: disp
 #endif
   !=====
-  integer :: ipole
+  integer :: spole
   !=====
 
   write(stdout, '(/,a,/)') ' Writing the spectral function on file: SCREENED_COULOMB'
@@ -438,8 +439,8 @@ subroutine write_spectral_function(sf)
     write(wfile) sf%nprodbasis_total
     write(wfile) sf%npole_reso
     write(wfile) sf%pole(:)
-    do ipole=1, sf%npole_reso
-      write(wfile) sf%residue_left(:, ipole)
+    do spole=1, sf%npole_reso
+      write(wfile) sf%w_s(:, spole)
     enddo
 
     close(wfile)
@@ -472,25 +473,25 @@ subroutine write_spectral_function(sf)
 
   if( has_auxil_basis ) then
     !
-    ! Write the residue in "the" universal ordering that does not depend on the
+    ! Write the Lehman weight in "the" universal ordering that does not depend on the
     ! data distribution
     allocate(buffer(sf%npole_reso))
     do ibf_auxil=1, sf%nprodbasis_total
       if( auxil%rank == iproc_ibf_auxil(ibf_auxil) ) then
 
-        buffer(:) = sf%residue_left(ibf_auxil_l(ibf_auxil), :)
+        buffer(:) = sf%w_s(ibf_auxil_l(ibf_auxil), :)
         call MPI_FILE_WRITE_AT(wfile, disp, buffer, sf%npole_reso, MPI_DOUBLE_PRECISION, MPI_STATUS_IGNORE, ierr)
 
       endif
-      disp = disp + sf%npole_reso * STORAGE_SIZE(sf%residue_left(1, 1))
+      disp = disp + sf%npole_reso * STORAGE_SIZE(sf%w_s(1, 1))
     enddo
     deallocate(buffer)
   else
     if(is_iomaster) then
       do iprodbasis=1, sf%nprodbasis_total
-        call MPI_FILE_WRITE_AT(wfile, disp, sf%residue_left(iprodbasis, :), sf%npole_reso, &
+        call MPI_FILE_WRITE_AT(wfile, disp, sf%w_s(iprodbasis, :), sf%npole_reso, &
                                MPI_DOUBLE_PRECISION, MPI_STATUS_IGNORE, ierr)
-        disp = disp + sf%npole_reso * STORAGE_SIZE(sf%residue_left(1, 1))
+        disp = disp + sf%npole_reso * STORAGE_SIZE(sf%w_s(1, 1))
       enddo
     endif
   endif
@@ -520,7 +521,7 @@ subroutine read_spectral_function(sf, reading_status)
   integer(kind=MPI_OFFSET_KIND) :: disp
   real(dp), allocatable :: buffer(:)
 #else
-  integer :: ipole_read
+  integer :: spole_read
 #endif
   !=====
 
@@ -545,8 +546,8 @@ subroutine read_spectral_function(sf, reading_status)
 
 
   read(wfile) sf%pole(:)
-  do ipole_read=1, npole_read
-    read(wfile) sf%residue_left(:, ipole_read)
+  do spole_read=1, npole_read
+    read(wfile) sf%w_s(:, spole_read)
   enddo
 
   reading_status=0
@@ -587,22 +588,22 @@ subroutine read_spectral_function(sf, reading_status)
 
   if( has_auxil_basis ) then
     !
-    ! Read the residue from "the" universal ordering that does not depend on the
+    ! Read the Lehman weight from "the" universal ordering that does not depend on the
     ! data distribution
     allocate(buffer(sf%npole_reso))
     do ibf_auxil=1, nauxil_global
       if( auxil%rank == iproc_ibf_auxil(ibf_auxil) ) then
         call MPI_FILE_READ_AT(wfile, disp, buffer, sf%npole_reso, MPI_DOUBLE_PRECISION, MPI_STATUS_IGNORE, ierr)
-        sf%residue_left(ibf_auxil_l(ibf_auxil), :) = buffer(:)
+        sf%w_s(ibf_auxil_l(ibf_auxil), :) = buffer(:)
       endif
-      disp = disp + sf%npole_reso * STORAGE_SIZE(sf%residue_left(1, 1))
+      disp = disp + sf%npole_reso * STORAGE_SIZE(sf%w_s(1, 1))
     enddo
     deallocate(buffer)
   else
     do iprodbasis=1, sf%nprodbasis
-      call MPI_FILE_READ_AT(wfile, disp, sf%residue_left(iprodbasis, :), sf%npole_reso, &
+      call MPI_FILE_READ_AT(wfile, disp, sf%w_s(iprodbasis, :), sf%npole_reso, &
                             MPI_DOUBLE_PRECISION, MPI_STATUS_IGNORE, ierr)
-      disp = disp + sf%npole_reso * STORAGE_SIZE(sf%residue_left(1, 1))
+      disp = disp + sf%npole_reso * STORAGE_SIZE(sf%w_s(1, 1))
     enddo
   endif
 
@@ -628,12 +629,12 @@ subroutine sf_evaluate_several_omegas(sf, omega_cmplx, chi)
   complex(dp), intent(in) :: omega_cmplx(:)
   real(dp), intent(out) :: chi(:, :, :)
   !=====
-  integer :: nomega, iomega, ipole
+  integer :: nomega, iomega, spole
   integer :: jauxil, iauxil
   real(dp), allocatable :: tmp(:, :)
   !=====
   if( nauxil_global /= nauxil_local ) call die('sf_evaluate_several_omegas: not implemented with distributed auxiliary basis')
-  if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate_severals_omegas: should have sf%residue_left available')
+  if( .NOT. ALLOCATED(sf%w_s) ) call die('sf_evaluate_severals_omegas: should have sf%w_s available')
 
   nomega = SIZE(omega_cmplx)
 
@@ -644,24 +645,24 @@ subroutine sf_evaluate_several_omegas(sf, omega_cmplx, chi)
   !
   if( ANY( ABS(omega_cmplx(:)%re) > 1.0e-6_dp ) ) then
     do iomega=1, nomega
-      do ipole=1, sf%npole_reso
+      do spole=1, sf%npole_reso
         do jauxil=1, sf%nprodbasis
           chi(:, jauxil, iomega) = chi(:, jauxil, iomega) &
-                 + sf%residue_left(:, ipole) * sf%residue_left(jauxil, ipole) &
-                       * REAL( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(ipole) + ieta ) &
-                              -1.0_dp / ( omega_cmplx(iomega) + sf%pole(ipole) - ieta ) )
+                 + sf%w_s(:, spole) * sf%w_s(jauxil, spole) &
+                       * REAL( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(spole) + ieta ) &
+                              -1.0_dp / ( omega_cmplx(iomega) + sf%pole(spole) - ieta ) )
         enddo
       enddo
     enddo
 
   else
 
-    allocate(tmp, MOLD=sf%residue_left)
+    allocate(tmp, MOLD=sf%w_s)
 
     do iomega=1, nomega
-      tmp(:, :) = sf%residue_left(:, :)
-      do ipole=1, sf%npole_reso
-        tmp(:, ipole) = tmp(:, ipole) * SQRT( 2.0_dp * sf%pole(ipole) / ( ABS(omega_cmplx(iomega))**2 + sf%pole(ipole)**2 ) )
+      tmp(:, :) = sf%w_s(:, :)
+      do spole=1, sf%npole_reso
+        tmp(:, spole) = tmp(:, spole) * SQRT( 2.0_dp * sf%pole(spole) / ( ABS(omega_cmplx(iomega))**2 + sf%pole(spole)**2 ) )
       enddo
 
       call DSYRK('L', 'N', nauxil_global, sf%npole_reso, -1.0d0, tmp, nauxil_global, 0.0d0, chi(:, :, iomega),nauxil_global)
@@ -687,11 +688,11 @@ subroutine sf_evaluate_one_real_omega(sf, omega_real, chi)
   real(dp), intent(in) :: omega_real
   complex(dp), intent(out) :: chi(:, :)
   !=====
-  integer :: ipole
+  integer :: spole
   integer :: jauxil
   !=====
   if( nauxil_global /= nauxil_local ) call die('sf_evaluate_one_omega: not implemented with distributed auxiliary basis')
-  if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate_one_omega: should have sf%residue_left available')
+  if( .NOT. ALLOCATED(sf%w_s) ) call die('sf_evaluate_one_omega: should have sf%w_s available')
 
 
   chi(:, :) = 0.0_dp
@@ -699,12 +700,12 @@ subroutine sf_evaluate_one_real_omega(sf, omega_real, chi)
   !
   ! for real frequencies, use a naive implementation
   !
-  do ipole=1, sf%npole_reso
+  do spole=1, sf%npole_reso
     do jauxil=1, sf%nprodbasis
       chi(:, jauxil) = chi(:, jauxil) &
-             + sf%residue_left(:, ipole) * sf%residue_left(jauxil, ipole) &
-                   * ( 1.0_dp / ( omega_real - sf%pole(ipole) + ieta ) &
-                      -1.0_dp / ( omega_real + sf%pole(ipole) - ieta ) )
+             + sf%w_s(:, spole) * sf%w_s(jauxil, spole) &
+                   * ( 1.0_dp / ( omega_real - sf%pole(spole) + ieta ) &
+                      -1.0_dp / ( omega_real + sf%pole(spole) - ieta ) )
     enddo
   enddo
 
@@ -721,12 +722,12 @@ subroutine sf_evaluate_one_omega(sf, omega_cmplx, chi)
   complex(dp), intent(in) :: omega_cmplx
   real(dp), intent(out) :: chi(:, :)
   !=====
-  integer :: ipole
+  integer :: spole
   integer :: jauxil, iauxil
   real(dp), allocatable :: tmp(:, :)
   !=====
   if( nauxil_global /= nauxil_local ) call die('sf_evaluate_one_omega: not implemented with distributed auxiliary basis')
-  if( .NOT. ALLOCATED(sf%residue_left) ) call die('sf_evaluate_one_omega: should have sf%residue_left available')
+  if( .NOT. ALLOCATED(sf%w_s) ) call die('sf_evaluate_one_omega: should have sf%w_s available')
 
 
   chi(:, :) = 0.0_dp
@@ -735,22 +736,22 @@ subroutine sf_evaluate_one_omega(sf, omega_cmplx, chi)
   ! for real frequencies, use a naive implementation
   !
   if( ABS(omega_cmplx%re) > 1.0e-6_dp  ) then
-      do ipole=1, sf%npole_reso
+      do spole=1, sf%npole_reso
         do jauxil=1, sf%nprodbasis
           chi(:, jauxil) = chi(:, jauxil) &
-                 + sf%residue_left(:, ipole) * sf%residue_left(jauxil, ipole) &
-                       * REAL( 1.0_dp / ( omega_cmplx - sf%pole(ipole) + ieta ) &
-                              -1.0_dp / ( omega_cmplx + sf%pole(ipole) - ieta ) )
+                 + sf%w_s(:, spole) * sf%w_s(jauxil, spole) &
+                       * REAL( 1.0_dp / ( omega_cmplx - sf%pole(spole) + ieta ) &
+                              -1.0_dp / ( omega_cmplx + sf%pole(spole) - ieta ) )
         enddo
       enddo
 
   else
 
-    allocate(tmp, MOLD=sf%residue_left)
+    allocate(tmp, MOLD=sf%w_s)
 
-    tmp(:, :) = sf%residue_left(:, :)
-    do ipole=1, sf%npole_reso
-      tmp(:, ipole) = tmp(:, ipole) * SQRT( 2.0_dp * sf%pole(ipole) / ( ABS(omega_cmplx)**2 + sf%pole(ipole)**2 ) )
+    tmp(:, :) = sf%w_s(:, :)
+    do spole=1, sf%npole_reso
+      tmp(:, spole) = tmp(:, spole) * SQRT( 2.0_dp * sf%pole(spole) / ( ABS(omega_cmplx)**2 + sf%pole(spole)**2 ) )
     enddo
 
     call DSYRK('L', 'N', nauxil_global, sf%npole_reso, -1.0d0, tmp, nauxil_global, 0.0d0, chi(:,:),nauxil_global)

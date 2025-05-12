@@ -89,14 +89,17 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
         ! Here just grab the precalculated value
         do pstate=nsemin, nsemax
           ipstate = index_prodstate(istate, pstate) + (ispin-1) * index_prodstate(nvirtual_W-1, nvirtual_W-1)
-          w_s(:, pstate) = wpol%residue_left(ipstate, :)
+          w_s(:, pstate) = wpol%w_s(ipstate, :)
         enddo
         !$OMP END DO
         !$OMP END PARALLEL
       else
         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-        w_s(:, nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , &
-                                            eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
+        ! w_s(:, nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%w_s(:, :)) , &
+        !                                     eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
+        call DGEMM('T', 'N', wpol%npole_reso, nsemax - nsemin + 1, nauxil_local, &
+                   1.0d0, wpol%w_s, nauxil_local, eri_3center_mo(1, nsemin, istate, ispin), nauxil_local, &
+                   0.0d0, w_s, wpol%npole_reso)
         call auxil%sum(w_s)
       endif
 
@@ -254,11 +257,11 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
 
   !
   ! Temporary descriptors
-  ! desc_wpol for wpol%residue_left
+  ! desc_wpol for wpol%w_s
   nauxil_local_ = NUMROC(nauxil_global, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
   call DESCINIT(desc_wpol, nauxil_global, wpol%npole_reso, MB_eri3_mo, NB_eri3_mo, first_row, first_col, &
                 cntxt_eri3_mo, MAX(1, nauxil_local_), info)
-  ! desc_eri for wpol%residue_left
+  ! desc_eri for wpol%w_s
   call DESCINIT(desc_eri, nauxil_global, mstate, MB_eri3_mo, NB_eri3_mo, first_row, first_col, &
                 cntxt_eri3_mo, MAX(1, nauxil_local_), info)
 
@@ -304,18 +307,18 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
       if( .NOT. has_auxil_basis) then
         do pstate=nsemin, nsemax
           ipstate = index_prodstate(istate, pstate) + (ispin-1) * index_prodstate(nvirtual_W-1, nvirtual_W-1)
-          matrix_wing(irecord+1:irecord+wpol%npole_reso, pstate-ncore_G) = wpol%residue_left(ipstate, :)
+          matrix_wing(irecord+1:irecord+wpol%npole_reso, pstate-ncore_G) = wpol%w_s(ipstate, :)
         enddo
       else
         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
 #if defined(HAVE_SCALAPACK)
         call PDGEMM('T', 'N', wpol%npole_reso, mstate,nauxil_global, &
-                   1.0_dp, wpol%residue_left, 1, 1, desc_wpol,        &
+                   1.0_dp, wpol%w_s, 1, 1, desc_wpol,        &
                           eri_3center_mo(1, nsemin, istate, ispin), 1, 1, desc_eri,        &
                    0.0_dp, matrix_wing, irecord+1, 1, desc_wing)
 #else
         matrix_wing(irecord+1:irecord+wpol%npole_reso, :) = &
-             MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
+             MATMUL( TRANSPOSE(wpol%w_s(:, :)) , eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
         call auxil%sum(matrix_wing(irecord+1:irecord+wpol%npole_reso, :))
 #endif
       endif
@@ -489,7 +492,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
   integer                 :: ilocal, jlocal, jglobal
   integer                 :: info
   real(dp), allocatable    :: eri_3tmp_auxil(:, :), eri_3tmp_sd(:, :)
-  real(dp), allocatable    :: wresidue_sd(:, :)
+  real(dp), allocatable    :: w_s_tmp(:, :)
   real(dp), allocatable    :: w_s(:, :)
   complex(dp), allocatable :: sigmagw(:, :, :)
 #endif
@@ -525,7 +528,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
 
   !
   ! SCALAPACK preparation for W
-  !  wpol%residue_left
+  !  wpol%w_s
   mlocal = NUMROC(nauxil_global , MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
   nlocal = NUMROC(wpol%npole_reso, NB_eri3_mo, ipcol_eri3_mo, first_col, npcol_eri3_mo)
   call DESCINIT(desc_wauxil, nauxil_global, wpol%npole_reso, MB_eri3_mo, NB_eri3_mo, &
@@ -537,9 +540,9 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
   nlocal = NUMROC(wpol%npole_reso, block_col, ipcol_sd, first_col, npcol_sd)
   call DESCINIT(desc_wsd, nauxil_global, wpol%npole_reso, block_row, block_col, first_row, first_col, &
                 cntxt_sd, MAX(1, mlocal), info)
-  call clean_allocate('TMP distributed W', wresidue_sd, mlocal, nlocal)
-  call PDGEMR2D(nauxil_global, wpol%npole_reso, wpol%residue_left, 1, 1, desc_wauxil, &
-                                                    wresidue_sd, 1, 1, desc_wsd, cntxt_sd)
+  call clean_allocate('TMP distributed W', w_s_tmp, mlocal, nlocal)
+  call PDGEMR2D(nauxil_global, wpol%npole_reso, wpol%w_s, 1, 1, desc_wauxil, &
+                                                    w_s_tmp, 1, 1, desc_wsd, cntxt_sd)
 
   ! Temporary array sigmagw is created because OPENMP does not want to work directly with se%sigma
   allocate(sigmagw, MOLD=se%sigma)
@@ -582,7 +585,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
 
 
       !
-      ! Prepare a SCALAPACKed w_s that is to contain  wresidue**T * v**1/2
+      ! Prepare a SCALAPACKed w_s that is to contain  w_s_tmp**T * v**1/2
       mlocal = NUMROC(wpol%npole_reso     , block_row, iprow_sd, first_row, nprow_sd)
       nlocal = NUMROC(nvirtual_G-ncore_G-1, block_col, ipcol_sd, first_col, npcol_sd)
       call DESCINIT(desc_w_s, wpol%npole_reso, nvirtual_G-ncore_G-1, block_row, block_col, &
@@ -591,7 +594,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
 
       ! And calculate it
       call PDGEMM('T', 'N', wpol%npole_reso, nvirtual_G-ncore_G-1,nauxil_global, &
-                             1.0_dp, wresidue_sd, 1, 1, desc_wsd,    &
+                             1.0_dp, w_s_tmp, 1, 1, desc_wsd,    &
                                     eri_3tmp_sd, 1, 1, desc_3sd,    &
                              0.0_dp, w_s        , 1, 1, desc_w_s)
       call clean_deallocate('TMP 3center MO', eri_3tmp_sd, verbose=.FALSE.)
@@ -637,7 +640,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
 
   write(stdout, '(a)') ' Sigma_c(omega) is calculated'
 
-  call clean_deallocate('TMP distributed W', wresidue_sd)
+  call clean_deallocate('TMP distributed W', w_s_tmp)
   call destroy_eri_3center_mo()
 
   call stop_clock(timing_gw_self)
@@ -703,13 +706,13 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
         ! Here just grab the precalculated value
         do pstate=nsemin, nsemax
           ipstate = index_prodstate(istate, pstate) + (ispin-1) * index_prodstate(nvirtual_W-1, nvirtual_W-1)
-          w_s(:, pstate) = wpol%residue_left(ipstate, :)
+          w_s(:, pstate) = wpol%w_s(ipstate, :)
         enddo
         !$OMP END DO
         !$OMP END PARALLEL
       else
         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-        w_s(:, nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%residue_left(:, :)), &
+        w_s(:, nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%w_s(:, :)), &
                                             eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
         call auxil%sum(w_s)
       endif
@@ -849,7 +852,7 @@ subroutine dump_gw_ingredients(energy, c_matrix, wpol)
   do qspin=1, nspin
     do qstate=ncore_G+1, nvirtual_G-1
       ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-      wcoeff(:, ncore_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , &
+      wcoeff(:, ncore_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%w_s(:, :)) , &
                                                  eri_3center_mo(:, ncore_G+1:nvirtual_G-1, qstate, qspin) )
       call auxil%sum(wcoeff)
       write(file_w) wcoeff(:, :)

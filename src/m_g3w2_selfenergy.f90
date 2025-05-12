@@ -53,7 +53,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
   ! Turn dynamic into static
   !call issue_warning('HACK in SOSEX')
   !wpol%pole(:) = wpol%pole(:) * 1000.0d0
-  !wpol%residue_left(:,:) = wpol%residue_left(:,:) * SQRT( 1000.0d0 )
+  !wpol%w_s(:,:) = wpol%w_s(:,:) * SQRT( 1000.0d0 )
 
   write(stdout, *)
   select case(calc_type%selfenergy_approx)
@@ -192,13 +192,13 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
         if(has_auxil_basis) then
           do pstate=ncore_G+1, MAX(nhomo_G, nsemax)
             ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-            w_s(:, pstate)     = MATMUL( wpol%residue_left(:, spole) , eri_3center_mo(:, :, pstate, ispin) )
+            w_s(:, pstate)     = MATMUL( wpol%w_s(:, spole) , eri_3center_mo(:, :, pstate, ispin) )
           enddo
           call auxil%sum(w_s)
         else
           ! Here just grab the precalculated value
           forall(istate=ncore_G+1:nvirtual_G-1, pstate=ncore_G+1:MAX(nhomo_G, nsemax))
-            w_s(istate, pstate) = wpol%residue_left(index_prodstate(istate, pstate) &
+            w_s(istate, pstate) = wpol%w_s(index_prodstate(istate, pstate) &
                                                     + (ispin-1) * index_prodstate(nvirtual_W-1, nvirtual_W-1), &
                                                    spole)
           end forall
@@ -704,7 +704,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
       if( has_auxil_basis ) then
         do pstate=ncore_G+1, MAX(nhomo_G, nsemax)
           ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-          w_s(:, pstate)     = MATMUL( wpol%residue_left(:, spole) , eri_3center_mo(:, :, pstate, pspin) )
+          w_s(:, pstate)     = MATMUL( wpol%w_s(:, spole) , eri_3center_mo(:, :, pstate, pspin) )
         enddo
         call auxil%sum(w_s)
       endif
@@ -1274,13 +1274,13 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
         if(has_auxil_basis) then
           do pstate=ncore_G+1, MAX(nhomo_G, nsemax)
             ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-            w_s(:, pstate)     = MATMUL( wpol%residue_left(:, spole) , eri_3center_mo(:, :, pstate, ispin) )
+            w_s(:, pstate)     = MATMUL( wpol%w_s(:, spole) , eri_3center_mo(:, :, pstate, ispin) )
           enddo
           call auxil%sum(w_s)
         else
           ! Here just grab the precalculated value
           forall(istate=ncore_G+1:nvirtual_G-1, pstate=ncore_G+1:MAX(nhomo_G, nsemax))
-            w_s(istate, pstate) = wpol%residue_left(index_prodstate(istate, pstate) &
+            w_s(istate, pstate) = wpol%w_s(index_prodstate(istate, pstate) &
                                      + (ispin-1) * index_prodstate(nvirtual_W-1, nvirtual_W-1), spole)
           end forall
         endif
@@ -1567,7 +1567,7 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
       if(has_auxil_basis) then
         do pstate=ncore_G+1, nvirtual_G-1
           ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v) in MO
-          w_s(:, pstate)     = MATMUL( wpol%residue_left(:, spole) , eri_3center_mo(:, :, pstate, pqspin) )
+          w_s(:, pstate)     = MATMUL( wpol%w_s(:, spole) , eri_3center_mo(:, :, pstate, pqspin) )
         enddo
       endif
 
@@ -1577,7 +1577,7 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
         if(has_auxil_basis) then
           do pstate=ncore_G+1, nvirtual_G-1
             ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v) in MO
-            w_t(:, pstate)     = MATMUL( wpol%residue_left(:, tpole) , eri_3center_mo(:, :, pstate, pqspin) )
+            w_t(:, pstate)     = MATMUL( wpol%w_s(:, tpole) , eri_3center_mo(:, :, pstate, pqspin) )
           enddo
         endif
 
@@ -2638,7 +2638,7 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
 
     !do qstate=ncore_G+1, nvirtual_G-1
     !  ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
-    !  w_s(:, ncore_G+1:nvirtual_G-1, qstate) = MATMUL( TRANSPOSE(wpol%residue_left(:, :)) , &
+    !  w_s(:, ncore_G+1:nvirtual_G-1, qstate) = MATMUL( TRANSPOSE(wpol%w_s(:, :)) , &
     !                                             eri_3center_mo(:, ncore_G+1:nvirtual_G-1, qstate, qspin) )
     !  call auxil%sum(w_s)
     !enddo
@@ -2647,7 +2647,7 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
     ! Collapse the 2nd and 3rd indices
     nstate2 = ( nvirtual_G - ncore_G - 1 )**2
     call DGEMM('T', 'N', wpol%npole_reso, nstate2, nauxil_local, &
-                1.0_dp, wpol%residue_left(1, 1), nauxil_local, &
+                1.0_dp, wpol%w_s(1, 1), nauxil_local, &
                         eri_3center_mo(1, ncore_G+1, ncore_G+1, 1), nauxil_local, &
                 0.0_dp, w_s(1, ncore_G+1, ncore_G+1), wpol%npole_reso)
     call auxil%sum(w_s)
