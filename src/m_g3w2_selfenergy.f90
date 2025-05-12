@@ -2656,7 +2656,8 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
   qspin = 1
 
 
-  call clean_allocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, nsemin, nsemax)
+  call clean_allocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, &
+                      nsemin, nsemax)
 
 
   w_s_tilde(:, :, :) = 0.0_dp
@@ -2719,24 +2720,25 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
 
   call poorman%sum(w_s_tilde)
 
-  ! First evaluate the GW correlation energy as it comes for free
-  ecorr = 0.0_dp
-  do astate=nhomo_G+1, nvirtual_G-1
-    do istate=ncore_G+1, nhomo_G
-      ecorr = ecorr - spin_fact * SUM( w_s(:, istate, astate)**2 / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
+  ! First evaluate the GW correlation energy as it comes for free, when nsemin:nsemax range encompasses all the states
+  if( nsemin == ncore_G+1 .AND. nsemax == nvirtual_G-1 ) then
+    ecorr = 0.0_dp
+    do astate=nhomo_G+1, nvirtual_G-1
+      do istate=ncore_G+1, nhomo_G
+        ecorr = ecorr - spin_fact * SUM( w_s(:, istate, astate)**2 / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
+      enddo
     enddo
-  enddo
-  write(stdout, '(1x,a,f19.10)') 'GW correlation energy (Ha): ', ecorr
+    write(stdout, '(1x,a,f19.10)') 'GW correlation energy (Ha): ', ecorr
 
-  ecorr = 0.0_dp
-  do astate=nhomo_G+1, nvirtual_G-1
-    do istate=ncore_G+1, nhomo_G
-      ecorr = ecorr - spin_fact * SUM( ( w_s(:, istate, astate) + w_s_tilde(:, istate, astate) )**2 &
-                     / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
+    ecorr = 0.0_dp
+    do astate=nhomo_G+1, nvirtual_G-1
+      do istate=ncore_G+1, nhomo_G
+        ecorr = ecorr - spin_fact * SUM( ( w_s(:, istate, astate) + w_s_tilde(:, istate, astate) )**2 &
+                       / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
+      enddo
     enddo
-  enddo
-  write(stdout, '(1x,a,f19.10)') 'GW+2SOSEX_PSD correlation energy (Ha): ', ecorr
-
+    write(stdout, '(1x,a,f19.10)') 'GW+2SOSEX_PSD correlation energy (Ha): ', ecorr
+  endif
 
   allocate(sigma, MOLD=se%sigma)
   sigma(:, :, :) = 0.0_dp
@@ -2957,7 +2959,8 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
   !
   ! Secondly, prepare tilde w_s^{mn}
   !
-  call clean_allocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, nsemin, nsemax)
+  call clean_allocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, &
+                      nsemin, nsemax)
 
   w_s_tilde(:, :, :) = 0.0_dp
   do qspin=1, nspin
