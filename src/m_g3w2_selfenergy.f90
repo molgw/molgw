@@ -2948,7 +2948,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     ! Collapse the 2nd and 3rd indices
     nstate2 = ( nvirtual_G - ncore_G - 1 )**2
     call DGEMM('T', 'N', wpol%npole_reso, nstate2, nauxil_local, &
-                1.0_dp, wpol%residue_left(1, 1), nauxil_local, &
+                1.0_dp, wpol%w_s(1, 1), nauxil_local, &
                         eri_3center_mo(1, ncore_G+1, ncore_G+1, 1), nauxil_local, &
                 0.0_dp, w_s(1, ncore_G+1, ncore_G+1), wpol%npole_reso)
     call auxil%sum(w_s)
