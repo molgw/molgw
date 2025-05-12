@@ -28,6 +28,7 @@ module m_selfenergy_evaluation
   use m_g3w2_selfenergy
   use m_tdhf_selfenergy
   use m_pt_selfenergy
+  use m_multipole,only: static_dipole
 
 
 contains
@@ -668,6 +669,8 @@ subroutine evaluate_energy_terms(basis, occupation, c_matrix, p_matrix, en)
   write(stdout, '(a35,1x,f19.10)')       'Total Energy (Ha):', en%total
 
   deallocate(htmp, hexx)
+
+  call static_dipole(basis, occupation, p_matrix_in=p_matrix)
 
 end subroutine evaluate_energy_terms
 
