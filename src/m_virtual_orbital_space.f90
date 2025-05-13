@@ -473,9 +473,12 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
   integer :: nvo, nstate_filtered, nstate, nocc
   real(dp), allocatable :: p_matrix_mo_virtual(:, :, :), nvo_occ(:, :), ehf_filtered(:, :)
   real(dp), allocatable :: hfock_filtered(:, :, :), hfock_nvo(:, :), cfock_filtered(:, :)
+  real(dp), allocatable :: c_matrix_no_mo(:, :, :)
   real(dp), allocatable :: c_matrix_nvo(:, :, :)
   real(dp), allocatable :: s_matrix(:, :), hfock_ao(:, :, :)
+  real(dp), allocatable :: eri_3center_no(:, :, :, :)
   integer :: ispin, pstate
+  integer :: rdm_filtering_mo_
   !=====
 
   nstate = SIZE(p_matrix_mo(:, :, :), DIM=1)
@@ -484,12 +487,15 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
   ! nstate_filtered: the final number of MO
   ! nvo: empty states to optimize over
   !
-  nstate_filtered = rdm_filtering_mo + rdm_filtering_no
-  nvo = nstate - rdm_filtering_mo
-
   nocc = get_number_occupied_states(occupation)
-  if( rdm_filtering_mo < nocc ) call die('setup_fno_from_density_matrix: rdm_filtering_mo < nocc')
-  if( ANY(ABS( energy(rdm_filtering_mo+1, :) - energy(rdm_filtering_mo, :) ) < 1.0e-6_dp) ) then
+  ! Default behavior
+  rdm_filtering_mo_ = MERGE(nocc, rdm_filtering_mo, rdm_filtering_mo < 1)
+
+  nstate_filtered = rdm_filtering_mo_ + rdm_filtering_no
+  nvo = nstate - rdm_filtering_mo_
+
+  if( rdm_filtering_mo_ < nocc ) call die('setup_fno_from_density_matrix: rdm_filtering_mo < nocc')
+  if( ANY(ABS( energy(rdm_filtering_mo_+1, :) - energy(rdm_filtering_mo_, :) ) < 1.0e-6_dp) ) then
     do ispin=1, nspin
       write(stdout, '(1x,a,*(1x,f12.6))') 'HF eigenvalues at truncation (eV): ', energy(rdm_filtering_no, ispin) * Ha_eV, &
                                                                                 energy(rdm_filtering_no+1, ispin) * Ha_eV
@@ -500,11 +506,12 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
 
   allocate(p_matrix_mo_virtual(nvo, nvo, nspin))
   allocate(nvo_occ(nvo, nspin))
-  p_matrix_mo_virtual(:, :, :) = -p_matrix_mo(rdm_filtering_mo+1:nstate, rdm_filtering_mo+1:nstate, :)
+  p_matrix_mo_virtual(:, :, :) = -p_matrix_mo(rdm_filtering_mo_+1:nstate, rdm_filtering_mo_+1:nstate, :)
   
   allocate(ehf_filtered(nstate_filtered, nspin))
   allocate(hfock_filtered(nstate_filtered, nstate_filtered, nspin))
   allocate(c_matrix_nvo(basis%nbf, nstate_filtered, nspin))
+  allocate(c_matrix_no_mo(nstate, nstate_filtered, nspin))
 
   do ispin=1, nspin
     !
@@ -523,15 +530,15 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
     
     allocate(hfock_nvo(nvo, nvo))
     hfock_nvo(:, :) = 0.0_dp
-    do pstate=rdm_filtering_mo+1, rdm_filtering_mo+nvo
-      hfock_nvo(pstate-rdm_filtering_mo, pstate-rdm_filtering_mo) = energy(pstate, ispin)
+    do pstate=rdm_filtering_mo_+1, rdm_filtering_mo_+nvo
+      hfock_nvo(pstate-rdm_filtering_mo_, pstate-rdm_filtering_mo_) = energy(pstate, ispin)
     enddo
 
     hfock_filtered(:, :, ispin) = 0.0_dp
-    do pstate=1, rdm_filtering_mo
+    do pstate=1, rdm_filtering_mo_
       hfock_filtered(pstate, pstate, ispin) = energy(pstate, ispin)
     enddo
-    hfock_filtered(rdm_filtering_mo+1:nstate_filtered, rdm_filtering_mo+1:nstate_filtered, ispin) = &
+    hfock_filtered(rdm_filtering_mo_+1:nstate_filtered, rdm_filtering_mo_+1:nstate_filtered, ispin) = &
                         MATMUL( TRANSPOSE(p_matrix_mo_virtual(:, 1:rdm_filtering_no, ispin)), &
                                   MATMUL( hfock_nvo, p_matrix_mo_virtual(:, 1:rdm_filtering_no, ispin) ) )
     deallocate(hfock_nvo)
@@ -543,16 +550,30 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
     ! Second diagonalization: HF hamiltonian in the filtered space
     call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, cfock_filtered(:, :), ehf_filtered(:, ispin))
 
+
     !
-    ! Get the natural orbital in the AO basis
-    ! C_NO^AO = C * C_NO^MO
-    c_matrix_nvo(:, 1:rdm_filtering_mo, ispin) = c_matrix(:, 1:rdm_filtering_mo, ispin)
-    c_matrix_nvo(:, rdm_filtering_mo+1:nstate_filtered, ispin) = &
-                    MATMUL( c_matrix(:, rdm_filtering_mo+1:nstate, ispin), &
-                            MATMUL( p_matrix_mo_virtual(1:nvo, 1:rdm_filtering_no, ispin), &
-                                    cfock_filtered(rdm_filtering_mo+1:nstate_filtered, rdm_filtering_mo+1:nstate_filtered) ) )
+    ! Get the natural orbitals in the MO basis
+    c_matrix_no_mo(:, :, ispin) = 0.0_dp
+    do pstate=1, rdm_filtering_mo_
+      c_matrix_no_mo(pstate, pstate, ispin) = 1.0_dp
+    enddo
+    c_matrix_no_mo(rdm_filtering_mo_+1:nstate, rdm_filtering_mo_+1:nstate_filtered, ispin) = &
+                   MATMUL( p_matrix_mo_virtual(1:nvo, 1:rdm_filtering_no, ispin), &
+                           cfock_filtered(rdm_filtering_mo_+1:nstate_filtered, rdm_filtering_mo_+1:nstate_filtered) )
     deallocate(cfock_filtered)
     
+    !
+    ! Get the natural orbitals in the AO basis
+    ! C_NO^AO = C * C_NO^MO
+    c_matrix_nvo(:, :, ispin) = MATMUL( c_matrix(:, :, ispin), c_matrix_no_mo(:, :, ispin) )
+
+    !c_matrix_nvo(:, 1:rdm_filtering_mo_, ispin) = c_matrix(:, 1:rdm_filtering_mo_, ispin)
+    !c_matrix_nvo(:, rdm_filtering_mo_+1:nstate_filtered, ispin) = &
+    !                MATMUL( c_matrix(:, rdm_filtering_mo_+1:nstate, ispin), &
+    !                        MATMUL( p_matrix_mo_virtual(1:nvo, 1:rdm_filtering_no, ispin), &
+    !                                cfock_filtered(rdm_filtering_mo_+1:nstate_filtered, rdm_filtering_mo_+1:nstate_filtered) ) )
+    !deallocate(cfock_filtered)
+
   enddo
 
   call dump_out_energy('=== HF Energies in filtered virtual space ===', occupation(1:nstate_filtered, :), ehf_filtered)
@@ -576,16 +597,17 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
 
   if( print_cc4s_files_ ) then
     write(stdout, '(/,1x,a)') 'Transform the integrals from AO to filtered MO'
-    call calculate_eri_3center_mo(c_matrix_nvo, 1, nstate_filtered, 1, nstate_filtered)
+    call calculate_eri_3center_mo_no(c_matrix_no_mo, eri_3center_no)
 
     call write_cc4s_eigenenergies(occupation, ehf_filtered, cc4s_output)
-    call write_cc4s_coulombvertex(eri_3center_mo, cc4s_output)
+    call write_cc4s_coulombvertex(eri_3center_no, cc4s_output)
 
-    call destroy_eri_3center_mo()
+    call clean_deallocate('3-center NO integrals', eri_3center_no, verbose=.TRUE.)
   endif
 
   deallocate(ehf_filtered, hfock_filtered)
   
+  deallocate(c_matrix_no_mo)
   deallocate(c_matrix_nvo)
   deallocate(p_matrix_mo_virtual, nvo_occ)
 

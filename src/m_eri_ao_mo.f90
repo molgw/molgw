@@ -266,8 +266,8 @@ subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_mo_i)
     do lstate=1, nstate
       eri_tmp1(:, :) = TRANSPOSE( eri_tmp3(1:nstate, lstate, 1:nbf) )
 
-      call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, eri_tmp1, nbf,              &
-                                                 c_matrix(1, 1, klspin), nbf,  &
+      call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, eri_tmp1(1, 1), nbf,              &
+                                                c_matrix(1, 1, klspin), nbf,  &
                                            0.0d0, eri_mo_i(1, 1, lstate, klspin), nstate)
 
     enddo
@@ -429,7 +429,7 @@ subroutine calculate_eri_3center_mo(c_matrix, mstate_min, mstate_max, nstate_min
   integer, optional, intent(in) :: timing
   logical, optional, intent(in) :: verbose, long_range, only_one_spin
   !=====
-  logical              :: verbose_, lr_exists=.true.
+  logical              :: verbose_, lr_exists=.TRUE.
   integer              :: nbf, nstate, nspin_
   integer              :: mstate_min_, mstate_max_, nstate_min_, nstate_max_
   integer              :: mstate_count_, nstate_count_
@@ -446,7 +446,7 @@ subroutine calculate_eri_3center_mo(c_matrix, mstate_min, mstate_max, nstate_min
   endif
 
   if( PRESENT(long_range) ) then
-    if( long_range .AND. (.NOT. ALLOCATED(eri_3center_mo_lr)) ) lr_exists=.false.
+    if( long_range .AND. (.NOT. ALLOCATED(eri_3center_mo_lr)) ) lr_exists = .FALSE.
   endif
 
   ! eri_3center_mo(_lr) is/are already allocated, then assume that you know what you are doing
@@ -744,7 +744,7 @@ subroutine calculate_eri_3center_mo_cmplx(c_matrix_cmplx, mstate_min, mstate_max
   endif
 
   if( PRESENT(long_range) ) then
-    if( long_range .AND. (.NOT. ALLOCATED(eri_3center_mo_lr_cmplx)) ) lr_exists=.false.
+    if( long_range .AND. (.NOT. ALLOCATED(eri_3center_mo_lr_cmplx)) ) lr_exists=.FALSE.
   endif
 
   ! eri_3center_mo(_lr) is/are already allocated, then assume that you know what you are doing
@@ -887,6 +887,106 @@ subroutine calculate_eri_3center_mo_cmplx(c_matrix_cmplx, mstate_min, mstate_max
   endif
 
 end subroutine calculate_eri_3center_mo_cmplx
+
+
+!=================================================================
+subroutine calculate_eri_3center_mo_no(c_matrix_mo_no, eri_3center_no, timing, verbose)
+  implicit none
+  real(dp), intent(in)          :: c_matrix_mo_no(:, :, :)
+  real(dp), allocatable         :: eri_3center_no(:, :, :, :)
+  integer, optional, intent(in) :: timing
+  logical, optional, intent(in) :: verbose
+  !=====
+  logical              :: verbose_, lr_exists=.TRUE.
+  integer              :: nmo, nstate, nno, nspin_
+  integer              :: mstate_min_, mstate_max_, nstate_min_, nstate_max_
+  integer              :: mstate_count_, nstate_count_
+  integer              :: kbf, lbf, iauxil
+  integer              :: klspin
+  real(dp), allocatable :: tmp1(:, :), tmp2(:, :), tmp3(:, :)
+  integer              :: ipair
+  !=====
+
+  nspin_ = nspin
+
+  ! eri_3center_mo is needed allocated, then assume that you know what you are doing
+  if( .NOT. ALLOCATED(eri_3center_mo) ) then
+    call die('calculate_eri_3center_mo_no: bug: eri_3center_mo is needed at this stage')
+  endif
+
+  if( PRESENT(timing) ) then
+    call start_clock(timing)
+  else
+    call start_clock(timing_eri_3center_ao2mo)
+  endif
+
+  if(PRESENT(verbose)) then
+    verbose_ = verbose
+  else
+    verbose_ = .TRUE.
+  endif
+  if(verbose_) then
+    write(stdout, '(/,a)') ' Calculate 3-center integrals on molecular orbitals: AO -> MO transform'
+  endif
+
+  nmo = SIZE(c_matrix_mo_no, DIM=1)
+  nno = SIZE(c_matrix_mo_no, DIM=2)
+
+  mstate_min_ = 1
+  mstate_max_ = nno
+  nstate_min_ = 1
+  nstate_max_ = nno
+
+  mstate_count_ = mstate_max_ - mstate_min_ + 1
+  nstate_count_ = nstate_max_ - nstate_min_ + 1
+
+  call clean_allocate('3-center NO integrals', eri_3center_no, 1, nauxil_local, &
+                      mstate_min_, mstate_max_, nstate_min_, nstate_max_, 1, nspin_, verbose_)
+  eri_3center_no(:, :, :, :) = 0.0_dp
+
+  call clean_allocate('TMP 3-center ints', tmp1, 1, nmo, 1, nmo, verbose_)
+  call clean_allocate('TMP 3-center ints', tmp2, mstate_min_, mstate_max_, 1, nmo, verbose_)
+  call clean_allocate('TMP 3-center ints', tmp3, mstate_min_, mstate_max_, nstate_min_, nstate_max_, verbose_)
+
+  do klspin=1, nspin_
+
+    do iauxil=1, nauxil_local
+      if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
+
+      tmp1(:, :) = eri_3center_mo(iauxil, :, :, klspin)
+      ! Transformation of the first state index
+      tmp2(:, :) = MATMUL( TRANSPOSE(c_matrix_mo_no(:, :, klspin)) , tmp1(:, :) )
+
+      ! Transformation of the second state index
+      tmp3(:, :) = MATMUL( tmp2(:, :), c_matrix_mo_no(:, :, klspin) )
+
+      !! Transformation of the second state index
+      !call DGEMM('T', 'T', mstate_count_, nstate_count_, nmo, &
+      !           1.0d0, c_matrix(1, mstate_min_, klspin), nmo, &
+      !                 tmp1(nstate_min_, 1), nstate_count_,   &
+      !           0.0d0, tmp2(mstate_min_, nstate_min_), mstate_count_)
+
+      ! Transposition (ij, P) -> (P, ij) happens here!
+      eri_3center_no(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
+                                  = tmp3(mstate_min_:mstate_max_, nstate_min_:nstate_max_)
+
+    enddo !iauxil
+
+  enddo !klspin
+
+  call clean_deallocate('TMP 3-center ints', tmp2, verbose_)
+  call clean_deallocate('TMP 3-center ints', tmp3, verbose_)
+  call clean_deallocate('TMP 3-center ints', tmp1, verbose_)
+
+  call poorman%sum(eri_3center_mo)
+
+  if( PRESENT(timing) ) then
+    call stop_clock(timing)
+  else
+    call stop_clock(timing_eri_3center_ao2mo)
+  endif
+
+end subroutine calculate_eri_3center_mo_no
 
 
 !=================================================================
@@ -1326,6 +1426,7 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
 
 #if !defined(HAVE_MPI)
   write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with plain fortran'
+  write(stdout, '(1x,a,i6,a,i4,a,i4)') 'Dimensions written:', naux, ' x ', nstate, ' x ', nstate
   open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.elements', form='unformatted', access='stream', &
        status='unknown', action='write')
   do istate=LBOUND(eri_3center_updated, DIM=2), UBOUND(eri_3center_updated, DIM=2)
@@ -1367,6 +1468,7 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
 
   write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with MPI-IO'
   write(stdout, '(5x,a,i4,a,i4)') 'using a processor grid:', nprow_cd, ' x ', npcol_cd
+  write(stdout, '(1x,a,i6,a,i4,a,i4)') 'Dimensions written:', naux, ' x ', nstate, ' x ', nstate
 
   disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(naux, KIND=MPI_OFFSET_KIND)
 
@@ -1402,7 +1504,7 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
   enddo
 
 
-  call clean_deallocate('Reading 3-center MO integrals', eri_3center_tmp)
+  call clean_deallocate('Writing 3-center MO integrals', eri_3center_tmp)
 
   call MPI_FILE_CLOSE(unitcv, ierr)
 #endif
