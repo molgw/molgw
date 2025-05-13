@@ -154,22 +154,15 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   !
   allocate(natural_occupation(nstate, nspin))
 
-  call clean_allocate('Matrix S * C', c_matrix_tmp, basis%nbf, nstate, nspin)
   call clean_allocate('Density matrix P_MO', p_matrix_mo, nstate, nstate, nspin)
 
-  do ispin=1, nspin
-    !c_matrix_tmp(:, :, ispin) = MATMUL( s_matrix, c_matrix(:, :, ispin) )
-    call DSYMM('L', 'L', basis%nbf, nstate, 1.0d0, s_matrix(1, 1), basis%nbf, &
-                                                   c_matrix(1, 1, ispin), basis%nbf,  &
-                                            0.0d0, c_matrix_tmp(1, 1, ispin), basis%nbf)
-  enddo
-  ! TODO: Weird use of the h_ao_to_mo routine. Should be clarified and renamed
-  call h_ao_to_mo(c_matrix_tmp, p_matrix_corr, p_matrix_mo)
+  call p_ao_to_mo(c_matrix, s_matrix, p_matrix_corr, p_matrix_mo)
 
   if( rdm_filtering_no > 0 ) then
     call setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_matrix_mo)
   endif
 
+  call clean_allocate('TMP C matrix', c_matrix_tmp, basis%nbf, nstate, nspin)
 
   ! Multiply by -1 so to order the eigenvalues (natural occupations) from the largest to the smallest
   p_matrix_mo(:, :, :) = -p_matrix_mo(:, :, :)
@@ -205,7 +198,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   endif
 
   call clean_deallocate('Density matrix P_MO', p_matrix_mo)
-  call clean_deallocate('Matrix S * C', c_matrix_tmp)
+  call clean_deallocate('TMP C matrix', c_matrix_tmp)
   deallocate(natural_occupation)
 
 

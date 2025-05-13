@@ -582,27 +582,31 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
     ! to write a restart file, one needs Hfock in the AO basis
     allocate(s_matrix(basis%nbf, basis%nbf))
     call setup_overlap(basis, s_matrix)
-    ! TODO introduce BLAS coding
+
     allocate(hfock_ao(basis%nbf, basis%nbf, nspin))
-    do ispin=1, nspin
-      hfock_ao(:, :, ispin) = MATMUL( MATMUL( s_matrix(:, :) , c_matrix_nvo(:, :, ispin) ) , &
-                                  MATMUL( hfock_filtered(:, :, ispin), &
-                                  MATMUL( TRANSPOSE(c_matrix_nvo(:, :, ispin)), s_matrix(:, :) ) ) )
-    enddo
+    call h_mo_to_ao(c_matrix_nvo, s_matrix, hfock_filtered, hfock_ao)
     call write_restart(BIG_RESTART, 'RESTART_filtered', basis, occupation(1:nstate_filtered, :), &
                        c_matrix_nvo, ehf_filtered, hfock_ao)
     deallocate(hfock_ao)
+
     deallocate(s_matrix)
   endif
 
   if( print_cc4s_files_ ) then
-    write(stdout, '(/,1x,a)') 'Transform the integrals from AO to filtered MO'
-    call calculate_eri_3center_mo_no(c_matrix_no_mo, eri_3center_no)
-
     call write_cc4s_eigenenergies(occupation, ehf_filtered, cc4s_output)
-    call write_cc4s_coulombvertex(eri_3center_no, cc4s_output)
+    if( ALLOCATED(eri_3center_mo) ) then
+      write(stdout, '(/,1x,a)') 'Transform the integrals from AO to filtered MO'
+      call calculate_eri_3center_mo_no(c_matrix_no_mo, eri_3center_no)
 
-    call clean_deallocate('3-center NO integrals', eri_3center_no, verbose=.TRUE.)
+      call write_cc4s_coulombvertex(eri_3center_no, cc4s_output)
+
+      call clean_deallocate('3-center NO integrals', eri_3center_no, verbose=.TRUE.)
+    else
+      write(stdout, '(/,1x,a)') 'Transform the integrals from AO to filtered MO'
+      call calculate_eri_3center_mo(c_matrix_nvo, 1, nstate_filtered, 1, nstate_filtered)
+      call write_cc4s_coulombvertex(eri_3center_mo, cc4s_output)
+      call destroy_eri_3center_mo()
+    endif
   endif
 
   deallocate(ehf_filtered, hfock_filtered)
