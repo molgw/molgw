@@ -1,4 +1,4 @@
-name: Test Suite (sequential)
+name: Run Test Suite (sequential)
 
 on:
   push:

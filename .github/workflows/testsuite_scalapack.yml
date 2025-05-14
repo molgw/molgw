@@ -1,4 +1,4 @@
-name: Build with MPI/ScaLapack
+name: Run Test Suite (MPI/ScaLapack)
 
 on:
   push:

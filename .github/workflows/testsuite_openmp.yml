@@ -1,4 +1,4 @@
-name: Build with OpenMP activated
+name: Run Test Suite (OpenMP)
 
 on:
   push:
