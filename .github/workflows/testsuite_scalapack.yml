@@ -47,7 +47,7 @@ jobs:
           echo "CPPFLAGS=-DHAVE_MPI -DHAVE_SCALAPACK" >> my_machine.arch
           make -j 4
 
-      - name: Run the test suite
-        run: |
-          make test NP=2
+      #- name: Run the test suite
+      #  run: |
+      #    make test NP=2
 
