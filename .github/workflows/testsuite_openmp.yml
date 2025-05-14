@@ -30,21 +30,21 @@ jobs:
 
       - name: Download and build libcint library
         run: |
-          wget https://github.com/sunqm/libcint/archive/refs/tags/v5.2.2.tar.gz
-          tar -xzvf v5.2.2.tar.gz
-          cd libcint-5.2.2/
+          wget https://github.com/sunqm/libcint/archive/refs/tags/v6.1.2.tar.gz
+          tar -xzvf v6.1.2.tar.gz
+          cd libcint-6.1.2/
           mkdir build && cd build
           cmake -DWITH_RANGE_COULOMB=1 -DBUILD_SHARED_LIBS=0 -DPYPZPX=1 ..
           make
 
       - name: Make
         run: |
-          echo "LIBCINT=../libcint-5.2.2/build/libcint.a" > my_machine.arch
+          echo "LIBCINT=../libcint-6.1.2/build/libcint.a" > my_machine.arch
           echo "OPENMP=-fopenmp" >> my_machine.arch
           echo "FCFLAGS=-cpp -O0" >> my_machine.arch
           make -j 4
 
-      #- name: Run the test suite
-      #  run: |
-      #    make github-test
+      - name: Run the test suite
+        run: |
+          make test NC=2
 

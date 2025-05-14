@@ -218,7 +218,7 @@ subroutine init_calculation_type(scf, postscf)
     case('GWPT3')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWPT3
-    case('GWSOSEX', 'GW+SOSEX', 'GW+GWGVG', 'GW+SOSEX_ANALYZED')
+    case('GWSOSEX', 'GW+1SOX+1SOSEX', 'GW+SOSEX', 'GW+GWGVG', 'GW+SOSEX_ANALYZED')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
     case('GWSOSEX_PADE', 'GW+SOSEX_PADE')
@@ -230,16 +230,16 @@ subroutine init_calculation_type(scf, postscf)
       calc_type%selfenergy_approx = GWSOSEX
       factor_sox = 2.0_dp
       factor_sosex = 2.0_dp
-    case('GWSOSEX2', 'GW+SOSEX2', 'GW+2SOSEX', 'GW+2SOSEX_ANALYZED')
+    case('GW+1SOX+2SOSEX', 'GW+2SOSEX', 'GW+2SOSEX_ANALYZED')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       factor_sosex = 2.0_dp
-    case('GWSOSEX2_PADE', 'GW+SOSEX2_PADE', 'GW+2SOSEX_PADE')
+    case('GW2SOSEX_PADE', 'GW+2SOSEX_PADE')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       factor_sosex = 2.0_dp
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GW2SOSEXPSD', 'GW+2SOSEXPSD', 'GW+2SOSEX_PSD')
+    case('GW2SOSEXPSD', 'GW+2SOSEXPSD', 'GW+2SOSEX_PSD', 'GW+2SOX+2SOSEX_PSD')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GW2SOSEXPSD
     case('GW+GWGWG', 'GW+G3W2')

@@ -4,6 +4,9 @@
 -include ./my_machine.arch
 -include ./src/my_machine.arch
 
+NP ?= 1
+NC ?= 1
+
 PREFIX ?=
 PYTHON ?= python3
 
@@ -13,7 +16,7 @@ molgw: $(wildcard src/*.f90) $(wildcard src/*.yaml) $(wildcard src/*.py) $(wildc
 	cd src && $(MAKE)
 
 test:
-	cd tests && $(PYTHON) ./run_testsuite.py --keep
+	cd tests && $(PYTHON) ./run_testsuite.py --keep --np $(NP) --nc $(NC)
 
 clean:
 	cd src && $(MAKE) clean
