@@ -1,0 +1,24 @@
+&molgw
+ comment='PT2 filtering of virtual orbital space from ABINIT-generated files'
+
+ nscf=0
+ scf ='HF'
+ basis='cc-pVDZ'
+ auxil_basis='auto'
+
+ print_restart='no'
+ print_bigrestart='no'
+
+ init_hamiltonian='CC4S_FILES'
+ cc4s_input='../data_for_tests/lih_bulk08_'
+ assume_scf_converged ='yes'
+
+ pt_density_matrix='pt2'
+ rdm_filtering_no=19
+
+ print_cc4s_files='yes'
+ cc4s_output='lih_bulk08_filtered_'
+
+ natom = 1
+/
+He  0. 0. 0.

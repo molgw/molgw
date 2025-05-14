@@ -1193,6 +1193,13 @@ MP2 Energy                ,  -0.0772686571      , 0 , 1.0e-7
 lih_bulk08_abinit_rpa.in  , RPA correlation for bulk LiH with 8 atoms generated from ABINIT
 RPA correlation           ,  -0.1152301335      , 0 , 1.0e-7
 
+lih_bulk08_abinit_input_filtering.in, Output PT2-filtered virtual orbitals in CC4S format for bulk LiH with 8 atoms generated from ABINIT
+HF Total Energy           , -37.0939569108      , 0 , 1.0e-7
+Testing integral (11|11)  ,   2.92396387E-01    , 0 , 1.0e-7
+
+lih_bulk08_rpa_from_filtered.in, RPA correlation for bulk LiH with 8 atoms from PT2-filtered virtual orbital space, restart
+RPA correlation           ,  -0.0914355959      , 0 , 1.0e-7
+
 kr_ccECP.in               , RPA correlation Kr atom with a ccECP pseudo and basis
 SCF Total Energy          ,  -18.228067580      , 0 , 1.0e-7
 RPA correlation           ,  -0.2186444854      , 0 , 1.0e-7

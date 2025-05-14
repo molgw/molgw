@@ -1,5 +1,5 @@
 &molgw
- comment='He GW+SOSEX2'
+ comment='He GW+2SOSEX'
  mpi_poorman='yes'
 
  scf='HF'
@@ -9,7 +9,7 @@
 
  mixing_scheme='simple'
 
- postscf='gw+sosex2'
+ postscf='gw+2sosex'
 
  selfenergy_state_range=0
 

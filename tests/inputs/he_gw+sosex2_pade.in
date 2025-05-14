@@ -1,5 +1,5 @@
 &molgw
- comment='He GW+SOSEX2 on the imaginary axis'
+ comment='He GW+2SOSEX on the imaginary axis'
  mpi_poorman='yes'
 
  scf='HF'
@@ -9,7 +9,7 @@
 
  mixing_scheme='simple'
 
- postscf='gw+sosex2_pade'
+ postscf='gw+2sosex_pade'
 
  selfenergy_state_range=0
 
