@@ -320,8 +320,8 @@ molgw_executable_functional = clean_run('fake.in', 'fake.out', False)
 
 if not molgw_executable_functional:
     print("MOLGW executable is not functional")
-    print("Dump last output")
-    with open('fake.out', 'r') as f:
+    print("Dump last output:")
+    with open(tmpfolder + '/fake.out', 'r') as f:
         print(f.read())
     sys.exit("MOLGW executable is not functional")
 
