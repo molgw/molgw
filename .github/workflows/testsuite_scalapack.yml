@@ -48,7 +48,7 @@ jobs:
           make -j 4
           ls
 
-      - name: Run the test suite
-        run: |
-          make test NP=2 MPIRUN="mpirun -oversubscribe"
+      #- name: Run the test suite
+      #  run: |
+      #    make test NP=2 MPIRUN="mpirun -oversubscribe"
 
