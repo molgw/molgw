@@ -50,5 +50,5 @@ jobs:
 
       - name: Run the test suite
         run: |
-          make test NP=2
+          make test NP=2 MPIRUN="mpirun -oversubscribe"
 
