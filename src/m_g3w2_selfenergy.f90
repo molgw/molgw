@@ -47,7 +47,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
   real(dp)                :: fxc
   !=====
 
-  call start_clock(timing_gwgamma_self)
+  call start_clock(timing_vertex_selfenergy)
   nstate = SIZE(energy, DIM=1)
 
   ! Turn dynamic into static
@@ -403,7 +403,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
     call destroy_tddft()
   endif
 
-  call stop_clock(timing_gwgamma_self)
+  call stop_clock(timing_vertex_selfenergy)
 
 
 end subroutine sosex_selfenergy
@@ -453,7 +453,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
   character(len=3)        :: ctmp
   !=====
 
-  call start_clock(timing_gwgamma_self)
+  call start_clock(timing_vertex_selfenergy)
   nstate = SIZE(energy, DIM=1)
 
   write(stdout, *)
@@ -1047,7 +1047,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
     call destroy_tddft()
   endif
 
-  call stop_clock(timing_gwgamma_self)
+  call stop_clock(timing_vertex_selfenergy)
 
 
 end subroutine sosex_selfenergy_analyzed
@@ -1082,7 +1082,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
   type(spectral_function) :: wpol_static_rpa
   !=====
 
-  call start_clock(timing_gwgamma_self)
+  call start_clock(timing_vertex_selfenergy)
   if( .NOT. has_auxil_basis ) call die('gwgw0g_selfenergy: not implemented without an auxiliary basis')
 
   nstate = SIZE(occupation, DIM=1)
@@ -1493,7 +1493,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
 
   call clean_deallocate('chi static', chi_static)
 
-  call stop_clock(timing_gwgamma_self)
+  call stop_clock(timing_vertex_selfenergy)
 
 
 end subroutine gwgw0g_selfenergy
@@ -1521,7 +1521,7 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
   real(dp)                :: omega, num1, num2, ei, ej, ek, ea, eb, ec
   !=====
 
-  call start_clock(timing_gwgamma_self)
+  call start_clock(timing_vertex_selfenergy)
 
 
   nstate = SIZE(c_matrix, DIM=2)
@@ -1868,7 +1868,7 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
   call destroy_eri_3center_mo()
 
 
-  call stop_clock(timing_gwgamma_self)
+  call stop_clock(timing_vertex_selfenergy)
 
 
 end subroutine g3w2_selfenergy
@@ -1900,7 +1900,7 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
   !=====
   domega = eta * 0.5_dp
 
-  call start_clock(timing_gwgamma_self)
+  call start_clock(timing_vertex_selfenergy)
 
   if( nspin > 1 ) then
     call die('g3w2_selfenergy_real_grid only for spin restricted')
@@ -2010,7 +2010,7 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gwgamma_self)
+  call stop_clock(timing_vertex_selfenergy)
 
 
 
@@ -2048,7 +2048,7 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
-  call start_clock(timing_gwgamma_self)
+  call start_clock(timing_vertex_selfenergy)
 
   write(stdout, '(/,1x,a)') 'G3W2 self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
@@ -2195,7 +2195,7 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gwgamma_self)
+  call stop_clock(timing_vertex_selfenergy)
 
 end subroutine g3w2_selfenergy_imag_grid
 
@@ -2228,6 +2228,7 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   real(dp) :: chi_wp(nauxil_global, nauxil_global), chi_wwp(nauxil_global, nauxil_global)
   !=====
 
+  call start_clock(timing_vertex_selfenergy)
 
   if( .NOT. has_auxil_basis ) then
     call die('sosex_selfenergy_imag_grid: requires an auxiliary basis')
@@ -2235,7 +2236,6 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
-  call start_clock(timing_gwgamma_self)
 
   write(stdout, '(/,1x,a)') 'SOSEX self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
@@ -2478,7 +2478,7 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gwgamma_self)
+  call stop_clock(timing_vertex_selfenergy)
 
 end subroutine sosex_selfenergy_imag_grid
 
@@ -2501,15 +2501,13 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
   real(dp)                :: vcoul1, vcoul2
   !=====
 
-  call start_clock(timing_gwgamma_self)
+  call start_clock(timing_vertex_selfenergy)
 
   if( .NOT. has_auxil_basis ) then
     call die('sex_selfenergy_imag_grid: requires an auxiliary basis')
   endif
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
-
-  call start_clock(timing_gwgamma_self)
 
   write(stdout, '(/,1x,a)') 'SOX self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
@@ -2594,7 +2592,7 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gwgamma_self)
+  call stop_clock(timing_vertex_selfenergy)
 
 end subroutine sox_selfenergy_imag_grid
 
@@ -2625,10 +2623,9 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
   !=====
 
   if( .NOT. has_auxil_basis) call die('psd_2sosex: only implemented with auxiliary basis')
-  !if( world%nproc /= poorman%nproc ) call die('psd_2sosex: only implemented with poorman MPI parallelization')
   if( nspin > 1 ) call die('psd_2sosex: not implemented with spin')
 
-  call start_clock(timing_gwgamma_self)
+  call start_clock(timing_vertex_selfenergy)
 
   write(stdout, *) 'Perform a one-shot GW+2SOSEX PSD calculation'
 
@@ -2909,7 +2906,7 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
     call destroy_eri_3center_mo()
   endif
 
-  call stop_clock(timing_gwgamma_self)
+  call stop_clock(timing_vertex_selfenergy)
 
 
 end subroutine psd_gw2sosex_selfenergy
@@ -2943,7 +2940,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
   character(len=32), parameter :: selfenergy_switch = 'PSD' ! 'PSD' ! 'GW'
   !=====
 
-  call start_clock(timing_gwgamma_self)
+  call start_clock(timing_vertex_selfenergy)
 
   nstate = SIZE(energy, DIM=1)
   nbf = SIZE(c_matrix, DIM=1)
@@ -3218,7 +3215,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     call destroy_eri_3center_mo()
   endif
 
-  call stop_clock(timing_gwgamma_self)
+  call stop_clock(timing_vertex_selfenergy)
 
 
 end subroutine psd_gw2sosex_selfenergy_upfolding
