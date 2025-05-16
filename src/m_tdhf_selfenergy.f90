@@ -54,6 +54,8 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
   real(dp), allocatable    :: chi_static(:, :)
   real(dp), allocatable    :: chi_up(:, :, :), uq(:, :, :)
   logical, parameter :: DEBUG_GW=.FALSE.   ! if .TRUE., recover the GW expression
+  integer :: desc_x(NDEL), m_x, n_x, info
+  real(dp), allocatable :: x_matrix_local(:, :), y_matrix_local(:, :)
   !=====
 
 
@@ -106,13 +108,28 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
   call wpol%init(nstate, occupation, 0)
   nmat = wpol%npole_reso
 
-  call clean_allocate('X matrix', x_matrix, nmat, nmat)
-  call clean_allocate('Y matrix', y_matrix, nmat, nmat)
+
+  m_x = NUMROC(nmat, block_row, iprow_sd, first_row, nprow_sd)
+  n_x = NUMROC(nmat, block_col, ipcol_sd, first_col, npcol_sd)
+  call DESCINIT(desc_x, nmat, nmat, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, m_x), info)
+  call clean_allocate('X local matrix', x_matrix_local, m_x, n_x)
+  call clean_allocate('Y local matrix', y_matrix_local, m_x, n_x)
 
   ! Get X and Y
   call polarizability(.FALSE., .TRUE., basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol, &
-                       x_matrix=x_matrix, y_matrix=y_matrix)
+                       x_matrix=x_matrix_local, y_matrix=y_matrix_local)
 
+  !
+  ! Copy X and Y matrices to all procs
+  call clean_allocate('X matrix', x_matrix, nmat, nmat)
+  call clean_allocate('Y matrix', y_matrix, nmat, nmat)
+
+  call gather_distributed_copy(desc_x, x_matrix_local, x_matrix)
+  call gather_distributed_copy(desc_x, y_matrix_local, y_matrix)
+
+  call clean_deallocate('X local matrix', x_matrix_local)
+  call clean_deallocate('Y local matrix', y_matrix_local)
+  
 
   if( gwgamma_tddft_ ) then
     write(stdout, *) 'Include a TDDFT kernel contribution to the vertex'

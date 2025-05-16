@@ -341,15 +341,15 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
   allocate(eigenvalue(nexc))
 
-  ! Allocate (X+Y)
-  ! Allocate (X-Y) only if actually needed
+  ! Allocate (X + Y)
+  ! Allocate (X - Y) only if actually needed
   m_x = NUMROC(nmat, block_row, iprow_sd, first_row, nprow_sd)
   n_x = NUMROC(nexc, block_col, ipcol_sd, first_col, npcol_sd)
   call DESCINIT(desc_x, nmat, nexc, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, m_x), info)
 
-  call clean_allocate('X+Y', xpy_matrix, m_x,n_x)
+  call clean_allocate('X+Y', xpy_matrix, m_x, n_x)
   if( .NOT. is_rpa .OR. tda_ .OR. PRESENT(x_matrix) .OR. PRESENT(y_matrix) ) &
-    call clean_allocate('X-Y', xmy_matrix, m_x,n_x)
+    call clean_allocate('X-Y', xmy_matrix, m_x, n_x)
 
   !
   ! Diago using the 4 block structure and the symmetry of each block
