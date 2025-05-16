@@ -13,21 +13,21 @@
 import sys, os, time, shutil, subprocess
 import re
 
-today=time.strftime("%Y") + '_' + time.strftime("%m") + '_' + time.strftime("%d")
+today = time.strftime("%Y") + '_' + time.strftime("%m") + '_' + time.strftime("%d")
 start_time = time.time()
 keeptmp = False
 
 selected_input_files= []
 excluded_input_files= []
 input_param_selection= []
-mpirun=''
-nprocs=1
-ncores=1
-debug=False
-listing=False
+mpirun = ''
+nprocs = 1
+ncores = 1
+debug = False
+listing = False
 
-in_timing_section=True
-sections_separator="--- Timings in (s) and # of calls ---"
+in_timing_section = True
+sections_separator = "--- Timings in (s) and # of calls ---"
 
 def extract_between_quotes(s):
     match = re.search(r'"(.*?)"', s)
@@ -76,7 +76,7 @@ def clean_run(inp, out, restart, command=""):
     subprocess.call(['../../molgw', inp], stdout=fout, stderr=subprocess.STDOUT)
   else:
     # mpirun from openmpi may need '-oversubscribe'
-    subprocess.call([mpirun, '-n', str(nprocs), '../../molgw', inp], stdout=fout, stderr=subprocess.STDOUT)
+    subprocess.call(mpirun.split() + ['-n', str(nprocs), '../../molgw', inp], stdout=fout, stderr=subprocess.STDOUT)
   fout.close()
 
   with open(out, 'r') as fout:
@@ -147,10 +147,10 @@ def check_output(out, testinfo):
 
     key_found = False
 
-    in_timing_section=True
+    in_timing_section = True
     for line in reversed(open(tmpfolder + '/' + out, 'r').readlines()):
       if sections_separator in line:
-        in_timing_section=False
+        in_timing_section = False
       if key in line and not in_timing_section:
         key_found = True
         parsing  = line.split(':')
@@ -218,7 +218,7 @@ if len(sys.argv) > 1:
   if '--np' in sys.argv:
     i = sys.argv.index('--np') + 1
     nprocs = int( sys.argv[i] )
-    mpirun='mpirun'
+    mpirun = 'mpirun'
 
   if '--mpirun' in sys.argv:
     i = sys.argv.index('--mpirun') + 1
@@ -295,7 +295,7 @@ print()
 ###################################
 # Create the temporary folder
 ###################################
-tmpfolder='tmp'
+tmpfolder = 'tmp'
 
 try:
   os.mkdir(tmpfolder)
@@ -319,6 +319,10 @@ with open('../src/molgw.h', 'r') as stream:
 molgw_executable_functional = clean_run('fake.in', 'fake.out', False)
 
 if not molgw_executable_functional:
+    print("MOLGW executable is not functional")
+    print("Dump last output:")
+    with open(tmpfolder + '/fake.out', 'r') as f:
+        print(f.read())
     sys.exit("MOLGW executable is not functional")
 
 have_openmp           = 'Running with OPENMP' in open(tmpfolder + '/fake.out').read()

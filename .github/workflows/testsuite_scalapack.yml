@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc gfortran libblas-dev liblapack-dev libxc-dev openmpi-bin libopenmpi-dev libscalapack-openmpi-dev
+          sudo apt-get install -y gcc g++ gfortran cmake libblas-dev liblapack-dev libxc-dev openmpi-bin libopenmpi-dev libscalapack-openmpi-dev
           mpifort --version
       - name: List files in the repository
         run: |
@@ -46,8 +46,9 @@ jobs:
           echo "FCFLAGS=-cpp -O1" >> my_machine.arch
           echo "CPPFLAGS=-DHAVE_MPI -DHAVE_SCALAPACK" >> my_machine.arch
           make -j 4
+          ls
 
       #- name: Run the test suite
       #  run: |
-      #    make test NP=2
+      #    make test NP=2 MPIRUN="mpirun -oversubscribe"
 

@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc gfortran libblas-dev liblapack-dev libxc-dev
+          sudo apt-get install -y gcc g++ gfortran cmake libblas-dev liblapack-dev libxc-dev
           gfortran --version
       - name: List files in the repository
         run: |

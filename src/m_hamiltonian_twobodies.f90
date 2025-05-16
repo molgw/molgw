@@ -2069,7 +2069,6 @@ subroutine setup_hartree_mo(occupation, vhartree_mo, ehartree)
   enddo
   !if( auxil%nproc > 1) call die('not coded yet how to find G=0')
   !x_vector(1) = 0.0_dp ! G=0 is removed
-  call auxil%sum(x_vector)
   do ispin=1, nspin
     do jstate=1, nstate
       do istate=1, nstate
@@ -2078,6 +2077,7 @@ subroutine setup_hartree_mo(occupation, vhartree_mo, ehartree)
     enddo
   enddo
   deallocate(x_vector)
+  call auxil%sum(vhartree_mo)
 
   if( PRESENT(ehartree) ) then
     ehartree = 0.0_dp
@@ -2102,7 +2102,7 @@ subroutine setup_exchange_mo(occupation, sigx_mo, eexchange)
   integer :: nstate, istate, nocc, ispin
   !=====
 
-  write(stdout, *) 'Calculate exchange in MO basis with MO integrals'
+  write(stdout, *) 'Calculate Exchange in MO basis with MO integrals'
   nstate = SIZE(occupation, DIM=1)
   nocc = get_number_occupied_states(occupation)
 

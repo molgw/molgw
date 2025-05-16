@@ -6,6 +6,7 @@
 
 NP ?= 1
 NC ?= 1
+MPIRUN ?=
 
 PREFIX ?=
 PYTHON ?= python3
@@ -19,7 +20,11 @@ test:
 ifeq ($(NP),1)
 	cd tests && $(PYTHON) ./run_testsuite.py --keep --nc $(NC)
 else
+ifeq ($(MPIRUN),)
 	cd tests && $(PYTHON) ./run_testsuite.py --keep --np $(NP) --nc $(NC)
+else
+	cd tests && $(PYTHON) ./run_testsuite.py --keep --np $(NP) --nc $(NC) --mpirun $(MPIRUN)
+endif
 endif
 
 clean:
