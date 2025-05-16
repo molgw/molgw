@@ -412,36 +412,36 @@ subroutine calculate_ec_acft(desc_x, a_matrix, b_matrix, x_matrix, y_matrix, erp
 
     !
     ! TMP = A * X
-    call PDSYMM('L', 'L', nmat, nmat, 1.0d0, a_matrix,1,1,desc_x, &
+    call PDSYMM('L', 'L', nmat, nmat, blas_dp_one, a_matrix, 1, 1,desc_x, &
                                         x_matrix, 1, 1, desc_x, &
-                                  0.0d0, tmp_matrix, 1, 1, desc_x)
+                                  blas_dp_zero, tmp_matrix, 1, 1, desc_x)
     !
     ! TMP = (A * X) + B * Y
-    call PDSYMM('L', 'L', nmat, nmat, 1.0d0, b_matrix,1,1,desc_x, &
+    call PDSYMM('L', 'L', nmat, nmat, blas_dp_one, b_matrix,1,1,desc_x, &
                                         y_matrix, 1, 1, desc_x, &
-                                  1.0d0, tmp_matrix, 1, 1, desc_x)
+                                  blas_dp_one, tmp_matrix, 1, 1, desc_x)
     !
     ! M = X**T * (A * X + B * Y)
-    call PDGEMM('T', 'N', nmat, nmat, nmat, 1.0d0, x_matrix,1,1,desc_x, &
+    call PDGEMM('T', 'N', nmat, nmat, nmat, blas_dp_one, x_matrix, 1, 1,desc_x, &
                                              tmp_matrix, 1, 1, desc_x, &
-                                       0.0d0, m_matrix, 1, 1, desc_x)
+                                       blas_dp_zero, m_matrix, 1, 1, desc_x)
     erpa = erpa + 0.5_dp * PDLATRA(nmat, m_matrix, 1, 1, desc_x)
 
     !
     ! TMP = A * Y
-    call PDSYMM('L', 'L', nmat, nmat, 1.0d0, a_matrix,1,1,desc_x, &
+    call PDSYMM('L', 'L', nmat, nmat, blas_dp_one, a_matrix, 1, 1,desc_x, &
                                         y_matrix, 1, 1, desc_x, &
-                                  0.0d0, tmp_matrix, 1, 1, desc_x)
+                                  blas_dp_zero, tmp_matrix, 1, 1, desc_x)
     !
     ! TMP = (A * Y) + B * X
-    call PDSYMM('L', 'L', nmat, nmat, 1.0d0, b_matrix,1,1,desc_x, &
+    call PDSYMM('L', 'L', nmat, nmat, blas_dp_one, b_matrix, 1, 1,desc_x, &
                                         x_matrix, 1, 1, desc_x, &
-                                  1.0d0, tmp_matrix, 1, 1, desc_x)
+                                  blas_dp_one, tmp_matrix, 1, 1, desc_x)
     !
     ! M = Y**T * (A * Y + B * X)
-    call PDGEMM('T', 'N', nmat, nmat, nmat, 1.0d0, y_matrix,1,1,desc_x, &
+    call PDGEMM('T', 'N', nmat, nmat, nmat, blas_dp_one, y_matrix, 1, 1,desc_x, &
                                              tmp_matrix, 1, 1, desc_x, &
-                                       0.0d0, m_matrix, 1, 1, desc_x)
+                                       blas_dp_zero, m_matrix, 1, 1, desc_x)
     erpa = erpa + 0.5_dp * PDLATRA(nmat, m_matrix, 1, 1, desc_x)
   else
 
@@ -451,38 +451,38 @@ subroutine calculate_ec_acft(desc_x, a_matrix, b_matrix, x_matrix, y_matrix, erp
     erpa = -0.5_dp * matrix_trace(a_matrix)
     !
     ! TMP = A * X
-    call DSYMM('L', 'L', nmat, nmat, 1.0d0, a_matrix, nmat,x_matrix,nmat,  &
-               0.0d0, tmp_matrix, nmat)
+    call DSYMM('L', 'L', nmat, nmat, blas_dp_one, a_matrix, nmat, x_matrix, nmat,  &
+               blas_dp_zero, tmp_matrix, nmat)
     !
     ! TMP = (A * X) + B * Y
-    call DSYMM('L', 'L', nmat, nmat, 1.0d0, b_matrix, nmat,y_matrix,nmat,  &
-               1.0d0, tmp_matrix, nmat)
+    call DSYMM('L', 'L', nmat, nmat, blas_dp_one, b_matrix, nmat, y_matrix, nmat,  &
+               blas_dp_one, tmp_matrix, nmat)
     ! M = X**T * (A * X + B * Y)
-    call DGEMM('T', 'N', nmat, nmat, nmat, 1.0d0, x_matrix, nmat,tmp_matrix,nmat, &
-               0.0d0, m_matrix, nmat)
+    call DGEMM('T', 'N', nmat, nmat, nmat, blas_dp_one, x_matrix, nmat, tmp_matrix, nmat, &
+               blas_dp_zero, m_matrix, nmat)
     erpa = erpa + 0.5_dp * matrix_trace(m_matrix)
 
     !
     ! TMP = A * Y
-    call DSYMM('L', 'L', nmat, nmat, 1.0d0, a_matrix, nmat,y_matrix,nmat,  &
-               0.0d0, tmp_matrix, nmat)
+    call DSYMM('L', 'L', nmat, nmat, blas_dp_one, a_matrix, nmat, y_matrix, nmat,  &
+               blas_dp_zero, tmp_matrix, nmat)
     !
     ! TMP = (A * Y) + B * X
-    call DSYMM('L', 'L', nmat, nmat, 1.0d0, b_matrix, nmat,x_matrix,nmat,  &
-               1.0d0, tmp_matrix, nmat)
+    call DSYMM('L', 'L', nmat, nmat, blas_dp_one, b_matrix, nmat, x_matrix, nmat,  &
+               blas_dp_one, tmp_matrix, nmat)
     ! M = Y**T * (A * Y + B * X)
-    call DGEMM('T', 'N', nmat, nmat, nmat, 1.0d0, y_matrix, nmat,tmp_matrix,nmat, &
-               0.0d0, m_matrix, nmat)
+    call DGEMM('T', 'N', nmat, nmat, nmat, blas_dp_one, y_matrix, nmat, tmp_matrix, nmat, &
+               blas_dp_zero, m_matrix, nmat)
     erpa = erpa + 0.5_dp * matrix_trace(m_matrix)
 #if defined(HAVE_SCALAPACK)
   endif
 #endif
 
   !m_matrix(:,:) = -a_matrix(:,:)
-  !m_matrix(:,:) = m_matrix(:,:) + MATMUL( TRANSPOSE(x_matrix) , MATMUL(a_matrix,x_matrix) )
-  !m_matrix(:,:) = m_matrix(:,:) + MATMUL( TRANSPOSE(y_matrix) , MATMUL(a_matrix,y_matrix) )
-  !m_matrix(:,:) = m_matrix(:,:) + MATMUL( TRANSPOSE(x_matrix) , MATMUL(b_matrix,y_matrix) )
-  !m_matrix(:,:) = m_matrix(:,:) + MATMUL( TRANSPOSE(y_matrix) , MATMUL(b_matrix,x_matrix) )
+  !m_matrix(:,:) = m_matrix(:,:) + MATMUL( TRANSPOSE(x_matrix) , MATMUL(a_matrix, x_matrix) )
+  !m_matrix(:,:) = m_matrix(:,:) + MATMUL( TRANSPOSE(y_matrix) , MATMUL(a_matrix, y_matrix) )
+  !m_matrix(:,:) = m_matrix(:,:) + MATMUL( TRANSPOSE(x_matrix) , MATMUL(b_matrix, y_matrix) )
+  !m_matrix(:,:) = m_matrix(:,:) + MATMUL( TRANSPOSE(y_matrix) , MATMUL(b_matrix, x_matrix) )
   !
   !erpa = 0.0_dp
   !do imat=1,nmat
