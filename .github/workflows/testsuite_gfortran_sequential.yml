@@ -1,4 +1,4 @@
-name: Run Test Suite (sequential)
+name: Run Test Suite with gcc/gfortran (sequential)
 
 on:
   push:

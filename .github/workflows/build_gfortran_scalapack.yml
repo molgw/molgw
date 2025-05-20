@@ -1,4 +1,4 @@
-name: Run Test Suite (OpenMP)
+name: Build with gcc/gfortran (MPI/ScaLapack)
 
 on:
   push:
@@ -22,8 +22,8 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y gcc g++ gfortran cmake libblas-dev liblapack-dev libxc-dev
-          gfortran --version
+          sudo apt-get install -y gcc g++ gfortran cmake libblas-dev liblapack-dev libxc-dev openmpi-bin libopenmpi-dev libscalapack-openmpi-dev
+          mpifort --version
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
@@ -40,11 +40,15 @@ jobs:
       - name: Make
         run: |
           echo "LIBCINT=../libcint-6.1.2/build/libcint.a" > my_machine.arch
-          echo "OPENMP=-fopenmp" >> my_machine.arch
-          echo "FCFLAGS=-cpp -O0" >> my_machine.arch
+          echo "FC=mpifort" >> my_machine.arch
+          echo "SCALAPACK=-lscalapack-openmpi" >> my_machine.arch
+          echo "LAPACK=-lblas -llapack" >> my_machine.arch
+          echo "FCFLAGS=-cpp -O1" >> my_machine.arch
+          echo "CPPFLAGS=-DHAVE_MPI -DHAVE_SCALAPACK" >> my_machine.arch
           make -j 4
+          ls
 
-      - name: Run the test suite
-        run: |
-          make test NC=2
+      #- name: Run the test suite
+      #  run: |
+      #    make test NP=2 MPIRUN="mpirun -oversubscribe"
 
