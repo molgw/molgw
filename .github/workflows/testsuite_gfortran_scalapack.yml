@@ -1,4 +1,4 @@
-name: Build with gcc/gfortran (MPI/ScaLapack)
+name: Run Test Suite with gcc/gfortran (MPI/ScaLapack)
 
 on:
   push:
@@ -17,13 +17,16 @@ jobs:
       - run: echo "The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
 
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -y gcc g++ gfortran cmake libblas-dev liblapack-dev libxc-dev openmpi-bin libopenmpi-dev libscalapack-openmpi-dev
+          echo "Show mpifort mpirun details"
+          readlink -f $(which mpifort)
           mpifort --version
+          mpirun --version
       - name: List files in the repository
         run: |
           ls ${{ github.workspace }}
@@ -46,9 +49,10 @@ jobs:
           echo "FCFLAGS=-cpp -O1" >> my_machine.arch
           echo "CPPFLAGS=-DHAVE_MPI -DHAVE_SCALAPACK" >> my_machine.arch
           make -j 4
-          ls
+          ls -ltr molgw
 
-      #- name: Run the test suite
-      #  run: |
-      #    make test NP=2 MPIRUN="mpirun -oversubscribe"
+      - name: Run the test suite
+        run: |
+          make test NP=1
+          #make test NP=2 MPIRUN="mpirun -oversubscribe"
 
