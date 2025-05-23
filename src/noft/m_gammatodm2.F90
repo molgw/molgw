@@ -1370,6 +1370,7 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
  real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L
 !Local variables ------------------------------
 !scalars
+ logical::file_exists
  integer::iorb,iorb1,iorb2,iorb3
  real(dp)::err_HermJ,err_HermK,err_HermL
 !arrays
@@ -1488,26 +1489,30 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
   enddo
  enddo
 
- if(abs(err_HermJ)>tol6) then
-  write(msg,'(a,f15.6)') 'Hermiticity error DM2_J       =',err_HermJ
-  call write_output(msg)
-  write(msg,'(a)') 'Enforcing Hermiticity in DM2_J'
-  call write_output(msg)
-  DM2_J=HALF*(DM2_J+transpose(DM2_J))
- endif
- if(abs(err_HermK)>tol6) then
-  write(msg,'(a,f15.6)') 'Hermiticity error DM2_K       =',err_HermK
-  call write_output(msg)
-  write(msg,'(a)') 'Enforcing Hermiticity in DM2_K'
-  call write_output(msg)
-  DM2_K=HALF*(DM2_K+transpose(DM2_K))
- endif
- if(abs(err_HermL)>tol6) then
-  write(msg,'(a,f15.6)') 'Hermiticity error DM2_L       =',err_HermL
-  call write_output(msg)
-  write(msg,'(a)') 'Enforcing Hermiticity in DM2_L'
-  call write_output(msg)
-  DM2_L=HALF*(DM2_L+transpose(DM2_L))
+ file_exists=.false.
+ inquire(file='no_pccd_hermiticity', exist=file_exists)
+ if(.not.file_exists) then
+  if(abs(err_HermJ)>tol6) then
+   write(msg,'(a,f15.6)') 'Hermiticity error DM2_J       =',err_HermJ
+   call write_output(msg)
+   write(msg,'(a)') 'Enforcing Hermiticity in DM2_J'
+   call write_output(msg)
+   DM2_J=HALF*(DM2_J+transpose(DM2_J))
+  endif
+  if(abs(err_HermK)>tol6) then
+   write(msg,'(a,f15.6)') 'Hermiticity error DM2_K       =',err_HermK
+   call write_output(msg)
+   write(msg,'(a)') 'Enforcing Hermiticity in DM2_K'
+   call write_output(msg)
+   DM2_K=HALF*(DM2_K+transpose(DM2_K))
+  endif
+  if(abs(err_HermL)>tol6) then
+   write(msg,'(a,f15.6)') 'Hermiticity error DM2_L       =',err_HermL
+   call write_output(msg)
+   write(msg,'(a)') 'Enforcing Hermiticity in DM2_L'
+   call write_output(msg)
+   DM2_L=HALF*(DM2_L+transpose(DM2_L))
+  endif
  endif
 
 !-----------------------------------------------------------------------
