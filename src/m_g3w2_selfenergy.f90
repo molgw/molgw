@@ -2641,12 +2641,16 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
   npole_local = NUMROC(wpol%npole_reso, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
 
   write(stdout, '(1x,a,i5,a,i7)') 'Distribution over poles (local/global): ', npole_local, ' / ', wpol%npole_reso
-  call DESCINIT(desc_w_s_P, nauxil_global, wpol%npole_reso, block_row, block_col, &
+
+
+  
+  call DESCINIT(desc_w_s_P, nauxil_global, wpol%npole_reso, MB_eri3_mo, NB_eri3_mo, &
                 first_row, first_col, cntxt_eri3_mo, MAX(1, nauxil_local), info)
-  call DESCINIT(desc_w_s, wpol%npole_reso, nstate2, block_row, block_col, &
+  call DESCINIT(desc_eri3_mo, nauxil_global, nstate2, MB_eri3_mo, NB_eri3_mo, &
+                first_row, first_col, cntxt_eri3_mo, MAX(1, nauxil_local), info)
+  call DESCINIT(desc_w_s, wpol%npole_reso, nstate2, MB_eri3_mo, NB_eri3_mo, &
                 first_row, first_col, cntxt_eri3_mo, MAX(1, npole_local), info)
-  call DESCINIT(desc_eri3_mo, nauxil_global, nstate2, block_row, block_col, &
-                first_row, first_col, cntxt_eri3_mo, MAX(1, nauxil_local), info)
+
 
   ! Fill local Omega_s poles
   allocate(Omega_s(npole_local))
@@ -2654,6 +2658,42 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
     spole = INDXL2G(spole_local, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
     Omega_s(spole_local) = wpol%pole(spole)
   enddo
+
+
+  !block
+  !  real(dp) :: matrix(nauxil_global, nauxil_global), vec(nauxil_global)
+  !  integer :: i, j, qstate
+
+  !  pstate = nhomo_G
+  !  qstate = nhomo_G + 1
+  !  do istate=ncore_G+1, nhomo_G
+  !  do astate=nhomo_G+1, nhomo_G+5
+
+  !    write(stdout,*) 
+  !    write(stdout,*) '============', istate, astate
+  !    matrix(:, :) = 0.0_dp
+  !    do spole=1, wpol%npole_reso
+  !      do j=1, nauxil_global
+  !        matrix(:, j) = matrix(:, j) - 2.0 * Omega_s(spole)  &
+  !                        / ( ( energy(astate, 1) - energy(istate, 1) )**2 - Omega_s(spole)**2 + ieta ) &
+  !                        * wpol%w_s(:, spole) * wpol%w_s(j, spole)
+  !      enddo
+  !    enddo
+  !    !do i=1, 10
+  !    !  write(stdout, '(i3,*(1x,es14.3))') i, matrix(i, 1:10)
+  !    !enddo
+  !    write(stdout,*) 
+  !    vec(:) = MATMUL( matrix, eri_3center_mo(:, istate, astate, 1) )
+  !    write(stdout, '(4(1x,i3),*(1x,es14.3))') pstate, qstate, istate, astate, &
+  !             DOT_PRODUCT( vec(:), eri_3center_mo(:, pstate, qstate, 1) )
+  !    write(stdout, '(4(1x,i3),*(1x,es14.3))') pstate, qstate, istate, astate, &
+  !             DOT_PRODUCT( eri_3center_mo(:, pstate, qstate, 1), eri_3center_mo(:, istate, astate, 1) )
+  !  enddo
+  !  enddo
+  !  call die('enough is enough')
+  !end block
+
+
 
   call clean_allocate('GW Lehman amplitudes w_s', w_s, 1, npole_local, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
