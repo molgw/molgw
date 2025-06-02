@@ -1,0 +1,19 @@
+&molgw
+ comment='Reading PT2-filtered virtual orbital space from MOLGW-generated CC4S files'
+
+ nscf=0
+ scf ='HF'
+ basis='cc-pVDZ'
+ auxil_basis='auto'
+
+ print_restart='no'
+ print_bigrestart='no'
+
+ init_hamiltonian='CC4S_FILES'
+ cc4s_input='./lih_bulk08_filtered_'
+
+ postscf='RPA'
+
+ natom = 1
+/
+He  0. 0. 0.

@@ -1,0 +1,15 @@
+version: 100
+type: Tensor
+scalarType: Complex64
+dimensions:
+- length: 69
+  type: AuxiliaryField
+- length: 43
+  type: State
+- length: 43
+  type: State
+elements:
+  type: IeeeBinaryFile
+unit: 1.0
+metaData:
+  halfGrid: 1

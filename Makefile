@@ -4,6 +4,10 @@
 -include ./my_machine.arch
 -include ./src/my_machine.arch
 
+NP ?= 1
+NC ?= 1
+MPIRUN ?=
+
 PREFIX ?=
 PYTHON ?= python3
 
@@ -13,7 +17,15 @@ molgw: $(wildcard src/*.f90) $(wildcard src/*.yaml) $(wildcard src/*.py) $(wildc
 	cd src && $(MAKE)
 
 test:
-	cd tests && $(PYTHON) ./run_testsuite.py --keep
+ifeq ($(NP),1)
+	cd tests && $(PYTHON) ./run_testsuite.py --keep --nc $(NC)
+else
+ifeq ($(MPIRUN),)
+	cd tests && $(PYTHON) ./run_testsuite.py --keep --np $(NP) --nc $(NC)
+else
+	cd tests && $(PYTHON) ./run_testsuite.py --keep --np $(NP) --nc $(NC) --mpirun $(MPIRUN)
+endif
+endif
 
 clean:
 	cd src && $(MAKE) clean

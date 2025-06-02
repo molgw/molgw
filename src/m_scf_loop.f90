@@ -66,12 +66,12 @@ subroutine scf_loop(is_restart, &
   logical                 :: stopfile_found
   integer                 :: file_density_matrix
   integer                 :: ispin, iscf
-  real(dp), allocatable    :: p_matrix(:, :, :)
-  real(dp), allocatable    :: hamiltonian(:, :, :)
-  real(dp), allocatable    :: hamiltonian_hartree(:, :)
-  real(dp), allocatable    :: hamiltonian_exx(:, :, :)
-  real(dp), allocatable    :: hamiltonian_xc(:, :, :)
-  real(dp), allocatable    :: matrix_tmp(:, :, :)
+  real(dp), allocatable   :: p_matrix(:, :, :)
+  real(dp), allocatable   :: hamiltonian(:, :, :)
+  real(dp), allocatable   :: hamiltonian_hartree(:, :)
+  real(dp), allocatable   :: hamiltonian_exx(:, :, :)
+  real(dp), allocatable   :: hamiltonian_xc(:, :, :)
+  real(dp), allocatable   :: selfenergy_ao(:, :, :)
   !=====
 
 
@@ -197,14 +197,14 @@ subroutine scf_loop(is_restart, &
       ! Set the range of states on which to evaluate the self-energy
       call selfenergy_set_state_range(nstate, occupation, range='all')
 
-      allocate(matrix_tmp(basis%nbf, basis%nbf, nspin))
-      call gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, matrix_tmp)
+      allocate(selfenergy_ao(basis%nbf, basis%nbf, nspin))
+      call gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfenergy_ao)
 
-      call dump_out_matrix(.FALSE., '=== Self-energy ===', matrix_tmp)
+      call dump_out_matrix(.FALSE., '=== Self-energy ===', selfenergy_ao)
       call wpol%destroy()
 
-      hamiltonian_xc(:, :, :) = hamiltonian_xc(:, :, :) + matrix_tmp(:, :, :)
-      deallocate(matrix_tmp)
+      hamiltonian_xc(:, :, :) = hamiltonian_xc(:, :, :) + selfenergy_ao(:, :, :)
+      deallocate(selfenergy_ao)
 
     endif
 
@@ -217,18 +217,18 @@ subroutine scf_loop(is_restart, &
       ! Set the range of states on which to evaluate the self-energy
       call selfenergy_set_state_range(nstate, occupation)
 
-      allocate(matrix_tmp(basis%nbf, basis%nbf, nspin))
-      call pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, matrix_tmp, en_gks%mp2)
+      allocate(selfenergy_ao(basis%nbf, basis%nbf, nspin))
+      call pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, selfenergy_ao, en_gks%mp2)
 
       write(stdout, '(a,2x,f19.10)') ' MP2 Energy       (Ha):', en_gks%mp2
       write(stdout, *)
       en_gks%total = en_gks%total + en_gks%mp2
       write(stdout, '(a,2x,f19.10)') ' MP2 Total Energy (Ha):', en_gks%total
 
-      call dump_out_matrix(.FALSE., '=== Self-energy ===', matrix_tmp)
+      call dump_out_matrix(.FALSE., '=== Self-energy ===', selfenergy_ao)
 
-      hamiltonian_xc(:, :, :) = hamiltonian_xc(:, :, :) + matrix_tmp(:, :, :)
-      deallocate(matrix_tmp)
+      hamiltonian_xc(:, :, :) = hamiltonian_xc(:, :, :) + selfenergy_ao(:, :, :)
+      deallocate(selfenergy_ao)
 
     endif
 
@@ -320,7 +320,7 @@ subroutine scf_loop(is_restart, &
     !
     ! Write down a "small" RESTART file at each step
     if( print_restart_ ) then
-      call write_restart(SMALL_RESTART, basis, occupation, c_matrix, energy)
+      call write_restart(SMALL_RESTART, 'RESTART', basis, occupation, c_matrix, energy)
     endif
 
 
@@ -426,9 +426,10 @@ subroutine scf_loop_cmplx(is_restart, &
   logical                 :: stopfile_found
   integer                 :: ispin, iscf, jbf, istate
   real(dp)                :: rms
-  real(dp), allocatable    :: s_eigval(:)
-  real(dp), allocatable    :: inv_x_matrix(:, :), matrix_tmp(:, :), matrix_tmp2(:, :)
-  real(dp), allocatable    :: p_matrix_real(:, :)
+  real(dp), allocatable   :: s_eigval(:)
+  real(dp), allocatable   :: inv_x_matrix(:, :)
+  real(dp), allocatable   :: matrix_tmp(:, :), matrix_tmp2(:, :)
+  real(dp), allocatable   :: p_matrix_real(:, :)
   complex(dp), allocatable :: hsmall_cmplx(:, :), csmall_cmplx(:, :)
   complex(dp), allocatable :: hamiltonian_cmplx(:, :, :)
   complex(dp), allocatable :: p_matrix_cmplx(:, :, :), p_matrix_cmplx_old(:, :, :)
@@ -603,13 +604,14 @@ subroutine scf_loop_cmplx(is_restart, &
 
   !
   ! Store the natural orbital basis representation of the density matrix in c_matrix
-  ! and the occupation numbers in occupation(:,1) \in [0:2]
+  ! and the occupation numbers in occupation(:, 1) \in [0:2]
   call clean_allocate('Density matrix P real', p_matrix_real, basis%nbf, basis%nbf)
-  if(nspin==2) then
-   p_matrix_real(:, :)=real(p_matrix_cmplx(:, :, 1)+p_matrix_cmplx(:, :, 2))
+  if(nspin == 2) then
+   p_matrix_real(:, :) = REAL(p_matrix_cmplx(:, :, 1) + p_matrix_cmplx(:, :, 2))
   else
-   p_matrix_real(:, :)=real(p_matrix_cmplx(:, :, 1))
+   p_matrix_real(:, :) = REAL(p_matrix_cmplx(:, :, 1))
   endif
+
   allocate(s_eigval(basis%nbf), matrix_tmp(basis%nbf, basis%nbf))
   matrix_tmp(:, :) = s_matrix(:, :)
   ! Diagonalization with or without SCALAPACK
@@ -633,15 +635,15 @@ subroutine scf_loop_cmplx(is_restart, &
   !  diag[ S^1/2 P S^1/2 ] -> V
   deallocate(matrix_tmp)
   allocate(matrix_tmp(nstate, nstate), matrix_tmp2(nstate, nstate))
-  matrix_tmp=0.0_dp; matrix_tmp2=0.0_dp;
-  matrix_tmp=MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_real, inv_x_matrix))
+  matrix_tmp2 = 0.0_dp;
+  matrix_tmp = MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_real, inv_x_matrix))
   call diagonalize(' ', matrix_tmp, occupation(:, 1), matrix_tmp2)
   !  C = S^-1/2 V
   c_matrix(:, :, 1) = MATMUL(x_matrix, matrix_tmp2)
   deallocate(matrix_tmp, matrix_tmp2, s_eigval)
-  if(nspin==2) then
-   occupation(:, 2)=0.0_dp
-   c_matrix(:, :, 2)=0.0_dp
+  if(nspin == 2) then
+   occupation(:, 2) = 0.0_dp
+   c_matrix(:, :, 2) = 0.0_dp
   endif
 
   !
@@ -1115,13 +1117,13 @@ subroutine print_hartee_expectation(basis, p_matrix, c_matrix, occupation, hamil
     write(stdout, '(1x,a,a)') 'RESTART file read: ', 'RESTART_TEST'
   endif
 
-  call matrix_ao_to_mo_diag(c_matrix_restart, hamiltonian_hartree, h_ii)
+  call h_ao_to_mo_diag(c_matrix_restart, hamiltonian_hartree, h_ii)
   call dump_out_energy('=== Hartree expectation value ===', occupation, h_ii)
   call dump_out_energy_yaml('hartree expectation value', h_ii, 1, nstate)
   write(stdout, '(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):', h_ii(nocc, :) * Ha_eV
 
 
-  call matrix_ao_to_mo_diag(c_matrix_restart, hamiltonian_exx, h_ii)
+  call h_ao_to_mo_diag(c_matrix_restart, hamiltonian_exx, h_ii)
   call dump_out_energy('=== Exchange expectation value ===', occupation, h_ii)
   call dump_out_energy_yaml('exchange expectation value', h_ii, 1, nstate)
   write(stdout, '(1x,a,2(3x,f12.6))') 'Exchange HOMO expectation (eV):', h_ii(nocc, :) * Ha_eV
@@ -1156,7 +1158,7 @@ subroutine print_expectations(basis, c_matrix, hkin)
   allocate(p_matrix(nbf, nbf, nspin))
   allocate(ekin(nstate, nspin))
 
-  call matrix_ao_to_mo_diag(c_matrix, hkin, ekin)
+  call h_ao_to_mo_diag(c_matrix, hkin, ekin)
 
 
   if( print_yaml_ .AND. is_iomaster ) then

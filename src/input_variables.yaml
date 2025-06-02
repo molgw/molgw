@@ -391,6 +391,22 @@ basis_path:
   comment: Sets the path pointing to the basis functions files. If
     not specified, then the basis set files will be searched in folder ~molgw/basis/.
 
+cc4s_input:
+  family: io
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'molgw_'
+  comment: Specifies the rootname for the Cc4s files to be read.
+
+cc4s_output:
+  family: io
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'molgw_'
+  comment: Specifies the rootname for the Cc4s files to be written.
+
 cube_nx:
   family: io
   datatype: integer
@@ -459,6 +475,14 @@ print_bigrestart:
     Hamiltonian and allows one to completely skip the scf loop or to start over with
     another basis set.'
 
+print_cc4s_files:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints CoulombVertex and EigenEnergies CC4S files with Hartree-Fock SCF data.
+
 print_cube:
   family: io
   datatype: yes/no
@@ -515,6 +539,14 @@ print_hartree:
   experimental: 'no'
   default: 'no'
   comment: Prints the Hartree potential and exchange expectation value on eigenstates.
+
+print_hdf5:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints an HDF5 file with self-consistent field data
 
 print_multipole:
   family: io
@@ -616,6 +648,14 @@ read_restart:
   experimental: 'no'
   default: 'no'
   comment: Read the RESTART file and restart from it.
+
+restart_input:
+  family: io
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'RESTART'
+  comment: Specifies the name of the RESTART file that contains SCF data.
 
 yaml_output:
   family: io
@@ -1102,6 +1142,23 @@ rcut_mbpt:
   default: 1.0
   comment: EXPERIMENTAL
 
+rdm_filtering_mo:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 0
+  comment: Number of molecular orbitals that are conserved when creating CC4S-compatible files. `rdm_filtering_mo` should larger or equal to
+           the number of occupied orbitals. Default 0 means number occupied orbitals.
+
+rdm_filtering_no:
+  family: post
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 0
+  comment: Number of natural orbitals in addition to the fixed `rdm_filtering_mo` when creating CC4S-compatible files. Default 0 means skip it.
+
 scissor:
   family: post
   datatype: real
@@ -1369,14 +1426,6 @@ r_disc:
   experimental: 'no'
   default: 200.0
   comment: Radius of the disc for density calculations (option calc_dens_disc) for the real-time dynamics.
-
-tddft_frozencore:
-  family: rt_tddft
-  datatype: yes/no
-  mandatory: 'no'
-  experimental: 'no'
-  default: 'no'
-  comment: Do not "propagate" states mentioned in the manual_tddft_frozencore file in the real-time dynamics.
 
 tddft_wfn_t0:
   family: rt_tddft

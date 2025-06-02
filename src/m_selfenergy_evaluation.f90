@@ -115,6 +115,8 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
       selfenergy_tag='SIGMA_TDHF'
     case(SIGMA_TDSCHF)
       selfenergy_tag='SIGMA_TDSCHF'
+    case(GW2SOSEXPSD)
+      selfenergy_tag='GW+2SOSEX_PSD'
     case default
       write(stdout, *) 'selfenergy approx not listed:', calc_type%selfenergy_approx
       call die('selfenergy_evaluation: bug')
@@ -129,7 +131,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
     ! If requested,
     ! prepare an optmized virtual subspace based on
     ! Frozen Natural Orbitals technique
-    if( is_virtual_fno ) then
+    if( virtual_fno_ ) then
       !
       ! Be aware that the energies and the c_matrix for virtual orbitals are altered after this point
       ! and until they are restored in destroy_fno
@@ -331,6 +333,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
         .OR. calc_type%selfenergy_approx == GW0GW0G &
         .OR. calc_type%selfenergy_approx == GWGW0G &
         .OR. calc_type%selfenergy_approx == GWGW0RPAG &
+        .OR. calc_type%selfenergy_approx == GW2SOSEXPSD &
       ) then
 
       !
@@ -402,8 +405,15 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
           else
             call sosex_selfenergy(basis, occupation, energy_g, c_matrix, wpol, se_g3w2)
           endif
+
           call se%add(se_gw)
           call se%add(se_g3w2)
+
+        case(GW2SOSEXPSD)
+          call psd_gw2sosex_selfenergy(energy_g, c_matrix, wpol, se_g3w2)
+          call se%reset()
+          call se%add(se_g3w2)
+          call se_g3w2%destroy()
 
         case(G3W2)
           call sosex_selfenergy(basis, occupation, energy_g, c_matrix, wpol, se_g3w2)

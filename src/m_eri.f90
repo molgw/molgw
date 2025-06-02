@@ -425,8 +425,8 @@ subroutine identify_negligible_shellpair(basis)
     coeff2(:) = basis%shell(jshell)%coeff(:)
     x02(:) = basis%shell(jshell)%x0(:)
 
-    !$OMP PARALLEL PRIVATE(ami,ni,am1,n1c,ng1,alpha1,coeff1,x01, &
-    !$OMP                  shls,info,int_shell,integrals)
+    !$OMP PARALLEL PRIVATE(ami, ni, am1, n1c, ng1, alpha1, coeff1, x01, &
+    !$OMP                  shls, info, int_shell, integrals)
     !$OMP DO
     do ishell=1, basis%nshell
       if( ANY(basis%shell(ishell)%v0(:) > 1e-6) .OR. ANY(basis%shell(jshell)%v0(:) > 1e-6) ) then
@@ -450,7 +450,7 @@ subroutine identify_negligible_shellpair(basis)
       shls(4) = ishell-1  ! C convention starts with 0
 
       info = cint2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
-                        basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, 0_C_LONG)
+                        basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, LIBCINT_opt)
 
 #else
       am1 = basis%shell(ishell)%am
@@ -746,8 +746,9 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
 
 
   write(stdout, '(/,a)') ' Distribute auxiliary basis functions among processors'
-  write(stdout, '(a,i6,2x,i6,/)') ' Min-Max auxiliary basis functions on a MPI processor after distribution: ', &
-                                 MINVAL(nbf_local_iproc(:)), MAXVAL(nbf_local_iproc(:))
+  write(stdout, '(1x,a,i6,a,i6,a)') 'Auxiliary basis functions load unbalance (Max - Min): ', &
+                                   MAXVAL(nbf_local_iproc(:)), ' - ', MINVAL(nbf_local_iproc(:))
+
 
 end subroutine distribute_auxil_basis
 
@@ -801,10 +802,12 @@ subroutine reshuffle_distribution_3center()
   implicit none
 
   !=====
+#if defined(HAVE_SCALAPACK)
   integer :: info
   integer :: mlocal, nlocal
   integer :: desc3final(NDEL)
   real(dp), allocatable :: eri_3center_tmp(:, :)
+#endif
   !=====
 
 #if defined(HAVE_SCALAPACK)

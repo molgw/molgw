@@ -54,9 +54,9 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
   if( nspin /= 1 ) call die('pt2_density_matrix: only implemented for spin restricted calculations')
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
-    call calculate_eri_4center_eigen_uks(c_matrix, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_4center_mo_uks(c_matrix, ncore_G+1, nvirtual_G-1)
   endif
 
 
@@ -76,9 +76,9 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
             denom1 = energy(astate, pqspin) + energy(bstate, pqspin) - energy(istate, pqspin) - energy(kstate, pqspin)
             denom2 = energy(astate, pqspin) + energy(bstate, pqspin) - energy(jstate, pqspin) - energy(kstate, pqspin)
 
-            num1 = 2.0_dp * eri_eigen(istate, astate, pqspin, kstate, bstate, pqspin) &
-                       - eri_eigen(istate, bstate, pqspin, kstate, astate, pqspin)
-            num2 = 2.0_dp * eri_eigen(jstate, astate, pqspin, kstate, bstate, pqspin)
+            num1 = 2.0_dp * evaluate_eri_mo(istate, astate, pqspin, kstate, bstate, pqspin) &
+                       - evaluate_eri_mo(istate, bstate, pqspin, kstate, astate, pqspin)
+            num2 = 2.0_dp * evaluate_eri_mo(jstate, astate, pqspin, kstate, bstate, pqspin)
 
             p_matrix_pt2(istate, jstate, pqspin) = p_matrix_pt2(istate, jstate, pqspin)  &
                   - num1 * num2 / ( denom1 * denom2 )
@@ -99,9 +99,9 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
             denom1 = energy(istate, pqspin) + energy(jstate, pqspin) - energy(astate, pqspin) - energy(cstate, pqspin)
             denom2 = energy(istate, pqspin) + energy(jstate, pqspin) - energy(bstate, pqspin) - energy(cstate, pqspin)
 
-            num1 = 2.0_dp * eri_eigen(astate, istate, pqspin, cstate, jstate, pqspin) &
-                       - eri_eigen(astate, jstate, pqspin, cstate, istate, pqspin)
-            num2 = 2.0_dp * eri_eigen(bstate, istate, pqspin, cstate, jstate, pqspin)
+            num1 = 2.0_dp * evaluate_eri_mo(astate, istate, pqspin, cstate, jstate, pqspin) &
+                       - evaluate_eri_mo(astate, jstate, pqspin, cstate, istate, pqspin)
+            num2 = 2.0_dp * evaluate_eri_mo(bstate, istate, pqspin, cstate, jstate, pqspin)
 
             p_matrix_pt2(astate, bstate, pqspin) = p_matrix_pt2(astate, bstate, pqspin)  &
                   + num1 * num2 / ( denom1 * denom2 )
@@ -121,9 +121,9 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
           do istate=ncore_G+1, nhomo_G
             denom1 = energy(jstate, pqspin) + energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
             denom2 = energy(jstate, pqspin) - energy(cstate, pqspin)
-            num1 = 2.0_dp * eri_eigen(jstate, astate, pqspin, istate, bstate, pqspin) &
-                - eri_eigen(jstate, bstate, pqspin, istate, astate, pqspin)
-            num2 = 2.0_dp * eri_eigen(astate, cstate, pqspin, bstate, istate, pqspin)
+            num1 = 2.0_dp * evaluate_eri_mo(jstate, astate, pqspin, istate, bstate, pqspin) &
+                - evaluate_eri_mo(jstate, bstate, pqspin, istate, astate, pqspin)
+            num2 = 2.0_dp * evaluate_eri_mo(astate, cstate, pqspin, bstate, istate, pqspin)
 
             p_matrix_pt2(cstate, jstate, pqspin) = p_matrix_pt2(cstate, jstate, pqspin)  &
                                             + num1 * num2 / ( denom1 * denom2 )
@@ -144,9 +144,9 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
           do jstate=ncore_G+1, nhomo_G
             denom1 = energy(jstate, pqspin) + energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
             denom2 = energy(kstate, pqspin) - energy(bstate, pqspin)
-            num1 = 2.0_dp * eri_eigen(jstate, astate, pqspin, istate, bstate, pqspin) &
-                - eri_eigen(jstate, bstate, pqspin, istate, astate, pqspin)
-            num2 = 2.0_dp * eri_eigen(istate, kstate, pqspin, jstate, astate, pqspin)
+            num1 = 2.0_dp * evaluate_eri_mo(jstate, astate, pqspin, istate, bstate, pqspin) &
+                - evaluate_eri_mo(jstate, bstate, pqspin, istate, astate, pqspin)
+            num2 = 2.0_dp * evaluate_eri_mo(istate, kstate, pqspin, jstate, astate, pqspin)
 
             p_matrix_pt2(bstate, kstate, pqspin) = p_matrix_pt2(bstate, kstate, pqspin)  &
                                             - num1 * num2 / ( denom1 * denom2 )
@@ -174,9 +174,9 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
 
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   else
-    call destroy_eri_4center_eigen_uks()
+    call destroy_eri_4center_mo_uks()
   endif
 
   call stop_clock(timing_mbpt_dm)
@@ -211,9 +211,9 @@ subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
   if( nspin /= 1 ) call die('pt2_density_matrix: only implemented for spin restricted calculations')
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
-    call calculate_eri_4center_eigen_uks(c_matrix, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_4center_mo_uks(c_matrix, ncore_G+1, nvirtual_G-1)
   endif
 
 
@@ -233,8 +233,8 @@ subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
             denom1 = energy(astate, pqspin) + energy(bstate, pqspin) - energy(istate, pqspin) - energy(kstate, pqspin)
             denom2 = energy(astate, pqspin) + energy(bstate, pqspin) - energy(jstate, pqspin) - energy(kstate, pqspin)
 
-            num1 = 2.0_dp * eri_eigen(istate, astate, pqspin, kstate, bstate, pqspin)
-            num2 = 2.0_dp * eri_eigen(jstate, astate, pqspin, kstate, bstate, pqspin)
+            num1 = 2.0_dp * evaluate_eri_mo(istate, astate, pqspin, kstate, bstate, pqspin)
+            num2 = 2.0_dp * evaluate_eri_mo(jstate, astate, pqspin, kstate, bstate, pqspin)
 
             p_matrix_pt2(istate, jstate, pqspin) = p_matrix_pt2(istate, jstate, pqspin)  &
                   - num1 * num2 / ( denom1 * denom2 )
@@ -255,8 +255,8 @@ subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
             denom1 = energy(istate, pqspin) + energy(jstate, pqspin) - energy(astate, pqspin) - energy(cstate, pqspin)
             denom2 = energy(istate, pqspin) + energy(jstate, pqspin) - energy(bstate, pqspin) - energy(cstate, pqspin)
 
-            num1 = 2.0_dp * eri_eigen(astate, istate, pqspin, cstate, jstate, pqspin)
-            num2 = 2.0_dp * eri_eigen(bstate, istate, pqspin, cstate, jstate, pqspin)
+            num1 = 2.0_dp * evaluate_eri_mo(astate, istate, pqspin, cstate, jstate, pqspin)
+            num2 = 2.0_dp * evaluate_eri_mo(bstate, istate, pqspin, cstate, jstate, pqspin)
 
             p_matrix_pt2(astate, bstate, pqspin) = p_matrix_pt2(astate, bstate, pqspin)  &
                   + num1 * num2 / ( denom1 * denom2 )
@@ -276,8 +276,8 @@ subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
           do istate=ncore_G+1, nhomo_G
             denom1 = energy(jstate, pqspin) + energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
             denom2 = energy(jstate, pqspin) - energy(cstate, pqspin)
-            num1 = 2.0_dp * eri_eigen(jstate, astate, pqspin, istate, bstate, pqspin)
-            num2 = 2.0_dp * eri_eigen(astate, cstate, pqspin, bstate, istate, pqspin)
+            num1 = 2.0_dp * evaluate_eri_mo(jstate, astate, pqspin, istate, bstate, pqspin)
+            num2 = 2.0_dp * evaluate_eri_mo(astate, cstate, pqspin, bstate, istate, pqspin)
 
             p_matrix_pt2(cstate, jstate, pqspin) = p_matrix_pt2(cstate, jstate, pqspin)  &
                                             + num1 * num2 / ( denom1 * denom2 )
@@ -298,8 +298,8 @@ subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
           do jstate=ncore_G+1, nhomo_G
             denom1 = energy(jstate, pqspin) + energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
             denom2 = energy(kstate, pqspin) - energy(bstate, pqspin)
-            num1 = 2.0_dp * eri_eigen(jstate, astate, pqspin, istate, bstate, pqspin)
-            num2 = 2.0_dp * eri_eigen(istate, kstate, pqspin, jstate, astate, pqspin)
+            num1 = 2.0_dp * evaluate_eri_mo(jstate, astate, pqspin, istate, bstate, pqspin)
+            num2 = 2.0_dp * evaluate_eri_mo(istate, kstate, pqspin, jstate, astate, pqspin)
 
             p_matrix_pt2(bstate, kstate, pqspin) = p_matrix_pt2(bstate, kstate, pqspin)  &
                                             - num1 * num2 / ( denom1 * denom2 )
@@ -327,9 +327,9 @@ subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
 
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   else
-    call destroy_eri_4center_eigen_uks()
+    call destroy_eri_4center_mo_uks()
   endif
 
   call stop_clock(timing_mbpt_dm)
@@ -351,13 +351,13 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
   integer  :: istate, jstate
   integer  :: astate, bstate
   integer  :: pqspin
-  integer  :: ipole
-  integer  :: npole_local, ipole_local
+  integer  :: spole
+  integer  :: npole_local, spole_local
   integer  :: nstate_occ, nstate_virt
   integer  :: file_density_matrix
   real(dp), allocatable :: p_matrix_gw(:, :, :)
-  real(dp), allocatable :: bra_occ(:, :), bra_virt(:, :)
-  real(dp), allocatable :: bra_occ_local(:, :), bra_virt_local(:, :)
+  real(dp), allocatable :: w_s_occ(:, :), w_s_virt(:, :)
+  real(dp), allocatable :: w_s_occ_local(:, :), w_s_virt_local(:, :)
   !=====
 
   call start_clock(timing_mbpt_dm)
@@ -370,9 +370,9 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
   if( .NOT. has_auxil_basis)  call die('gw_density_matrix: only implemented without RI')
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
-    call calculate_eri_4center_eigen_uks(c_matrix, ncore_G+1, nvirtual_G-1)
+    call calculate_eri_4center_mo_uks(c_matrix, ncore_G+1, nvirtual_G-1)
   endif
 
 
@@ -383,57 +383,57 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
 
   nstate_occ  = nhomo_G - ncore_G
   nstate_virt = nvirtual_G - nhomo_G - 1
-  allocate(bra_occ(wpol%npole_reso, ncore_G+1:nhomo_G))
-  allocate(bra_virt(wpol%npole_reso, nhomo_G+1:nvirtual_G-1))
+  allocate(w_s_occ(wpol%npole_reso, ncore_G+1:nhomo_G))
+  allocate(w_s_virt(wpol%npole_reso, nhomo_G+1:nvirtual_G-1))
   npole_local = NUMROC(wpol%npole_reso, 1, auxil%rank, 0, auxil%nproc)
-  allocate(bra_occ_local(npole_local, ncore_G+1:nhomo_G))
-  allocate(bra_virt_local(npole_local, nhomo_G+1:nvirtual_G-1))
+  allocate(w_s_occ_local(npole_local, ncore_G+1:nhomo_G))
+  allocate(w_s_virt_local(npole_local, nhomo_G+1:nvirtual_G-1))
 
   do astate=nhomo_G+1, nvirtual_G-1
     if( MODULO( astate - (nhomo_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
     ! A1
-    !bra_occ(:,ncore_G+1:nhomo_G) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,astate,pqspin) )
+    !w_s_occ(:,ncore_G+1:nhomo_G) = MATMUL( TRANSPOSE(wpol%w_s(:,:)) , eri_3center_mo(:,ncore_G+1:nhomo_G,astate,pqspin) )
     call DGEMM('T', 'N', wpol%npole_reso, nstate_occ,nauxil_local, &
-                          1.0d0, wpol%residue_left, nauxil_local, &
-                                eri_3center_eigen(1, ncore_G+1, astate, pqspin), nauxil_local, &
-                          0.0_dp, bra_occ(1, ncore_G+1), wpol%npole_reso)
-    call auxil%sum(bra_occ)
+                          1.0d0, wpol%w_s, nauxil_local, &
+                                eri_3center_mo(1, ncore_G+1, astate, pqspin), nauxil_local, &
+                          0.0_dp, w_s_occ(1, ncore_G+1), wpol%npole_reso)
+    call auxil%sum(w_s_occ)
 
-    ipole_local = 0
-    do ipole=1, wpol%npole_reso
-      if( MODULO( ipole-1 , auxil%nproc ) /= auxil%rank ) cycle
-      ipole_local = ipole_local + 1
+    spole_local = 0
+    do spole=1, wpol%npole_reso
+      if( MODULO( spole-1 , auxil%nproc ) /= auxil%rank ) cycle
+      spole_local = spole_local + 1
       do jstate=ncore_G+1, nhomo_G
-        bra_occ_local(ipole_local, jstate) = bra_occ(ipole, jstate) &
-                                             / ( energy(jstate, pqspin) - energy(astate, pqspin) - wpol%pole(ipole) )
+        w_s_occ_local(spole_local, jstate) = w_s_occ(spole, jstate) &
+                                             / ( energy(jstate, pqspin) - energy(astate, pqspin) - wpol%pole(spole) )
       enddo
     enddo
 
-    call DSYRK('U', 'T', nstate_occ, npole_local, -2.0d0, bra_occ_local,npole_local,&
+    call DSYRK('U', 'T', nstate_occ, npole_local, -2.0d0, w_s_occ_local,npole_local,&
                1.0d0, p_matrix_gw(ncore_G+1, ncore_G+1, pqspin), nstate)
 
 
     ! A3    P_cj  sum over i,a,b
     ! A4    P_jc  sum over i,a,b     ! not actually calculated, but included through the symmetrization step
-    !bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,astate,pqspin) )
+    !w_s_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%w_s(:,:)) , eri_3center_mo(:,nhomo_G+1:nvirtual_G-1,astate,pqspin) )
     call DGEMM('T', 'N', wpol%npole_reso, nstate_virt,nauxil_local, &
-                          1.0d0, wpol%residue_left, nauxil_local,  &
-                                eri_3center_eigen(1, nhomo_G+1, astate, pqspin), nauxil_local, &
-                          0.0_dp, bra_virt(1, nhomo_G+1), wpol%npole_reso)
-    call auxil%sum(bra_virt)
+                          1.0d0, wpol%w_s, nauxil_local,  &
+                                eri_3center_mo(1, nhomo_G+1, astate, pqspin), nauxil_local, &
+                          0.0_dp, w_s_virt(1, nhomo_G+1), wpol%npole_reso)
+    call auxil%sum(w_s_virt)
 
-    ipole_local = 0
-    do ipole=1, wpol%npole_reso
-      if( MODULO( ipole-1 , auxil%nproc ) /= auxil%rank ) cycle
-      ipole_local = ipole_local + 1
+    spole_local = 0
+    do spole=1, wpol%npole_reso
+      if( MODULO( spole-1 , auxil%nproc ) /= auxil%rank ) cycle
+      spole_local = spole_local + 1
       do bstate=nhomo_G+1, nvirtual_G-1
-        bra_virt_local(ipole_local, bstate) = bra_virt(ipole, bstate)
+        w_s_virt_local(spole_local, bstate) = w_s_virt(spole, bstate)
       enddo
     enddo
 
-    call DGEMM('T', 'N', nstate_occ, nstate_virt, npole_local, 2.0d0, bra_occ_local,npole_local, &
-                                                                bra_virt_local, npole_local, &
+    call DGEMM('T', 'N', nstate_occ, nstate_virt, npole_local, 2.0d0, w_s_occ_local,npole_local, &
+                                                                w_s_virt_local, npole_local, &
                                                           1.0d0, p_matrix_gw(ncore_G+1, nhomo_G+1, pqspin), nstate)
   enddo
 
@@ -441,46 +441,46 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
     if( MODULO( istate - (ncore_G+1) , poorman%nproc ) /= poorman%rank ) cycle
 
     ! A2
-    !bra_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,nhomo_G+1:nvirtual_G-1,istate,pqspin) )
+    !w_s_virt(:,nhomo_G+1:nvirtual_G-1) = MATMUL( TRANSPOSE(wpol%w_s(:,:)) , eri_3center_mo(:,nhomo_G+1:nvirtual_G-1,istate,pqspin) )
     call DGEMM('T', 'N', wpol%npole_reso, nstate_virt,nauxil_local, &
-                          1.0d0, wpol%residue_left, nauxil_local,  &
-                                eri_3center_eigen(1, nhomo_G+1, istate, pqspin), nauxil_local, &
-                          0.0_dp, bra_virt(1, nhomo_G+1), wpol%npole_reso)
-    call auxil%sum(bra_virt)
+                          1.0d0, wpol%w_s, nauxil_local,  &
+                                eri_3center_mo(1, nhomo_G+1, istate, pqspin), nauxil_local, &
+                          0.0_dp, w_s_virt(1, nhomo_G+1), wpol%npole_reso)
+    call auxil%sum(w_s_virt)
 
-    ipole_local = 0
-    do ipole=1, wpol%npole_reso
-      if( MODULO( ipole-1 , auxil%nproc ) /= auxil%rank ) cycle
-      ipole_local = ipole_local + 1
+    spole_local = 0
+    do spole=1, wpol%npole_reso
+      if( MODULO( spole-1 , auxil%nproc ) /= auxil%rank ) cycle
+      spole_local = spole_local + 1
       do bstate=nhomo_G+1, nvirtual_G-1
-        bra_virt_local(ipole_local, bstate) = bra_virt(ipole, bstate) &
-                                             / ( energy(istate, pqspin) - energy(bstate, pqspin) - wpol%pole(ipole) )
+        w_s_virt_local(spole_local, bstate) = w_s_virt(spole, bstate) &
+                                             / ( energy(istate, pqspin) - energy(bstate, pqspin) - wpol%pole(spole) )
       enddo
     enddo
 
-    call DSYRK('U', 'T', nstate_virt, npole_local, 2.0d0, bra_virt_local,npole_local, &
+    call DSYRK('U', 'T', nstate_virt, npole_local, 2.0d0, w_s_virt_local,npole_local, &
                1.0d0, p_matrix_gw(nhomo_G+1, nhomo_G+1, pqspin), nstate)
 
     ! A5   P_bk  sum over i,j,a
     ! A6   P_kb  sum over i,j,a   ! not actually calculated, but included through the symmetrization step
-    !bra_occ(:,ncore_G+1:nhomo_G)       = MATMUL( TRANSPOSE(wpol%residue_left(:,:)) , eri_3center_eigen(:,ncore_G+1:nhomo_G,istate,pqspin) )
+    !w_s_occ(:,ncore_G+1:nhomo_G)       = MATMUL( TRANSPOSE(wpol%w_s(:,:)) , eri_3center_mo(:,ncore_G+1:nhomo_G,istate,pqspin) )
     call DGEMM('T', 'N', wpol%npole_reso, nstate_occ,nauxil_local, &
-                          1.0d0, wpol%residue_left, nauxil_local, &
-                                eri_3center_eigen(1, ncore_G+1, istate, pqspin), nauxil_local, &
-                          0.0_dp, bra_occ(1, ncore_G+1), wpol%npole_reso)
-    call auxil%sum(bra_occ)
+                          1.0d0, wpol%w_s, nauxil_local, &
+                                eri_3center_mo(1, ncore_G+1, istate, pqspin), nauxil_local, &
+                          0.0_dp, w_s_occ(1, ncore_G+1), wpol%npole_reso)
+    call auxil%sum(w_s_occ)
 
-    ipole_local = 0
-    do ipole=1, wpol%npole_reso
-      if( MODULO( ipole-1 , auxil%nproc ) /= auxil%rank ) cycle
-      ipole_local = ipole_local + 1
+    spole_local = 0
+    do spole=1, wpol%npole_reso
+      if( MODULO( spole-1 , auxil%nproc ) /= auxil%rank ) cycle
+      spole_local = spole_local + 1
       do jstate=ncore_G+1, nhomo_G
-        bra_occ_local(ipole_local, jstate) = bra_occ(ipole, jstate)
+        w_s_occ_local(spole_local, jstate) = w_s_occ(spole, jstate)
       enddo
     enddo
 
-    call DGEMM('T', 'N', nstate_occ, nstate_virt, npole_local, -2.0d0, bra_occ_local,npole_local, &
-                                                                 bra_virt_local, npole_local, &
+    call DGEMM('T', 'N', nstate_occ, nstate_virt, npole_local, -2.0d0, w_s_occ_local,npole_local, &
+                                                                 w_s_virt_local, npole_local, &
                                                            1.0d0, p_matrix_gw(ncore_G+1, nhomo_G+1, pqspin), nstate)
   enddo
 
@@ -494,10 +494,10 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
 
   call world%sum(p_matrix_gw)
 
-  deallocate(bra_occ)
-  deallocate(bra_virt)
-  deallocate(bra_occ_local)
-  deallocate(bra_virt_local)
+  deallocate(w_s_occ)
+  deallocate(w_s_virt)
+  deallocate(w_s_occ_local)
+  deallocate(w_s_virt_local)
 
   ! Symmetrization of the p_matrix_gw here
   ! Only the upper triangle was set up before
@@ -521,9 +521,9 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
   endif
 
   if(has_auxil_basis) then
-    call destroy_eri_3center_eigen()
+    call destroy_eri_3center_mo()
   else
-    call destroy_eri_4center_eigen_uks()
+    call destroy_eri_4center_mo_uks()
   endif
 
   call stop_clock(timing_mbpt_dm)
@@ -579,7 +579,7 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
 #endif
 
 
-  if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
 
   mrange = nvirtual_G - ncore_G - 1
@@ -625,7 +625,7 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
   do pqspin=1, nspin
     do qstate=nsemin, nsemax
 
-      eri3_sca_q(:, 1:mrange) = eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, qstate, pqspin)
+      eri3_sca_q(:, 1:mrange) = eri_3center_mo(:, ncore_G+1:nvirtual_G-1, qstate, pqspin)
 
 
       do iomega=1, wpol%nomega
@@ -636,7 +636,7 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
                    0.0_dp, chi_eri3_sca_q      , nauxil_global)
 
         do pstate=qstate, nsemax
-          eri3_sca_p(:, 1:mrange) = eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, pstate, pqspin)
+          eri3_sca_p(:, 1:mrange) = eri_3center_mo(:, ncore_G+1:nvirtual_G-1, pstate, pqspin)
 
           do mlocal=1, neri3
             mstate = INDXL2G(mlocal, wpol%desc_chi(NB_), ipcol, wpol%desc_chi(CSRC_), npcol) + ncore_G
@@ -695,7 +695,7 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
   call clean_deallocate('TMP 3-center MO integrals', eri3_sca_q)
   call clean_deallocate('TMP 3-center MO integrals', chi_eri3_sca_q)
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_mbpt_dm)
 
@@ -751,7 +751,7 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
 #endif
 
 
-  if( has_auxil_basis ) call calculate_eri_3center_eigen(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
 
   mrange = nvirtual_G - ncore_G - 1
@@ -800,7 +800,7 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
   do pqspin=1, nspin
     do qstate=nsemin, nsemax
 
-      eri3_sca_q(:, 1:mrange) = eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, qstate, pqspin)
+      eri3_sca_q(:, 1:mrange) = eri_3center_mo(:, ncore_G+1:nvirtual_G-1, qstate, pqspin)
 
 
       do iomega=1, wpol%nomega
@@ -811,7 +811,7 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
                    0.0_dp, chi_eri3_sca_q      , nauxil_global)
 
         do pstate=nsemin, nsemax
-          eri3_sca_p(:, 1:mrange) = eri_3center_eigen(:, ncore_G+1:nvirtual_G-1, pstate, pqspin)
+          eri3_sca_p(:, 1:mrange) = eri_3center_mo(:, ncore_G+1:nvirtual_G-1, pstate, pqspin)
 
           do mlocal=1, neri3
             mstate = INDXL2G(mlocal, wpol%desc_chi(NB_), ipcol, wpol%desc_chi(CSRC_), npcol) + ncore_G
@@ -907,7 +907,7 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
   call clean_deallocate('TMP 3-center MO integrals', eri3_sca_q)
   call clean_deallocate('TMP 3-center MO integrals', chi_eri3_sca_q)
 
-  call destroy_eri_3center_eigen()
+  call destroy_eri_3center_mo()
 
   call stop_clock(timing_mbpt_dm)
 
@@ -944,7 +944,7 @@ subroutine update_density_matrix(occupation, c_matrix, p_matrix_mo, p_matrix)
       p_matrix_tmp(pstate, pstate, :) = p_matrix_mo(pstate, pstate, :) + occupation(pstate, :)
     enddo
     ! Transform from MO to AO
-    call matrix_mo_to_ao(c_matrix, p_matrix_tmp, p_matrix)
+    call p_mo_to_ao(c_matrix, p_matrix_tmp, p_matrix)
     deallocate(p_matrix_tmp)
 
   else
@@ -952,7 +952,7 @@ subroutine update_density_matrix(occupation, c_matrix, p_matrix_mo, p_matrix)
     write(stdout, *) 'An input Fock density matrix was provided. Use it now!'
     allocate(p_matrix_tmp(nbf, nbf, nspin))
     ! Transform from MO to AO
-    call matrix_mo_to_ao(c_matrix, p_matrix_mo, p_matrix_tmp)
+    call p_mo_to_ao(c_matrix, p_matrix_mo, p_matrix_tmp)
     p_matrix(:, :, :) = p_matrix(:, :, :) + p_matrix_tmp(:, :, :)
     deallocate(p_matrix_tmp)
 

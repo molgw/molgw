@@ -23,7 +23,7 @@ module m_io
   use m_libxc_tools, only: xc_version
   use m_linear_algebra, only: determinant_3x3_matrix
   use m_inputparam
-  use m_hamiltonian_tools, only: get_number_occupied_states
+  use m_hamiltonian_tools, only: get_number_occupied_states, dump_out_energy
   use m_atoms
   use m_basis_set
   use m_dft_grid, only: calculate_basis_functions_r
@@ -37,6 +37,11 @@ module m_io
     module procedure dump_out_matrix_nospin_dp
     module procedure dump_out_matrix_dp
     module procedure dump_out_matrix_cdp
+  end interface
+
+  interface yaml_search_keyword
+    module procedure yaml_search_keyword_i
+    module procedure yaml_search_keyword_dp
   end interface
 
 
@@ -320,17 +325,17 @@ subroutine dump_out_matrix_dp(print_matrix, title, matrix)
     if(nspin==2) then
       write(stdout, '(a,i1)') ' spin polarization # ', ispin
     endif
+    write(stdout,'(4x,*(1x,i12))') (imat, imat=1,SIZE(row))
     do imat=1, MIN(mmat, MAXSIZE)
       where( ABS(matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)) > 1.0e-5_dp )
-      row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)
+        row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)
       elsewhere
-      row(:) = 1.0e-6_dp
-    end where
-    write(stdout, '(1x,i3,*(1x,f12.5))') imat, row(:)
-  enddo
+        row(:) = 1.0e-6_dp
+      end where
+      write(stdout, '(1x,i3,*(1x,f12.5))') imat, row(:)
+    enddo
   write(stdout, *)
-enddo
-write(stdout, *)
+  enddo
 
 end subroutine dump_out_matrix_dp
 
@@ -559,7 +564,7 @@ subroutine mulliken_pdos_cmplx(basis, s_matrix, c_matrix_cmplx, occupation, file
   complex(dp)                :: cs_vector_i(basis%nbf)
   integer                    :: iatom_ibf(basis%nbf)
   integer                    :: li_ibf(basis%nbf)
-  integer                    :: iatom_basis, nocc
+  integer                    :: nocc
   character(len=20)          :: myfmt
   integer, parameter          :: lmax = 2
   !=====
@@ -644,10 +649,8 @@ subroutine lowdin_pdos(basis, s_matrix_sqrt, c_matrix, occupation, energy)
   real(dp)                   :: cs_vector_i(basis%nbf)
   integer                    :: iatom_ibf(basis%nbf)
   integer                    :: li_ibf(basis%nbf)
-  integer                    :: iatom_basis
   character(len=4)           :: char4
-  character(len=2)           :: char2
-  integer, parameter          :: lmax = 2
+  integer, parameter         :: lmax = 2
   !=====
 
   if( .NOT. is_iomaster ) return
@@ -1638,7 +1641,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
   allocate(energy_local(nstate, nspin))
 
   energy_local(:, :) = 0.0_dp
-  if(PRESENT(energy) .and. (complex_scf=='no' .and. x2c=='no') ) then
+  if( PRESENT(energy) .AND. (.NOT. complex_scf_) .AND. (.NOT. x2c_) ) then
     energy_local(:, :) = energy(:, :)
   endif
 
@@ -2513,7 +2516,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
         enddo
       enddo
       cube_density_start(:, :) = 0.0_dp
-      !$OMP PARALLEL PRIVATE(basis_function_r,phi_cmplx)
+      !$OMP PARALLEL PRIVATE(basis_function_r, phi_cmplx)
       !$OMP DO
       do ir=1, cube_nx*cube_ny*cube_nz
         if(MODULO(ir-1, world%nproc)/=world%rank) cycle
@@ -2564,7 +2567,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
       !call start_clock(timing_tmp0)
       dens_diff(:) = 0.0_dp
 
-      !$OMP PARALLEL PRIVATE(basis_function_r,phi_cmplx)
+      !$OMP PARALLEL PRIVATE(basis_function_r, phi_cmplx)
       !$OMP DO
       do ir=1, cube_nx*cube_ny*cube_nz
         if(MODULO(ir-1, world%nproc)/=world%rank) cycle
@@ -3866,7 +3869,7 @@ subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
   write(stdout, '(/,1x,a)')  '==== RPA response calculation (MPI distributed)'
   ncore_W      = ncorew
   nvirtual_W   = MIN(nvirtualw, nstate+1)
-  if(is_frozencore) then
+  if(frozencore_) then
     if( ncore_W == 0) ncore_W = atoms_core_states()
   endif
   nhomo = get_number_occupied_states(occupation)
@@ -3888,7 +3891,7 @@ subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
     !                                                              eri_3center_ao
     mem = REAL(nhomo-ncore_W, dp) * REAL(nvirtual_W-nhomo-1, dp) * nspin * auxil_nbf
   else
-    !          eri_eigenstate_klmin(
+    !          eri_mo_klmin(
     mem = REAL(nbf, dp)**3 * nspin
   endif
   mem = mem * 8.0_dp / 1024_dp**3
@@ -3951,8 +3954,210 @@ subroutine dump_matrix_cmplx_hdf5(f_or_g_id, matrix_cmplx, isnap, matrix_name)
 
 #endif
 
-
 end subroutine dump_matrix_cmplx_hdf5
+
+
+!=========================================================================
+subroutine yaml_search_keyword_i(filename, keyword, value)
+  implicit none
+
+  character(len=*), intent(in) :: filename
+  character(len=*), intent(in) :: keyword
+  integer, allocatable, intent(inout)      :: value(:)
+
+  !=====
+  character(len=256) :: line, kw_value
+  integer :: ios, tmp_yaml_unit
+  logical :: found
+  integer :: itmp, index_substring
+  !=====
+
+  open(newunit=tmp_yaml_unit, file=filename, status='old', action='read', iostat=ios)
+
+  ! Read the file line by line
+  do while (.TRUE.)
+    read(tmp_yaml_unit, '(a)', iostat=ios) line
+    if (ios /= 0) exit
+    ! Check if the line contains the keyword
+
+    index_substring = INDEX(line, keyword) 
+    if( index_substring  /= 0) then
+        kw_value = TRIM(ADJUSTL(line(INDEX(line, ':')+1:)))
+        found = .true.
+        read(kw_value, *) itmp
+        call append_to_list(itmp, value)
+    end if
+  end do
+  close(tmp_yaml_unit)
+
+end subroutine yaml_search_keyword_i
+
+
+!=========================================================================
+subroutine yaml_search_keyword_dp(filename, keyword, value)
+  implicit none
+
+  character(len=*), intent(in) :: filename
+  character(len=*), intent(in) :: keyword
+  real(dp), allocatable, intent(inout) :: value(:)
+
+  !=====
+  character(len=256) :: line, kw_value
+  integer :: ios, tmp_yaml_unit
+  logical :: found
+  integer :: index_substring
+  real(dp) :: rtmp
+  !=====
+
+  open(newunit=tmp_yaml_unit, file=filename, status='old', action='read', iostat=ios)
+
+  ! Read the file line by line
+  do while (.TRUE.)
+    read(tmp_yaml_unit, '(a)', iostat=ios) line
+    if (ios /= 0) exit
+    ! Check if the line contains the keyword
+
+    index_substring = INDEX(line, keyword) 
+    if( index_substring  /= 0) then
+        kw_value = TRIM(ADJUSTL(line(INDEX(line, ':')+1:)))
+        found = .true.
+        read(kw_value, *) rtmp
+        call append_to_list(rtmp, value)
+    end if
+  end do
+  close(tmp_yaml_unit)
+
+end subroutine yaml_search_keyword_dp
+
+
+!=========================================================================
+subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, s_matrix, hamiltonian_fock, &
+                                   rootname)
+  implicit none
+
+  type(basis_set), intent(inout) :: basis
+  integer, intent(inout)         :: nstate
+  real(dp), allocatable, intent(inout) :: energy(:, :)
+  real(dp), allocatable, intent(inout) :: occupation(:, :)
+  real(dp), allocatable, intent(inout) :: c_matrix(:, :, :), s_matrix(:, :)
+  real(dp), allocatable, intent(inout) :: hamiltonian_fock(:, :, :)
+  character(len=*), intent(in), optional :: rootname
+  !=====
+  character(len=128) :: rootname_ = 'molgw_'
+  integer, allocatable :: yaml_integers(:)
+  real(dp), allocatable :: yaml_reals(:)
+  real(dp) :: efermi
+  integer :: istate, nstate_old, ifile
+  !=====
+
+  if( PRESENT(rootname) ) then
+    rootname_ = rootname
+  endif
+
+  if( nspin > 1 ) call die('read_cc4s_eigenenergies: only spin restricted implemented')
+  write(stdout, '(/,1x,a)') 'Reading ' // TRIM(rootname_) // 'EigenEnergies.yaml and ' &
+                            // TRIM(rootname_) // 'Eigenenergies.elements'
+
+  nstate_old = nstate
+
+  call yaml_search_keyword(TRIM(rootname_) // 'EigenEnergies.yaml', 'fermiEnergy', yaml_reals)
+  efermi = yaml_reals(1)
+  write(stdout, '(1x,a,f12.5)') 'Fermi energy from file (eV): ', efermi * Ha_eV
+
+  call yaml_search_keyword(TRIM(rootname_) // 'EigenEnergies.yaml', 'length', yaml_integers)
+  nstate = yaml_integers(1)
+  basis%nbf = nstate
+
+
+  deallocate(energy)
+  deallocate(occupation)
+  call clean_deallocate('Fock operator F', hamiltonian_fock)
+
+  call clean_deallocate('Wavefunctions C', c_matrix) 
+  call clean_deallocate('Overlap S', s_matrix)
+  call clean_allocate('Overlap S', s_matrix, basis%nbf, basis%nbf)
+  call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate, nspin)
+  call clean_allocate('Fock operator F', hamiltonian_fock, basis%nbf, basis%nbf, nspin)
+  c_matrix(:, :, :) = 0.0_dp
+  s_matrix(:, :) = 0.0_dp
+  do istate=1, nstate
+    c_matrix(istate, istate, 1) = 1.0_dp
+    s_matrix(istate, istate)   = 1.0_dp
+  enddo
+
+  allocate(energy(nstate, nspin))
+  allocate(occupation(nstate, nspin))
+
+  open(newunit=ifile, file=TRIM(rootname_) // 'EigenEnergies.elements', status='old', action='read')
+  hamiltonian_fock(:, :, :) = 0.0_dp
+  do istate=1, nstate
+    read(ifile, *) energy(istate, 1)
+    occupation(istate, 1) = MERGE(2.0_dp, 0.0_dp,  energy(istate, 1) < efermi + 1.0e-8 )
+    hamiltonian_fock(istate, istate, 1) = energy(istate, 1)
+  enddo
+
+
+  write(stdout, *) 'Resizing occupation and energy from ', nstate_old, ' to ', nstate
+  call dump_out_energy('=== HF energies from file ===', occupation, energy)
+  write(stdout, '(1x,a,f10.3)') 'Number of electrons from file: ', SUM(occupation(:, :))
+  if( SUM(occupation(:, :)) < 0.001_dp ) call die('read_cc4s_eigenenergies: Fermi energy is such that there is no occupied state')
+
+
+end subroutine read_cc4s_eigenenergies
+
+
+!=========================================================================
+subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
+  implicit none
+
+  real(dp), intent(in) :: occupation(:, :)
+  real(dp), intent(in) :: energy(:, :)
+  character(len=*), intent(in), optional :: rootname
+  !=====
+  integer :: unit_file
+  integer :: nstate, istate, nocc
+  real(dp) :: efermi
+  character(len=128) :: rootname_ = 'molgw_'
+  !=====
+
+  if( nspin > 1 ) call die('write_cc4s_eigenenergies: only spin restricted implemented')
+
+  if( PRESENT(rootname) ) then
+    rootname_ = rootname
+  endif
+
+  nstate = MIN(SIZE(occupation, DIM=1), SIZE(energy, DIM=1))
+
+  open(newunit=unit_file, file=TRIM(rootname_) // 'EigenEnergies.elements', action='write', form='formatted')
+  do istate=1, nstate
+    write(unit_file, '(1x,es16.8)') energy(istate, 1)
+  enddo
+  close(unit_file)
+
+  nocc = get_number_occupied_states(occupation)
+  efermi = 0.5_dp * ( energy(nocc, 1) + energy(nocc+1, 1) ) 
+
+  open(newunit=unit_file, file=TRIM(rootname_) // 'EigenEnergies.yaml', action='write', form='formatted')
+  write(unit_file, '(a)')    'version: 100'
+  write(unit_file, '(a)')    'type: Tensor'
+  write(unit_file, '(a)')    'scalarType: Real64'
+  write(unit_file, '(a)')    'dimensions:'
+  write(unit_file, '(a,i6)') '- length: ', nstate
+  write(unit_file, '(a)')    '  type: State'
+  write(unit_file, '(a)')    'elements:'
+  write(unit_file, '(a)')    '  type: TextFile'
+  write(unit_file, '(a)')    'unit: 1.0     # Hartree units'
+  write(unit_file, '(a)')    'metaData:'
+  write(unit_file, '(a,es16.8)')  '  fermiEnergy:', efermi
+  write(unit_file, '(a)')         '  energies:'
+  do istate=1, nstate
+    write(unit_file, '(2x,a,es16.8)') '- ', energy(istate, 1)
+  enddo
+
+  close(unit_file)
+
+
+end subroutine write_cc4s_eigenenergies
 
 
 !=========================================================================
@@ -4052,7 +4257,7 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
   !  H =    S * C   * E *  C**T * S**T
   !    =  ( S * C ) * E * ( S * C )**T
   !
-  !sc_matrix(:,:) = MATMUL( s_matrix, c_matrix(:,:,1) )
+  !sc_matrix(:, :) = MATMUL( s_matrix, c_matrix(:, :, 1) )
   call DGEMM('N', 'N', basis%nbf, nstate, basis%nbf, &
              1.0d0, s_matrix, basis%nbf, c_matrix(:, :, 1), basis%nbf, &
              0.0d0, sc_matrix, basis%nbf)

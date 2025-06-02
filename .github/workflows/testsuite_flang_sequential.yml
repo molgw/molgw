@@ -1,0 +1,54 @@
+name: Run Test Suite with clang/flang (sequential)
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - run: echo "The job was automatically triggered by a ${{ github.event_name }} event."
+      - run: echo "This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-19 flang-19 cmake libblas-dev liblapack-dev libxc-dev
+          flang-new-19 --version
+      - name: List files in the repository
+        run: |
+          ls ${{ github.workspace }}
+
+      - name: Download and build libcint library
+        run: |
+          wget https://github.com/sunqm/libcint/archive/refs/tags/v6.1.2.tar.gz
+          tar -xzvf v6.1.2.tar.gz
+          cd libcint-6.1.2/
+          mkdir build && cd build
+          CC=clang-19 cmake -DWITH_RANGE_COULOMB=1 -DBUILD_SHARED_LIBS=0 -DPYPZPX=1 ..
+          make
+
+      - name: Make
+        run: |
+          echo "LIBCINT=../libcint-6.1.2/build/libcint.a" > my_machine.arch
+          echo "CPPFLAGS=-cpp" >> my_machine.arch
+          echo "CC=clang++-19" >> my_machine.arch
+          echo "FC=flang-new-19" >> my_machine.arch
+          echo "FCFLAGS=-cpp -O0 -mmlir -allow-assumed-rank -I/usr/include/" >> my_machine.arch
+          echo "LAPACK=-lblas -llapack" >> my_machine.arch
+          echo "LDFLAGS=-lquadmath" >> my_machine.arch
+          make -j 4
+
+      - name: Run the test suite
+        run: |
+          make test
+

@@ -18,6 +18,7 @@ module m_hamiltonian_twobodies
   use m_inputparam
   use m_basis_set
   use m_eri_calculate
+  use m_eri_ao_mo
   use m_density_tools
   use m_dft_grid
   use m_libxc_tools
@@ -46,7 +47,7 @@ subroutine setup_hartree(p_matrix, hartree_ao, ehartree)
   nbf = SIZE(hartree_ao, DIM=1)
 
   write(stdout, *) 'Calculate Hartree term using the 8 permutation symmetries'
-  !$OMP PARALLEL PRIVATE(index_ij,index_kl,ibf,jbf,kbf,lbf,stride,fact_ij,fact_kl)
+  !$OMP PARALLEL PRIVATE(index_ij, index_kl, ibf, jbf, kbf, lbf, stride, fact_ij, fact_kl)
   hartree_ao(:, :) = 0.0_dp
 
 #if defined(_OPENMP)
@@ -58,9 +59,9 @@ subroutine setup_hartree(p_matrix, hartree_ao, ehartree)
 #endif
   index_kl = 1
 
-  ! SCHEDULE(static,1) should not be modified
+  ! SCHEDULE(static, 1) should not be modified
   ! else a race competition will occur when performing index_ij = index_ij + stride
-  !$OMP DO REDUCTION(+:hartree_ao) SCHEDULE(static,1)
+  !$OMP DO REDUCTION(+:hartree_ao) SCHEDULE(static, 1)
   do iint=1, nint_4center
     index_ij = index_ij + stride
     do while( index_ij > npair )
@@ -193,7 +194,7 @@ subroutine setup_hartree_oneshell(basis, p_matrix, hartree_ao, ehartree)
     nk = number_basis_function_am( basis%gaussian_type , basis%shell(kshell)%am )
     nl = number_basis_function_am( basis%gaussian_type , basis%shell(lshell)%am )
 
-    !if( MODULO(klshellpair,world%nproc) /= world%rank ) cycle
+    !if( MODULO(klshellpair, world%nproc) /= world%rank ) cycle
     if( shellpair_cpu(klshellpair) - 1 /= world%rank ) cycle
 
     if( skip_shellpair(klshellpair) ) cycle
@@ -322,18 +323,18 @@ subroutine setup_hartree_ri(p_matrix, hartree_ao, ehartree)
     do ipair=1, npair
       kbf = index_basis(1, ipair)
       lbf = index_basis(2, ipair)
-      ! As all pairs contribute twice for (k,l) and (l,k) and as P is hermitian,
+      ! As all pairs contribute twice for (k, l) and (l, k) and as P is hermitian,
       ! only the real part survives
       pmat(ipair) = SUM(p_matrix(kbf, lbf, :)%re) * 2.0_dp
     enddo
   end select
 
   ! X_P = \sum_{\alpha \beta} P_{\alpha \beta} * ( \alpha \beta | P )
-  call DGEMV('T', npair, nauxil_local, 1.0d0, eri_3center, npair, pmat, 1, 0.0d0, x_vector,1)
+  call DGEMV('T', npair, nauxil_local, 1.0d0, eri_3center, npair, pmat, 1, 0.0d0, x_vector, 1)
   ! v_H_{alpha beta} = \sum_P ( alpha beta | P ) * X_P
-  call DGEMV('N', npair, nauxil_local, 1.0d0, eri_3center, npair, x_vector, 1, 0.0d0,pmat,1)
+  call DGEMV('N', npair, nauxil_local, 1.0d0, eri_3center, npair, x_vector, 1, 0.0d0, pmat, 1)
 
-  !$OMP PARALLEL PRIVATE(kbf,lbf)
+  !$OMP PARALLEL PRIVATE(kbf, lbf)
   !$OMP DO
   do ipair=1, npair
     kbf = index_basis(1, ipair)
@@ -344,7 +345,7 @@ subroutine setup_hartree_ri(p_matrix, hartree_ao, ehartree)
   !$OMP END DO
   !$OMP END PARALLEL
 
-  ! Do not forget that the eri_3center(ibf,ibf | P ) included a factor 0.50
+  ! Do not forget that the eri_3center(ibf, ibf | P ) included a factor 0.50
   do ibf=1, nbf
     hartree_ao(ibf, ibf) = hartree_ao(ibf, ibf) * 2.0_dp
   enddo
@@ -424,17 +425,17 @@ subroutine calculate_density_auxilbasis(p_matrix, rho_coeff)
       do ipair=1, npair
         kbf = index_basis(1, ipair)
         lbf = index_basis(2, ipair)
-        ! As all pairs contribute twice for (k,l) and (l,k) and as P is hermitian,
+        ! As all pairs contribute twice for (k, l) and (l, k) and as P is hermitian,
         ! only the real part survives
         pmat(ipair) = p_matrix(kbf, lbf, ispin)%re * 2.0_dp
       enddo
     end select
 
     ! X_J = \sum_{\alpha \beta} P_{\alpha \beta} * ( \alpha \beta | J )
-    call DGEMV('T', npair, nauxil_local, 1.0d0, eri_3center, npair, pmat, 1, 0.0d0, x_vector,1)
+    call DGEMV('T', npair, nauxil_local, 1.0d0, eri_3center, npair, pmat, 1, 0.0d0, x_vector, 1)
 
     ! R_I = \sum_I ( I | 1/r12 | J )^{-1} * X_J
-    call DGEMV('N', nauxil_global, nauxil_local, 1.0d0, eri_2center_inv, nauxil_global, x_vector, 1, 0.0d0, rho_coeff(:, ispin),1)
+    call DGEMV('N', nauxil_global, nauxil_local, 1.0d0, eri_2center_inv, nauxil_global, x_vector, 1, 0.0d0, rho_coeff(:, ispin), 1)
 
   enddo
 
@@ -492,9 +493,9 @@ subroutine setup_hartree_genuine_ri(p_matrix, rho_coeff, hartree_ao, ehartree)
   enddo
 
   ! vH_\alpha\beta = \sum_I ( \alpha \beta | 1/r12 | I ) * R_I
-  call DGEMV('N', npair, nauxil_local, 1.0d0, eri_3center, npair, rho_coeff_local_nospin, 1, 0.0d0,vh,1)
+  call DGEMV('N', npair, nauxil_local, 1.0d0, eri_3center, npair, rho_coeff_local_nospin, 1, 0.0d0, vh, 1)
 
-  !$OMP PARALLEL PRIVATE(kbf,lbf)
+  !$OMP PARALLEL PRIVATE(kbf, lbf)
   !$OMP DO
   do ipair=1, npair
     kbf = index_basis(1, ipair)
@@ -505,7 +506,7 @@ subroutine setup_hartree_genuine_ri(p_matrix, rho_coeff, hartree_ao, ehartree)
   !$OMP END DO
   !$OMP END PARALLEL
 
-  ! Do not forget that the eri_3center(ibf,ibf | P ) included a factor 0.50
+  ! Do not forget that the eri_3center(ibf, ibf | P ) included a factor 0.50
   do ibf=1, nbf
     hartree_ao(ibf, ibf) = hartree_ao(ibf, ibf) * 2.0_dp
   enddo
@@ -546,7 +547,7 @@ subroutine setup_exchange(p_matrix, exchange_ao, eexchange)
   call start_clock(timing_exchange)
 
   write(stdout, *) 'Calculate Exchange term using the 8 permutation symmetries'
-  !$OMP PARALLEL PRIVATE(index_ik,index_lj,ibf,jbf,kbf,lbf,stride)
+  !$OMP PARALLEL PRIVATE(index_ik, index_lj, ibf, jbf,  kbf, lbf, stride)
   exchange_ao(:, :, :) = 0.0_dp
 
 #if defined(_OPENMP)
@@ -558,9 +559,9 @@ subroutine setup_exchange(p_matrix, exchange_ao, eexchange)
 #endif
   index_lj = 1
 
-  ! SCHEDULE(static,1) should not be modified
+  ! SCHEDULE(static, 1) should not be modified
   ! else a race competition will occur when performing index_ik = index_ik + stride
-  !$OMP DO REDUCTION(+:exchange_ao) SCHEDULE(static,1)
+  !$OMP DO REDUCTION(+:exchange_ao) SCHEDULE(static, 1)
   do iint=1, nint_4center
     index_ik = index_ik + stride
     do while( index_ik > npair )
@@ -634,7 +635,7 @@ subroutine setup_exchange_longrange(p_matrix, exchange_ao, eexchange)
   call start_clock(timing_exchange)
 
   write(stdout, *) 'Calculate LR-Exchange term using the 8 permutation symmetries'
-  !$OMP PARALLEL PRIVATE(index_ik,index_lj,ibf,jbf,kbf,lbf,stride)
+  !$OMP PARALLEL PRIVATE(index_ik, index_lj, ibf, jbf, kbf, lbf, stride)
   exchange_ao(:, :, :) = 0.0_dp
 
 #if defined(_OPENMP)
@@ -646,9 +647,9 @@ subroutine setup_exchange_longrange(p_matrix, exchange_ao, eexchange)
 #endif
   index_lj = 1
 
-  ! SCHEDULE(static,1) should not be modified
+  ! SCHEDULE(static, 1) should not be modified
   ! else a race competition will occur when performing index_ik = index_ik + stride
-  !$OMP DO REDUCTION(+:exchange_ao) SCHEDULE(static,1)
+  !$OMP DO REDUCTION(+:exchange_ao) SCHEDULE(static, 1)
   do iint=1, nint_4center
     index_ik = index_ik + stride
     do while( index_ik > npair )
@@ -749,7 +750,7 @@ subroutine setup_exchange_ri(occupation, c_matrix, p_matrix, exchange_ao, eexcha
     do iauxil=1, nauxil_local
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp(:, :) = 0.0_dp
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -759,10 +760,10 @@ subroutine setup_exchange_ri(occupation, c_matrix, p_matrix, exchange_ao, eexcha
       enddo
       !$OMP END DO
       !$OMP END PARALLEL
-      ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
-      !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
+      ! exchange_ao(:, :, ispin) = exchange_ao(:, :, ispin) &
+      !                    - MATMUL( TRANSPOSE(tmp(:, :)) , tmp(:, :) ) / spin_fact
       ! C = A^T * A + C
-      call DSYRK('L', 'T', nbf, nocc, -1.0_dp, tmp(1, 1), nocc, 1.0_dp, exchange_ao(1,1,ispin),nbf)
+      call DSYRK('L', 'T', nbf, nocc, -1.0_dp, tmp(1, 1), nocc, 1.0_dp, exchange_ao(1, 1, ispin), nbf)
 
     enddo
   enddo
@@ -832,7 +833,7 @@ subroutine setup_exchange_longrange_ri(occupation, c_matrix, p_matrix, exchange_
     do iauxil=1, nauxil_local_lr
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp(:, :) = 0.0_dp
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -845,7 +846,7 @@ subroutine setup_exchange_longrange_ri(occupation, c_matrix, p_matrix, exchange_
       ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
       ! C = A^T * A + C
-      call DSYRK('L', 'T', nbf, nocc, -1.0_dp, tmp(1, 1), nocc, 1.0_dp, exchange_ao(1,1,ispin),nbf)
+      call DSYRK('L', 'T', nbf, nocc, -1.0_dp, tmp(1, 1), nocc, 1.0_dp, exchange_ao(1, 1, ispin), nbf)
 
     enddo
   enddo
@@ -914,7 +915,7 @@ subroutine setup_exchange_ri_cmplx(occupation, c_matrix, p_matrix, exchange_ao, 
     do iauxil=1, nauxil_local
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -993,7 +994,7 @@ subroutine setup_exchange_ri_x2c_1(occupation, c_matrix, exchange_ao)
     do iauxil=1, nauxil_local
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1075,8 +1076,8 @@ subroutine setup_exchange_ri_x2c_2(occupation, c_matrix, exchange_ao)
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx1(:, :) = (0.0_dp, 0.0_dp)
       tmp_cmplx2(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
-      !$OMP DO REDUCTION(+:tmp_cmplx1,tmp_cmplx2)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
+      !$OMP DO REDUCTION(+:tmp_cmplx1, tmp_cmplx2)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
         jbf = index_basis(2, ipair)
@@ -1148,7 +1149,7 @@ subroutine setup_exchange_longrange_ri_cmplx(occupation, c_matrix, p_matrix, exc
     do iauxil=1, nauxil_local_lr
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1227,7 +1228,7 @@ subroutine setup_lr_exchange_ri_x2c_1(occupation, c_matrix, exchange_ao)
     do iauxil=1, nauxil_local_lr
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp_cmplx)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1309,8 +1310,8 @@ subroutine setup_lr_exchange_ri_x2c_2(occupation, c_matrix, exchange_ao)
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
       tmp_cmplx1(:, :) = (0.0_dp, 0.0_dp)
       tmp_cmplx2(:, :) = (0.0_dp, 0.0_dp)
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
-      !$OMP DO REDUCTION(+:tmp_cmplx1,tmp_cmplx2)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
+      !$OMP DO REDUCTION(+:tmp_cmplx1, tmp_cmplx2)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
         jbf = index_basis(2, ipair)
@@ -1380,7 +1381,7 @@ subroutine setup_exchange_genuine_ri(occupation, c_matrix, p_matrix, exchange_ao
     ! GUILLAUME
     ! tmp_{i \alpha P} = \sum_\gamma C_\gamma i (\alpha \gamma | 1 / r12 | P )
     do iauxil_local=1, nauxil_local
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1461,7 +1462,7 @@ subroutine setup_exchange_genuine_ri_cmplx(occupation, c_matrix, p_matrix, excha
     ! GUILLAUME
     ! tmp_{i \alpha P} = \sum_\gamma C_\gamma i (\alpha \gamma | 1 / r12 | P )
     do iauxil_local=1, nauxil_local
-      !$OMP PARALLEL PRIVATE(ibf,jbf)
+      !$OMP PARALLEL PRIVATE(ibf, jbf)
       !$OMP DO REDUCTION(+:tmp)
       do ipair=1, npair
         ibf = index_basis(1, ipair)
@@ -1639,7 +1640,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
       call calc_PI_dens_grad_r_batch(occupation, dm2_JK, c_matrix, basis_function_r_batch, PIr_batch, &
       &                              bf_gradx_batch, bf_grady_batch, bf_gradz_batch, rhor_batch, grad_rhor_batch)
 
-      !$OMP PARALLEL DO PRIVATE(rho_r_tot,s_rho_r,grad_rho_r_tot,factor_r,icoord)
+      !$OMP PARALLEL DO PRIVATE(rho_r_tot, s_rho_r, grad_rho_r_tot, factor_r, icoord)
       do ir=1, nr
         rho_r_tot=rhor_batch(1, ir)+rhor_batch(2, ir)
         if( abs(rho_r_tot) > 1d-6 ) then
@@ -1838,7 +1839,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
             tmp_batch(:, ir) = SQRT( MAX(-weight_batch(ir) * dedd_r_batch(ispin, ir), 1.1e-15_dp) ) * basis_function_r_batch(:, ir)
           enddo
           !$OMP END PARALLEL DO
-          call DSYRK('L', 'N', basis%nbf, nr, -1.0d0, tmp_batch, basis%nbf, 1.0d0, vxc_ao(:, :,ispin),basis%nbf)
+          call DSYRK('L', 'N', basis%nbf, nr, -1.0d0, tmp_batch, basis%nbf, 1.0d0, vxc_ao(1, 1,ispin),basis%nbf)
         endif
       endif
 
@@ -2006,7 +2007,7 @@ subroutine dft_approximate_vhxc(basis, vhxc_ao)
     do ir=1, nr
       basis_function_r_batch(:, ir) = SQRT( -weight_batch(ir) * vrho_batch(ir) ) * basis_function_r_batch(:, ir)
     enddo
-    call DSYRK('L', 'N', basis%nbf, nr, -1.0d0, basis_function_r_batch(1, 1), basis%nbf, 1.0d0, vhxc_ao(1,1),basis%nbf)
+    call DSYRK('L', 'N', basis%nbf, nr, -1.0d0, basis_function_r_batch(1, 1), basis%nbf, 1.0d0, vhxc_ao(1,1), basis%nbf)
 
 
     deallocate(weight_batch)
@@ -2039,6 +2040,95 @@ subroutine dft_approximate_vhxc(basis, vhxc_ao)
   call stop_clock(timing_approx_ham)
 
 end subroutine dft_approximate_vhxc
+
+
+!=========================================================================
+subroutine setup_hartree_mo(occupation, vhartree_mo, ehartree)
+  implicit none
+
+  real(dp), intent(in) :: occupation(:, :)
+  real(dp), intent(out) :: vhartree_mo(:, :, :)
+  real(dp), optional, intent(out) :: ehartree
+  !=====
+  integer :: nstate, istate, jstate, nocc, ispin
+  real(dp), allocatable :: x_vector(:)
+  !=====
+
+  write(stdout, *) 'Calculate Hartree in MO basis with MO integrals'
+  nstate = SIZE(occupation, DIM=1)
+  nocc = get_number_occupied_states(occupation)
+  allocate(x_vector(nauxil_local))
+
+  if( .NOT. ALLOCATED(eri_3center_mo)) call die('setup_hartree_mo: MO integrals are not available')
+
+  x_vector(:) = 0.0_dp
+  do ispin=1, nspin
+    do istate=1, nocc
+      x_vector(:) = x_vector(:) + occupation(istate, ispin) * eri_3center_mo(:, istate, istate, ispin)
+    enddo
+  enddo
+  !if( auxil%nproc > 1) call die('not coded yet how to find G=0')
+  !x_vector(1) = 0.0_dp ! G=0 is removed
+  do ispin=1, nspin
+    do jstate=1, nstate
+      do istate=1, nstate
+        vhartree_mo(istate, jstate, ispin) = SUM( eri_3center_mo(:, istate, jstate, ispin) * x_vector(:) )
+      enddo
+    enddo
+  enddo
+  deallocate(x_vector)
+  call auxil%sum(vhartree_mo)
+
+  if( PRESENT(ehartree) ) then
+    ehartree = 0.0_dp
+    do ispin=1, nspin
+      do istate=1, nocc
+        ehartree = ehartree + 0.5_dp * vhartree_mo(istate, istate, ispin) * occupation(istate, ispin) 
+      enddo
+    enddo
+  endif
+
+end subroutine setup_hartree_mo
+
+
+!=========================================================================
+subroutine setup_exchange_mo(occupation, sigx_mo, eexchange)
+  implicit none
+
+  real(dp), intent(in) :: occupation(:, :)
+  real(dp), intent(out) :: sigx_mo(:, :, :)
+  real(dp), optional, intent(out) :: eexchange
+  !=====
+  integer :: nstate, istate, nocc, ispin
+  !=====
+
+  write(stdout, *) 'Calculate Exchange in MO basis with MO integrals'
+  nstate = SIZE(occupation, DIM=1)
+  nocc = get_number_occupied_states(occupation)
+
+  if( .NOT. ALLOCATED(eri_3center_mo)) call die('setup_exchange_mo: MO integrals are not available')
+
+  sigx_mo(:, :, :) = 0.0_dp
+  do ispin=1, nspin
+    do istate=1, nocc
+      call DSYRK('L', 'T', nstate, nauxil_local, -occupation(istate, ispin) / spin_fact, &
+                 eri_3center_mo(1, 1, istate, ispin), nauxil_local, &
+                 1.0d0, sigx_mo(1, 1, ispin), nstate)
+    enddo
+    call matrix_lower_to_full(sigx_mo(:, :, ispin))
+  enddo
+  call auxil%sum(sigx_mo)
+
+  if( PRESENT(eexchange) ) then
+    eexchange = 0.0_dp
+    do ispin=1, nspin
+      do istate=1, nocc
+        eexchange = eexchange + 0.5_dp * sigx_mo(istate, istate, ispin) * occupation(istate, ispin)
+      enddo
+    enddo
+  endif
+
+end subroutine setup_exchange_mo
 
 
 !=========================================================================
@@ -2104,16 +2194,32 @@ subroutine init_c_matrix(basis, occupation, x_matrix, hkin, hnuc, c_matrix)
       c_matrix(:, :, nspin) = c_matrix(:, :, 1)
     endif
 
+  case('CC4S_FILES')
+    ! c_matrix is the identity (AO=MO)
+    ! Be careful: orthonormality C**T * S* C /=1 not fulfilled here
+    ! but c_matrix is not meant to be used when init_hamiltonian = 'skip'
+    c_matrix(:,:,:) = 0.0_dp
+    do istate=1,nstate
+      c_matrix(istate,istate,1) = 1.0_dp
+    enddo
+
   case default
     call die('init_c_matrix: init_hamiltonian option is not valid')
   end select
 
-  ! The hamiltonian is still spin-independent:
-  if(TRIM(init_hamiltonian)/='GAUSSIAN') c_matrix(:, :, nspin) = c_matrix(:, :, 1)
+  ! The hamiltonian is still spin-independent at this stage:
+  select case(TRIM(init_hamiltonian))
+  case('GAUSSIAN', 'CC4S_FILES')
+    ! Don't do anything
+  case default
+    c_matrix(:,:,nspin) = c_matrix(:,:,1)
+  end select
+
 
   ! Mixing the HOMO-LUMO for GUESS='MIX' and spin-compensated systems
   if( (TRIM(init_hamiltonian) == 'MIX' .AND. abs(magnetization) < 1.0e-8_dp) .AND. nspin == 2 ) then
     write(stdout, '(a)') ' Guess including mixing the HOMO-LUMO'
+
     allocate(one_mo(basis%nbf))
     one_mo = zero
     ilumo = 0
@@ -2137,6 +2243,7 @@ subroutine init_c_matrix(basis, occupation, x_matrix, hkin, hnuc, c_matrix)
     c_matrix(:, ilumo-1, 2) = one_mo(:)
     deallocate(one_mo)
   endif
+
 
 end subroutine init_c_matrix
 
@@ -2176,6 +2283,7 @@ subroutine init_c_matrix_cmplx(c_matrix, c_matrix_cmplx)
 
 end subroutine init_c_matrix_cmplx
 
+
 !=========================================================================
 subroutine init_c_matrix_x2c(basis, c_matrix_rel, x_matrix_rel, hamiltonian_kin_nuc_rel)
   implicit none
@@ -2211,6 +2319,37 @@ subroutine init_c_matrix_x2c(basis, c_matrix_rel, x_matrix_rel, hamiltonian_kin_
   endif
 
 end subroutine init_c_matrix_x2c
+
+
+!=========================================================================
+! Calculate the H-F total energy from MO integrals
+subroutine setup_hartreefock_totalenergy_mo(occupation, energy)
+  implicit none
+  real(dp), intent(in) :: occupation(:, :), energy(:, :)
+  !=====
+  integer :: nocc, nmo
+  real(dp) :: etotal, ehartree, eexchange
+  real(dp), allocatable :: htmp_mo(:, :, :)
+  !=====
+
+  if( nspin > 1) call die('setup_hartree_fock_mo: not coded for nspin > 1')
+
+  nocc = get_number_occupied_states(occupation)
+  nmo  = SIZE(occupation, DIM=1)
+
+  ! "Band energy"
+  etotal = SUM( occupation(1:nocc, :) * energy(1:nocc, :) )
+
+  allocate(htmp_mo(nmo, nmo, nspin))
+  call setup_hartree_mo(occupation, htmp_mo, ehartree)
+  call setup_exchange_mo(occupation, htmp_mo, eexchange)
+  deallocate(htmp_mo)
+
+  etotal = etotal - ehartree - eexchange
+
+  write(stdout, '(a25,f19.10)') 'HF Total Energy (Ha):', etotal
+
+end subroutine setup_hartreefock_totalenergy_mo
 
 
 end module m_hamiltonian_twobodies

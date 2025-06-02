@@ -50,9 +50,9 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
   integer              :: istate, astate, jstate, bstate
   integer              :: iaspin, jbspin
   integer              :: jbmin
-  real(dp), allocatable :: eri_eigenstate_jbmin(:, :, :, :)
-  real(dp)             :: eri_eigen_iajb
-  real(dp)             :: eri_eigen_ijab, eri_eigen_ibaj
+  real(dp), allocatable :: eri_mo_jbmin(:, :, :, :)
+  real(dp)             :: eri_mo_iajb
+  real(dp)             :: eri_mo_ijab, eri_mo_ibaj
   logical              :: j_is_jbmin
   integer              :: iprow, ipcol
   integer              :: m_apb_block, n_apb_block
@@ -71,10 +71,10 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
   endif
 
   if( .NOT. has_auxil_basis) then
-    allocate(eri_eigenstate_jbmin(nstate, nstate, nstate, nspin))
+    allocate(eri_mo_jbmin(nstate, nstate, nstate, nspin))
     ! Set this to zero and then enforce the calculation of the first series of
     ! Coulomb integrals
-    eri_eigenstate_jbmin(:, :, :, :) = 0.0_dp
+    eri_mo_jbmin(:, :, :, :) = 0.0_dp
   endif
 
   if( nprow_sd * npcol_sd > 1 ) &
@@ -106,7 +106,7 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
         if( .NOT. has_auxil_basis ) then
           jbmin = MIN(jstate, bstate)
           j_is_jbmin = (jbmin == jstate)
-          call calculate_eri_4center_eigen(c_matrix, jbmin, jbspin, eri_eigenstate_jbmin)
+          call calculate_eri_4center_mo(c_matrix, jbmin, jbspin, eri_mo_jbmin)
         endif
 
         do t_ia=1, m_apb_block
@@ -121,17 +121,17 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
           if( t_ia_global < t_jb_global ) cycle
 
           if(has_auxil_basis) then
-            eri_eigen_iajb = eri_eigen_ri_paral(istate, astate, iaspin, jstate, bstate, jbspin)
+            eri_mo_iajb = evaluate_eri_mo_ri_paral(istate, astate, iaspin, jstate, bstate, jbspin)
           else
             if(j_is_jbmin) then ! treating (j,b)
-              eri_eigen_iajb = eri_eigenstate_jbmin(bstate, istate, astate, iaspin)
+              eri_mo_iajb = eri_mo_jbmin(bstate, istate, astate, iaspin)
             else                ! treating (b,j)
-              eri_eigen_iajb = eri_eigenstate_jbmin(jstate, istate, astate, iaspin)
+              eri_mo_iajb = eri_mo_jbmin(jstate, istate, astate, iaspin)
             endif
           endif
 
           if( .NOT. is_triplet_currently) then
-            apb_block(t_ia, t_jb) = 2.0_dp * eri_eigen_iajb * spin_fact * lambda
+            apb_block(t_ia, t_jb) = 2.0_dp * eri_mo_iajb * spin_fact * lambda
           else
             apb_block(t_ia, t_jb) = 0.0_dp
           endif
@@ -140,21 +140,21 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
           if( alpha_local > 1.0e-6_dp ) then
             if( iaspin == jbspin ) then
               if(has_auxil_basis) then
-                eri_eigen_ijab = eri_eigen_ri_paral(istate, jstate, iaspin, astate, bstate, jbspin)
-                eri_eigen_ibaj = eri_eigen_ri_paral(istate, bstate, iaspin, astate, jstate, jbspin)
+                eri_mo_ijab = evaluate_eri_mo_ri_paral(istate, jstate, iaspin, astate, bstate, jbspin)
+                eri_mo_ibaj = evaluate_eri_mo_ri_paral(istate, bstate, iaspin, astate, jstate, jbspin)
               else
                 if(j_is_jbmin) then
-                  eri_eigen_ijab = eri_eigenstate_jbmin(istate, astate, bstate, jbspin)
-                  eri_eigen_ibaj = eri_eigenstate_jbmin(astate, istate, bstate, jbspin)
+                  eri_mo_ijab = eri_mo_jbmin(istate, astate, bstate, jbspin)
+                  eri_mo_ibaj = eri_mo_jbmin(astate, istate, bstate, jbspin)
                 else
-                  eri_eigen_ijab = eri_eigenstate_jbmin(astate, istate, jstate, jbspin)
-                  eri_eigen_ibaj = eri_eigenstate_jbmin(istate, astate, jstate, jbspin)
+                  eri_mo_ijab = eri_mo_jbmin(astate, istate, jstate, jbspin)
+                  eri_mo_ibaj = eri_mo_jbmin(istate, astate, jstate, jbspin)
                 endif
               endif
-              apb_block(t_ia, t_jb) = apb_block(t_ia, t_jb) - eri_eigen_ijab * alpha_local * lambda &
-                                                          - eri_eigen_ibaj * alpha_local * lambda
-              amb_block(t_ia, t_jb) = amb_block(t_ia, t_jb) - eri_eigen_ijab * alpha_local * lambda &
-                                                          + eri_eigen_ibaj * alpha_local * lambda
+              apb_block(t_ia, t_jb) = apb_block(t_ia, t_jb) - eri_mo_ijab * alpha_local * lambda &
+                                                          - eri_mo_ibaj * alpha_local * lambda
+              amb_block(t_ia, t_jb) = amb_block(t_ia, t_jb) - eri_mo_ijab * alpha_local * lambda &
+                                                          + eri_mo_ibaj * alpha_local * lambda
             endif
           endif
 
@@ -193,7 +193,7 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
   !
   ! Set up the diagonal of A-B in the RPA approximation
   !
-  !$OMP PARALLEL DO PRIVATE(istate,astate,iaspin)
+  !$OMP PARALLEL DO PRIVATE(istate, astate, iaspin)
   do t_ia_global=1, nmat
     istate = wpol%transition_table(1, t_ia_global)
     astate = wpol%transition_table(2, t_ia_global)
@@ -204,7 +204,7 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
   enddo
   !$OMP END PARALLEL DO
 
-  if(ALLOCATED(eri_eigenstate_jbmin)) deallocate(eri_eigenstate_jbmin)
+  if(ALLOCATED(eri_mo_jbmin)) deallocate(eri_mo_jbmin)
 
 
   call stop_clock(timing_build_common)
@@ -369,7 +369,7 @@ subroutine build_apb_hartree_auxil(is_triplet_currently, lambda, desc_apb, wpol,
       apb_block(:, :) = 0.0_dp
 
 
-      do ibf_auxil=1, SIZE(eri_3center_eigen, DIM=1)
+      do ibf_auxil=1, SIZE(eri_3center_mo, DIM=1)
 
 
         do t_jb=1, n_apb_block
@@ -378,7 +378,7 @@ subroutine build_apb_hartree_auxil(is_triplet_currently, lambda, desc_apb, wpol,
           bstate = wpol%transition_table(2, t_jb_global)
           jbspin = wpol%transition_table(3, t_jb_global)
 
-          eri_3center_right(t_jb) = eri_3center_eigen(ibf_auxil, jstate, bstate, jbspin)
+          eri_3center_right(t_jb) = eri_3center_mo(ibf_auxil, jstate, bstate, jbspin)
 
         enddo
 
@@ -388,7 +388,7 @@ subroutine build_apb_hartree_auxil(is_triplet_currently, lambda, desc_apb, wpol,
           astate = wpol%transition_table(2, t_ia_global)
           iaspin = wpol%transition_table(3, t_ia_global)
 
-          eri_3center_left(t_ia) = eri_3center_eigen(ibf_auxil, istate, astate, iaspin)
+          eri_3center_left(t_ia) = eri_3center_mo(ibf_auxil, istate, astate, iaspin)
 
         enddo
 
@@ -465,7 +465,7 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda, desc_
     jstate = wpol%transition_table(1, t_jb_global)
     bstate = wpol%transition_table(2, t_jb_global)
     jbspin = wpol%transition_table(3, t_jb_global)
-    eri_3tmp(:, t_jb_global) = eri_3center_eigen(:, jstate, bstate, jbspin)
+    eri_3tmp(:, t_jb_global) = eri_3center_mo(:, jstate, bstate, jbspin)
   enddo
 
   !
@@ -650,18 +650,18 @@ subroutine build_amb_apb_bse(wpol, wpol_static, m_apb, n_apb, amb_matrix, apb_ma
       if( iaspin /= jbspin ) cycle
 
       kbf = index_prodstate(istate, jstate) + nprodbasis * (iaspin-1)
-      bra(:) = wpol_static%residue_left(kbf, :)
+      bra(:) = wpol_static%w_s(kbf, :)
       kbf = index_prodstate(astate, bstate) + nprodbasis * (jbspin-1)
-      ket(:) = wpol_static%residue_left(kbf, :)
+      ket(:) = wpol_static%w_s(kbf, :)
 
       wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
       apb_matrix(t_ia, t_jb) =  apb_matrix(t_ia, t_jb) - wtmp
       amb_matrix(t_ia, t_jb) =  amb_matrix(t_ia, t_jb) - wtmp
 
       kbf = index_prodstate(istate, bstate) + nprodbasis * (iaspin-1)
-      bra(:) = wpol_static%residue_left(kbf, :)
+      bra(:) = wpol_static%w_s(kbf, :)
       kbf = index_prodstate(astate, jstate) + nprodbasis * (jbspin-1)
-      ket(:) = wpol_static%residue_left(kbf, :)
+      ket(:) = wpol_static%w_s(kbf, :)
 
       wtmp =  SUM( 2.0_dp * bra(:)*ket(:)/(-wpol_static%pole(:)) )   ! Factor two comes from Resonant and Anti-resonant transitions
       apb_matrix(t_ia, t_jb) =  apb_matrix(t_ia, t_jb) - wtmp
@@ -699,14 +699,14 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
   integer              :: iaspin, jbspin
   real(dp)             :: wtmp, wtmp2=0.0e0_dp
   integer              :: jstate_min, jstate_max
-  integer              :: ipole, ibf_auxil, jbf_auxil, ibf_auxil_global, jbf_auxil_global
+  integer              :: spole, ibf_auxil, jbf_auxil, ibf_auxil_global, jbf_auxil_global
   real(dp), allocatable :: wp0(:, :, :, :), wp0_lr(:, :, :, :), w0_local(:)
   integer              :: iprow, ipcol, irank
   integer              :: m_apb_block, n_apb_block
   real(dp), allocatable :: amb_block(:, :)
   real(dp), allocatable :: apb_block(:, :)
 #if defined(HAVE_SCALAPACK)
-  real(dp), allocatable :: vsqrt_chi_vsqrt_i(:), residue_i(:), wp0_i(:, :)
+  real(dp), allocatable :: vsqrt_chi_vsqrt_i(:), w_s(:), wp0_i(:, :)
 #else
   real(dp), allocatable :: vsqrt_chi_vsqrt(:, :)
 #endif
@@ -721,7 +721,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
 
   nmat = desc_apb(M_)
   ! Is it an exchange or a screened exchange calculation
-  is_bse = ALLOCATED(wpol_static%chi) .OR. ALLOCATED(wpol_static%residue_left)
+  is_bse = ALLOCATED(wpol_static%chi) .OR. ALLOCATED(wpol_static%w_s)
 
 
   !
@@ -759,14 +759,14 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
 
         vsqrt_chi_vsqrt(:, :) = wpol_static%chi(:, :, 1)
 
-      else if( ALLOCATED(wpol_static%residue_left) ) then
+      else if( ALLOCATED(wpol_static%w_s) ) then
 
         vsqrt_chi_vsqrt(:, :) = 0.0_dp
-        do ipole=1, wpol_static%npole_reso
+        do spole=1, wpol_static%npole_reso
           do jbf_auxil=1, nauxil_global
             vsqrt_chi_vsqrt(:, jbf_auxil) = vsqrt_chi_vsqrt(:, jbf_auxil) &
-                     - wpol_static%residue_left(:, ipole)                 &
-                       * wpol_static%residue_left(jbf_auxil, ipole) * 2.0_dp / wpol_static%pole(ipole)
+                     - wpol_static%w_s(:, spole)                 &
+                       * wpol_static%w_s(jbf_auxil, spole) * 2.0_dp / wpol_static%pole(spole)
           enddo
         enddo
 
@@ -777,7 +777,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
       ! Be careful not to forget it in the following
       do jstate=jstate_min, jstate_max
         wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) = lambda * MATMUL( vsqrt_chi_vsqrt(:, :), &
-                                                              eri_3center_eigen(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) )
+                                                              eri_3center_mo(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) )
       enddo
 
       deallocate(vsqrt_chi_vsqrt)
@@ -804,7 +804,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
 
           do jstate=jstate_min, jstate_max
             wp0_i(ncore_W+1:nvirtual_W-1, jstate) = MATMUL( w0_local(:) , &
-                                                            eri_3center_eigen(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) )
+                                                            eri_3center_mo(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) )
           enddo
           call auxil%sum(wp0_i)
 
@@ -816,32 +816,32 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
         deallocate(wp0_i)
         deallocate(w0_local)
 
-      else if( ALLOCATED(wpol_static%residue_left) ) then
+      else if( ALLOCATED(wpol_static%w_s) ) then
 
         allocate(vsqrt_chi_vsqrt_i(nauxil_local))
-        allocate(residue_i(wpol_static%npole_reso))
+        allocate(w_s(wpol_static%npole_reso))
         allocate(wp0_i(ncore_W+1:nvirtual_W-1, jstate_min:jstate_max))
 
         do ibf_auxil=1, nauxil_global
 
           if( iproc_ibf_auxil(ibf_auxil) == auxil%rank ) then
-            residue_i(:) = wpol_static%residue_left(ibf_auxil_l(ibf_auxil), :)
+            w_s(:) = wpol_static%w_s(ibf_auxil_l(ibf_auxil), :)
           else
-            residue_i(:) = 0.0_dp
+            w_s(:) = 0.0_dp
           endif
-          call auxil%sum(residue_i)
+          call auxil%sum(w_s)
 
           vsqrt_chi_vsqrt_i(:) = 0.0_dp
-          do ipole=1, wpol_static%npole_reso
+          do spole=1, wpol_static%npole_reso
             vsqrt_chi_vsqrt_i(:) = vsqrt_chi_vsqrt_i(:) &
-                     - residue_i(ipole) * wpol_static%residue_left(:, ipole) * 2.0_dp / wpol_static%pole(ipole)
+                     - w_s(spole) * wpol_static%w_s(:, spole) * 2.0_dp / wpol_static%pole(spole)
           enddo
           !
           ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
           ! Be careful in the following not to forget it
           do jstate=jstate_min, jstate_max
             wp0_i(ncore_W+1:nvirtual_W-1, jstate) = MATMUL( vsqrt_chi_vsqrt_i(:), &
-                                                           eri_3center_eigen(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) )
+                                                           eri_3center_mo(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) )
           enddo
           call auxil%sum(wp0_i)
 
@@ -851,7 +851,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
 
         enddo
 
-        deallocate(vsqrt_chi_vsqrt_i, residue_i, wp0_i)
+        deallocate(vsqrt_chi_vsqrt_i, w_s, wp0_i)
 
       endif
 
@@ -870,9 +870,9 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
       do iaspin=1, nspin
         do jstate=jstate_min, jstate_max
           wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) = wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) &
-                             + alpha_local * lambda *  eri_3center_eigen(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
+                             + alpha_local * lambda *  eri_3center_mo(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
           wp0_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) = wp0_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) &
-                             + beta_hybrid * lambda *  eri_3center_eigen_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
+                             + beta_hybrid * lambda *  eri_3center_mo_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
         enddo
       enddo
 
@@ -881,7 +881,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
       do iaspin=1, nspin
         do jstate=jstate_min, jstate_max
           wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) = wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) &
-                             + alpha_local * lambda *  eri_3center_eigen(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
+                             + alpha_local * lambda *  eri_3center_mo(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
         enddo
       enddo
 
@@ -928,20 +928,20 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
 
           if( iaspin /= jbspin ) cycle
 
-          wtmp = DOT_PRODUCT( eri_3center_eigen(:, astate, bstate, iaspin) , wp0(:, istate, jstate, iaspin) )
+          wtmp = DOT_PRODUCT( eri_3center_mo(:, astate, bstate, iaspin) , wp0(:, istate, jstate, iaspin) )
           if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
              .OR. TRIM(w_screening)=='TDDFT' ) ) then
-            wtmp2 = DOT_PRODUCT( eri_3center_eigen_lr(:, astate, bstate, iaspin) , wp0_lr(:, istate, jstate, iaspin) )
+            wtmp2 = DOT_PRODUCT( eri_3center_mo_lr(:, astate, bstate, iaspin) , wp0_lr(:, istate, jstate, iaspin) )
           endif
 
           apb_block(t_ia, t_jb) = -wtmp -wtmp2
           amb_block(t_ia, t_jb) = -wtmp -wtmp2
 
 
-          wtmp = DOT_PRODUCT( eri_3center_eigen(:, istate, bstate, iaspin) , wp0(:, astate, jstate, iaspin) )
+          wtmp = DOT_PRODUCT( eri_3center_mo(:, istate, bstate, iaspin) , wp0(:, astate, jstate, iaspin) )
           if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
              .OR. TRIM(w_screening)=='TDDFT' ) ) then
-            wtmp2 = DOT_PRODUCT( eri_3center_eigen_lr(:, istate, bstate, iaspin) , wp0_lr(:, astate, jstate, iaspin) )
+            wtmp2 = DOT_PRODUCT( eri_3center_mo_lr(:, istate, bstate, iaspin) , wp0_lr(:, astate, jstate, iaspin) )
           endif
             
           apb_block(t_ia, t_jb) =  apb_block(t_ia, t_jb) - wtmp -wtmp2

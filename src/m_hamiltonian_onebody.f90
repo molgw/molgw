@@ -1027,8 +1027,8 @@ subroutine setup_nucleus(basis, hamiltonian_nucleus, atom_list)
 
     call set_libint_shell(basis%shell(jshell), amB, contrdepthB, B, alphaB, cB)
 
-    !$OMP PARALLEL PRIVATE(li,ni_cart,ni,ibf1,ibf2,amA,contrdepthA,A,alphaA,cA,array_cart,array_cart_C,C,matrix, &
-    !$OMP&                 ij,ibf_cart,jbf_cart,info,shls,env_local,nucleus)
+    !$OMP PARALLEL PRIVATE(li, ni_cart, ni, ibf1, ibf2, amA, contrdepthA, A, alphaA, cA, array_cart, array_cart_C, C, matrix, &
+    !$OMP&                 ij, ibf_cart, jbf_cart, info, shls, env_local, nucleus)
 
 #if defined(HAVE_LIBCINT)
     allocate(env_local, SOURCE=basis%LIBCINT_env)
@@ -1219,8 +1219,8 @@ subroutine recalc_nucleus(basis_t, basis_p, hamiltonian_nucleus)
 
     call set_libint_shell(basis_p%shell(jshell), amB, contrdepthB, B, alphaB, cB)
 
-    !$OMP PARALLEL PRIVATE(li,ni_cart,ni,ibf1,ibf2,amA,contrdepthA,A,alphaA,cA,array_cart,array_cart_C,C,matrix, &
-    !$OMP&                 ij,ibf_cart,jbf_cart,nucleus)
+    !$OMP PARALLEL PRIVATE(li, ni_cart, ni, ibf1, ibf2, amA, contrdepthA, A, alphaA, cA,array_cart, array_cart_C, C, matrix, &
+    !$OMP&                 ij, ibf_cart, jbf_cart, nucleus)
     !$OMP DO
 
     !! The first loop calculates <T|1/R_T|P>
@@ -1891,7 +1891,7 @@ subroutine calculate_gos_ao_mb(basis, gos_ao)
 
   allocate(gos_ao(basis%nbf, basis%nbf))
 
-  !$OMP PARALLEL PRIVATE(li,lj,ni_cart,nj_cart,ibf1,ibf1_cart,ibf2,jbf1,jbf1_cart,jbf2,gos_cart)
+  !$OMP PARALLEL PRIVATE(li, lj, ni_cart, nj_cart, ibf1, ibf1_cart, ibf2, jbf1, jbf1_cart, jbf2, gos_cart)
   !$OMP DO
   do jshell=1, basis%nshell
     lj        = basis%shell(jshell)%am
@@ -2044,7 +2044,7 @@ subroutine setup_gos_ao(basis, qvec, gos_ao)
 
   allocate(gos_ao(basis%nbf, basis%nbf))
 
-  !$OMP PARALLEL PRIVATE(li,lj,ni_cart,nj_cart,ibf1,ibf1_cart,ibf2,jbf1,jbf1_cart,jbf2,gos_cart)
+  !$OMP PARALLEL PRIVATE(li, lj, ni_cart, nj_cart, ibf1, ibf1_cart, ibf2, jbf1, jbf1_cart, jbf2, gos_cart)
   !$OMP DO
   do jshell=1, basis%nshell
     lj        = basis%shell(jshell)%am

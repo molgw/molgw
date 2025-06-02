@@ -1,0 +1,15 @@
+&molgw
+ nscf=0
+ scf ='HF'
+ basis='cc-pV5Z'
+ auxil_basis='auto'
+
+ read_restart='yes'
+ restart_input='RESTART_filtered'
+
+ postscf='MP2'
+
+ natom = 1
+/
+He  0. 0. 0.
+

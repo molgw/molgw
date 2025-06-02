@@ -501,8 +501,8 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
   do kstate=1, nfrozen_ci
     h_frozen_frozen = h_frozen_frozen + 2.0_dp * h_1body(kstate, kstate)
     do lstate=1, nfrozen_ci
-      h_frozen_frozen = h_frozen_frozen + 2.0_dp * eri_eigen(kstate, kstate, 1, lstate, lstate, 1) &
-                                       - eri_eigen(kstate, lstate, 1, kstate, lstate, 1)
+      h_frozen_frozen = h_frozen_frozen + 2.0_dp * evaluate_eri_mo(kstate, kstate, 1, lstate, lstate, 1) &
+                                       - evaluate_eri_mo(kstate, lstate, 1, kstate, lstate, 1)
     enddo
   enddo
   !
@@ -515,8 +515,8 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
     do lstate=nfrozen_ci+1, nstate_ci
       do kstate=1, nfrozen_ci
         h_frozen_active(lstate) = h_frozen_active(lstate) &
-                     + 2.0_dp * eri_eigen(kstate, kstate, 1, lstate, lstate, 1) &
-                     - 1.0_dp * eri_eigen(kstate, lstate, 1, kstate, lstate, 1)
+                     + 2.0_dp * evaluate_eri_mo(kstate, kstate, 1, lstate, lstate, 1) &
+                     - 1.0_dp * evaluate_eri_mo(kstate, lstate, 1, kstate, lstate, 1)
       enddo
     enddo
 
@@ -678,11 +678,11 @@ function hamiltonian_ci(keyudi, keyudj) RESULT(h_ci_ij)
       do ielec=1, nelec_valence
         istate = iistate(ielec)
         h_ci_ij = h_ci_ij  &
-                  + 0.5_dp * eri_eigen(istate, istate, 1, jstate, jstate, 1)
+                  + 0.5_dp * evaluate_eri_mo(istate, istate, 1, jstate, jstate, 1)
 
         if( iispin(ielec) == jjspin(jelec) )  &
          h_ci_ij = h_ci_ij  &
-                    - 0.5_dp * eri_eigen(istate, jstate, 1, jstate, istate, 1)
+                    - 0.5_dp * evaluate_eri_mo(istate, jstate, 1, jstate, istate, 1)
 
       enddo
     enddo
@@ -732,28 +732,28 @@ function hamiltonian_ci(keyudi, keyudj) RESULT(h_ci_ij)
 
       ! Frozen states contribution
       do mstate=1, nfrozen_ci
-        h_ci_ij = h_ci_ij + 2.0_dp * eri_eigen(istate, kstate, 1, mstate, mstate, 1) * sign_factor   &
-                                  - eri_eigen(istate, mstate, 1, kstate, mstate, 1) * sign_factor
+        h_ci_ij = h_ci_ij + 2.0_dp * evaluate_eri_mo(istate, kstate, 1, mstate, mstate, 1) * sign_factor   &
+                                  - evaluate_eri_mo(istate, mstate, 1, kstate, mstate, 1) * sign_factor
       enddo
 
 
       do mstate=nfrozen_ci+1, nfrozen_ci+BIT_SIZE(keyud_iand(1))
         if( BTEST(keyud_iand(1), mstate-nfrozen_ci-1) ) then
           mspin  = 1
-          h_ci_ij = h_ci_ij + eri_eigen(istate, kstate, 1, mstate, mstate, 1) * sign_factor
+          h_ci_ij = h_ci_ij + evaluate_eri_mo(istate, kstate, 1, mstate, mstate, 1) * sign_factor
 
           if( ispin == mspin ) &
-           h_ci_ij = h_ci_ij - eri_eigen(istate, mstate, 1, mstate, kstate, 1)  * sign_factor
+           h_ci_ij = h_ci_ij - evaluate_eri_mo(istate, mstate, 1, mstate, kstate, 1)  * sign_factor
         endif
       enddo
 
       do mstate=nfrozen_ci+1, nfrozen_ci+BIT_SIZE(keyud_iand(2))
         if( BTEST(keyud_iand(2), mstate-nfrozen_ci-1) ) then
           mspin  = -1
-          h_ci_ij = h_ci_ij + eri_eigen(istate, kstate, 1, mstate, mstate, 1) * sign_factor
+          h_ci_ij = h_ci_ij + evaluate_eri_mo(istate, kstate, 1, mstate, mstate, 1) * sign_factor
 
           if( ispin == mspin ) &
-           h_ci_ij = h_ci_ij - eri_eigen(istate, mstate, 1, mstate, kstate, 1)  * sign_factor
+           h_ci_ij = h_ci_ij - evaluate_eri_mo(istate, mstate, 1, mstate, kstate, 1)  * sign_factor
         endif
       enddo
 
@@ -807,10 +807,10 @@ function hamiltonian_ci(keyudi, keyudj) RESULT(h_ci_ij)
                * gamma_sign_keyud(keyudj, kstate, kspin) * gamma_sign_keyud(keyudj, lstate, lspin)
 
     if( ispin == kspin .AND. jspin == lspin ) &
-     h_ci_ij = eri_eigen(istate, kstate, 1, jstate, lstate, 1) * sign_factor
+     h_ci_ij = evaluate_eri_mo(istate, kstate, 1, jstate, lstate, 1) * sign_factor
 
     if( ispin == lspin .AND. jspin == kspin ) &
-     h_ci_ij = h_ci_ij - eri_eigen(istate, lstate, 1, jstate, kstate, 1) * sign_factor
+     h_ci_ij = h_ci_ij - evaluate_eri_mo(istate, lstate, 1, jstate, kstate, 1) * sign_factor
 
 
   end select
