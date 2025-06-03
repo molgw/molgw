@@ -2618,12 +2618,27 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
   real(dp), allocatable :: Omega_s(:)
   real(dp)              :: v_paik, v_piak, v_paic, v_piac, ei, ea
   integer               :: desc_w_s(NDEL), desc_w_s_P(NDEL), desc_eri3_mo(NDEL)
-  ! DEBUG flag
-  character(len=32), parameter :: selfenergy_switch = 'PSD' ! 'GW+2SOX+2SOSEX' ! 'GW+SOSEX' ! 'PSD'  ! 'GW'
+  ! DEBUG flags
+  integer :: file_unit
+  logical :: manualfile_found
+  character(len=32) :: selfenergy_switch = 'PSD' ! 'GW+2SOX+2SOSEX' ! 'GW+SOSEX' ! 'GW'
   !=====
 
   if( .NOT. has_auxil_basis) call die('psd_2sosex: only implemented with auxiliary basis')
   if( nspin > 1 ) call die('psd_2sosex: not implemented with spin')
+
+  inquire(file='manual_psd', exist=manualfile_found)
+  if( manualfile_found ) then
+    open(newunit=file_unit, file='manual_psd', action='read')
+    read(file_unit, *) selfenergy_switch
+    write(stdout, *) 'manual_psd file read:', selfenergy_switch
+    select case(TRIM(selfenergy_switch))
+    case('GW', 'PSD', 'GW+2SOX+2SOSEX', 'GW+SOSEX')
+    case default
+      call die('psd_2sosex: reading file manual_psd but not able to interpret it')
+    end select
+    close(file_unit)
+  endif
 
   call start_clock(timing_vertex_selfenergy)
 
@@ -2708,6 +2723,8 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
 
     ! w_s^{mn} = \sum_P w_s^P * ( P | m n )
     ! Collapse the 2nd and 3rd indices
+    write(stdout, '(a,4(i8,a))') ' Large matrix product: ( ', nauxil_global, ' x ', wpol%npole_reso, &
+                                 ' )**T * ( ', nauxil_global, ' x ', nstate2, ' )'
 #if defined(HAVE_SCALAPACK)
     if( auxil%nproc > 1 ) then
       call PDGEMM('T', 'N', wpol%npole_reso, nstate2, nauxil_global, &
