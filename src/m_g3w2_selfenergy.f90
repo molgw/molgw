@@ -3262,8 +3262,8 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
         write(stdout, '(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ', pstate, ': ', eigval(jmat)*Ha_eV, weight
 
         write(fu, '(1x,f16.6,*(4x,f12.6))') eigval(jmat) * Ha_eV, &
-                                            super_matrix(ncore_G+1:nhomo_G, jmat)**2, &
-                                            SUM(super_matrix(nhomo_G+1:mstate, jmat)**2)
+                                            super_matrix(1:nhomo_G-ncore_G, jmat)**2, &
+                                            SUM(super_matrix(nhomo_G-ncore_G+1:mstate, jmat)**2)
 
       endif
 

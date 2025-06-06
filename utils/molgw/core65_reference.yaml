@@ -1,0 +1,324 @@
+74-82-8:
+    name: methane
+    formula: CH4
+    states:
+        1:
+            value: 290.84
+            nature: C1s
+74-84-0:
+    name: ethane
+    formula: C2H6
+    states:
+        1:
+            value: 290.71
+            nature: C1s
+74-85-1:
+    name: ethene
+    formula: C2H4
+    states:
+        1:
+            value: 290.82
+            nature: C1s
+74-86-2:
+    name: ethyne
+    formula: C2H2
+    states:
+        1:
+            value: 291.25
+            nature: C1s
+630-08-0:
+    name: carbon monoxide
+    formula: CO
+    states:
+        1:
+            value: 542.1
+            nature: O1s
+        2:
+            value: 296.23
+            nature: C1s
+124-38-9:
+    name: carbon dioxide
+    formula: CO2
+    states:
+        1:
+            value: 541.32
+            nature: O1s
+        3:
+            value: 297.70
+            nature: C1s
+75-73-0:
+    name: tetrafluoromethane
+    formula: CF4
+    states:
+        1:
+            value: 695.2
+            nature: F1s
+        5:
+            value: 301.90
+            nature: C1s
+593-53-3:
+    name: fluoromethane
+    formula: CH3F
+    states:
+        1:
+            value: 692.4
+            nature: F1s
+        2:
+            value: 293.56
+            nature: C1s
+75-46-7:
+    name: trifluoromethane
+    formula: CHF3
+    states:
+        1:
+            value: 694.1
+            nature: F1s
+        4:
+            value: 299.16
+            nature: C1s
+67-56-1:
+    name: methanol
+    formula: CH3OH
+    states:
+        1:
+            value: 538.88
+            nature: O1s
+        2:
+            value: 292.3
+            nature: C1s
+50-00-0:
+    name: formaldehyde
+    formula: CH2O
+    states:
+        1:
+            value: 539.33
+            nature: O1s
+        2:
+            value: 294.38
+            nature: C1s
+115-10-6:
+    name: dimethyl ether
+    formula: CH3OCH3
+    states:
+        1:
+            value: 538.36
+            nature: O1s
+        2:
+            value: 292.17
+            nature: C1s
+64-18-6:
+    name: formic acid
+    formula: HCOOH
+    states:
+        1:
+            value: 540.69
+            nature: O1s
+        2:
+            value: 539.02
+            nature: O1s
+        3:
+            value: 295.75
+            nature: C1s
+67-64-1:
+    name: acetone
+    formula: (CH3)2CO
+    states:
+        1:
+            value: 537.73
+            nature: O1s
+        2:
+            value: 293.88
+            nature: C1s
+        3:
+            value: 291.23
+            nature: C1s
+107-31-3:
+    name: methyl formate
+    formula: HCO2CH3
+    states:
+        1:
+            value: 539.64
+            nature: O1s
+        2:
+            value: 538.24
+            nature: O1s
+64-19-7:
+    name: acetic acid
+    formula: CH3COOH
+    states:
+        1:
+            value: 540.10
+            nature: O1s
+        2:
+            value: 538.31
+            nature: O1s
+        3:
+            value: 295.35
+            nature: C1s
+        4:
+            value: 291.55
+            nature: C1s
+7782-44-7:
+    name: oxygen
+    formula: O2
+    states:
+        1_up:
+            value: 544.2
+            nature: O1s
+        1_down:
+            value: 543.1
+            nature: O1s
+7732-18-5:
+    name: water
+    formula: H2O
+    states:
+        1:
+            value: 539.7
+            nature: O1s
+10028-15-6:
+    name: ozone
+    formula: O3
+    states:
+        1:
+            value: 546.44
+            nature: O1s
+        2:
+            value: 541.75
+            nature: O1s
+7727-37-9:
+    name: nitrogen
+    formula: N2
+    states:
+        1:
+            value: 409.93
+            nature: N1s
+7664-41-7:
+    name: ammonia
+    formula: NH3
+    states:
+        1:
+            value: 405.52
+            nature: N1s
+74-90-8:
+    name: hydrogen cyanide
+    formula: HCN
+    states:
+        1:
+            value: 406.8
+            nature: N1s
+        2:
+            value: 293.5
+            nature: C1s
+75-05-8:
+    name: acetonitrile
+    formula: CH3CN
+    states:
+        1:
+            value: 405.58
+            nature: N1s
+        2:
+            value: 292.88
+            nature: C1s
+        3:
+            value: 292.60
+            nature: C1s
+56-40-6:
+    name: glycine
+    formula: C2H5NO2
+    states:
+        1:
+            value: 540.28
+            nature: O1s
+        2:
+            value: 538.48
+            nature: O1s
+        3:
+            value: 405.4
+            nature: N1s
+        4:
+            value: 295.2
+            nature: C1s
+        5:
+            value: 292.3
+            nature: C1s
+110-86-1:
+    name: pyridine
+    formula: C5H5N
+    states:
+        1:
+            value: 404.82
+            nature: N1s
+109-97-7:
+    name: pyrrole
+    formula: C4H4NH
+    states:
+        1:
+            value: 406.18
+            nature: N1s
+62-53-3:
+    name: aniline
+    formula: C6H5NH2
+    states:
+        1:
+            value: 405.31
+            nature: N1s
+57-13-6:
+    name: urea
+    formula: CO(NH2)2
+    states:
+        1:
+            value: 537.19
+            nature: O1s
+        2:
+            value: 406.09
+            nature: N1s
+        4:
+            value: 294.84
+            nature: C1s
+74-89-5:
+    name: methylamine
+    formula: CH3NH2
+    states:
+        1:
+            value: 405.17
+            nature: N1s
+98-95-3:
+    name: nitrobenzene
+    formula: C6H5NO2
+    states:
+        1:
+            value: 538.63
+            nature: O1s
+        3:
+            value: 411.6
+            nature: O1s
+        4:
+            value: 292.08
+            nature: C1s
+        7:
+            value: 291.13
+            nature: C1s
+71-43-2:
+    name: benzene
+    formula: C6H6
+    states:
+        1:
+            value: 290.38
+            nature: C1s
+536-74-3:
+    name: phenylacetylene
+    formula: C8H6
+    states:
+        1:
+            value: 290.88
+            nature: C1s
+        7:
+            value: 290.55
+            nature: C1s
+        4:
+            value: 290.16
+            nature: C1s
+        8:
+            value: 289.75
+            nature: C1s
+...
