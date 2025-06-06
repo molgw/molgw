@@ -225,7 +225,7 @@ subroutine init_calculation_type(scf, postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GW+2SOX+2SOSEX')
+    case('GW+2SOX+2SOSEX', 'AUG-2SOSEX', 'GW+AUG-2SOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       factor_sox = 2.0_dp
@@ -239,10 +239,10 @@ subroutine init_calculation_type(scf, postscf)
       calc_type%selfenergy_approx = GWSOSEX
       factor_sosex = 2.0_dp
       calc_type%selfenergy_technique = imaginary_axis_pade
-    case('GW2SOSEXPSD', 'GW+2SOSEXPSD', 'GW+2SOSEX_PSD', 'GW+2SOX+2SOSEX_PSD')
+    case('GW2SOSEXPSD', 'GW+2SOSEXPSD', 'GW+2SOSEX_PSD', 'GW+2SOX+2SOSEX_PSD', 'PSD-2SOSEX', 'GW+PSD-2SOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GW2SOSEXPSD
-    case('GW2SOSEXPSD_DYSON')
+    case('GW2SOSEXPSD_DYSON', 'PSD-2SOSEX_DYSON')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GW2SOSEXPSD
       calc_type%selfenergy_technique = exact_dyson

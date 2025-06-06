@@ -2621,11 +2621,11 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
   ! DEBUG flags
   integer :: file_unit
   logical :: manualfile_found
-  character(len=32) :: selfenergy_switch = 'PSD' ! 'GW+2SOX+2SOSEX' ! 'GW+SOSEX' ! 'GW'
+  character(len=32) :: selfenergy_switch
   !=====
 
-  if( .NOT. has_auxil_basis) call die('psd_2sosex: only implemented with auxiliary basis')
-  if( nspin > 1 ) call die('psd_2sosex: not implemented with spin')
+  if( .NOT. has_auxil_basis) call die('psd_gw2sosex_selfenergy: only implemented with auxiliary basis')
+  if( nspin > 1 ) call die('psd_gw2sosex_selfenergy: not implemented with spin')
 
   inquire(file='manual_psd', exist=manualfile_found)
   if( manualfile_found ) then
@@ -2635,9 +2635,11 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
     select case(TRIM(selfenergy_switch))
     case('GW', 'PSD', 'GW+2SOX+2SOSEX', 'GW+SOSEX')
     case default
-      call die('psd_2sosex: reading file manual_psd but not able to interpret it')
+      call die('psd_gw2sosex_selfenergy: reading file manual_psd but not able to interpret it')
     end select
     close(file_unit)
+  else 
+    selfenergy_switch = 'PSD'
   endif
 
   call start_clock(timing_vertex_selfenergy)
@@ -2994,13 +2996,30 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
   real(dp)             :: ea, ei, v_paik, v_piak, Omega_s, v_paic, v_piac
   real(dp), allocatable :: w_s(:, :, :), w_s_tilde(:, :, :)
   ! DEBUG flag
-  character(len=32), parameter :: selfenergy_switch = 'PSD' ! 'PSD' ! 'GW'
+  integer :: file_unit
+  logical :: manualfile_found
+  character(len=32) :: selfenergy_switch
   !=====
 
   call start_clock(timing_vertex_selfenergy)
 
   nstate = SIZE(energy, DIM=1)
   nbf = SIZE(c_matrix, DIM=1)
+
+  inquire(file='manual_psd', exist=manualfile_found)
+  if( manualfile_found ) then
+    open(newunit=file_unit, file='manual_psd', action='read')
+    read(file_unit, *) selfenergy_switch
+    write(stdout, *) 'manual_psd file read:', selfenergy_switch
+    select case(TRIM(selfenergy_switch))
+    case('GW', 'PSD')
+    case default
+      call die('psd_gw2sosex_selfenergy_upfolding: reading file manual_psd but not able to interpret it')
+    end select
+    close(file_unit)
+  else
+    selfenergy_switch = 'PSD'
+  endif
 
   write(stdout, *)
   select case(TRIM(selfenergy_switch))
@@ -3228,7 +3247,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     super_matrix(1:mstate, mstate+1:nmat) = TRANSPOSE(matrix_wing(:, :))
     super_matrix(mstate+1:nmat, 1:mstate) = matrix_wing(:, :)
     do imat=mstate+1, nmat
-      super_matrix(imat, imat) = matrix_diag(imat-mstate)
+      super_matrix(imat, imat) = matrix_diag(imat - mstate)
     enddo
     call diagonalize(postscf_diago_flavor, super_matrix, eigval)
 
@@ -3238,11 +3257,16 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     open(newunit=fu, file='GREENS_FUNCTION', action='write')
     do jmat=1, nmat
       weight = SUM(super_matrix(1:mstate, jmat)**2)
-      if( weight > 1.0e-2_dp ) then
-        pstate = MAXLOC(ABS(super_matrix(1:mstate, jmat)), DIM=1)
+      if( weight > 1.0e-4_dp ) then
+        pstate = MAXLOC(super_matrix(1:mstate, jmat)**2, DIM=1)
         write(stdout, '(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ', pstate, ': ', eigval(jmat)*Ha_eV, weight
+
+        write(fu, '(1x,f16.6,*(4x,f12.6))') eigval(jmat) * Ha_eV, &
+                                            super_matrix(ncore_G+1:nhomo_G, jmat)**2, &
+                                            SUM(super_matrix(nhomo_G+1:mstate, jmat)**2)
+
       endif
-      write(fu, '(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV, SUM(super_matrix(1:mstate, jmat)**2)
+
     enddo
     close(fu)
     ! If eigenvalue lower than the middle of the HOMO-LUMO gap,

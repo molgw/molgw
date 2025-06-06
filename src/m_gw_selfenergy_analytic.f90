@@ -416,7 +416,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
         call world%max(jstate)
         write(stdout, '(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ', jstate, ': ', eigval(jmat)*Ha_eV, weight
       endif
-      write(fu, '(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV, weight
+      write(fu, '(1x,f16.6,4x,f12.6)') eigval(jmat) * Ha_eV, weight
     enddo
     close(fu)
     write(stdout, '(1x,a,f12.6)') 'Number of electrons: ', nelect
@@ -443,7 +443,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
         jstate = MAXLOC(ABS(super_matrix(1:mstate, jmat)), DIM=1)
         write(stdout, '(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ', jstate, ': ', eigval(jmat)*Ha_eV, weight
       endif
-      write(fu, '(1x,f16.6,4x,f12.6)') eigval(jmat)*Ha_eV, SUM(super_matrix(1:mstate, jmat)**2)
+      write(fu, '(1x,f16.6,4x,f12.6)') eigval(jmat) * Ha_eV, SUM(super_matrix(1:mstate, jmat)**2)
     enddo
     close(fu)
     ! If eigenvalue lower than the middle of the HOMO-LUMO gap,
