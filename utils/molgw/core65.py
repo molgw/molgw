@@ -12,7 +12,7 @@
 import numpy as np
 import json, yaml
 import matplotlib.pyplot as plt
-from . import __version__, molgw_rootfolder
+from . import __version__, molgw_rootfolder, Molecule
 
 chemical_formulas = { 
           "10028-15-6": "O3",
