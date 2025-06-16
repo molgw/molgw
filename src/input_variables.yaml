@@ -1684,6 +1684,14 @@ scf_diago_flavor:
   comment: Selects the LAPACK/ScaLAPACK diagonalization routines in the SCF cycles.
     Available choices are ' ', 'R', 'D', and 'X'.
 
+scf_energy_shift:
+  family: rt_tddft
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Shifts the energy of the projectile to tune its occupation. A positive value would depopulate the projectile (=creates a positive ion).
+
 #============================================================================
 #             Natural Orbital Functional Theory input variables
 #============================================================================
