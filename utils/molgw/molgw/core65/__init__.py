@@ -11,8 +11,9 @@
 
 import numpy as np
 import json, yaml
+import pathlib
 import matplotlib.pyplot as plt
-from . import __version__, molgw_rootfolder, Molecule
+from molgw import __version__, Molecule
 
 chemical_formulas = { 
           "10028-15-6": "O3",
@@ -86,6 +87,11 @@ names = {
 
 cas = list(chemical_formulas.keys())
 
+get_cas = {}
+for k, v in chemical_formulas.items():
+    if not "_old" in k:
+        get_cas[v] = k
+
 default_input_parameters = { 
       'scf': 'pbeh',
       'alpha_hybrid': 0.45,
@@ -97,7 +103,8 @@ default_input_parameters = {
       'ncorew': 0
               }
 
-with open(molgw_rootfolder + '/utils/molgw/core65_reference.yaml', 'r') as stream:
+core65_path = str(pathlib.Path(__file__).resolve().parent)
+with open(core65_path + '/core65_reference.yaml', 'r') as stream:
     reference_data = yaml.load(stream, Loader=yaml.Loader)
 
 relativistic_correction = {
