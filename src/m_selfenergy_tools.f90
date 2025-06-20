@@ -160,10 +160,9 @@ subroutine write_selfenergy_omega(filename_root, exchange_m_vxc, occupation, ene
     enddo
 
     do iomega=-se%nomega, se%nomega
-      spectral_function_w(:) = 1.0_dp / pi * ABS(   &
-                                       AIMAG( 1.0_dp   &
-                                         / ( se%energy0(pstate, :) + se%omega(iomega) - energy0(pstate, :) + ieta * sign_occ(:) &
-                                               - exchange_m_vxc(pstate, :) - se%sigma(iomega, pstate, :) ) ) )
+      spectral_function_w(:) = AIMAG( 1.0_dp   &
+                                        / ( se%energy0(pstate, :) + se%omega(iomega) - energy0(pstate, :) - ieta * sign_occ(:) &
+                                               - exchange_m_vxc(pstate, :) - se%sigma(iomega, pstate, :) ) ) / pi
 
       write(selfenergyfile, '(20(f16.8,2x))') ( se%omega(iomega) + se%energy0(pstate, :) )*Ha_eV,           &
                                             REAL(se%sigma(iomega, pstate, :), dp) * Ha_eV,                  &
