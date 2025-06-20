@@ -3204,6 +3204,24 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
 
   write(stdout, '(a)') ' Matrix is setup'
 
+  ! dump matrix elements for external diago
+  if( .FALSE. ) then
+    if( is_iomaster) then
+      open(newunit=fu, file='MATRIX_HEAD', form='unformatted', action='write', access="stream")
+      write(stdout, *) 'Matrix head', mstate, mstate
+      write(fu) matrix_head(:, :) * Ha_eV
+      close(fu)
+      open(newunit=fu, file='MATRIX_DIAG', form='unformatted', action='write', access="stream")
+      write(stdout, *) 'Matrix diag', mwing
+      write(fu) matrix_diag(:) * Ha_eV
+      close(fu)
+      open(newunit=fu, file='MATRIX_WING', form='unformatted', action='write', access="stream")
+      write(stdout, *) 'Matrix wing', mwing, ' x ', mstate
+      write(fu) matrix_wing(:, :) * Ha_eV
+      close(fu)
+    endif
+    call die('psd_gw2sosex_selfenergy_upfolding: debug: dump the matrix and stop')
+  endif
   if( .FALSE. ) then
     !
     ! Dump the super_matrix on files (1 file per SCALAPACK thread)
@@ -3215,17 +3233,17 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     if( is_iomaster) then
       do jmat=1, mstate
         do imat=1, jmat
-          write(fu, '(1x,i7,1x,i7,1x,e16.8)') imat, jmat, matrix_head(imat, jmat)*Ha_eV
+          write(fu, '(1x,i7,1x,i7,1x,e16.8)') imat, jmat, matrix_head(imat, jmat) * Ha_eV
         enddo
       enddo
       do imat=1, mwing
-        write(fu, '(1x,i7,1x,i7,1x,e16.8)') imat + mstate, imat+mstate, matrix_diag(imat)*Ha_eV
+        write(fu, '(1x,i7,1x,i7,1x,e16.8)') imat + mstate, imat+mstate, matrix_diag(imat) * Ha_eV
       enddo
     endif
 
     do jmat=1, mstate
       do imat=1, mwing
-        write(fu, '(1x,i7,1x,i7,1x,e16.8)') mstate + imat, jmat, matrix_wing(imat, jmat)*Ha_eV
+        write(fu, '(1x,i7,1x,i7,1x,e16.8)') mstate + imat, jmat, matrix_wing(imat, jmat) * Ha_eV
       enddo
     enddo
     close(fu)
@@ -3249,6 +3267,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     do imat=mstate+1, nmat
       super_matrix(imat, imat) = matrix_diag(imat - mstate)
     enddo
+
     call diagonalize(postscf_diago_flavor, super_matrix, eigval)
 
     write(stdout, '(1x,a,i8)') 'Number of non-negligible poles: ', COUNT( SUM(super_matrix(1:mstate, :)**2, DIM=1) > 1.0e-3_dp )

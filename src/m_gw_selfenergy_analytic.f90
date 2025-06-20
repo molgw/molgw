@@ -407,7 +407,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
     open(newunit=fu, file='GREENS_FUNCTION', action='write')
     nelect = 0.0_dp
     do jmat=1, nmat
-      weight = PDLANGE('F', mstate, 1, super_matrix, 1, jmat, desc_matrix,work)**2
+      weight = PDLANGE('F', mstate, 1, super_matrix, 1, jmat, desc_matrix, work)**2
       ! If eigenvalue lower than the middle of the HOMO-LUMO gap,
       ! then consider the excitation is occupied
       if( eigval(jmat) < mu ) nelect = nelect + spin_fact * weight
