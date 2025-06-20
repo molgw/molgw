@@ -30,9 +30,9 @@ contains
 !=========================================================================
 subroutine calculate_hartree(basis, p_matrix, hhartree, eh)
   implicit none
-  type(basis_set), intent(inout) :: basis
-  class(*), intent(in)           :: p_matrix(:, :, :)
-  real(dp), intent(out)          :: hhartree(:, :)
+  type(basis_set), intent(inout)  :: basis
+  class(*), intent(in)            :: p_matrix(:, :, :)
+  real(dp), intent(out)           :: hhartree(:, :)
   real(dp), intent(out), optional :: eh
   !=====
   real(dp) :: ehartree

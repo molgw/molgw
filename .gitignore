@@ -20,3 +20,4 @@ src/noft/donof/
 He_harm*
 basis/*_rel
 utils/basis_2_basisrel.x
+*.egg-info

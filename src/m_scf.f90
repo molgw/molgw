@@ -68,9 +68,6 @@ module m_scf
     real(dp) :: work_p             = 0.0_dp   ! conservative work on the projectile in TDDFT
   end type
 
-#if defined(HAVE_SCALAPACK)
-  real(dp), external :: PDLANGE
-#endif
 
 
 contains
@@ -423,7 +420,7 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
                      1.0_dp, p_matrix_distrib(:, :, ispin), 1, 1, desch)
       enddo
 
-      residual = residual + PDLANGE('F', nstate_scf, nstate_scf, residual_pred(:, :, ispin), 1, 1, descr,work)**2
+      residual = residual + PDLANGE('F', nstate_scf, nstate_scf, residual_pred(:, :, ispin), 1, 1, descr, work)**2
     enddo
 
   else

@@ -163,7 +163,7 @@ module m_scalapack
 
 #if defined(HAVE_SCALAPACK)
   integer, external  :: NUMROC, INDXL2G, INDXG2L, INDXG2P
-  real(dp), external :: PDLATRA, PDLAMCH
+  real(dp), external :: PDLATRA, PDLAMCH, PDLANGE
 #endif
 
 
@@ -679,7 +679,7 @@ subroutine diagonalize_eigval_sca(flavor, matrix, desc, eigval)
   ! First call to get the dimension of the array work
   lwork = -1
   allocate(work(1))
-  call PDSYEV('N', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec,work,lwork,info)
+  call PDSYEV('N', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, info)
 
 
   !
@@ -688,7 +688,7 @@ subroutine diagonalize_eigval_sca(flavor, matrix, desc, eigval)
 
   deallocate(work)
   allocate(work(lwork))
-  call PDSYEV('N', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec,work,lwork,info)
+  call PDSYEV('N', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, info)
 
   deallocate(work)
 
@@ -768,7 +768,7 @@ subroutine diagonalize_inplace_sca_dp(flavor, matrix, desc, eigval)
                   eigvec, 1, 1, desc_eigvec, work, lwork, iwork, liwork,        &
                   ifail, iclustr, gap, info)
     case default
-      call PDSYEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec,work,lwork,info)
+      call PDSYEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, info)
     end select
 
     !
@@ -795,7 +795,7 @@ subroutine diagonalize_inplace_sca_dp(flavor, matrix, desc, eigval)
                   ifail, iclustr, gap, info)
       deallocate(iwork, ifail)
     case default
-      call PDSYEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec,work,lwork,info)
+      call PDSYEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, info)
     end select
 
 
