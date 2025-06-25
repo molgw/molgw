@@ -151,7 +151,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     enddo
   endif
 
-  call start_clock(timing_gwgamma_self)
+  call start_clock(timing_vertex_selfenergy)
 
   allocate(sigma_tmp(-se%nomega:se%nomega))
   allocate(sigma_tdhf(-se%nomega:se%nomega, nsemin:nsemax, nspin))
@@ -447,7 +447,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     call destroy_tddft()
   endif
 
-  call stop_clock(timing_gwgamma_self)
+  call stop_clock(timing_vertex_selfenergy)
 
 end subroutine tdhf_selfenergy
 

@@ -29,7 +29,7 @@ subroutine static_dipole(basis, occupation, c_matrix_in, p_matrix_in, dipole_ao_
   type(basis_set), intent(in)       :: basis
   real(dp), optional, intent(in)     :: occupation(:, :)
   real(dp), optional, intent(in)     :: c_matrix_in(:, :, :)
-  complex(dp), optional, intent(in)  :: p_matrix_in(:, :, :)
+  class(*), optional, intent(in)  :: p_matrix_in(:, :, :)
   real(dp), optional, intent(in)     :: dipole_ao_in(:, :, :)
   real(dp), optional, intent(out)    :: dipole_out(3)
   !=====
@@ -59,7 +59,12 @@ subroutine static_dipole(basis, occupation, c_matrix_in, p_matrix_in, dipole_ao_
   if( .NOT. PRESENT(p_matrix_in) ) then
     call setup_density_matrix(c_matrix_in, occupation, p_matrix)
   else
-    p_matrix(:, :, :) = p_matrix_in(:, :, :)%re
+    select type(p_matrix_in)
+    type is (complex(dp))
+      p_matrix(:, :, :) = p_matrix_in(:, :, :)%re
+    type is (real(dp))
+      p_matrix(:, :, :) = p_matrix_in(:, :, :)
+    end select
   endif
 
 

@@ -482,8 +482,8 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda, desc_
   call clean_deallocate('TMP 3-center integrals', eri_3tmp)
 
 
-  call PDSYRK('L', 'T', nmat, nauxil_global_, DBLE(2.0_dp*spin_fact*lambda), eri_3tmp_sd,1,1,desc_sd,  &
-                                          DBLE(1.0_dp), apb_matrix, 1, 1, desc_apb)
+  call PDSYRK('L', 'T', nmat, nauxil_global_, DBLE(2.0_dp*spin_fact*lambda), eri_3tmp_sd, 1, 1, desc_sd,  &
+                                              DBLE(1.0_dp), apb_matrix, 1, 1, desc_apb)
 
   call clean_deallocate('TMP 3-center integrals', eri_3tmp_sd)
 #endif

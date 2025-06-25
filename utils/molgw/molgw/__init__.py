@@ -48,7 +48,7 @@ periodic_table = [ 'H',                                                         
                 ]
 z_element = {element: index+1 for index, element in enumerate(periodic_table)}
 
-molgw_rootfolder = str(pathlib.Path(__file__).resolve().parent.parent.parent)
+molgw_rootfolder = str(pathlib.Path(__file__).resolve().parent.parent.parent.parent)
 exe  = molgw_rootfolder + "/molgw"
 
 ########################################################################

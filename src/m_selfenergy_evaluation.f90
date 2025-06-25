@@ -28,6 +28,7 @@ module m_selfenergy_evaluation
   use m_g3w2_selfenergy
   use m_tdhf_selfenergy
   use m_pt_selfenergy
+  use m_multipole,only: static_dipole
 
 
 contains
@@ -37,7 +38,7 @@ contains
 subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m_vxc, en_mbpt)
   implicit none
 
-  type(basis_set), intent(in) :: basis
+  type(basis_set), intent(inout) :: basis
   real(dp), intent(in)        :: occupation(:, :)
   real(dp), intent(inout)     :: energy(:, :)
   real(dp), intent(inout)     :: c_matrix(:, :, :)
@@ -58,6 +59,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
   real(dp), allocatable    :: exchange_m_vxc_diag(:, :)
   real(dp), allocatable    :: energy_g(:, :)
   real(dp), allocatable    :: energy_w(:, :)
+  real(dp), allocatable    :: p_matrix(:, :, :)
   !=====
 
   write(stdout, '(/,/,1x,a)') '=================================================='
@@ -410,10 +412,33 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
           call se%add(se_g3w2)
 
         case(GW2SOSEXPSD)
-          call psd_gw2sosex_selfenergy(energy_g, c_matrix, wpol, se_g3w2)
-          call se%reset()
-          call se%add(se_g3w2)
-          call se_g3w2%destroy()
+          if( calc_type%selfenergy_technique == exact_dyson ) then
+            if( print_hartree_ .OR. use_correlated_density_matrix_ ) then
+              allocate(p_matrix(basis%nbf, basis%nbf, nspin))
+              call psd_gw2sosex_selfenergy_upfolding(occupation, energy_g, c_matrix, wpol, exchange_m_vxc, en_mbpt%gw, p_matrix)
+              call evaluate_energy_terms(basis, occupation, c_matrix, p_matrix, en_mbpt)
+              deallocate(p_matrix)
+
+            else
+              call psd_gw2sosex_selfenergy_upfolding(occupation, energy_g, c_matrix, wpol, exchange_m_vxc, en_mbpt%gw)
+            endif
+
+          else
+            if( print_hartree_ .OR. use_correlated_density_matrix_ ) then
+
+              allocate(p_matrix(basis%nbf, basis%nbf, nspin))
+              call psd_gw2sosex_selfenergy(occupation, energy_g, c_matrix, wpol, en_mbpt%gw, se_g3w2, p_matrix)
+              call evaluate_energy_terms(basis, occupation, c_matrix, p_matrix, en_mbpt)
+              deallocate(p_matrix)
+
+
+            else
+              call psd_gw2sosex_selfenergy(occupation, energy_g, c_matrix, wpol, en_mbpt%gw, se_g3w2)
+            endif
+            call se%reset()
+            call se%add(se_g3w2)
+            call se_g3w2%destroy()
+          endif
 
         case(G3W2)
           call sosex_selfenergy(basis, occupation, energy_g, c_matrix, wpol, se_g3w2)
@@ -592,5 +617,64 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
 end subroutine selfenergy_evaluation
 
 
+!=========================================================================
+! Evaluate the total energy fragments
+subroutine evaluate_energy_terms(basis, occupation, c_matrix, p_matrix, en)
+  implicit none
+
+  type(basis_set), intent(inout) :: basis
+  real(dp), intent(in)        :: occupation(:, :)
+  real(dp), intent(in)        :: c_matrix(:, :, :)
+  real(dp), intent(in)        :: p_matrix(:, :, :)
+  type(energy_contributions), intent(inout) :: en
+  !=====
+  integer :: nstate
+  real(dp), allocatable    :: htmp(:, :), hexx(:, :, :), h_ii(:, :)
+  !=====
+  
+  nstate = SIZE(occupation, DIM=1)
+  allocate(htmp(basis%nbf, basis%nbf))
+  allocate(hexx(basis%nbf, basis%nbf, nspin))
+  call nucleus_nucleus_energy(en%nuc_nuc)
+  call setup_kinetic(basis, htmp)
+  en%kinetic = SUM( htmp(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
+  call setup_nucleus(basis, htmp)
+  en%nucleus = SUM( htmp(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
+
+  ! Hartree
+  call calculate_hartree(basis, p_matrix, htmp, eh=en%hartree)
+  allocate(h_ii(nstate, nspin))
+  call h_ao_to_mo_diag(c_matrix, htmp, h_ii)
+  call dump_out_energy('=== Hartree expectation value from correlated density matrix ===', occupation, h_ii)
+  write(stdout, '(1x,a,2(3x,f12.6))') 'Hartree  HOMO expectation (eV):', h_ii(nhomo_G, :) * Ha_eV
+
+  ! Exchange
+  call calculate_exchange(basis, p_matrix, hexx, ex=en%exx)
+  call h_ao_to_mo_diag(c_matrix, hexx, h_ii)
+  call dump_out_energy('=== Exchange expectation value from correlated density matrix ===', occupation, h_ii)
+  write(stdout, '(1x,a,2(3x,f12.6))') 'Exchange HOMO expectation (eV):', h_ii(nhomo_G, :) * Ha_eV
+  deallocate(h_ii)
+
+
+  en%totalexx = en%nuc_nuc + en%kinetic + en%nucleus &
+                       + en%hartree + en%exx
+  en%total = en%totalexx + en%gw
+  write(stdout, '(/,1x,a)') 'Energies from correlated density matrix'
+  write(stdout, '(a35,1x,f19.10)')     'Kinetic Energy (Ha):', en%kinetic
+  write(stdout, '(a35,1x,f19.10)')     'Nucleus Energy (Ha):', en%nucleus
+  write(stdout, '(a35,1x,f19.10)')     'Hartree Energy (Ha):', en%hartree
+  write(stdout, '(a35,1x,f19.10)')    'Exchange Energy (Ha):', en%exx
+  write(stdout, '(a35,1x,f19.10)')   'Total EXX Energy (Ha):', en%totalexx
+  write(stdout, '(a35,1x,f19.10)') 'Correlation Energy (Ha):', en%gw
+  write(stdout, '(a35,1x,f19.10)')       'Total Energy (Ha):', en%total
+
+  deallocate(htmp, hexx)
+
+  call static_dipole(basis, occupation, p_matrix_in=p_matrix)
+
+end subroutine evaluate_energy_terms
+
+
+!=========================================================================
 end module m_selfenergy_evaluation
 !=========================================================================
