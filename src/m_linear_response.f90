@@ -46,13 +46,13 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   type(spectral_function)   :: wpol_static
   logical                   :: is_bse, is_tdhf, eri_3center_mo_available
   integer                   :: nmat, nexc
-  real(dp)                  :: alpha_local, lambda_
+  real(dp)                  :: alpha_local, beta_local, lambda_
   real(dp), allocatable      :: amb_diag_rpa(:)
   real(dp), allocatable      :: amb_matrix(:, :), apb_matrix(:, :)
   real(dp), allocatable      :: xpy_matrix(:, :), xmy_matrix(:, :)
   real(dp), allocatable      :: eigenvalue(:)
   real(dp), allocatable      :: energy_qp(:, :)
-  logical                   :: is_tddft, is_rpa, long_range_true=.true.
+  logical                   :: is_tddft, is_rpa
   logical                   :: has_manual_tdhf
   integer                   :: reading_status
   integer                   :: tdhffile
@@ -93,6 +93,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     write(stdout, '(a)') ' Singlet final state'
   endif
 
+  beta_local = 0.0_dp
   if( has_auxil_basis ) then
     if( calc_type%is_lr_mbpt ) then
       call calculate_eri_3center_mo_lr(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola)
@@ -101,8 +102,9 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
         eri_3center_mo_available = ( ALLOCATED(eri_3center_mo) .AND. ALLOCATED(eri_3center_mo_lr) )
         if( .NOT. eri_3center_mo_available ) then
           call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola, &
-                  long_range=long_range_true)
+                  long_range=.TRUE.)
         endif
+        beta_local = beta_hybrid
       else
         eri_3center_mo_available = ALLOCATED(eri_3center_mo)
         if( .NOT. eri_3center_mo_available ) then
@@ -170,7 +172,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   write(stdout, '(1x,a16,l1)')       'TDHF:         ', is_tdhf
   write(stdout, '(1x,a16,l1)')       'TDDFT:        ', is_tddft
   write(stdout, '(1x,a16,f6.4)')     'hybrid alpha: ', alpha_local
-  write(stdout, '(1x,a16,f6.4)')     'hybrid beta:  ', beta_hybrid
+  write(stdout, '(1x,a16,f6.4)')     'hybrid beta:  ', beta_local
   write(stdout, *)
 
   !
@@ -253,8 +255,8 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
     !
     ! Step 3
-    if(alpha_local > 1.0e-6_dp) then
-      call build_amb_apb_screened_exchange_auxil(alpha_local, lambda_, desc_apb, wpol_out, wpol_static, &
+    if( alpha_local > 1.0e-6_dp .OR. beta_local > 1.0e-6_dp ) then
+      call build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda_, desc_apb, wpol_out, wpol_static, &
                                                  m_apb, n_apb, amb_matrix, apb_matrix)
     else
       write(stdout, '(a,f8.3)') ' Content of Exchange: ', alpha_local
@@ -324,7 +326,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     call clean_deallocate('A+B', apb_matrix)
     call clean_deallocate('A-B', amb_matrix)
     if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
-      call destroy_eri_3center_mo(long_range=(beta_hybrid>1.0e-6_dp))
+      call destroy_eri_3center_mo(long_range=(beta_local>1.0e-6_dp))
     endif
     deallocate(amb_diag_rpa, energy_qp)
     write(stdout, *) ' Skipping diagonalization after building A and B matrices'
@@ -449,7 +451,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   call clean_deallocate('X+Y', xpy_matrix)
 
   if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
-    call destroy_eri_3center_mo(long_range=(beta_hybrid>1.0e-6_dp))
+    call destroy_eri_3center_mo(long_range=(beta_local>1.0e-6_dp))
   endif
 
   if(ALLOCATED(eigenvalue)) deallocate(eigenvalue)
@@ -463,7 +465,6 @@ end subroutine polarizability
 
 !=========================================================================
 subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
-
   implicit none
 
   type(basis_set), intent(in)            :: basis
