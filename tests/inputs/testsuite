@@ -1203,3 +1203,8 @@ RPA correlation           ,  -0.0914355959      , 0 , 1.0e-7
 kr_ccECP.in               , RPA correlation Kr atom with a ccECP pseudo and basis
 SCF Total Energy          ,  -18.228067580      , 0 , 1.0e-7
 RPA correlation           ,  -0.2186444854      , 0 , 1.0e-7
+
+c2h4_lc-wpbe_tddft.in     , LR-TDDFT with long-range only functional
+SCF Total Energy          ,  -78.5180274712     , 0 , 1.0e-7
+Exc. 0001                 ,     8.13898708      , 0 , 1.0e-4
+Exc. 0001                 ,     0.38087818      , 1 , 1.0e-4
