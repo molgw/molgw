@@ -86,6 +86,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
  Ecorr_new=zero; Ecorr_old=zero; Ecorr_diff=zero;
  maxdiff_t=zero; maxdiff_z=zero; Ediff=Energy;
  iter_t=0; iter_z=0; converged=.false.; Nvirtual=RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs);
+ sumdiff_t=zero;sumdiff_z=zero;
 
  ! Build diag elements of the Lambda matrix (with HF 1-RDM and 2-RDM) and compute SD energy
  call ELAGd%build_sd_diag(RDMd,INTEGd)
