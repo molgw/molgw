@@ -1372,7 +1372,7 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
 !scalars
  logical::file_exists
  integer::iorb,iorb1,iorb2,iorb3
- real(dp)::err_HermJ,err_HermK,err_HermL
+ real(dp)::occ,err_HermJ,err_HermK,err_HermL
 !arrays
  real(dp),allocatable,dimension(:,:)::xij,xab,xia
  character(len=200)::msg
@@ -1397,6 +1397,39 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
   do iorb1=1,RDMd%Npairs ! Occ
    xab(iorb,:)=xab(iorb,:)+RDMd%t_pccd(iorb1,:)*RDMd%z_pccd(iorb1,iorb)
   enddo
+ enddo
+
+ ! Fix the xij and the xab elements that lead to N-rep. violations
+ occ=zero
+ do iorb=1,RDMd%Npairs ! Occ
+  occ=occ+(one-xij(iorb,iorb))
+ enddo
+ do iorb=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+  occ=occ+xab(iorb,iorb)
+ enddo
+ do iorb=1,RDMd%Npairs ! Occ
+  if(xij(iorb,iorb)>one .or. xij(iorb,iorb)<zero) then
+   write(msg,'(a,i5,f10.5)') 'Fixing the xii element ',iorb,xij(iorb,iorb)
+   xij(iorb,iorb)=0.5d0
+  endif
+  occ=occ-(one-xij(iorb,iorb))
+ enddo
+ do iorb=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+  if(.not.(xab(iorb,iorb)>one .or. xab(iorb,iorb)<zero)) then
+   occ=occ-xab(iorb,iorb) 
+  endif
+ enddo
+ do iorb=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+  if((xab(iorb,iorb)>one .or. xab(iorb,iorb)<zero) .and. occ>zero) then
+   write(msg,'(a,i5,f10.5)') 'Fixing the xaa element ',iorb,xab(iorb,iorb)
+   if(occ>=0.5d0) then
+    xab(iorb,iorb)=0.5d0
+    occ=occ-0.5d0
+   else
+    xab(iorb,iorb)=occ
+    occ=zero
+   endif
+  endif
  enddo
 
  ! xia

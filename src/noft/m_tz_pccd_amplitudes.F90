@@ -55,9 +55,10 @@ contains
 !!
 !! SOURCE
 
-subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imethod,keep_occs) 
+subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imethod,keep_occs,only_phases) 
 !Arguments ------------------------------------
 !scalars
+ logical,optional,intent(in)::only_phases
  logical,intent(in)::keep_occs
  integer,intent(in)::imethod
  integer,intent(inout)::iter_global
