@@ -90,8 +90,8 @@ contains
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,&
 &  iprintints,itolLambda,ndiis,Enof,tolE_in,Vnn,AOverlap_in,occ_inout,mo_ints,ofile_name,NO_COEF,NO_COEF_cmplx,&
-&  lowmemERI,restart,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,PNOF7sup,Lpower,fcidump,&   ! Optional
-&  irange_sep,hessian)                                                                                                 ! Optional
+&  lowmemERI,restart,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,Lpower,fcidump,&   ! Optional
+&  irange_sep,hessian)                                                                                        ! Optional
 !Arguments ------------------------------------
 !scalars
  logical,optional,intent(in)::restart,lowmemERI,fcidump,hessian
@@ -100,7 +100,6 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,itolLambda,ndiis  
  integer,intent(in)::Nbeta_elect_in,Nalpha_elect_in
  real(dp),optional,intent(in)::Lpower
- real(dp),optional,intent(in)::PNOF7sup
  real(dp),intent(in)::Vnn,tolE_in
  real(dp),intent(inout)::Enof
  interface
@@ -145,7 +144,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  type(elag_t),target::ELAGd
  type(hessian_t),target::HESSIANd
 !arrays
- real(dp),allocatable,dimension(:,:)::DM1,NO_COEF_tmp
+ real(dp),allocatable,dimension(:,:)::DM1,NO_COEF_tmp,Phases
  real(dp),allocatable,dimension(:,:,:)::DM2_JK
  real(dp),allocatable,dimension(:,:,:,:)::DM2
  character(len=20)::coef_file
@@ -153,8 +152,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  character(len=200)::msg
 !************************************************************************
 
+ allocate(Phases(NBF_occ_in,NBF_occ_in))
  diagLpL=.true.; restart_param=.false.; ifcidump=0; keep_orbs=.false.; keep_occs=.false.; cpx_mos=.false.;
- irs_noft=0; all_ERI_in=.false.; hessian_in=.false.; file_exists=.false.;
+ irs_noft=0; all_ERI_in=.false.; hessian_in=.false.; file_exists=.false.; Phases=one;
     
  ! Initialize output
  call gitversion(sha_git) 
@@ -221,19 +221,11 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
 &  Nbeta_elect_in,Nalpha_elect_in,irs_noft)
   endif
- else if(INOF_in==70) then
-  if(present(PNOF7sup)) then
-   call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
-&  Nbeta_elect_in,Nalpha_elect_in,irs_noft,PNOF7sup=PNOF7sup)
-  else
-   call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
-&  Nbeta_elect_in,Nalpha_elect_in,irs_noft)
-  endif
  else
   call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
 & Nbeta_elect_in,Nalpha_elect_in,irs_noft)
  endif
- 
+
  if(present(lowmemERI) .and. (.not.hessian_in .and. imethorb/=1)) then ! The Hessian for Quadratic Convergence method needs all integrals
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft,lowmemERI=lowmemERI)
  else
@@ -282,9 +274,20 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   if(RDMd%INOF<0) then ! pCCD
-   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
+   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs)
   else ! NOFT
-   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
+   if(RDMd%INOF==70) then ! pCCD phases
+    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs,only_phases=.true.)
+   endif
+   if(RDMd%NBF_occ-(RDMd%Nfrozen+1)<=20) then ! May print some phases for debug 
+    write(msg,'(a)') 'DM2_L phases taken from pCCD'
+    call write_output(msg)
+    do iorb=RDMd%Nfrozen+1,RDMd%NBF_occ
+     write(msg,'(*(f5.1))') Phases(iorb,RDMd%Nfrozen+1:RDMd%NBF_occ)
+     call write_output(msg)
+    enddo
+   endif
+   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,Phases,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
   &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx,&
   &  ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx) ! Also iter=iter+1
   endif
@@ -299,9 +302,18 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   if(RDMd%INOF<0) then ! pCCD
-   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
+   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs)
   else ! NOFT
-   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
+   if(RDMd%INOF==70) then ! pCCD phases
+    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs,only_phases=.true.)
+   endif
+   write(msg,'(a)') 'DM2_L phases taken from pCCD'
+   call write_output(msg)
+   do iorb=RDMd%Nfrozen+1,RDMd%NBF_occ
+    write(msg,'(*(f5.1))') Phases(iorb,RDMd%Nfrozen+1:RDMd%NBF_occ)
+    call write_output(msg)
+   enddo
+   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,Phases,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
   &  ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
   endif
  endif
@@ -364,10 +376,10 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(.not.keep_orbs) then
    call ELAGd%clean_diis()
    if(cpx_mos) then
-    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints, &
+    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints,Phases, &
     & NO_COEF_cmplx=NO_COEF_cmplx)
    else   
-    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints, &
+    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints,Phases, &
     & NO_COEF=NO_COEF)
    endif
    if(imethorb==1) then ! For F diag method, print F_pp elements after each global iteration
@@ -383,17 +395,17 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   ! occ. optimization
   if(cpx_mos) then
    if(RDMd%INOF<0) then ! pCCD
-    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
+    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs)
    else ! NOFT
-    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
+    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,Phases,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
    &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx, &
    &  ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx) ! Also iter=iter+1
    endif
   else
    if(RDMd%INOF<0) then ! pCCD
-    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
+    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs)
    else ! NOFT
-    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
+    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,Phases,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
    &  ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
    endif
   endif
@@ -547,11 +559,11 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  ! Calculate the chem. pot. = d E / d occ if it is not rs-NOFT and pCCD (resets occ in [0:1])
  if(irs_noft==0 .and. RDMd%INOF>-1) then
   if(cpx_mos) then
-   call occ_chempot(RDMd,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx,&
+   call occ_chempot(RDMd,Phases,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx,&
    & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx,&
    & ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx)
   else 
-   call occ_chempot(RDMd,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J,ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,&
+   call occ_chempot(RDMd,Phases,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J,ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,&
     ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr)
   endif
   chempot_val=-ten**(ten)
@@ -641,6 +653,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  
  ! Close unit 313 used for output file
  call close_output()
+ deallocate(Phases)
 
 end subroutine run_noft
 !!***
@@ -776,9 +789,7 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   write(msg,'(a)') ' M. Piris, Phys. Rev. Lett., 127, 233001 (2021)'
   call write_output(msg)
  elseif(INOF_in==70) then
-  write(msg,'(a)') ' Using PNOF7_SUP approximation'
-  call write_output(msg)
-  write(msg,'(a,i12)') ' PNOF7_SUP version selected Istat  ',Ista_in
+  write(msg,'(a)') ' Using PNOF7_PHASES approximation'
   call write_output(msg)
  else
   ! Nth
@@ -1003,7 +1014,7 @@ subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOv
 
  ! Read GAMMAs (indep. parameters used to optimize occs.) from GAMMAS file 
  if(ireadGAMMAS==1) then
-  if(RDMd%INOF>-1) then
+  if(RDMd%INOF>-1 .and. RDMd%INOF/=70) then
    allocate(GAMMAS_in(RDMd%Ngammas))
    open(unit=iunit,form='unformatted',file='GAMMAS',iostat=istat,status='old')
    icount=0
@@ -1029,7 +1040,34 @@ subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOv
    endif
    close(iunit)
    deallocate(GAMMAS_in)
-  else ! pCCD
+  else ! pCCD or PNOF7-PHASES
+   if(RDMd%INOF==70) then
+    allocate(GAMMAS_in(RDMd%Ngammas))
+    open(unit=iunit,form='unformatted',file='GAMMAS',iostat=istat,status='old')
+    icount=0
+    if(istat==0) then
+     do 
+      read(iunit,iostat=istat) intvar,doubvar
+      if(istat/=0) then
+       exit
+      endif
+      if((intvar/=0).and.intvar<=RDMd%Ngammas) then
+       GAMMAs_in(intvar)=doubvar
+       icount=icount+1
+      else
+       exit
+      endif
+     enddo
+    endif
+    if(icount==RDMd%Ngammas) then
+     RDMd%GAMMAs_old(:)=GAMMAS_in(:)
+     RDMd%GAMMAs_nread=.false.
+     write(msg,'(a)') 'GAMMAs (indep. variables) read from checkpoint file'
+     call write_output(msg)
+    endif
+    close(iunit)
+    deallocate(GAMMAS_in)
+   endif
    allocate(TZ_amp(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)))
    open(unit=iunit,form='unformatted',file='TAMP',iostat=istat,status='old')
    icount=0

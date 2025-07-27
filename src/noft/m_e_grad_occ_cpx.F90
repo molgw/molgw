@@ -66,15 +66,16 @@ contains
 !!
 !! SOURCE
 
-subroutine calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,ERI_Lsr_cmplx,&
- &                          nogamma,chempot) 
+subroutine calc_E_occ_cmplx(RDMd,GAMMAs,Energy,Phases,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx, &
+ &                          ERI_Jsr_cmplx,ERI_Lsr_cmplx,nogamma,chempot,only_phases)
 !Arguments ------------------------------------
 !scalars
- logical,optional,intent(in)::nogamma,chempot
+ logical,optional,intent(in)::nogamma,chempot,only_phases
  real(dp),intent(inout)::Energy
  type(rdm_t),intent(inout)::RDMd
 !arrays
  real(dp),dimension(RDMd%Ngammas),intent(in)::GAMMAs
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::Phases
  complex(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx
  complex(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr_cmplx,ERI_Lsr_cmplx 
  complex(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE_cmplx
@@ -87,11 +88,12 @@ subroutine calc_E_occ_cmplx(RDMd,GAMMAs,Energy,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmp
 !************************************************************************
 
  Energy=zero; Energy_cmplx=complex_zero;
+ if(present(only_phases)) call gamma_to_2rdm(RDMd,GAMMAs,Phases,only_phases=only_phases)
  if(.not.present(nogamma)) then 
   if(present(chempot)) then
-   call gamma_to_2rdm(RDMd,GAMMAs,chempot=chempot)
+   call gamma_to_2rdm(RDMd,GAMMAs,Phases,chempot=chempot)
   else
-   call gamma_to_2rdm(RDMd,GAMMAs)
+   call gamma_to_2rdm(RDMd,GAMMAs,Phases)
   endif
  endif 
 
@@ -377,7 +379,8 @@ end subroutine calc_Grad_occ_cmplx
 !!
 !! SOURCE
 
-subroutine num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,ERI_Lsr_cmplx) 
+subroutine num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,&
+          ERI_Lsr_cmplx,Phases) 
 !Arguments ------------------------------------
 !scalars
  type(rdm_t),intent(inout)::RDMd
@@ -386,6 +389,7 @@ subroutine num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad,hCORE_cmplx,ERI_J_cmplx,ERI_
  complex(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx
  complex(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr_cmplx,ERI_Lsr_cmplx
  complex(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE_cmplx
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::Phases
  real(dp),dimension(RDMd%Ngammas),intent(in)::GAMMAs
 !Local variables ------------------------------
 !scalars
@@ -401,19 +405,23 @@ subroutine num_calc_Grad_occ_cmplx(RDMd,GAMMAs,Grad,hCORE_cmplx,ERI_J_cmplx,ERI_
   GAMMAs_num=GAMMAs;
   ! 2*step
   GAMMAS_num(igamma)=GAMMAS_num(igamma)+two*step
-  call calc_E_occ_cmplx(RDMd,GAMMAs_num,Energy_num,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,ERI_Lsr_cmplx)
+  call calc_E_occ_cmplx(RDMd,GAMMAs_num,Energy_num,Phases,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,&
+       ERI_Lsr_cmplx)
   grad_igamma=-Energy_num
   ! step
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-step
-  call calc_E_occ_cmplx(RDMd,GAMMAs_num,Energy_num,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,ERI_Lsr_cmplx)
+  call calc_E_occ_cmplx(RDMd,GAMMAs_num,Energy_num,Phases,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,&
+       ERI_Lsr_cmplx)
   grad_igamma=grad_igamma+eight*Energy_num
   ! -step 
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-two*step
-  call calc_E_occ_cmplx(RDMd,GAMMAs_num,Energy_num,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,ERI_Lsr_cmplx)
+  call calc_E_occ_cmplx(RDMd,GAMMAs_num,Energy_num,Phases,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,&
+       ERI_Lsr_cmplx)
   grad_igamma=grad_igamma-eight*Energy_num
   ! -2step 
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-step
-  call calc_E_occ_cmplx(RDMd,GAMMAs_num,Energy_num,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,ERI_Lsr_cmplx)
+  call calc_E_occ_cmplx(RDMd,GAMMAs_num,Energy_num,Phases,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cmplx,ERI_Jsr_cmplx,&
+       ERI_Lsr_cmplx)
   grad_igamma=grad_igamma+Energy_num
   ! Save the gradient
   Grad(igamma)=grad_igamma/(twelve*step)

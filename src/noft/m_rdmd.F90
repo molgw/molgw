@@ -50,7 +50,6 @@ module m_rdmd
   integer::Ngammas                 ! Number of gammas (independet variables used in occ optimization procedure)
   integer::Namplitudes             ! Number of t and z pCCD amplitudes
   real(dp)::Lpower=0.53d0          ! Power functional exponent
-  real(dp)::PNOF7sup=-1.0d0        ! Coef. PNOF7 sup. that goes in front of L integrals
   real(dp)::Hcut=0.02d0*dsqrt(two) ! Hcut parameter defined in GNOF to determine the Ecorr type (i.e. dyn or nondyn)
 ! arrays 
   real(dp),allocatable,dimension(:)::occ,chempot_orb,occ_dyn
@@ -123,14 +122,13 @@ CONTAINS  !=====================================================================
 !! SOURCE
 
 subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
-&  Ncoupled,Nbeta_elect,Nalpha_elect,irs_noft,Lpower,PNOF7sup)
+&  Ncoupled,Nbeta_elect,Nalpha_elect,irs_noft,Lpower)
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)::INOF,Ista,irs_noft
  integer,intent(in)::NBF_tot,NBF_occ,Nfrozen,Npairs,Ncoupled
  integer,intent(in)::Nbeta_elect,Nalpha_elect
  real(dp),optional,intent(in)::Lpower
- real(dp),optional,intent(in)::PNOF7sup
  type(rdm_t),intent(inout)::RDMd
 !Local variables ------------------------------
 !scalars
@@ -144,11 +142,6 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
  if(RDMd%INOF==101) then
   if(present(Lpower)) then
    RDMd%Lpower=Lpower
-  endif
- endif
- if(RDMd%INOF==70) then
-  if(present(PNOF7sup)) then
-   RDMd%PNOF7sup=PNOF7sup
   endif
  endif
  RDMd%Ista=Ista
@@ -196,6 +189,13 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
   allocate(RDMd%DDM2_gamma_Jsr(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_Jsr=zero; 
   allocate(RDMd%DDM2_gamma_Lsr(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_Lsr=zero; 
   allocate(RDMd%Dfni_ni(RDMd%NBF_occ))
+  if(RDMd%INOF==70) then
+   allocate(RDMd%t_pccd(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%t_pccd=zero;
+   allocate(RDMd%t_pccd_old(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%t_pccd_old=zero;
+   allocate(RDMd%z_pccd(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%z_pccd=zero;
+   allocate(RDMd%z_pccd_old(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%z_pccd_old=zero;
+   allocate(RDMd%tz_residue(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%tz_residue=zero;
+  endif
  else
   allocate(RDMd%t_pccd(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%t_pccd=zero;
   allocate(RDMd%t_pccd_old(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%t_pccd_old=zero;
@@ -251,6 +251,13 @@ subroutine rdm_free(RDMd)
   deallocate(RDMd%DDM2_gamma_L)
   deallocate(RDMd%DDM2_gamma_Jsr)
   deallocate(RDMd%DDM2_gamma_Lsr)
+  if(RDMd%INOF==70) then
+   deallocate(RDMd%t_pccd)
+   deallocate(RDMd%t_pccd_old)
+   deallocate(RDMd%z_pccd)
+   deallocate(RDMd%z_pccd_old)
+   deallocate(RDMd%tz_residue)
+  endif
  else
   deallocate(RDMd%t_pccd)
   deallocate(RDMd%t_pccd_old)

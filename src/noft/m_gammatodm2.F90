@@ -27,7 +27,7 @@ module m_gammatodm2
  implicit none
 
  private :: dm2_hartree,dm2_hf,dm2_mbb,dm2_ca,dm2_cga,dm2_gu,dm2_power,dm2_pnof5,dm2_pnof7,dm2_gnof
- private :: dm2_intra,dm2_pccd,dm2_pnof7_sup
+ private :: dm2_intra,dm2_pccd,dm2_pnof7_phases
 !!***
 
  public :: gamma_to_2rdm
@@ -57,15 +57,17 @@ contains
 !!
 !! SOURCE
 
-subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
+subroutine gamma_to_2rdm(RDMd,GAMMAs,Phases,chempot,only_phases)
 !Arguments ------------------------------------
 !scalars
- logical,optional,intent(in)::chempot
+ logical,optional,intent(in)::chempot,only_phases
  type(rdm_t),intent(inout)::RDMd
 !arrays
  real(dp),dimension(RDMd%Ngammas),intent(in)::GAMMAs
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::Phases
 !Local variables ------------------------------
 !scalars
+ logical::only_phases_=.false.
  integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,iorb6,iorb7,iorb8
  integer::igamma,igamma1,igamma2
  real(dp)::occ_orb,hole_orb,sqrt_occ_orb,sqrt_hole_orb,sqrthole_orb
@@ -74,6 +76,7 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
  real(dp),allocatable,dimension(:)::Docc_gamma0,sqrt_occ,Dsqrt_occ_gamma0,hole
  real(dp),allocatable,dimension(:,:)::Dsqrt_occ_gamma,Dhole_gamma,Docc_gamma,Docc_dyn 
 !************************************************************************
+ if(present(only_phases)) only_phases_=.true.
 !-----------------------------------------------------------------------
 !                 Occupancies and their Derivatives
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -272,7 +275,7 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
   call dm2_hf(RDMd,RDMd%Docc_gamma,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
   & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L)
  elseif(RDMd%INOF==-1) then
-  call dm2_pccd(RDMd,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L)
+  call dm2_pccd(RDMd,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,Phases,only_phases_)
  elseif(RDMd%INOF==100) then
   call dm2_mbb(RDMd,RDMd%Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
   & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L)
@@ -298,8 +301,8 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,chempot)
   call dm2_gnof(RDMd,RDMd%Docc_gamma,Docc_dyn,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
   & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L)
  elseif(RDMd%INOF==70) then
-  call dm2_pnof7_sup(RDMd,RDMd%Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
-  & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L)
+  call dm2_pnof7_phases(RDMd,RDMd%Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,RDMd%DM2_iiii,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,&
+  & RDMd%DDM2_gamma_J,RDMd%DDM2_gamma_K,RDMd%DDM2_gamma_L,Phases)
  else
   ! Nth
  endif
@@ -1361,13 +1364,14 @@ end subroutine dm2_gnof
 !!
 !! SOURCE
 
-subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
+subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L,Phases,only_phases)
 !Arguments ------------------------------------
 !scalars
+ logical,intent(in)::only_phases
  type(rdm_t),intent(inout)::RDMd
 !arrays
  real(dp),dimension(RDMd%NBF_occ),intent(inout)::DM2_iiii
- real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L,Phases
 !Local variables ------------------------------
 !scalars
  logical::file_exists
@@ -1377,6 +1381,8 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
  real(dp),allocatable,dimension(:,:)::xij,xab,xia
  character(len=200)::msg
 !************************************************************************
+
+ Phases=1d0
 
 !- - - - - - - - - - - - - - - - - - - - - - - -              
 !  Build intermediates
@@ -1409,7 +1415,10 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
  enddo
  do iorb=1,RDMd%Npairs ! Occ
   if(xij(iorb,iorb)>one .or. xij(iorb,iorb)<zero) then
-   write(msg,'(a,i5,f10.5)') 'Fixing the xii element ',iorb,xij(iorb,iorb)
+   if(.not.only_phases) then
+     write(msg,'(a,i5,f10.5)') 'Fixing the xii element ',iorb,xij(iorb,iorb)
+     call write_output(msg)
+   endif
    xij(iorb,iorb)=0.5d0
   endif
   occ=occ-(one-xij(iorb,iorb))
@@ -1421,7 +1430,10 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
  enddo
  do iorb=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
   if((xab(iorb,iorb)>one .or. xab(iorb,iorb)<zero) .and. occ>zero) then
-   write(msg,'(a,i5,f10.5)') 'Fixing the xaa element ',iorb,xab(iorb,iorb)
+   if(.not.only_phases) then
+    write(msg,'(a,i5,f10.5)') 'Fixing the xaa element ',iorb,xab(iorb,iorb)
+    call write_output(msg)
+   endif
    if(occ>=0.5d0) then
     xab(iorb,iorb)=0.5d0
     occ=occ-0.5d0
@@ -1526,27 +1538,40 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L)
  inquire(file='no_pccd_hermiticity', exist=file_exists)
  if(.not.file_exists) then
   if(abs(err_HermJ)>tol6) then
-   write(msg,'(a,f15.6)') 'Hermiticity error DM2_J       =',err_HermJ
-   call write_output(msg)
-   write(msg,'(a)') 'Enforcing Hermiticity in DM2_J'
-   call write_output(msg)
+   if(.not.only_phases) then
+    write(msg,'(a,f15.6)') 'Hermiticity error DM2_J       =',err_HermJ
+    call write_output(msg)
+    write(msg,'(a)') 'Enforcing Hermiticity in DM2_J'
+    call write_output(msg)
+   endif
    DM2_J=HALF*(DM2_J+transpose(DM2_J))
   endif
   if(abs(err_HermK)>tol6) then
-   write(msg,'(a,f15.6)') 'Hermiticity error DM2_K       =',err_HermK
-   call write_output(msg)
-   write(msg,'(a)') 'Enforcing Hermiticity in DM2_K'
-   call write_output(msg)
+   if(.not.only_phases) then
+    write(msg,'(a,f15.6)') 'Hermiticity error DM2_K       =',err_HermK
+    call write_output(msg)
+    write(msg,'(a)') 'Enforcing Hermiticity in DM2_K'
+    call write_output(msg)
+   endif
    DM2_K=HALF*(DM2_K+transpose(DM2_K))
   endif
   if(abs(err_HermL)>tol6) then
-   write(msg,'(a,f15.6)') 'Hermiticity error DM2_L       =',err_HermL
-   call write_output(msg)
-   write(msg,'(a)') 'Enforcing Hermiticity in DM2_L'
-   call write_output(msg)
+   if(.not.only_phases) then
+    write(msg,'(a,f15.6)') 'Hermiticity error DM2_L       =',err_HermL
+    call write_output(msg)
+    write(msg,'(a)') 'Enforcing Hermiticity in DM2_L'
+    call write_output(msg)
+   endif
    DM2_L=HALF*(DM2_L+transpose(DM2_L))
   endif
  endif
+
+ ! Compute the phases of the DM2_L elements
+ do iorb=1,RDMd%NBF_occ
+  do iorb1=1,RDMd%NBF_occ
+   Phases(iorb,iorb1)=sign(one,DM2_L(iorb,iorb1))
+  enddo
+ enddo
 
 !-----------------------------------------------------------------------
  deallocate(xij,xab,xia)
@@ -1555,9 +1580,9 @@ end subroutine dm2_pccd
 !!***
 
 
-!!****f* DoNOF/dm2_pnof7_sup
+!!****f* DoNOF/dm2_pnof7_phases
 !! NAME
-!! dm2_pnof7_sup
+!! dm2_pnof7_phases
 !!
 !! FUNCTION
 !!  Build from the occ numbers and its derivatives the 2-RDM elements and its derivatives w.r.t. gamma for PNOF7 for superconductors
@@ -1582,8 +1607,8 @@ end subroutine dm2_pccd
 !!
 !! SOURCE
 
-subroutine dm2_pnof7_sup(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2_K,DM2_L,DDM2_gamma_J,DDM2_gamma_K,&
-& DDM2_gamma_L)
+subroutine dm2_pnof7_phases(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J,DM2_K,DM2_L,DDM2_gamma_J,DDM2_gamma_K,&
+& DDM2_gamma_L,Phases)
 !Arguments ------------------------------------
 !scalars
  type(rdm_t),intent(inout)::RDMd
@@ -1591,7 +1616,7 @@ subroutine dm2_pnof7_sup(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J
  real(dp),dimension(RDMd%NBF_occ),intent(in)::sqrt_occ
  real(dp),dimension(RDMd%NBF_occ,RDMd%Ngammas),intent(in)::Dsqrt_occ_gamma,Docc_gamma
  real(dp),dimension(RDMd%NBF_occ),intent(inout)::DM2_iiii
- real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::DM2_J,DM2_K,DM2_L,Phases
  real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ,RDMd%Ngammas),intent(inout)::DDM2_gamma_J,DDM2_gamma_K,DDM2_gamma_L
 !Local variables ------------------------------
 !scalars
@@ -1600,7 +1625,6 @@ subroutine dm2_pnof7_sup(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J
  real(dp),allocatable,dimension(:)::FIs
  real(dp),allocatable,dimension(:,:)::DFIs
 !************************************************************************
-
 !-----------------------------------------------------------------------
 !     FIs
 !- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
@@ -1634,10 +1658,12 @@ subroutine dm2_pnof7_sup(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J
   do iorb1=1,RDMd%NBF_occ
    DM2_J(iorb,iorb1) = two*RDMd%occ(iorb)*RDMd%occ(iorb1)
    DM2_K(iorb,iorb1) = -RDMd%occ(iorb)*RDMd%occ(iorb1) 
-   DM2_L(iorb,iorb1) = -RDMd%PNOF7sup*FIs(iorb)*FIs(iorb1)
+   !DM2_L(iorb,iorb1) = Phases(iorb,iorb1)*FIs(iorb)*FIs(iorb1)
+   DM2_L(iorb,iorb1) = -FIs(iorb)*FIs(iorb1)
    DDM2_gamma_J(iorb,iorb1,:) = two*Docc_gamma(iorb,:)*RDMd%occ(iorb1)
    DDM2_gamma_K(iorb,iorb1,:) = -Docc_gamma(iorb,:)*RDMd%occ(iorb1)
-   DDM2_gamma_L(iorb,iorb1,:) = -RDMd%PNOF7sup*DFIs(iorb,:)*FIs(iorb1)
+   !DDM2_gamma_L(iorb,iorb1,:) = Phases(iorb,iorb1)*DFIs(iorb,:)*FIs(iorb1)
+   DDM2_gamma_L(iorb,iorb1,:) = -DFIs(iorb,:)*FIs(iorb1)
   enddo
  enddo
  deallocate(FIs,DFIs)
@@ -1653,22 +1679,22 @@ subroutine dm2_pnof7_sup(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J
    DM2_J(iorb4,iorb3) = zero
    DM2_K(iorb3,iorb4) = zero
    DM2_K(iorb4,iorb3) = zero
-   DM2_L(iorb3,iorb4) = -RDMd%PNOF7sup*sqrt_occ(iorb3)*sqrt_occ(iorb4)
-   DM2_L(iorb4,iorb3) = -RDMd%PNOF7sup*sqrt_occ(iorb4)*sqrt_occ(iorb3)
+   DM2_L(iorb3,iorb4) = Phases(iorb3,iorb4)*sqrt_occ(iorb3)*sqrt_occ(iorb4)
+   DM2_L(iorb4,iorb3) = Phases(iorb4,iorb3)*sqrt_occ(iorb4)*sqrt_occ(iorb3)
    DDM2_gamma_J(iorb3,iorb4,:) = zero
    DDM2_gamma_J(iorb4,iorb3,:) = zero
    DDM2_gamma_K(iorb3,iorb4,:) = zero
    DDM2_gamma_K(iorb4,iorb3,:) = zero
-   DDM2_gamma_L(iorb3,iorb4,:) = -RDMd%PNOF7sup*Dsqrt_occ_gamma(iorb3,:)*sqrt_occ(iorb4)
-   DDM2_gamma_L(iorb4,iorb3,:) = -RDMd%PNOF7sup*Dsqrt_occ_gamma(iorb4,:)*sqrt_occ(iorb3)
+   DDM2_gamma_L(iorb3,iorb4,:) = Phases(iorb3,iorb4)*Dsqrt_occ_gamma(iorb3,:)*sqrt_occ(iorb4)
+   DDM2_gamma_L(iorb4,iorb3,:) = Phases(iorb4,iorb3)*Dsqrt_occ_gamma(iorb4,:)*sqrt_occ(iorb3)
    do iorb=RDMd%Npairs_p_sing+RDMd%Ncoupled*(RDMd%Npairs-iorb2)+1,RDMd%Npairs_p_sing+RDMd%Ncoupled*(RDMd%Npairs-iorb2+1)
     iorb5 = RDMd%Nfrozen+iorb
     DM2_J(iorb5,iorb4) = zero
     DM2_K(iorb5,iorb4) = zero
-    DM2_L(iorb5,iorb4) = RDMd%PNOF7sup*sqrt_occ(iorb5)*sqrt_occ(iorb4)
+    DM2_L(iorb5,iorb4) = Phases(iorb5,iorb4)*sqrt_occ(iorb5)*sqrt_occ(iorb4)
     DDM2_gamma_J(iorb5,iorb4,:) = zero
     DDM2_gamma_K(iorb5,iorb4,:) = zero
-    DDM2_gamma_L(iorb5,iorb4,:) = RDMd%PNOF7sup*Dsqrt_occ_gamma(iorb5,:)*sqrt_occ(iorb4)
+    DDM2_gamma_L(iorb5,iorb4,:) = Phases(iorb5,iorb4)*Dsqrt_occ_gamma(iorb5,:)*sqrt_occ(iorb4)
    enddo
   enddo
  enddo
@@ -1686,7 +1712,7 @@ subroutine dm2_pnof7_sup(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J
   DDM2_gamma_L(iorb,iorb,:)=zero
  enddo
 !-----------------------------------------------------------------------
-end subroutine dm2_pnof7_sup
+end subroutine dm2_pnof7_phases
 !!***
 
 end module m_gammatodm2

@@ -64,10 +64,11 @@ contains
 !!
 !! SOURCE
 
-subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,nogamma,chempot) 
+subroutine calc_E_occ(RDMd,GAMMAs,Energy,Phases,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,nogamma,chempot, &
+                      only_phases) 
 !Arguments ------------------------------------
 !scalars
- logical,optional,intent(in)::nogamma,chempot
+ logical,optional,intent(in)::nogamma,chempot,only_phases
  real(dp),intent(inout)::Energy
  type(rdm_t),intent(inout)::RDMd
 !arrays
@@ -75,6 +76,7 @@ subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr
  real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L
  real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr,ERI_Lsr
  real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::Phases
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1,ipair
@@ -82,11 +84,12 @@ subroutine calc_E_occ(RDMd,GAMMAs,Energy,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr
 !************************************************************************
 
  Energy=zero
+ if(present(only_phases)) call gamma_to_2rdm(RDMd,GAMMAs,Phases,only_phases=only_phases)
  if(.not.present(nogamma)) then 
   if(present(chempot)) then
-   call gamma_to_2rdm(RDMd,GAMMAs,chempot=chempot)
+   call gamma_to_2rdm(RDMd,GAMMAs,Phases,chempot=chempot)
   else
-   call gamma_to_2rdm(RDMd,GAMMAs)
+   call gamma_to_2rdm(RDMd,GAMMAs,Phases)
   endif
  endif 
 
@@ -355,7 +358,7 @@ end subroutine calc_Grad_occ
 !!
 !! SOURCE
 
-subroutine num_calc_Grad_occ(RDMd,GAMMAs,Grad,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
+subroutine num_calc_Grad_occ(RDMd,GAMMAs,Grad,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr,Phases)
 !Arguments ------------------------------------
 !scalars
  type(rdm_t),intent(inout)::RDMd
@@ -364,6 +367,7 @@ subroutine num_calc_Grad_occ(RDMd,GAMMAs,Grad,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ER
  real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_J,ERI_K,ERI_L
  real(dp),dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr,ERI_Lsr
  real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::hCORE
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::Phases
  real(dp),dimension(RDMd%Ngammas),intent(in)::GAMMAs
 !Local variables ------------------------------
 !scalars
@@ -379,19 +383,19 @@ subroutine num_calc_Grad_occ(RDMd,GAMMAs,Grad,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ER
   GAMMAs_num=GAMMAs;
   ! 2*step
   GAMMAS_num(igamma)=GAMMAS_num(igamma)+two*step
-  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
+  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,Phases,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
   grad_igamma=-Energy_num
   ! step
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-step
-  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
+  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,Phases,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
   grad_igamma=grad_igamma+eight*Energy_num
   ! -step 
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-two*step
-  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
+  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,Phases,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
   grad_igamma=grad_igamma-eight*Energy_num
   ! -2*step 
   GAMMAS_num(igamma)=GAMMAS_num(igamma)-step
-  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
+  call calc_E_occ(RDMd,GAMMAs_num,Energy_num,Phases,hCORE,ERI_J,ERI_K,ERI_L,ERI_Jsr,ERI_Lsr)
   grad_igamma=grad_igamma+Energy_num
   ! Save the gradient
   Grad(igamma)=grad_igamma/(twelve*step)
