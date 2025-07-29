@@ -452,9 +452,9 @@ program molgw
         if( .NOT. complex_scf_ ) then ! By default we use the real solution of the SCF equations
           call scf_loop(is_restart,                                     &
                         basis,                                          &
-                        x_matrix, s_matrix,                              &
-                        hamiltonian_kinetic, hamiltonian_nucleus,        &
-                        occupation, energy,                              &
+                        x_matrix, s_matrix,                             &
+                        hamiltonian_kinetic, hamiltonian_nucleus,       &
+                        occupation, energy,                             &
                         hamiltonian_fock,                               &
                         c_matrix, en_gks, scf_has_converged)
         else
@@ -463,8 +463,8 @@ program molgw
           call clean_allocate('Wavefunctions C_cmplx', c_matrix_cmplx, basis%nbf, nstate, nspin)
           call init_c_matrix_cmplx(c_matrix, c_matrix_cmplx)
    
-          call scf_loop_cmplx(is_restart,                                       &
-                              basis,                                            &
+          call scf_loop_cmplx(is_restart,                                        &
+                              basis,                                             &
                               x_matrix, s_matrix,                                &
                               hamiltonian_kinetic, hamiltonian_nucleus,          &
                               occupation, energy,                                &

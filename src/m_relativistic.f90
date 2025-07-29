@@ -1002,8 +1002,9 @@ subroutine check_CdaggerSC_I(basis, electrons_in, c_matrix_rel, s_matrix_rel, x_
   enddo
   err_x2c_coef=err_x2c_coef/(nstate*nstate)
   write(stdout, '(a,f15.8)') ' MAE in (C^x2c)^dagger S C^x2c = I', err_x2c_coef
-  if(err_x2c_coef>1e-6) then
-    ! We prefer to enforce orthonormality for the C^x2c states
+  if(err_x2c_coef>1e-6 .and. .false.) then ! TODO: decide if it is worthy or we just remove it...
+
+    ! We may prefer to enforce orthonormality for the C^x2c states
     if( trim(approx_H_x2c)=='yes' ) then 
       write(stdout, '(a)') ' The MAE > 1e-6, overwriting S, X, C and H matrices before doing the SCF procedure'
     else

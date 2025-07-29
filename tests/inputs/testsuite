@@ -259,38 +259,38 @@ SCF Total Energy          , -15.5379349891     , 0 , 1.0e-5
 
 he2_x2c.in                , PBE He2 atom cc-pVDZ relativistic X2C
 Rel Hcore Energy          , -10.4713708712      , 0 , 1.0e-7
-XC Energy                 ,  -2.1190533605      , 0 , 1.0e-5
-SCF Total Energy          ,  -5.7622737480      , 0 , 1.0e-5
+XC Energy                 ,  -2.1190696847      , 0 , 1.0e-5
+SCF Total Energy          ,  -5.7625306723      , 0 , 1.0e-5
 
 he2_x2c_hf.in             , HF He2 atom cc-pVDZ relativistic X2C
 Rel Hcore Energy          , -10.4713708712      , 0 , 1.0e-7
-gKS HOMO energy           , -23.629648          , 0 , 1.0e-4
-gKS HOMO energy           , -23.629648          , 1 , 1.0e-4
-gKS LUMO energy           ,  35.988824          , 0 , 1.0e-4
-gKS LUMO energy           ,  35.988824          , 1 , 1.0e-4
-Exchange Energy           ,  -2.0649481230      , 0 , 1.0e-5
-SCF Total Energy          ,  -5.7024605706      , 0 , 1.0e-5
+gKS HOMO energy           , -23.632001          , 0 , 1.0e-4
+gKS HOMO energy           , -23.632001          , 1 , 1.0e-4
+gKS LUMO energy           ,  35.983240          , 0 , 1.0e-4
+gKS LUMO energy           ,  35.983240          , 1 , 1.0e-4
+Exchange Energy           ,  -2.0649086895      , 0 , 1.0e-5
+SCF Total Energy          ,  -5.7026836978      , 0 , 1.0e-5
 
 he2_x2c_cam_b3lyp.in      , CAM-B3LYP He2 atom cc-pVDZ relativistic X2C
 Rel Hcore Energy          , -10.4713708712      , 0 , 1.0e-7
-gKS HOMO energy           , -18.455382          , 0 , 1.0e-4
-gKS HOMO energy           , -18.455382          , 1 , 1.0e-4
-gKS LUMO energy           ,  30.289423          , 0 , 1.0e-4
-gKS LUMO energy           ,  30.289423          , 1 , 1.0e-4
-Exchange Energy           ,  -0.7085794276      , 0 , 1.0e-5
-XC Energy                 ,  -1.4272998754      , 0 , 1.0e-5
-SCF Total Energy          ,  -5.7806274790      , 0 , 1.0e-5
+gKS HOMO energy           , -18.456549          , 0 , 1.0e-4
+gKS HOMO energy           , -18.456549          , 1 , 1.0e-4
+gKS LUMO energy           ,  30.285552          , 0 , 1.0e-4
+gKS LUMO energy           ,  30.285552          , 1 , 1.0e-4
+Exchange Energy           ,  -0.7085396751      , 0 , 1.0e-5
+XC Energy                 ,  -1.4272352536      , 0 , 1.0e-5
+SCF Total Energy          ,  -5.7805567603      , 0 , 1.0e-5
 
 he2_x2c_rsx_qidh.in       , RSX-QIDH He2 atom cc-pVDZ relativistic X2C
 Rel Hcore Energy          , -10.4713708712      , 0 , 1.0e-7
-gKS HOMO energy           , -22.174242          , 0 , 1.0e-4
-gKS HOMO energy           , -22.174242          , 1 , 1.0e-4
-gKS LUMO energy           ,  34.284689          , 0 , 1.0e-4
-gKS LUMO energy           ,  34.284689          , 1 , 1.0e-4
-Exchange Energy           ,  -1.6046417574      , 0 , 1.0e-5
-XC Energy                 ,  -0.4829186565      , 0 , 1.0e-5
-SCF Total Energy          ,  -5.7313928818      , 0 , 1.0e-5
-MP2 Total Energy          ,  -5.7495327518      , 0 , 1.0e-5
+gKS HOMO energy           , -22.176600          , 0 , 1.0e-4
+gKS HOMO energy           , -22.176600          , 1 , 1.0e-4
+gKS LUMO energy           ,  34.279314          , 0 , 1.0e-4
+gKS LUMO energy           ,  34.279314          , 1 , 1.0e-4
+Exchange Energy           ,  -1.6046100361      , 0 , 1.0e-5
+XC Energy                 ,  -0.4829208853      , 0 , 1.0e-5
+SCF Total Energy          ,  -5.7316204455      , 0 , 1.0e-5
+MP2 Total Energy          ,  -5.7497555559      , 0 , 1.0e-5
 
 he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI, noparallel
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
