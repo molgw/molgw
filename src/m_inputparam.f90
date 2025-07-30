@@ -78,6 +78,7 @@ module m_inputparam
     logical            :: is_real_time
     logical            :: need_exchange
     logical            :: need_exchange_lr
+    logical            :: need_exchange_pairing
     logical            :: need_rpa
     logical            :: is_lr_mbpt
     logical            :: is_gw
@@ -380,6 +381,7 @@ subroutine init_calculation_type(scf, postscf)
   !
   calc_type%need_exchange    = ( alpha_hybrid > 1.0e-6 )
   calc_type%need_exchange_lr = ( rcut > 1.0e-6 ) .AND. ( ABS(beta_hybrid) > 1.0e-6 )
+  calc_type%need_exchange_pairing = ( bogoliubov_scf_ .AND. ( ABS(bogoliubov_sigma) > 1.0e-8 ) )
 
   calc_type%is_selfenergy = ( calc_type%selfenergy_approx /= 0 )
 

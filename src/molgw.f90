@@ -78,7 +78,7 @@ program molgw
   logical                 :: is_restart, is_big_restart, is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
-  real(dp)                :: erpa_tmp, egw_tmp, eext
+  real(dp)                :: erpa_tmp, egw_tmp, eext, temperature_
   real(dp), allocatable    :: hamiltonian_kinetic(:, :)
   real(dp), allocatable    :: hamiltonian_nucleus(:, :)
   real(dp), allocatable    :: hamiltonian_fock(:, :, :)
@@ -449,7 +449,7 @@ program molgw
 
       else
 
-        if( .NOT. complex_scf_ ) then ! By default we use the real solution of the SCF equations
+        if( .NOT. complex_scf_  .AND. .NOT. bogoliubov_scf_ ) then ! By default we use the real solution of the SCF equations
           call scf_loop(is_restart,                                     &
                         basis,                                          &
                         x_matrix, s_matrix,                             &
@@ -458,25 +458,47 @@ program molgw
                         hamiltonian_fock,                               &
                         c_matrix, en_gks, scf_has_converged)
         else
-          call issue_warning('Complex SCF is currently implemented only for testing')
-   
-          call clean_allocate('Wavefunctions C_cmplx', c_matrix_cmplx, basis%nbf, nstate, nspin)
-          call init_c_matrix_cmplx(c_matrix, c_matrix_cmplx)
-   
-          call scf_loop_cmplx(is_restart,                                        &
-                              basis,                                             &
-                              x_matrix, s_matrix,                                &
-                              hamiltonian_kinetic, hamiltonian_nucleus,          &
-                              occupation, energy,                                &
-                              c_matrix, c_matrix_cmplx, en_gks, scf_has_converged)
-   
-          write(stdout, '(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
-          !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.
-          !     and the occupation numbers (i.e. occupations(:, 1)) are \in [0, 2].
-          write(stdout, '(/,1x,a)')  'Natural occupations: '
-          write(stdout, '(8(2x,f14.6))') occupation(:, 1)
-          write(stdout, '(1x,a,f14.6)') 'Trace:', SUM(occupation(:, 1))
-          write(stdout, *)
+         
+          if( complex_scf_ ) then
+            call issue_warning('Complex SCF is currently implemented only for testing')
+            
+            call clean_allocate('Wavefunctions C_cmplx', c_matrix_cmplx, basis%nbf, nstate, nspin)
+            call init_c_matrix_cmplx(c_matrix, c_matrix_cmplx)
+            
+            call scf_loop_cmplx(is_restart,                                        &
+                                basis,                                             &
+                                x_matrix, s_matrix,                                &
+                                hamiltonian_kinetic, hamiltonian_nucleus,          &
+                                occupation, energy,                                &
+                                c_matrix, c_matrix_cmplx, en_gks, scf_has_converged)
+            
+            write(stdout, '(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
+            !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.
+            !     and the occupation numbers (i.e. occupations(:, 1)) are \in [0, 2].
+            write(stdout, '(/,1x,a)')  'Natural occupations: '
+            write(stdout, '(8(2x,f14.6))') occupation(:, 1)
+            write(stdout, '(1x,a,f14.6)') 'Trace:', SUM(occupation(:, 1))
+            write(stdout, *)
+          endif
+
+          if( bogoliubov_scf_ ) then
+            temperature_=0d0
+            call scf_loop(is_restart,                                     &
+                          basis,                                          &
+                          x_matrix, s_matrix,                             &
+                          hamiltonian_kinetic, hamiltonian_nucleus,       &
+                          occupation, energy,                             &
+                          hamiltonian_fock,                               &
+                          c_matrix, en_gks, scf_has_converged, temperature_in=temperature_)
+            call scf_loop_bogoliubov(is_restart,                                &
+                                     basis,                                     &
+                                     x_matrix, s_matrix,                        &
+                                     hamiltonian_kinetic, hamiltonian_nucleus,  &
+                                     occupation, energy,                        &
+                                     hamiltonian_fock,                          &
+                                     c_matrix, en_gks, scf_has_converged)
+          endif
+
         endif
       endif
     endif

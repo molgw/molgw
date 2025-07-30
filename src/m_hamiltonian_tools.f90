@@ -25,6 +25,10 @@ module m_hamiltonian_tools
     module procedure setup_density_matrix_cmplx
   end interface setup_density_matrix
 
+  interface setup_anomalous_density_matrix
+    module procedure setup_anomalous_density_matrix_real
+  end interface setup_anomalous_density_matrix
+
   interface p_ao_to_mo
     module procedure p_ao_to_mo_real
     module procedure p_ao_to_mo_cmplx
@@ -208,6 +212,60 @@ end subroutine setup_energy_density_matrix
 
 
 !=========================================================================
+subroutine setup_anomalous_density_matrix_real(c_matrix, sqrt_occ_hole, p_annom_matrix)
+  implicit none
+  real(dp), intent(in)  :: c_matrix(:, :, :)
+  real(dp), intent(in)  :: sqrt_occ_hole(:, :)
+  real(dp), intent(out) :: p_annom_matrix(:, :, :)
+  !=====
+  integer :: nbf, nstate, nocc
+  integer :: ispin, ibf, jbf
+  integer :: istate
+  real(dp), allocatable :: c_matrix_sqrtsqrtocchole(:, :)
+  !=====
+
+  call start_clock(timing_density_matrix)
+
+  if(.not.calc_type%is_noft) write(stdout, '(1x,a)') 'Build anomalous density matrix'
+
+  nbf    = SIZE(c_matrix(:, :, :), DIM=1)
+  nstate = SIZE(c_matrix(:, :, :), DIM=2)
+
+  if( ANY( sqrt_occ_hole(:, :) < -1.0e-5_dp ) ) then
+    write(stdout, *) 'Min sqrt(occ  hole):', MINVAL(sqrt_occ_hole)
+    call die('setup_density_matrix: negative occupation number should not happen here.')
+  endif
+  ! Find the number of occupatied states
+  nocc = get_number_occupied_states(sqrt_occ_hole)
+
+  allocate(c_matrix_sqrtsqrtocchole(nbf, nocc))
+
+  p_annom_matrix(:, :, :) = 0.0_dp
+  do ispin=1, nspin
+
+    do istate=1, nocc
+      c_matrix_sqrtsqrtocchole(:, istate) = c_matrix(:, istate, ispin) * SQRT(sqrt_occ_hole(istate,ispin))
+    enddo
+
+    call DSYRK('L', 'N', nbf, nocc, 1.0d0, c_matrix_sqrtsqrtocchole, nbf, 0.0d0, p_annom_matrix(1, 1, ispin), nbf)
+
+    ! Symmetrize
+    do jbf=1, nbf
+      do ibf=jbf+1, nbf
+        p_annom_matrix(jbf, ibf, ispin) = p_annom_matrix(ibf, jbf, ispin)
+      enddo
+    enddo
+  enddo
+
+  deallocate(c_matrix_sqrtsqrtocchole)
+
+  call stop_clock(timing_density_matrix)
+
+
+end subroutine setup_anomalous_density_matrix_real
+
+
+!=========================================================================
 subroutine test_density_matrix(p_matrix, s_matrix)
   implicit none
   real(dp), intent(in)  :: p_matrix(:, :, :)
@@ -242,11 +300,12 @@ end subroutine test_density_matrix
 
 
 !=========================================================================
-subroutine set_occupation(temperature, electrons_in, magnetization, energy, occupation)
+subroutine set_occupation(temperature, electrons_in, magnetization, energy, occupation, chem_pot)
   implicit none
   real(dp), intent(in)  :: electrons_in, magnetization, temperature
   real(dp), intent(in)  :: energy(:, :)
   real(dp), intent(out) :: occupation(:, :)
+  real(dp), optional, intent(out) :: chem_pot
   !=====
   integer              :: nstate
   real(dp)             :: remaining_electrons(nspin)
@@ -324,6 +383,7 @@ subroutine set_occupation(temperature, electrons_in, magnetization, energy, occu
 
     enddo
 
+    write(stdout, '(1x,a,f12.6)') 'Fermi level (Ha): ', mu
     write(stdout, '(1x,a,f12.6)') 'Fermi level (eV): ', mu * Ha_eV
 
   endif
@@ -341,6 +401,8 @@ subroutine set_occupation(temperature, electrons_in, magnetization, energy, occu
   endif
 
   call dump_out_occupation('=== Occupations ===', occupation)
+
+  if(present(chem_pot)) chem_pot=mu
 
 contains
 
@@ -366,7 +428,7 @@ subroutine dump_out_occupation(title, occupation)
   !=====
   integer :: ihomo
   integer :: istate, nstate
-  integer, parameter :: noutput=5
+  integer, parameter :: noutput=10
   !=====
 
   nstate = SIZE(occupation, DIM=1)
