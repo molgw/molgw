@@ -1079,10 +1079,12 @@ subroutine scf_loop_bogoliubov(is_restart, &
   !=====
   type(spectral_function) :: wpol
   integer                 :: nstate
-  logical                 :: stopfile_found
+  logical                 :: is_ksb, stopfile_found
   integer                 :: file_density_matrix
   integer                 :: ispin, istate, iscf, nbf_twice, nstate_twice  
   real(dp)                :: chem_pot, nelectrons, trace_dm1 
+  real(dp), allocatable   :: occ_tmp(:)
+  real(dp), allocatable   :: c_matrix_tmp(:, :)
   real(dp), allocatable   :: sqrt_occ_hole(:, :)
   real(dp), allocatable   :: p_matrix(:, :, :)
   real(dp), allocatable   :: p_anom_matrix(:, :, :)
@@ -1093,13 +1095,15 @@ subroutine scf_loop_bogoliubov(is_restart, &
   real(dp), allocatable   :: hamiltonian_bogoliubov_ao(:, :, :)
   real(dp), allocatable   :: H_KSB(:, :, :)
   real(dp), allocatable   :: U_QP(:, :, :)
+  real(dp), allocatable   :: occupation_QP(:, :)
   real(dp), allocatable   :: energy_QP(:, :)
   real(dp), allocatable   :: DM1(:, :, :)
   !=====
 
-
+  
   call start_clock(timing_scf)
 
+  is_ksb = .true.
   nstate = SIZE(x_matrix, DIM=2)
   nbf_twice = 2*basis%nbf
   nstate_twice = 2*nstate
@@ -1110,8 +1114,10 @@ subroutine scf_loop_bogoliubov(is_restart, &
 
   !
   ! Allocate the main arrays
+  allocate(c_matrix_tmp(basis%nbf,nstate),occ_tmp(nstate))
   call clean_allocate('Total Hamiltonian H in AO', hamiltonian_bogoliubov_ao, nbf_twice, nbf_twice, nspin)
   call clean_allocate('DM1 matrix', DM1, nstate, nstate, nspin)
+  call clean_allocate('occupation_QP', occupation_QP, nstate_twice, nspin)
   call clean_allocate('energy_QP', energy_QP, nstate_twice, nspin)
   call clean_allocate('U_QP matrix', U_QP, nstate_twice, nstate_twice, nspin)
   call clean_allocate('H_KSB matrix', H_KSB, nstate_twice, nstate_twice, nspin)
@@ -1272,8 +1278,6 @@ chem_pot = -0.7229157998
 
     !
     ! Check and adjust the chemical potential to ensure that the density matrix integrates to N
-    trace_dm1 = 0.0_dp
-    DM1(:,:,:) = 0.0_dp 
     do ispin=1,nspin
       H_KSB(1:nstate             ,1:nstate             ,ispin) =  &    ! he
         matmul(transpose(c_matrix(1:basis%nbf,1:nstate,ispin)),   &
@@ -1293,22 +1297,9 @@ chem_pot = -0.7229157998
         H_KSB(nstate+1:nstate_twice,1:nstate             ,ispin) =  &    ! ee
           H_KSB(1:nstate             ,nstate+1:nstate_twice,ispin)
       endif
-      U_QP(:,:,ispin) = H_KSB(:,:,ispin)
-      do istate=1,nstate
-        U_QP(istate       ,istate       ,ispin) = U_QP(istate       ,istate       ,ispin) - chem_pot
-        U_QP(nstate+istate,nstate+istate,ispin) = U_QP(nstate+istate,nstate+istate,ispin) + chem_pot
-      enddo
-      call diagonalize(' ',U_QP(:,:,ispin),energy_QP(:,ispin),U_QP(:,:,ispin))
-      do istate=1,nstate
-        DM1(1:nstate,1:nstate,ispin)=DM1(1:nstate,1:nstate,ispin) &
-         +matmul(U_QP(1:nstate,istate:istate,ispin),transpose(U_QP(1:nstate,istate:istate,ispin)))
-      enddo
-      do istate=1,nstate
-        trace_dm1=trace_dm1+DM1(istate,istate,ispin)
-      enddo
     enddo
-    trace_dm1=spin_fact*trace_dm1
-    if(abs(trace_dm1-nelectrons) > 1e-8) then
+    call compute_KSB_dm1_and_trace(nstate,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
+    if( abs(trace_dm1-nelectrons) > 1e-8 ) then
       write(*,*) 'MAU we gotta fix this',trace_dm1,' ',nelectrons 
     endif
     
@@ -1348,8 +1339,22 @@ chem_pot = -0.7229157998
 !    ! save the old eigenvalues
 !    ! This subroutine works with or without scalapack
 !    call diagonalize_hamiltonian_scalapack(hamiltonian_bogoliubov_ao, x_matrix_gorkov, energy_QP, c_matrix_gorkov)
-!
-!    call dump_out_energy('=== Energies ===', occupation, energy_QP)
+
+    !
+    ! Compute new NOs, occupation numbers, and natural orbitals
+    do ispin=1,nspin
+      call diagonalize(' ',DM1(:,:,ispin),occ_tmp(:),DM1(:,:,ispin)) ! DM1 becomes eigenvectors
+      c_matrix_tmp(:,:) = matmul(c_matrix(:,:,ispin),DM1(:,:,ispin)) ! c_matrix contains the NOs
+      do istate=1,nstate
+        occupation(istate,ispin) = spin_fact*occ_tmp(nstate-(istate-1)) ! Reshufle occ indescending order
+        c_matrix(:,istate,ispin) = c_matrix_tmp(:,nstate-(istate-1))    ! also reshufle the nat. orbs.
+        sqrt_occ_hole(istate,ispin)=sqrt(abs((occupation(istate,ispin)/spin_fact)*(1.0_dp-(occupation(istate,ispin)/spin_fact))))
+        occupation_QP(istate,ispin) = occupation(istate,ispin)/spin_fact
+        occupation_QP(istate+nstate,ispin) = 1.0_dp - occupation(istate,ispin)/spin_fact
+      enddo
+    enddo
+    occupation_QP(:,:) = spin_fact*occupation_QP(:,:)
+    call dump_out_energy('=== Energies ===', occupation_QP, energy_QP, is_ksb=is_ksb)
 
     !
     ! Output the total energy and its components
@@ -1373,6 +1378,8 @@ chem_pot = -0.7229157998
     call setup_density_matrix(c_matrix, occupation, p_matrix)
     call setup_anomalous_density_matrix(c_matrix, sqrt_occ_hole, p_anom_matrix)
 
+    ! TODO
+    write(*,*) 'MAU check converged'
     scf_has_converged = check_converged(p_matrix)
     inquire(file='STOP', exist=stopfile_found)
 
@@ -1405,10 +1412,12 @@ chem_pot = -0.7229157998
   !
   ! Cleanly deallocate the arrays
   !
+  deallocate(c_matrix_tmp,occ_tmp)
   call clean_deallocate('Density matrix P', p_matrix)
   call clean_deallocate('Density matrix Panom', p_anom_matrix)
   call clean_deallocate('Anomalous Sqrt(Occ Hole)', sqrt_occ_hole)
   call clean_deallocate('DM1 matrix', DM1)
+  call clean_deallocate('occupation_QP matrix', occupation_QP)
   call clean_deallocate('energy_QP matrix', energy_QP)
   call clean_deallocate('U_QP matrix', U_QP)
   call clean_deallocate('H_KSB matrix', H_KSB)

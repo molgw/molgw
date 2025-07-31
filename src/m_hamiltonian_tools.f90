@@ -458,16 +458,20 @@ end subroutine dump_out_occupation
 
 
 !=========================================================================
-subroutine dump_out_energy(title, occupation, energy, is_x2c)
+subroutine dump_out_energy(title, occupation, energy, is_x2c, is_ksb)
   implicit none
   character(len=*), intent(in) :: title
   real(dp), intent(in)         :: occupation(:, :), energy(:, :)
   logical, intent(in), optional :: is_x2c
+  logical, intent(in), optional :: is_ksb
   !=====
+  logical            :: is_ksb_
   integer, parameter :: MAXSIZE=300
   integer  :: istate, nocc, nstate
   !=====
 
+  is_ksb_ = .false.
+  if(present(is_ksb)) is_ksb_=is_ksb
   nocc   = get_number_occupied_states(occupation)
   ! in case occupation and energy arrays have different sizes
   nstate = MIN( SIZE(occupation, DIM=1) , SIZE(energy, DIM=1) )
@@ -488,25 +492,45 @@ subroutine dump_out_energy(title, occupation, energy, is_x2c)
       write(stdout, '(a)') '           spin 1       spin 2       spin 1       spin 2'
     endif
   endif
-  do istate=MAX(1, nocc-MAXSIZE/2), MIN(nstate, nocc+MAXSIZE/2)
-    select case(nspin)
-    case(1)
-      write(stdout, '(1x,i5,2(1x,f12.5),4x,f8.4)') istate, energy(istate, 1), energy(istate, 1)*Ha_eV, occupation(istate, 1)
-    case(2)
-      write(stdout, '(1x,i5,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate, energy(istate, 1), energy(istate, 2), &
-                                                          energy(istate, 1)*Ha_eV, energy(istate, 2)*Ha_eV, &
-                                                          occupation(istate, 1), occupation(istate, 2)
-    end select
-    if(istate < nstate) then
-      if( ANY( occupation(istate+1, :) < spin_fact/2.0_dp .AND. occupation(istate, :) > spin_fact/2.0_dp ) ) then
+  if(.NOT. is_ksb_) then
+    do istate=MAX(1, nocc-MAXSIZE/2), MIN(nstate, nocc+MAXSIZE/2)
+      select case(nspin)
+      case(1)
+        write(stdout, '(1x,i5,2(1x,f12.5),4x,f8.4)') istate, energy(istate, 1), energy(istate, 1)*Ha_eV, occupation(istate, 1)
+      case(2)
+        write(stdout, '(1x,i5,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate, energy(istate, 1), energy(istate, 2), &
+                                                            energy(istate, 1)*Ha_eV, energy(istate, 2)*Ha_eV, &
+                                                            occupation(istate, 1), occupation(istate, 2)
+      end select
+      if(istate < nstate) then
+        if( ANY( occupation(istate+1, :) < spin_fact/2.0_dp .AND. occupation(istate, :) > spin_fact/2.0_dp ) ) then
+          if(nspin==1) then
+            write(stdout, '(a)') '  -----------------------------'
+          else
+            write(stdout, '(a)') '  -------------------------------------------------------'
+          endif
+        endif
+      endif
+    enddo
+  else
+    do istate=1,nstate
+      select case(nspin)
+      case(1)
+        write(stdout, '(1x,i5,2(1x,f12.5),4x,f8.4)') istate, energy(istate, 1), energy(istate, 1)*Ha_eV, occupation(istate, 1)
+      case(2)
+        write(stdout, '(1x,i5,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate, energy(istate, 1), energy(istate, 2), &
+                                                            energy(istate, 1)*Ha_eV, energy(istate, 2)*Ha_eV, &
+                                                            occupation(istate, 1), occupation(istate, 2)
+      end select
+      if(istate == nstate/2) then
         if(nspin==1) then
           write(stdout, '(a)') '  -----------------------------'
         else
           write(stdout, '(a)') '  -------------------------------------------------------'
         endif
       endif
-    endif
-  enddo
+    enddo
+  endif
 
   write(stdout, *)
 
@@ -1614,7 +1638,42 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
 #endif
 
 end subroutine diagonalize_hamiltonian_scalapack
+    
+!=========================================================================
+subroutine compute_KSB_dm1_and_trace(nstate,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
+  implicit none
 
+  integer,intent(in)    :: nstate
+  real(dp),intent(in)   :: chem_pot
+  real(dp),intent(out)  :: trace_dm1
+  real(dp), intent(in)  :: H_KSB(:, :, :)
+  real(dp), intent(out) :: energy_QP(:, :)
+  real(dp), intent(out) :: DM1(:, :, :)
+  real(dp), intent(out) :: U_QP(:, :, :)
+  !=====
+  integer               :: ispin,istate
+  !=====
+
+  trace_dm1 = 0.0_dp
+  DM1(:,:,:) = 0.0_dp 
+  do ispin=1,nspin
+    U_QP(:,:,ispin) = H_KSB(:,:,ispin)
+    do istate=1,nstate
+      U_QP(istate       ,istate       ,ispin) = U_QP(istate       ,istate       ,ispin) - chem_pot
+      U_QP(nstate+istate,nstate+istate,ispin) = U_QP(nstate+istate,nstate+istate,ispin) + chem_pot
+    enddo
+    call diagonalize(' ',U_QP(:,:,ispin),energy_QP(:,ispin),U_QP(:,:,ispin))
+    do istate=1,nstate
+      DM1(1:nstate,1:nstate,ispin)=DM1(1:nstate,1:nstate,ispin) &
+       +matmul(U_QP(1:nstate,istate:istate,ispin),transpose(U_QP(1:nstate,istate:istate,ispin)))
+    enddo
+    do istate=1,nstate
+      trace_dm1=trace_dm1+DM1(istate,istate,ispin)
+    enddo
+  enddo
+  trace_dm1=spin_fact*trace_dm1
+
+end subroutine compute_KSB_dm1_and_trace
 
 !=========================================================================
 end module m_hamiltonian_tools
