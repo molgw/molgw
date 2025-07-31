@@ -1387,7 +1387,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
         enddo
       else
         do istate=1,nstate
-          occupation(istate,ispin) = spin_fact*dabs(DM1(istate,istate,ispin)) ! The DM1 already contains the occupantion numbers in its diagonal
+          occupation(istate,ispin) = spin_fact*dabs(DM1(istate,istate,ispin)) ! The DM1 already contains the occupation numbers in its diagonal
           sqrt_occ_hole(istate,ispin)=dsqrt(dabs((occupation(istate,ispin)/spin_fact)  &
                                      *(1.0_dp-(occupation(istate,ispin)/spin_fact))))
           occupation_QP(istate,ispin) = occupation(istate,ispin)/spin_fact
@@ -1417,8 +1417,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
     write(stdout, '(a25,1x,f19.10,/)') 'Chemical potential  :', chem_pot
 
     !
-    ! Setup the new density matrix: p_matrix
-    ! Save the old one for the convergence criterium
+    ! Setup the new density matrices: p_matrix and p_anom_matrix
     call setup_density_matrix(c_matrix, occupation, p_matrix)
     call setup_anomalous_density_matrix(c_matrix, sqrt_occ_hole, p_anom_matrix)
 
@@ -1507,12 +1506,6 @@ subroutine scf_loop_bogoliubov(is_restart, &
 
   write(stdout, '(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):', en_gks%total
 
-  if( ABS(en_gks%exx) > 1.0e-10) then
-    write(stdout, '(a25,1x,f19.10)')       '      EXX Energy (Ha):', en_gks%exx
-    en_gks%totalexx = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx
-    write(stdout, '(a25,1x,f19.10)')       'Total EXX Energy (Ha):', en_gks%totalexx
-  endif
-
   if( print_yaml_ .AND. is_iomaster ) then
     if( scf_has_converged ) then
       write(unit_yaml, '(/,a)') 'scf is converged: True'
@@ -1526,7 +1519,6 @@ subroutine scf_loop_bogoliubov(is_restart, &
   call stop_clock(timing_scf)
 
 end subroutine scf_loop_bogoliubov
-
 
 !=========================================================================
 subroutine get_fock_operator(basis, p_matrix, c_matrix, occupation, en, &
