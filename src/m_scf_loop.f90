@@ -1291,12 +1291,12 @@ subroutine scf_loop_bogoliubov(is_restart, &
         enddo
         first_history=.false.
       else
+        write(stdout, '(/,1x,a,f8.4)') 'Simple mixing with parameter:', alpha_mixing
         do ispin=1,nspin
           ham_hist(:,:,2,ispin)=ham_hist(:,:,1,ispin)
           ham_anom_hist(:,:,2,ispin)=ham_anom_hist(:,:,1,ispin)
           ham_hist(:,:,1,ispin)=hamiltonian_fock(:,:,ispin)
           ham_anom_hist(:,:,1,ispin)=hamiltonian_pairing(:,:,ispin)
-          write(stdout, '(/,1x,a,f8.4)') 'Simple mixing with parameter:', alpha_mixing
           hamiltonian_fock(:,:,ispin)=alpha_mixing*ham_hist(:,:,1,ispin)+(1.0_dp-alpha_mixing)*ham_hist(:,:,2,ispin)
           hamiltonian_pairing(:,:,ispin)=alpha_mixing*ham_anom_hist(:,:,1,ispin)+(1.0_dp-alpha_mixing)*ham_anom_hist(:,:,2,ispin)
         enddo

@@ -509,8 +509,14 @@ NOFT Total Energy         ,   -109.0322064109  , 0 , 5.0e-5
 n2_noft_rsh.in            , RI-NOFT calculation applied to N2 with RI using range-sep NOFT
 NOFT Total Energy         ,   -109.4196076242  , 0 , 1.0e-5
 
-lih_pccd.in               , RI-pCCD calculation applied to dissociated LiH with RI
+lih_pccd.in               , RI-pCCD calculation applied to dissociated LiH
 NOFT Total Energy         ,     -7.9317651039  , 0 , 5.0e-5
+
+lih_bogoliubov.in         , RI-HF-Bogoliubov calculation applied to dissociated LiH
+Anomal   Energy           ,     -0.0929300372  , 0 , 1.0e-5
+Norm Anomalous            ,      1.7474607162  , 0 , 5.0e-5
+Chemical potential        ,     -0.1036959329  , 0 , 5.0e-5
+SCF Total Energy          ,     -7.8497595181  , 0 , 1.0e-5
 
 h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7
