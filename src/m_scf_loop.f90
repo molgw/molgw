@@ -1087,7 +1087,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
   real(dp), allocatable   :: x_inv_matrix(:, :)
   real(dp), allocatable   :: c_matrix_tmp(:, :)
   real(dp), allocatable   :: sqrt_occ_hole(:, :)
-  real(dp), allocatable   :: p_anom_in_X(:, :)
+  real(dp), allocatable   :: p_anom_mo(:, :)
   real(dp), allocatable   :: p_matrix(:, :, :)
   real(dp), allocatable   :: p_anom_matrix(:, :, :)
   real(dp), allocatable   :: p_matrix_old(:, :, :)
@@ -1127,7 +1127,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
   allocate(p_matrix_old(basis%nbf, basis%nbf, nspin),p_anom_matrix_old(basis%nbf, basis%nbf, nspin))
   allocate(ham_hist(basis%nbf, basis%nbf, 2, nspin))
   allocate(ham_anom_hist(basis%nbf, basis%nbf, 2, nspin))
-  allocate(x_inv_matrix(nstate,basis%nbf),p_anom_in_X(nstate,nstate))
+  allocate(x_inv_matrix(nstate,basis%nbf),p_anom_mo(nstate,nstate))
   call clean_allocate('DM1 matrix', DM1, nstate, nstate, nspin)
   call clean_allocate('occupation_QP', occupation_QP, nstate_twice, nspin)
   call clean_allocate('energy_QP', energy_QP, nstate_twice, nspin)
@@ -1182,16 +1182,16 @@ subroutine scf_loop_bogoliubov(is_restart, &
     write(stdout, '(a,1x,i4,/)') ' *** SCF cycle No:', iscf
 
     ! Compute magnitude of the Annomalous density matrix in the X basis
-    p_anom_in_X(:,:)=0.0_dp; norm_anom=0.0_dp;
+    p_anom_mo(:,:)=0.0_dp; norm_anom=0.0_dp;
     do ispin=1,nspin
-      p_anom_in_X(1:nstate,1:nstate)=p_anom_in_X(1:nstate,1:nstate)                                     &
+      p_anom_mo(1:nstate,1:nstate)=p_anom_mo(1:nstate,1:nstate)                                     &
        +matmul(matmul(x_inv_matrix(1:nstate,1:basis%nbf),p_anom_matrix(1:basis%nbf,1:basis%nbf,ispin)), &
        transpose(x_inv_matrix(1:nstate,1:basis%nbf)))
     enddo
-    p_anom_in_X=spin_fact*p_anom_in_X
-    p_anom_in_X=matmul(transpose(p_anom_in_X),p_anom_in_X)
+    p_anom_mo=spin_fact*p_anom_mo
+    p_anom_mo=matmul(transpose(p_anom_mo),p_anom_mo)
     do istate=1,nstate
-     norm_anom=norm_anom+abs(p_anom_in_X(istate,istate))
+     norm_anom=norm_anom+abs(p_anom_mo(istate,istate))
     enddo    
 
     !  Kinetic energy and ext potenial contributions
@@ -1338,6 +1338,26 @@ subroutine scf_loop_bogoliubov(is_restart, &
       call adjust_chem_pot_ksb(nstate,nelectrons,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1) 
     endif
 
+    ! 
+    ! Compute the sqrt_occ_hole values from U_QP to show that for nspin=2 we have +- values
+    ! DEBUG if
+    if(.false.) then
+      do ispin=1,nspin
+        p_anom_mo(:,:)=0.0_dp
+        do istate=1,nstate
+          p_anom_mo(1:nstate,1:nstate)=p_anom_mo(1:nstate,1:nstate) &
+           +matmul(U_QP(1:nstate,istate:istate,ispin),              &
+            transpose(U_QP(nstate+1:nstate_twice,istate:istate,ispin)))
+        enddo
+        call diagonalize(' ',p_anom_mo,sqrt_occ_hole(:,ispin),p_anom_mo)
+      enddo
+      write(stdout, *) 
+      write(stdout, *) '=== +- Sqrt( Occ (1-Occ) ) ==='
+      do istate=1,nstate
+        write(stdout, '(*(f10.5))') sqrt_occ_hole(nstate-(istate-1),:)
+      enddo
+    endif
+
     ! All the components of the energy have been calculated at this stage
     ! Sum up to get the total energy
     en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc &
@@ -1470,7 +1490,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
   deallocate(p_matrix_old,p_anom_matrix_old)
   deallocate(ham_hist)
   deallocate(ham_anom_hist)
-  deallocate(x_inv_matrix,p_anom_in_X)
+  deallocate(x_inv_matrix,p_anom_mo)
   call clean_deallocate('Density matrix P', p_matrix)
   call clean_deallocate('Density matrix Panom', p_anom_matrix)
   call clean_deallocate('Anomalous Sqrt(Occ Hole)', sqrt_occ_hole)
