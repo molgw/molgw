@@ -1638,14 +1638,15 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
 #endif
 
 end subroutine diagonalize_hamiltonian_scalapack
-    
+
+
 !=========================================================================
 subroutine compute_KSB_dm1_and_trace(nstate,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
   implicit none
 
-  integer,intent(in)    :: nstate
-  real(dp),intent(in)   :: chem_pot
-  real(dp),intent(out)  :: trace_dm1
+  integer,  intent(in)  :: nstate
+  real(dp), intent(in)  :: chem_pot
+  real(dp), intent(out) :: trace_dm1
   real(dp), intent(in)  :: H_KSB(:, :, :)
   real(dp), intent(out) :: energy_QP(:, :)
   real(dp), intent(out) :: DM1(:, :, :)
@@ -1674,6 +1675,89 @@ subroutine compute_KSB_dm1_and_trace(nstate,chem_pot,trace_dm1,H_KSB,U_QP,energy
   trace_dm1=spin_fact*trace_dm1
 
 end subroutine compute_KSB_dm1_and_trace
+
+    
+!=========================================================================
+subroutine adjust_chem_pot_ksb(nstate,nelectrons,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
+  implicit none
+
+  integer,  intent(in)    :: nstate
+  real(dp), intent(in)    :: nelectrons
+  real(dp), intent(inout) :: chem_pot
+  real(dp), intent(out)   :: trace_dm1
+  real(dp), intent(in)    :: H_KSB(:, :, :)
+  real(dp), intent(out)   :: energy_QP(:, :)
+  real(dp), intent(out)   :: DM1(:, :, :)
+  real(dp), intent(out)   :: U_QP(:, :, :)
+  !=====
+  integer                 :: istate
+  integer                 :: isteps
+  real(dp)                :: thrs_closer
+  real(dp)                :: delta_chem_pot
+  real(dp)                :: chem_pot_change
+  real(dp)                :: chem_pot_old
+  real(dp)                :: grad_electrons
+  real(dp)                :: trace_2up
+  real(dp)                :: trace_up
+  real(dp)                :: trace_down
+  real(dp)                :: trace_2down
+  real(dp)                :: trace_old
+  !=====
+
+  isteps = 0
+  delta_chem_pot  = 2.0d-1
+  thrs_closer     = 2.0d-1
+  chem_pot_change = 0.0d0
+  grad_electrons  = 1.0d0
+
+  ! First approach close the value with an error lower than 0.02
+
+  call compute_KSB_dm1_and_trace(nstate,chem_pot,trace_old,H_KSB,U_QP,energy_QP,DM1)
+  do while( abs(trace_old-nelectrons) > thrs_closer .and. isteps <= 100 )
+   isteps = isteps + 1
+   call compute_KSB_dm1_and_trace(nstate,chem_pot,trace_old,H_KSB,U_QP,energy_QP,DM1)
+   call compute_KSB_dm1_and_trace(nstate,chem_pot-delta_chem_pot,trace_down,H_KSB,U_QP,energy_QP,DM1)
+   call compute_KSB_dm1_and_trace(nstate,chem_pot+delta_chem_pot,trace_up,H_KSB,U_QP,energy_QP,DM1)
+   if( abs(trace_up-nelectrons) > abs(trace_old-nelectrons) .and. abs(trace_down-nelectrons) > abs(trace_old-nelectrons) ) then
+     delta_chem_pot = 0.75d0*delta_chem_pot
+     thrs_closer = 0.5d0*thrs_closer
+     if(delta_chem_pot<1.0d-2) exit
+   else
+     if( abs(trace_up-nelectrons) < abs(trace_old-nelectrons) ) then
+      chem_pot=chem_pot+delta_chem_pot
+     else
+      if( abs(trace_down-nelectrons) < abs(trace_old-nelectrons) ) then
+       chem_pot=chem_pot-delta_chem_pot
+      endif
+     endif
+   endif
+  enddo
+  trace_dm1=trace_old
+
+  ! Do  final search
+
+  isteps = 0
+  delta_chem_pot  = 1.0d-3
+  do while( abs(trace_dm1-nelectrons) > 1.0d-6 .and. isteps <= 100 )
+   isteps = isteps + 1
+   chem_pot = chem_pot + chem_pot_change
+   call compute_KSB_dm1_and_trace(nstate,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
+   call compute_KSB_dm1_and_trace(nstate,chem_pot+2.0d0*delta_chem_pot, trace_2up  ,H_KSB,U_QP,energy_QP,DM1)
+   call compute_KSB_dm1_and_trace(nstate,chem_pot+      delta_chem_pot, trace_up   ,H_KSB,U_QP,energy_QP,DM1)
+   call compute_KSB_dm1_and_trace(nstate,chem_pot-      delta_chem_pot, trace_down ,H_KSB,U_QP,energy_QP,DM1)
+   call compute_KSB_dm1_and_trace(nstate,chem_pot-2.0d0*delta_chem_pot, trace_2down,H_KSB,U_QP,energy_QP,DM1)
+!   grad_electrons = (trace_up-trace_down)/(2d0*delta_chem_pot)
+   grad_electrons = (-trace_2up+8.0d0*trace_up-8.0d0*trace_down+trace_2down)/(12.0d0*delta_chem_pot)
+   chem_pot_change = -(trace_dm1-nelectrons)/(grad_electrons+1.0d-10)
+   ! Maximum change is bounded within +/- 0.10
+   chem_pot_change = max( min( chem_pot_change , 0.1d0 / real(isteps) ), -0.1d0 / real(isteps) )
+  enddo
+  call compute_KSB_dm1_and_trace(nstate,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
+
+  write(stdout, '(1x,a,f15.10,a,i5,a)') 'Optimized chemical potential ',chem_pot,' Ha. in', isteps,' iterations.' 
+  write(stdout, '(1x,a,f12.5)')   'Number of electrons ',trace_dm1
+
+end subroutine adjust_chem_pot_ksb
 
 !=========================================================================
 end module m_hamiltonian_tools

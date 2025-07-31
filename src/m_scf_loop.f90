@@ -1079,34 +1079,41 @@ subroutine scf_loop_bogoliubov(is_restart, &
   !=====
   type(spectral_function) :: wpol
   integer                 :: nstate
-  logical                 :: is_ksb, stopfile_found
-  integer                 :: file_density_matrix
-  integer                 :: ispin, istate, iscf, nbf_twice, nstate_twice  
+  logical                 :: is_ksb, skip_diag, first_history, stopfile_found
+  integer                 :: ispin, istate, jstate, iscf, nbf_twice, nstate_twice  
+  real(dp)                :: rms, pairing_ri_fact 
   real(dp)                :: chem_pot, nelectrons, trace_dm1 
   real(dp), allocatable   :: occ_tmp(:)
   real(dp), allocatable   :: c_matrix_tmp(:, :)
   real(dp), allocatable   :: sqrt_occ_hole(:, :)
   real(dp), allocatable   :: p_matrix(:, :, :)
   real(dp), allocatable   :: p_anom_matrix(:, :, :)
+  real(dp), allocatable   :: p_matrix_old(:, :, :)
+  real(dp), allocatable   :: p_anom_matrix_old(:, :, :)
   real(dp), allocatable   :: hamiltonian_hartree(:, :)
   real(dp), allocatable   :: hamiltonian_exx(:, :, :)
   real(dp), allocatable   :: hamiltonian_pairing(:, :, :)
   real(dp), allocatable   :: hamiltonian_xc(:, :, :)
-  real(dp), allocatable   :: hamiltonian_bogoliubov_ao(:, :, :)
   real(dp), allocatable   :: H_KSB(:, :, :)
   real(dp), allocatable   :: U_QP(:, :, :)
   real(dp), allocatable   :: occupation_QP(:, :)
   real(dp), allocatable   :: energy_QP(:, :)
   real(dp), allocatable   :: DM1(:, :, :)
+  real(dp), allocatable   :: ham_hist(:, :, :, :)
+  real(dp), allocatable   :: ham_anom_hist(:, :, :, :)
   !=====
 
   
   call start_clock(timing_scf)
 
   is_ksb = .true.
+  first_history = .true.
+  rms = 1000.0
   nstate = SIZE(x_matrix, DIM=2)
   nbf_twice = 2*basis%nbf
   nstate_twice = 2*nstate
+  pairing_ri_fact = 1.0_dp
+  if( has_auxil_basis .AND. nspin==1 ) pairing_ri_fact=0.5_dp 
 
   !
   ! Initialize the SCF mixing procedure
@@ -1115,7 +1122,9 @@ subroutine scf_loop_bogoliubov(is_restart, &
   !
   ! Allocate the main arrays
   allocate(c_matrix_tmp(basis%nbf,nstate),occ_tmp(nstate))
-  call clean_allocate('Total Hamiltonian H in AO', hamiltonian_bogoliubov_ao, nbf_twice, nbf_twice, nspin)
+  allocate(p_matrix_old(basis%nbf, basis%nbf, nspin),p_anom_matrix_old(basis%nbf, basis%nbf, nspin))
+  allocate(ham_hist(basis%nbf, basis%nbf, 2, nspin))
+  allocate(ham_anom_hist(basis%nbf, basis%nbf, 2, nspin))
   call clean_allocate('DM1 matrix', DM1, nstate, nstate, nspin)
   call clean_allocate('occupation_QP', occupation_QP, nstate_twice, nspin)
   call clean_allocate('energy_QP', energy_QP, nstate_twice, nspin)
@@ -1147,26 +1156,10 @@ subroutine scf_loop_bogoliubov(is_restart, &
       nelectrons = nelectrons + sum(occupation(:,ispin))
     enddo
     nelectrons = nint(nelectrons)
-
-do ispin=1,nspin
-occupation( 1 ,ispin) =  spin_fact*  0.9543734559
-occupation( 2 ,ispin) =  spin_fact*  0.2308968383
-occupation( 3 ,ispin) =  spin_fact*  0.1320512409
-occupation( 4 ,ispin) =  spin_fact*  0.1216475274
-occupation( 5 ,ispin) =  spin_fact*  0.1216475274
-occupation( 6 ,ispin) =  spin_fact*  0.1083555316
-occupation( 7 ,ispin) =  spin_fact*  0.0946585657
-occupation( 8 ,ispin) =  spin_fact*  0.0913120477
-occupation( 9 ,ispin) =  spin_fact*  0.0913120477
-occupation(10 ,ispin) =  spin_fact*  0.0441448773
-occupation(11 ,ispin) =  spin_fact*  0.0096003402
-enddo                    
-chem_pot = -0.7229157998 
-!chem_pot = -0.2557300788 
-
     do ispin=1,nspin
       do istate=1,nstate
-        sqrt_occ_hole(istate,ispin)=sqrt(abs((occupation(istate,ispin)/spin_fact)*(1.0_dp-(occupation(istate,ispin)/spin_fact))))
+        sqrt_occ_hole(istate,ispin)=dsqrt(dabs((occupation(istate,ispin)/spin_fact) &
+                                   *(1.0_dp-(occupation(istate,ispin)/spin_fact))))
       enddo
     enddo
   endif
@@ -1264,8 +1257,32 @@ chem_pot = -0.7229157998
       sqrt_occ_hole(:,:) = spin_fact*sqrt_occ_hole(:,:)
       call calculate_exchange(basis, p_anom_matrix, hamiltonian_pairing, ex=en_gks%anomalous, &
                               occupation=sqrt_occ_hole, c_matrix=c_matrix)
-      en_gks%anomalous = -spin_fact*spin_fact*bogoliubov_sigma*en_gks%anomalous
-      hamiltonian_pairing(:, :, :) = -spin_fact*bogoliubov_sigma*hamiltonian_pairing(:, :, :)
+      en_gks%anomalous = -pairing_ri_fact*spin_fact*spin_fact*bogoliubov_sigma*en_gks%anomalous
+      hamiltonian_pairing(:, :, :) = -pairing_ri_fact*spin_fact*bogoliubov_sigma*hamiltonian_pairing(:, :, :)
+    endif
+
+    !
+    ! Simple mixing on the hamiltonian
+    ! the newest is 1
+    ! the oldest is 2
+    if( rms<1e-4 ) then
+      if( first_history ) then
+        do ispin=1,nspin
+          ham_hist(:,:,1,ispin)=hamiltonian_fock(:,:,ispin)
+          ham_anom_hist(:,:,1,ispin)=hamiltonian_pairing(:,:,ispin)
+        enddo
+        first_history=.false.
+      else
+        do ispin=1,nspin
+          ham_hist(:,:,2,ispin)=ham_hist(:,:,1,ispin)
+          ham_anom_hist(:,:,2,ispin)=ham_anom_hist(:,:,1,ispin)
+          ham_hist(:,:,1,ispin)=hamiltonian_fock(:,:,ispin)
+          ham_anom_hist(:,:,1,ispin)=hamiltonian_pairing(:,:,ispin)
+          write(stdout, '(/,1x,a,f8.4)') 'Simple mixing with parameter:', alpha_mixing
+          hamiltonian_fock(:,:,ispin)=alpha_mixing*ham_hist(:,:,1,ispin)+(1.0_dp-alpha_mixing)*ham_hist(:,:,2,ispin)
+          hamiltonian_pairing(:,:,ispin)=alpha_mixing*ham_anom_hist(:,:,1,ispin)+(1.0_dp-alpha_mixing)*ham_anom_hist(:,:,2,ispin)
+        enddo
+      endif
     endif
 
     !
@@ -1299,59 +1316,46 @@ chem_pot = -0.7229157998
       endif
     enddo
     call compute_KSB_dm1_and_trace(nstate,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
-    if( abs(trace_dm1-nelectrons) > 1e-8 ) then
-      write(*,*) 'MAU we gotta fix this',trace_dm1,' ',nelectrons 
+    if( abs(trace_dm1-nelectrons) > 1e-6 ) then
+      call adjust_chem_pot_ksb(nstate,nelectrons,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1) 
     endif
-    
-     
-    !
-    ! Build the AO Bogoliubov hamiltonian
-    do ispin=1,nspin
-      hamiltonian_bogoliubov_ao(1:basis%nbf          ,1:basis%nbf          ,ispin) = &    ! he
-       hamiltonian_fock(1:basis%nbf,1:basis%nbf,ispin) - chem_pot*s_matrix(1:basis%nbf,1:basis%nbf)
-      hamiltonian_bogoliubov_ao(basis%nbf+1:nbf_twice,basis%nbf+1:nbf_twice,ispin) = &    ! eh
-      -hamiltonian_fock(1:basis%nbf,1:basis%nbf,ispin) + chem_pot*s_matrix(1:basis%nbf,1:basis%nbf)
-      if ( ispin==1 ) then
-        hamiltonian_bogoliubov_ao(1:basis%nbf          ,basis%nbf+1:nbf_twice,ispin) = &  ! hh
-         hamiltonian_pairing(1:basis%nbf,1:basis%nbf,ispin)
-        hamiltonian_bogoliubov_ao(basis%nbf+1:nbf_twice,1:basis%nbf          ,ispin) = &  ! ee
-         hamiltonian_pairing(1:basis%nbf,1:basis%nbf,ispin)
-      else
-        hamiltonian_bogoliubov_ao(1:basis%nbf          ,basis%nbf+1:nbf_twice,ispin) = &  ! hh
-        -hamiltonian_pairing(1:basis%nbf,1:basis%nbf,ispin)
-        hamiltonian_bogoliubov_ao(basis%nbf+1:nbf_twice,1:basis%nbf          ,ispin) = &  ! ee
-        -hamiltonian_pairing(1:basis%nbf,1:basis%nbf,ispin)
-      endif
-    enddo
 
     ! All the components of the energy have been calculated at this stage
     ! Sum up to get the total energy
     en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc &
                  + en_gks%anomalous
 
-!    ! DIIS or simple mixing on the hamiltonian
-!    call hamiltonian_prediction(s_matrix_gorkov, x_matrix_gorkov, R_matrix_ao, hamiltonian_bogoliubov_ao, en_gks%total)
-!
-!    !
-!    ! Diagonalize the Hamiltonian H
-!    ! Generalized eigenvalue problem with overlap matrix S
-!    ! H \varphi = E S \varphi
-!    ! save the old eigenvalues
-!    ! This subroutine works with or without scalapack
-!    call diagonalize_hamiltonian_scalapack(hamiltonian_bogoliubov_ao, x_matrix_gorkov, energy_QP, c_matrix_gorkov)
-
     !
-    ! Compute new NOs, occupation numbers, and natural orbitals
+    ! Compute new occupation numbers, and natural orbitals
     do ispin=1,nspin
-      call diagonalize(' ',DM1(:,:,ispin),occ_tmp(:),DM1(:,:,ispin)) ! DM1 becomes eigenvectors
-      c_matrix_tmp(:,:) = matmul(c_matrix(:,:,ispin),DM1(:,:,ispin)) ! c_matrix contains the NOs
+      skip_diag=.true.
       do istate=1,nstate
-        occupation(istate,ispin) = spin_fact*occ_tmp(nstate-(istate-1)) ! Reshufle occ indescending order
-        c_matrix(:,istate,ispin) = c_matrix_tmp(:,nstate-(istate-1))    ! also reshufle the nat. orbs.
-        sqrt_occ_hole(istate,ispin)=sqrt(abs((occupation(istate,ispin)/spin_fact)*(1.0_dp-(occupation(istate,ispin)/spin_fact))))
-        occupation_QP(istate,ispin) = occupation(istate,ispin)/spin_fact
-        occupation_QP(istate+nstate,ispin) = 1.0_dp - occupation(istate,ispin)/spin_fact
+        do jstate=istate+1,nstate
+          if(abs(DM1(istate,jstate,ispin))>1d-8) skip_diag=.false.
+          if(.NOT. skip_diag) exit 
+        enddo
+        if(.NOT. skip_diag) exit 
       enddo
+      if(.NOT.skip_diag) then
+        call diagonalize(' ',DM1(:,:,ispin),occ_tmp(:),DM1(:,:,ispin)) ! DM1 becomes the eigenvectors to build the NOs
+        c_matrix_tmp(:,:) = matmul(c_matrix(:,:,ispin),DM1(:,:,ispin)) ! c_matrix contains the new NOs
+        do istate=1,nstate
+          occupation(istate,ispin) = spin_fact*dabs(occ_tmp(nstate-(istate-1))) ! Reshufle occ in descending order
+          c_matrix(:,istate,ispin) = c_matrix_tmp(:,nstate-(istate-1))    ! also reshufle the nat. orbs.
+          sqrt_occ_hole(istate,ispin)=dsqrt(dabs((occupation(istate,ispin)/spin_fact) &
+                                     *(1.0_dp-(occupation(istate,ispin)/spin_fact))))
+          occupation_QP(istate,ispin) = occupation(istate,ispin)/spin_fact
+          occupation_QP(istate+nstate,ispin) = 1.0_dp - occupation(istate,ispin)/spin_fact
+        enddo
+      else
+        do istate=1,nstate
+          occupation(istate,ispin) = spin_fact*dabs(DM1(istate,istate,ispin)) ! The DM1 already contains the occupantion numbers in its diagonal
+          sqrt_occ_hole(istate,ispin)=dsqrt(dabs((occupation(istate,ispin)/spin_fact)  &
+                                     *(1.0_dp-(occupation(istate,ispin)/spin_fact))))
+          occupation_QP(istate,ispin) = occupation(istate,ispin)/spin_fact
+          occupation_QP(istate+nstate,ispin) = 1.0_dp - occupation(istate,ispin)/spin_fact
+        enddo
+      endif
     enddo
     occupation_QP(:,:) = spin_fact*occupation_QP(:,:)
     call dump_out_energy('=== Energies ===', occupation_QP, energy_QP, is_ksb=is_ksb)
@@ -1378,9 +1382,39 @@ chem_pot = -0.7229157998
     call setup_density_matrix(c_matrix, occupation, p_matrix)
     call setup_anomalous_density_matrix(c_matrix, sqrt_occ_hole, p_anom_matrix)
 
-    ! TODO
-    write(*,*) 'MAU check converged'
-    scf_has_converged = check_converged(p_matrix)
+    !
+    ! SCF convergence check
+    if( iscf > 1) then
+      rms = 0.0_dp
+      do ispin=1,nspin
+        rms = NORM2( p_matrix(:, :, ispin)  - p_matrix_old(:, :, ispin) )  * SQRT( REAL(nspin, dp) ) &
+            + NORM2( p_anom_matrix(:, :, ispin) - p_anom_matrix_old(:, :, ispin) ) * SQRT( REAL(nspin, dp) )
+      enddo
+      p_matrix_old(:, :, :)=p_matrix(:, :, :)
+      p_anom_matrix_old(:, :, :)=p_anom_matrix(:, :, :)
+      write(stdout, '(1x,a,es12.5)') 'Convergence criterium on the density matrix: ', rms
+    else
+      p_matrix_old(:, :, :)=p_matrix(:, :, :)
+      p_anom_matrix_old(:, :, :)=p_anom_matrix(:, :, :)
+    endif
+    if( rms < tolscf ) then
+      scf_has_converged = .TRUE.
+      write(stdout, *) ' ===> convergence has been reached'
+      write(stdout, *)
+    else
+      scf_has_converged = .FALSE.
+      write(stdout, *) ' ===> convergence not reached yet'
+      write(stdout, *)
+
+      if( iscf == nscf ) then
+        if( rms > 1.0e-2_dp ) then
+          call issue_warning('SCF convergence is very poor')
+        else if( rms > 1.0e-4_dp ) then
+          call issue_warning('SCF convergence is poor')
+        endif
+      endif
+
+    endif
     inquire(file='STOP', exist=stopfile_found)
 
     if( scf_has_converged .OR. stopfile_found ) exit
@@ -1413,6 +1447,9 @@ chem_pot = -0.7229157998
   ! Cleanly deallocate the arrays
   !
   deallocate(c_matrix_tmp,occ_tmp)
+  deallocate(p_matrix_old,p_anom_matrix_old)
+  deallocate(ham_hist)
+  deallocate(ham_anom_hist)
   call clean_deallocate('Density matrix P', p_matrix)
   call clean_deallocate('Density matrix Panom', p_anom_matrix)
   call clean_deallocate('Anomalous Sqrt(Occ Hole)', sqrt_occ_hole)
@@ -1421,7 +1458,6 @@ chem_pot = -0.7229157998
   call clean_deallocate('energy_QP matrix', energy_QP)
   call clean_deallocate('U_QP matrix', U_QP)
   call clean_deallocate('H_KSB matrix', H_KSB)
-  call clean_deallocate('Total Hamiltonian H in AO', hamiltonian_bogoliubov_ao)
   call clean_deallocate('Hartree potential Vh', hamiltonian_hartree)
   call clean_deallocate('Exchange operator Sigx', hamiltonian_exx)
   call clean_deallocate('Pairing operator Delta', hamiltonian_pairing)
