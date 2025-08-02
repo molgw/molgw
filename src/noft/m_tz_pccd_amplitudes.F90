@@ -75,7 +75,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
  integer,parameter::msave=7
  integer::iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5,ipair
  integer::iflag,Mtosave,Nwork,Nvirtual
- real(dp)::tol10=1e-10,tol_phases
+ real(dp)::tol10=1e-10
  real(dp)::sumdiff_t,sumdiff_z,maxdiff_t,maxdiff_z
  real(dp)::Ecorr_new,Ecorr_old,Ecorr_diff,Ediff,Esingle_det,Energy_dm
 !arrays
@@ -88,7 +88,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
  Ecorr_new=zero; Ecorr_old=zero; Ecorr_diff=zero;
  maxdiff_t=zero; maxdiff_z=zero; Ediff=Energy;
  iter_t=0; iter_z=0; converged=.false.; Nvirtual=RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs);
- sumdiff_t=zero;sumdiff_z=zero; only_phases_=.false.; tol_phases=1e-1;
+ sumdiff_t=zero;sumdiff_z=zero; only_phases_=.false.;
  if(present(only_phases)) only_phases_=only_phases
 
  ! Build diag elements of the Lambda matrix (with HF 1-RDM and 2-RDM) and compute SD energy
@@ -118,7 +118,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
  endif
 
  ! Check if the current t amplitudes solve the problem
- if(iter_global>-1 .and. .not.keep_occs) then
+ if(iter_global>-1 .and. (.not.keep_occs .and. .not.only_phases_)) then
   converged=.true.       
   allocate(Grad_residue(RDMd%Namplitudes))
   call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
@@ -131,7 +131,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
   deallocate(Grad_residue)
  endif
 
- if(.not.keep_occs .and. .not.converged) then
+ if(.not.keep_occs .and. (.not.converged .and. .not.only_phases_)) then
          
   if(imethod/=1) then
 
@@ -182,9 +182,6 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
     ! Update old t_ia
     RDMd%t_pccd_old=RDMd%t_pccd
 
-    ! Exit if phases are 'fine enough'
-    if(only_phases_ .and. sumdiff_t<tol_phases) exit
-
     ! Exit if converged
     if(maxdiff_t<tol6 .and. sumdiff_t<tol5) exit
 
@@ -204,10 +201,8 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
   else
 
    ! L-BFGS
-   if(.not.only_phases_) then
-    write(msg,'(a)') 'Calling L-BFGS to optimize t-amplitudes'
-    call write_output(msg)
-   endif
+   write(msg,'(a)') 'Calling L-BFGS to optimize t-amplitudes'
+   call write_output(msg)
    Nwork=RDMd%Namplitudes*(2*msave+1)+2*msave
    Mtosave=5; info_print(1)= -1; info_print(2)= 0; diagco= .false.;
    iter_t=0; iflag=0;
@@ -218,7 +213,6 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
     call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
     sumdiff_t=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
     ! Exit if phases are 'fine enough'
-    if(only_phases_ .and. sumdiff_t<tol_phases) exit
     call num_calc_Grad_t_amp(ELAGd,RDMd,INTEGd,y_ij,Grad_residue)
     call LBFGS_INTERN(RDMd%Namplitudes,Mtosave,diag_tz,sumdiff_t,Grad_residue,diagco,diag,info_print,tol6,tol16,Work,iflag)
     if(iflag<=0) exit
@@ -256,7 +250,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
   RDMd%z_pccd_old=RDMd%t_pccd
  endif
 
- if(.not.keep_occs) then
+ if(.not.keep_occs .and. .not.only_phases_) then
 
   ! Build intermediate y_ij = sum_b v_bb^ii t_j^b 
   y_ij=zero 
@@ -347,9 +341,6 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
      ! Exit if converged
      if(maxdiff_z<tol6 .and. sumdiff_z<tol5) exit
 
-     ! Exit if phases are 'fine enough'
-     if(only_phases_ .and. sumdiff_z<tol_phases) exit
-   
      ! Exit max iter
      if(iter_z==2000) exit
    
@@ -358,10 +349,8 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
    else
    
     ! L-BFGS
-    if(.not.only_phases_) then
-     write(msg,'(a)') 'Calling L-BFGS to optimize z-amplitudes'
-     call write_output(msg)
-    endif
+    write(msg,'(a)') 'Calling L-BFGS to optimize z-amplitudes'
+    call write_output(msg)
     Nwork=RDMd%Namplitudes*(2*msave+1)+2*msave
     Mtosave=5; info_print(1)= -1; info_print(2)= 0; diagco= .false.;
     iter_z=0; iflag=0;
@@ -372,7 +361,6 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
      call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
      sumdiff_z=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
      ! Exit if phases are 'fine enough'
-     if(only_phases_ .and. sumdiff_z<tol_phases) exit
      call num_calc_Grad_z_amp(ELAGd,RDMd,INTEGd,y_ij,y_ab,Grad_residue)
      call LBFGS_INTERN(RDMd%Namplitudes,Mtosave,diag_tz,sumdiff_z,Grad_residue,diagco,diag,info_print,tol6,tol16,Work,iflag)
      if(iflag<=0) exit

@@ -1376,7 +1376,7 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L,Phases,only_phases)
 !scalars
  logical::file_exists
  integer::iorb,iorb1,iorb2,iorb3
- real(dp)::occ,err_HermJ,err_HermK,err_HermL
+ real(dp)::occ,DM2_elem,err_HermJ,err_HermK,err_HermL
 !arrays
  real(dp),allocatable,dimension(:,:)::xij,xab,xia
  character(len=200)::msg
@@ -1569,7 +1569,9 @@ subroutine dm2_pccd(RDMd,DM2_iiii,DM2_J,DM2_K,DM2_L,Phases,only_phases)
  ! Compute the phases of the DM2_L elements
  do iorb=1,RDMd%NBF_occ
   do iorb1=1,RDMd%NBF_occ
-   Phases(iorb,iorb1)=sign(one,DM2_L(iorb,iorb1))
+   DM2_elem=DM2_L(iorb,iorb1)
+   if(abs(DM2_elem)<1e-8) DM2_elem=zero
+   Phases(iorb,iorb1)=sign(one,DM2_elem)
   enddo
  enddo
 
@@ -1658,12 +1660,12 @@ subroutine dm2_pnof7_phases(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM
   do iorb1=1,RDMd%NBF_occ
    DM2_J(iorb,iorb1) = two*RDMd%occ(iorb)*RDMd%occ(iorb1)
    DM2_K(iorb,iorb1) = -RDMd%occ(iorb)*RDMd%occ(iorb1) 
-   !DM2_L(iorb,iorb1) = Phases(iorb,iorb1)*FIs(iorb)*FIs(iorb1)
    DM2_L(iorb,iorb1) = -FIs(iorb)*FIs(iorb1)
+   !DM2_L(iorb,iorb1) = Phases(iorb,iorb1)*FIs(iorb)*FIs(iorb1)
    DDM2_gamma_J(iorb,iorb1,:) = two*Docc_gamma(iorb,:)*RDMd%occ(iorb1)
    DDM2_gamma_K(iorb,iorb1,:) = -Docc_gamma(iorb,:)*RDMd%occ(iorb1)
-   !DDM2_gamma_L(iorb,iorb1,:) = Phases(iorb,iorb1)*DFIs(iorb,:)*FIs(iorb1)
    DDM2_gamma_L(iorb,iorb1,:) = -DFIs(iorb,:)*FIs(iorb1)
+   !DDM2_gamma_L(iorb,iorb1,:) = Phases(iorb,iorb1)*DFIs(iorb,:)*FIs(iorb1)
   enddo
  enddo
  deallocate(FIs,DFIs)

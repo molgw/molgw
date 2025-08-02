@@ -279,7 +279,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    if(RDMd%INOF==70) then ! pCCD phases
     call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs,only_phases=.true.)
    endif
-   if(RDMd%NBF_occ-(RDMd%Nfrozen+1)<=20) then ! May print some phases for debug 
+   if(RDMd%NBF_occ-(RDMd%Nfrozen+1)<=20 .and. .false.) then ! May print some phases for debug 
     write(msg,'(a)') 'DM2_L phases taken from pCCD'
     call write_output(msg)
     do iorb=RDMd%Nfrozen+1,RDMd%NBF_occ
@@ -288,8 +288,8 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
     enddo
    endif
    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,Phases,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
-  &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx,&
-  &  ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx) ! Also iter=iter+1
+   &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx,&
+   &  ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx) ! Also iter=iter+1
   endif
  else
   if(INTEGd%irange_sep/=0) then
@@ -307,14 +307,16 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    if(RDMd%INOF==70) then ! pCCD phases
     call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs,only_phases=.true.)
    endif
-   write(msg,'(a)') 'DM2_L phases taken from pCCD'
-   call write_output(msg)
-   do iorb=RDMd%Nfrozen+1,RDMd%NBF_occ
-    write(msg,'(*(f5.1))') Phases(iorb,RDMd%Nfrozen+1:RDMd%NBF_occ)
+   if(RDMd%NBF_occ-(RDMd%Nfrozen+1)<=20 .and. .false.) then ! May print some phases for debug 
+    write(msg,'(a)') 'DM2_L phases taken from pCCD'
     call write_output(msg)
-   enddo
+    do iorb=RDMd%Nfrozen+1,RDMd%NBF_occ
+     write(msg,'(*(f5.1))') Phases(iorb,RDMd%Nfrozen+1:RDMd%NBF_occ)
+     call write_output(msg)
+    enddo
+   endif
    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,Phases,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
-  &  ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
+   &  ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
   endif
  endif
  Energy_old=Energy
@@ -409,7 +411,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    &  ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
    endif
   endif
-  call RDMd%print_gammas()
+  if(RDMd%INOF>0) call RDMd%print_gammas()
   if(RDMd%INOF<0) call RDMd%print_tz_amplitudes()
 
   ! Check convergence
