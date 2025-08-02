@@ -487,12 +487,13 @@ subroutine calc_Chem_pot_cmplx(RDMd,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cm
    &         + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K_cmplx)   &
    &         + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L_cmplx) 
     if(RDMd%irange_sep==1) then ! Intra rs-NOF 
-     RDMd%chempot_orb(iorb) = half * RDMd%Dfni_ni(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)      &
+          chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                          &
+   &          + half * RDMd%Dfni_ni(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)                    &
    &          + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr_cmplx)  &
    &          + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Lsr,ERI_Lsr_cmplx)
     endif
     if(RDMd%irange_sep==2) then ! Hartree rs-NOF 
-     RDMd%chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                             &
+          chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                             &
    &      + half * Ddm2_gamma_x_ERI_cmplx(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr_cmplx) &
    &      + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr_cmplx)
     endif
@@ -503,12 +504,12 @@ subroutine calc_Chem_pot_cmplx(RDMd,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cm
    &         + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K_cmplx)   &
    &         + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L_cmplx)
     if(RDMd%irange_sep==1) then ! Intra rs-NOF 
-     RDMd%chempot_orb(iorb) = half * RDMd%Dfni_ni(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)      &
+          chempot_orb(iorb) = half * RDMd%Dfni_ni(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)      &
    &          + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr_cmplx)  &
    &          + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Lsr,ERI_Lsr_cmplx)
     endif
     if(RDMd%irange_sep==2) then ! Hartree rs-NOF 
-     RDMd%chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                             &
+          chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                             &
    &      + half * Ddm2_gamma_x_ERI_cmplx(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr_cmplx) &
    &      + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr_cmplx)
     endif
@@ -524,12 +525,13 @@ subroutine calc_Chem_pot_cmplx(RDMd,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cm
     &        + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K_cmplx)   &
     &        + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L_cmplx)
     if(RDMd%irange_sep==1) then ! Intra rs-NOF 
-     RDMd%chempot_orb(iorb) = half * RDMd%Dfni_ni(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)        &
+          chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                            &
+   &          + half * RDMd%Dfni_ni(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)                      &
    &          + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr_cmplx)    &
    &          + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Lsr,ERI_Lsr_cmplx)
     endif
-    if(RDMd%irange_sep==2) then ! Hartree rs-NOF 
-     RDMd%chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                             &
+    if(RDMd%irange_sep==2) then ! Hartree rs-NOF
+          chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                             &
    &      + half * Ddm2_gamma_x_ERI_cmplx(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr_cmplx) &
    &      + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr_cmplx)
     endif
@@ -541,12 +543,13 @@ subroutine calc_Chem_pot_cmplx(RDMd,hCORE_cmplx,ERI_J_cmplx,ERI_K_cmplx,ERI_L_cm
     &         + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_K,ERI_K_cmplx)  &
     &         + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_L,ERI_L_cmplx)
     if(RDMd%irange_sep==1) then ! Intra rs-NOF 
-      RDMd%chempot_orb(iorb) = half * RDMd%Dfni_ni(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)    &
+           chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                        &
+   &          + half * RDMd%Dfni_ni(iorb) * ERI_Jsr_cmplx(iorb*(iorb+1)/2)                   &
    &          + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr_cmplx) &
    &          + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Lsr,ERI_Lsr_cmplx)
      endif
      if(RDMd%irange_sep==2) then ! Hartee rs-NOF 
-      RDMd%chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                             &
+           chempot_orb(iorb) = RDMd%chempot_orb(iorb)                                             &
    &       + half * Ddm2_gamma_x_ERI_cmplx(RDMd,-1,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr_cmplx) &
    &       + Ddm2_gamma_x_ERI_cmplx(RDMd,0,iorb,igamma,RDMd%DDM2_gamma_Jsr,ERI_Jsr_cmplx)
      endif

@@ -76,7 +76,7 @@ subroutine opt_occ(iter,imethod,keep_occs,RDMd,Vnn,Energy,Phases,hCORE,ERI_J,ERI
  complex(dp),optional,dimension(RDMd%NBF_ldiag),intent(in)::ERI_Jsr_cmplx,ERI_Lsr_cmplx
 !Local variables ------------------------------
 !scalars
- logical::diagco,conveg=.false.,debug=.false.,cpx_mos=.false.
+ logical::diagco,conveg=.false.,cpx_mos=.false.
  integer,parameter::msave=7
  integer::iorb,igamma,iflag,icall,Mtosave,Nwork
 !arrays

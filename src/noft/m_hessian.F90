@@ -764,18 +764,17 @@ end subroutine diag_hessian
 !!
 !! SOURCE
 
-subroutine quadratic_conver_step(HESSIANd,icall,istate,NBF_tot,kappa_mat,kappa_mat_cmplx)
+subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmplx)
 !Arguments ------------------------------------
 !scalars
  integer,intent(inout)::icall
- integer,intent(in)::istate,NBF_tot
+ integer,intent(in)::NBF_tot
  class(hessian_t),intent(inout)::HESSIANd
 !arrays
  real(dp),optional,dimension(NBF_tot,NBF_tot),intent(inout)::kappa_mat
  complex(dp),optional,dimension(NBF_tot,NBF_tot),intent(inout)::kappa_mat_cmplx
 !Local variables ------------------------------
 !scalars
- logical::mute=.true.
  integer::iorbp,iorbq,iterm
  integer::info
 !arrays
@@ -812,16 +811,6 @@ subroutine quadratic_conver_step(HESSIANd,icall,istate,NBF_tot,kappa_mat,kappa_m
   endif
   deallocate(IPIV)
 
-!  call HESSIANd%diag(mute=mute)
-!  iterm=1
-!  do iorbp=1,NBF_tot
-!   do iorbq=iorbp,NBF_tot
-!    kappa_mat_cmplx(iorbp,iorbq)=HESSIANd%Hessian_mat_cmplx(iterm,istate)
-!    kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_mat_cmplx(iorbp,iorbq))
-!    iterm=iterm+1
-!   enddo
-!  enddo
-
  else  ! Real
 
   kappa_mat=zero
@@ -850,16 +839,6 @@ subroutine quadratic_conver_step(HESSIANd,icall,istate,NBF_tot,kappa_mat,kappa_m
    call write_output(msg)
   endif
   deallocate(IPIV)
-
-!  call HESSIANd%diag(mute=mute)
-!  iterm=1
-!  do iorbp=1,NBF_tot
-!   do iorbq=iorbp+1,NBF_tot
-!    kappa_mat(iorbp,iorbq)=HESSIANd%Hessian_mat(iterm,istate)
-!    kappa_mat(iorbq,iorbp)=-kappa_mat(iorbp,iorbq)
-!    iterm=iterm+1
-!   enddo
-!  enddo
 
  endif
 

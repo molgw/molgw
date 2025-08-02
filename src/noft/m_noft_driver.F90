@@ -33,7 +33,7 @@ module m_noft_driver
 
  implicit none
 
- private :: read_restart,echo_input,occtogamma,build_real_nos
+ private :: read_restart,echo_input,occtogamma
 !!***
 
  public :: run_noft,gram_schmidt
@@ -137,14 +137,14 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  logical::ekt,diagLpL,restart_param,keep_occs,keep_orbs,cpx_mos,all_ERI_in,hessian_in
  logical::file_exists,do_xc_dft
  integer::iorb,iter,ifcidump,irs_noft
- integer::iorbp,iorbq,iunit
+ integer::iorbp,iorbq
  real(dp)::Energy,Energy_old,Vee,hONEbody,chempot_val,maxdiff_lambda,Edft_xc
  type(rdm_t),target::RDMd
  type(integ_t),target::INTEGd
  type(elag_t),target::ELAGd
  type(hessian_t),target::HESSIANd
 !arrays
- real(dp),allocatable,dimension(:,:)::DM1,NO_COEF_tmp,Phases
+ real(dp),allocatable,dimension(:,:)::DM1,Phases
  real(dp),allocatable,dimension(:,:,:)::DM2_JK
  real(dp),allocatable,dimension(:,:,:,:)::DM2
  character(len=20)::coef_file
@@ -472,22 +472,6 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  if(RDMd%INOF>-1) then
   if(cpx_mos) then
    call s2_calc(RDMd,INTEGd,NO_COEF_cmplx=NO_COEF_cmplx)
-   !allocate(NO_COEF_tmp(RDMd%NBF_tot,RDMd%NBF_tot))
-   !NO_COEF_tmp=zero
-   !! Prepare real NOs
-   !call build_real_nos(RDMd,INTEGd,NO_COEF_tmp,NO_COEF_cmplx)
-   !! Print real NOs
-   !iunit=911
-   !coef_file='NO_COEF_BIN_REAL'
-   !open(unit=iunit,form='unformatted',file=coef_file)
-   !do iorbp=1,RDMd%NBF_tot
-   ! do iorbq=1,RDMd%NBF_tot
-   !  write(iunit) iorbp,iorbq,NO_COEF_tmp(iorbp,iorbq)
-   ! enddo
-   !enddo
-   !write(iunit) 0,0,zero
-   !close(iunit)
-   !deallocate(NO_COEF_tmp)
   else
    call s2_calc(RDMd,INTEGd,NO_COEF=NO_COEF)
   endif
@@ -1404,110 +1388,6 @@ subroutine gram_schmidt(NBF_tot,AOverlap,NO_COEF,NO_COEF_cmplx)
   deallocate(S_NO_cmplx,NO_COEF_cmplx_new)
  endif
 end subroutine gram_schmidt
-!!***
-
-!!***
-!!****f* DoNOF/build_real_nos
-!! NAME
-!!  build_real_nos 
-!!
-!! FUNCTION
-!!  Build real natural orbitals from the complex ones, occ. numbers, and overlap matrix.
-!!
-!! INPUTS
-!!
-!! OUTPUT
-!!
-!! PARENTS
-!!  
-!! CHILDREN
-!!
-!! SOURCE
-
-subroutine build_real_nos(RDMd,INTEGd,NO_COEF,NO_COEF_cmplx)
-!Arguments ------------------------------------
-!scalars
- type(rdm_t),intent(in)::RDMd
- type(integ_t),intent(in)::INTEGd
-!arrays
- real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF
- complex(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::NO_COEF_cmplx
-!Local variables ------------------------------
-!scalars
- integer::iorbp,iorbq
- integer::lwork,info
- real(dp)::pivot
-!arrays
- real(dp),allocatable,dimension(:)::Eigvals,Work
- real(dp),allocatable,dimension(:,:)::Density,Eigvec,S_12,S_m12
- complex(dp),allocatable,dimension(:,:)::Density_cmplx,Tmp_matrix_cmplx
- character(len=200)::msg
-!************************************************************************
-
- ! Prepare real density
- allocate(Density(RDMd%NBF_tot,RDMd%NBF_tot))
- allocate(Density_cmplx(RDMd%NBF_tot,RDMd%NBF_tot),Tmp_matrix_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
- Tmp_matrix_cmplx=complex_zero
- do iorbp=1,RDMd%NBF_occ
-  Tmp_matrix_cmplx(iorbp,iorbp)=RDMd%occ(iorbp)
- enddo
- Density_cmplx=matmul(matmul(NO_COEF_cmplx,Tmp_matrix_cmplx),conjg(transpose(NO_COEF_cmplx)))
- do iorbp=1,RDMd%NBF_tot
-  do iorbq=1,RDMd%NBF_tot
-   Density(iorbp,iorbq)=real(Density_cmplx(iorbp,iorbq))
-  enddo
- enddo
- deallocate(Density_cmplx,Tmp_matrix_cmplx)
-
- ! Prepare S^1/2 and S^-1/2
- allocate(Eigvec(RDMd%NBF_tot,RDMd%NBF_tot),Eigvals(RDMd%NBF_tot),Work(1))
- allocate(S_12(RDMd%NBF_tot,RDMd%NBF_tot))
- allocate(S_m12(RDMd%NBF_tot,RDMd%NBF_tot))
- Eigvec=INTEGd%Overlap
- lwork=-1
- call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,Eigvals,Work,lwork,info)
- lwork=nint(Work(1))
- if(info==0) then
-  deallocate(Work)
-  allocate(Work(lwork))
-  Eigvals=zero
-  call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,Eigvals,Work,lwork,info)
- endif
- S_12=zero; S_m12=zero;
- do iorbp=1,RDMd%NBF_tot
-  S_12(iorbp,iorbp)=sqrt(Eigvals(iorbp))
-  S_m12(iorbp,iorbp)=one/sqrt(Eigvals(iorbp))
- enddo 
- S_12=matmul(Eigvec,matmul(S_12,transpose(Eigvec)))
- S_m12=matmul(Eigvec,matmul(S_m12,transpose(Eigvec)))
-
- ! diag[ S^1/2 Density S^1/2 ]
- Density=matmul(S_12,matmul(Density,S_12))
- Eigvals=zero
- call DSYEV('V','L',RDMd%NBF_tot,Density,RDMd%NBF_tot,Eigvals,Work,lwork,info)
- Eigvals(:)=two*Eigvals(:)
- do iorbp=1,RDMd%NBF_tot
-  Eigvec(:,iorbp)=Density(:,RDMd%NBF_tot-(iorbp-1))
-  Density(iorbp,RDMd%NBF_tot)=Eigvals(RDMd%NBF_tot-(iorbp-1))
- enddo
- Eigvals(:)=Density(:,RDMd%NBF_tot)
- write(msg,'(a,f10.5,a)') 'Total occ ',sum(Eigvals(:)),'. From the real density nat. orbs. '
- call write_output(msg)
- do iorbp=1,(RDMd%NBF_tot/10)*10,10
-  write(msg,'(f12.6,9f11.6)') Eigvals(iorbp:iorbp+9)
-  call write_output(msg)
- enddo
- iorbp=(RDMd%NBF_tot/10)*10+1 
- write(msg,'(f12.6,*(f11.6))') Eigvals(iorbp:) 
- call write_output(msg)
-
- ! Build Coefs = S^-1/2 Eigvenvectors
- NO_COEF=matmul(S_m12,Eigvec)
-
- ! Deallocate arrays
- deallocate(Eigvals,Work,S_12,S_m12,Density,Eigvec)
-
-end subroutine build_real_nos
 !!***
 
 end module m_noft_driver
