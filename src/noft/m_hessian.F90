@@ -670,11 +670,13 @@ end subroutine build_hessian
 !!
 !! SOURCE
 
-subroutine diag_hessian(HESSIANd,mute)
+subroutine diag_hessian(HESSIANd,mute,eigval_istate,istate)
 !Arguments ------------------------------------
 !scalars
  class(hessian_t),intent(inout)::HESSIANd
  logical,intent(in),optional::mute
+ integer,intent(in),optional::istate
+ real(dp),intent(out),optional::eigval_istate
 !arrays
 !Local variables ------------------------------
  logical::mute_in
@@ -729,6 +731,8 @@ subroutine diag_hessian(HESSIANd,mute)
    if(Eigeval(iindex)<max_neg) max_neg=Eigeval(iindex)
   endif
  enddo
+
+ if(present(istate) .and. present(eigval_istate)) eigval_istate=Eigeval(istate)
  
  if(.not.mute_in) then
   write(msg,'(a,I10)') 'Number of negative eigenvalues',nneg
@@ -753,7 +757,6 @@ end subroutine diag_hessian
 !!
 !! INPUTS
 !!  icall
-!!  istate = 1 for the GS (use the direction with the lowest eigenvector)
 !!
 !! OUTPUT
 !!  kappa_mat or kappa_cmplx
@@ -776,7 +779,8 @@ subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmpl
 !Local variables ------------------------------
 !scalars
  integer::iorbp,iorbq,iterm
- integer::info
+ integer::info,istate
+ real(dp)::eigval_istate
 !arrays
  integer,allocatable,dimension(:)::IPIV
  real(dp),allocatable,dimension(:)::kappa_vec
@@ -786,6 +790,8 @@ subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmpl
  character(len=200)::msg
 !************************************************************************
 
+ istate=1
+
  if(HESSIANd%cpx_hessian) then ! Complex
 
   kappa_mat_cmplx=complex_zero
@@ -793,6 +799,14 @@ subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmpl
   allocate(IPIV(HESSIANd%NDIM_hess),kappa_vec_cmplx(HESSIANd%NDIM_hess))
   allocate(hessian_mat_cmplx(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess))
   hessian_mat_cmplx=HESSIANd%Hessian_mat_cmplx
+  call HESSIANd%diag(mute=.true.,istate=istate,eigval_istate=eigval_istate)
+  if(abs(eigval_istate)<5e-4) then
+   write(msg,'(a,f10.5)') 'Hessian Eigenvalue ',eigval_istate  
+   call write_output(msg)
+   do iterm=1,HESSIANd%NDIM_hess
+    hessian_mat_cmplx(iterm,iterm)=hessian_mat_cmplx(iterm,iterm)+eigval_istate
+   enddo
+  endif
   call ZGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV,info)
   if(info==0) then
    kappa_vec_cmplx=-HESSIANd%Gradient_vec_cmplx
@@ -824,6 +838,14 @@ subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmpl
   allocate(IPIV(HESSIANd%NDIM_hess),kappa_vec(HESSIANd%NDIM_hess))
   allocate(hessian_mat(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess))
   hessian_mat=HESSIANd%Hessian_mat
+  call HESSIANd%diag(mute=.true.,istate=istate,eigval_istate=eigval_istate)
+  if(abs(eigval_istate)<5e-4) then
+   write(msg,'(a,f10.5)') 'Hessian Eigenvalue ',eigval_istate  
+   call write_output(msg)
+   do iterm=1,HESSIANd%NDIM_hess
+    hessian_mat(iterm,iterm)=hessian_mat(iterm,iterm)+eigval_istate
+   enddo
+  endif
   call DGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,hessian_mat,HESSIANd%NDIM_hess,IPIV,info)
   if(info==0) then
    kappa_vec=-HESSIANd%Gradient_vec
