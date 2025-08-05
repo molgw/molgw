@@ -354,7 +354,6 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERI_in)
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-   write(*,*) ' '
    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
   else
    !iorbp=1;iorbq=2;iorbr=1;iorbs=2;
@@ -362,13 +361,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
    & ERImol=INTEGd%ERImol,all_ERIs=all_ERI_in)
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-   write(*,*) ' '
    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,hCORE=INTEGd%hCORE,ERImol=INTEGd%ERImol)
   endif
-  write(*,*) ' '
   deallocate(DM1,DM2)
-  write(msg,'(a)') ' '
-  call write_output(msg)
  endif
 
  ! Orb. and occ. optimization
