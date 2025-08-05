@@ -128,8 +128,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  endif
 
  ! Select the method
- if(imethod_in/=1.and.iter>10 .and. abs(maxdiff)<tol3) then ! TODO Fix the size of the step in the QC method.
-  icall_method=1; ELAGd%itolLambda=8; ELAGd%tolE=1e-12;
+ if(imethod_in/=1 .and. iter>5 .and. abs(maxdiff)<tol3) then ! TODO Fix the size of the step in the QC method.
+  !ELAGd%itolLambda=8; ELAGd%tolE=1e-12;
   write(msg,'(a)') 'Performing QC method for orbital optimization'
   call write_output(msg)
   allocated_DMNs=.true.;all_ERIs=.true.;

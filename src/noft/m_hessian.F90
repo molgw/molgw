@@ -779,6 +779,10 @@ subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmpl
  integer::info
 !arrays
  integer,allocatable,dimension(:)::IPIV
+ real(dp),allocatable,dimension(:)::kappa_vec
+ real(dp),allocatable,dimension(:,:)::hessian_mat
+ complex(dp),allocatable,dimension(:)::kappa_vec_cmplx
+ complex(dp),allocatable,dimension(:,:)::hessian_mat_cmplx
  character(len=200)::msg
 !************************************************************************
 
@@ -786,59 +790,63 @@ subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmpl
 
   kappa_mat_cmplx=complex_zero
 
-  allocate(IPIV(HESSIANd%NDIM_hess))
-  call ZGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,HESSIANd%Hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV,info)
+  allocate(IPIV(HESSIANd%NDIM_hess),kappa_vec_cmplx(HESSIANd%NDIM_hess))
+  allocate(hessian_mat_cmplx(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess))
+  hessian_mat_cmplx=HESSIANd%Hessian_mat_cmplx
+  call ZGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV,info)
   if(info==0) then
-   HESSIANd%Gradient_vec_cmplx=-HESSIANd%Gradient_vec_cmplx
-   call ZGETRS('N',HESSIANd%NDIM_hess,1,HESSIANd%Hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV, &
-   & HESSIANd%Gradient_vec_cmplx,HESSIANd%NDIM_hess,info)
+   kappa_vec_cmplx=-HESSIANd%Gradient_vec_cmplx
+   call ZGETRS('N',HESSIANd%NDIM_hess,1,hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV, &
+   & kappa_vec_cmplx,HESSIANd%NDIM_hess,info)
    if(info==0) then
     iterm=1
     do iorbp=1,NBF_tot
      do iorbq=iorbp,NBF_tot
-      kappa_mat_cmplx(iorbp,iorbq)=HESSIANd%Gradient_vec_cmplx(iterm)
-      kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_mat_cmplx(iorbp,iorbq))
+      kappa_mat_cmplx(iorbp,iorbq)=kappa_vec_cmplx(iterm)
+      if(iorbp/=iorbq) kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_vec_cmplx(iterm))
       iterm=iterm+1
      enddo
     enddo
    else
-    write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
+    write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation in ZGETRS'
     call write_output(msg)
    endif
   else
-   write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
+   write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation in ZGETRF'
    call write_output(msg)
   endif
-  deallocate(IPIV)
+  deallocate(IPIV,kappa_vec_cmplx,hessian_mat_cmplx)
 
  else  ! Real
 
   kappa_mat=zero
 
-  allocate(IPIV(HESSIANd%NDIM_hess))
-  call DGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,HESSIANd%Hessian_mat,HESSIANd%NDIM_hess,IPIV,info)
+  allocate(IPIV(HESSIANd%NDIM_hess),kappa_vec(HESSIANd%NDIM_hess))
+  allocate(hessian_mat(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess))
+  hessian_mat=HESSIANd%Hessian_mat
+  call DGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,hessian_mat,HESSIANd%NDIM_hess,IPIV,info)
   if(info==0) then
-   HESSIANd%Gradient_vec=-HESSIANd%Gradient_vec
-   call DGETRS('N',HESSIANd%NDIM_hess,1,HESSIANd%Hessian_mat,HESSIANd%NDIM_hess,IPIV,       &
-   & HESSIANd%Gradient_vec,HESSIANd%NDIM_hess,info)
+   kappa_vec=-HESSIANd%Gradient_vec
+   call DGETRS('N',HESSIANd%NDIM_hess,1,hessian_mat,HESSIANd%NDIM_hess,IPIV,       &
+   & kappa_vec,HESSIANd%NDIM_hess,info)
    if(info==0) then
     iterm=1
     do iorbp=1,NBF_tot
      do iorbq=iorbp+1,NBF_tot
-      kappa_mat(iorbp,iorbq)=HESSIANd%Gradient_vec(iterm)
-      kappa_mat(iorbq,iorbp)=-kappa_mat(iorbp,iorbq)
+      kappa_mat(iorbp,iorbq)=kappa_vec(iterm)
+      kappa_mat(iorbq,iorbp)=-kappa_vec(iterm)
       iterm=iterm+1
      enddo
     enddo
    else
-    write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
+    write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation in DGETRS'
     call write_output(msg)
    endif
   else
-   write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
+   write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation in DGETRF'
    call write_output(msg)
   endif
-  deallocate(IPIV)
+  deallocate(IPIV,kappa_vec,hessian_mat)
 
  endif
 
