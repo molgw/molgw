@@ -798,18 +798,16 @@ subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmpl
 
   allocate(IPIV(HESSIANd%NDIM_hess),kappa_vec_cmplx(HESSIANd%NDIM_hess))
   allocate(hessian_mat_cmplx(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess))
+  kappa_vec_cmplx=-HESSIANd%Gradient_vec_cmplx
   hessian_mat_cmplx=HESSIANd%Hessian_mat_cmplx
   call HESSIANd%diag(mute=.true.,istate=istate,eigval_istate=eigval_istate)
+  HESSIANd%Hessian_mat_cmplx=hessian_mat_cmplx
   if(abs(eigval_istate)<5e-4) then
-   write(msg,'(a,f10.5)') 'Hessian Eigenvalue ',eigval_istate  
+   write(msg,'(a,f10.5)') 'Hessian Eigenvalue ',eigval_istate
    call write_output(msg)
-   do iterm=1,HESSIANd%NDIM_hess
-    hessian_mat_cmplx(iterm,iterm)=hessian_mat_cmplx(iterm,iterm)+eigval_istate
-   enddo
   endif
   call ZGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV,info)
   if(info==0) then
-   kappa_vec_cmplx=-HESSIANd%Gradient_vec_cmplx
    call ZGETRS('N',HESSIANd%NDIM_hess,1,hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV, &
    & kappa_vec_cmplx,HESSIANd%NDIM_hess,info)
    if(info==0) then
@@ -837,18 +835,16 @@ subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmpl
 
   allocate(IPIV(HESSIANd%NDIM_hess),kappa_vec(HESSIANd%NDIM_hess))
   allocate(hessian_mat(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess))
+  kappa_vec=-HESSIANd%Gradient_vec
   hessian_mat=HESSIANd%Hessian_mat
   call HESSIANd%diag(mute=.true.,istate=istate,eigval_istate=eigval_istate)
+  HESSIANd%Hessian_mat=hessian_mat
   if(abs(eigval_istate)<5e-4) then
-   write(msg,'(a,f10.5)') 'Hessian Eigenvalue ',eigval_istate  
+   write(msg,'(a,f10.5)') 'Hessian Eigenvalue ',eigval_istate
    call write_output(msg)
-   do iterm=1,HESSIANd%NDIM_hess
-    hessian_mat(iterm,iterm)=hessian_mat(iterm,iterm)+eigval_istate
-   enddo
   endif
   call DGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,hessian_mat,HESSIANd%NDIM_hess,IPIV,info)
   if(info==0) then
-   kappa_vec=-HESSIANd%Gradient_vec
    call DGETRS('N',HESSIANd%NDIM_hess,1,hessian_mat,HESSIANd%NDIM_hess,IPIV,       &
    & kappa_vec,HESSIANd%NDIM_hess,info)
    if(info==0) then
