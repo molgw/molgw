@@ -45,6 +45,7 @@ module m_hessian
 
   logical::cpx_hessian=.false.  ! True for complex Hessian (i.e. complex orbitals)
   integer::NDIM_hess            ! Size of the HESSIAN
+  real(dp)::rk,hk               ! Convergence of the QC ratio (rk) and weight (hk)
 ! arrays 
   real(dp),allocatable,dimension(:)::Gradient_vec             ! F_pq - F_qp (Gradient matrix)
   complex(dp),allocatable,dimension(:)::Gradient_vec_cmplx    ! F_pq - F_qp* (Gradient matrix, complex)
@@ -107,6 +108,7 @@ subroutine hessian_init(HESSIANd,NBF_tot,cpx_mos)
  character(len=200)::msg
 !************************************************************************
 
+ HESSIANd%hk=half
  HESSIANd%cpx_hessian=cpx_mos
  HESSIANd%NDIM_hess=NBF_tot*NBF_tot-NBF_tot*(NBF_tot+1)/2
  ! Calculate memory needed
@@ -800,12 +802,12 @@ subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmpl
   allocate(hessian_mat_cmplx(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess))
   kappa_vec_cmplx=-HESSIANd%Gradient_vec_cmplx
   hessian_mat_cmplx=HESSIANd%Hessian_mat_cmplx
-  call HESSIANd%diag(mute=.true.,istate=istate,eigval_istate=eigval_istate)
-  HESSIANd%Hessian_mat_cmplx=hessian_mat_cmplx
-  if(abs(eigval_istate)<5e-4) then
-   write(msg,'(a,f10.5)') 'Hessian Eigenvalue ',eigval_istate
-   call write_output(msg)
-  endif
+! TODO This doesn't help for complex... why?
+!  call HESSIANd%diag(mute=.true.,istate=istate,eigval_istate=eigval_istate)
+!  HESSIANd%Hessian_mat_cmplx=hessian_mat_cmplx
+!  do iterm=1,HESSIANd%NDIM_hess
+!   hessian_mat_cmplx(iterm,iterm)=hessian_mat_cmplx(iterm,iterm)-eigval_istate
+!  enddo
   call ZGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV,info)
   if(info==0) then
    call ZGETRS('N',HESSIANd%NDIM_hess,1,hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV, &
@@ -839,10 +841,9 @@ subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmpl
   hessian_mat=HESSIANd%Hessian_mat
   call HESSIANd%diag(mute=.true.,istate=istate,eigval_istate=eigval_istate)
   HESSIANd%Hessian_mat=hessian_mat
-  if(abs(eigval_istate)<5e-4) then
-   write(msg,'(a,f10.5)') 'Hessian Eigenvalue ',eigval_istate
-   call write_output(msg)
-  endif
+  do iterm=1,HESSIANd%NDIM_hess
+   hessian_mat(iterm,iterm)=hessian_mat(iterm,iterm)-eigval_istate
+  enddo
   call DGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,hessian_mat,HESSIANd%NDIM_hess,IPIV,info)
   if(info==0) then
    call DGETRS('N',HESSIANd%NDIM_hess,1,hessian_mat,HESSIANd%NDIM_hess,IPIV,       &

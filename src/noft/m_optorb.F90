@@ -102,8 +102,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
 !scalars
  logical::convLambda,nogamma,diddiis,allocated_DMNs,all_ERIs
  logical::F_meth_printed,NR_meth_printed
- integer::icall,icall_method,iorbmax1,iorbmax2,imethod_in,iorbp,iorbq,iterm,jterm
- real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old,Energy_2,Edft_xc,rk,hk,tol10
+ integer::icall,icall_2,icall_max,iorbmax1,iorbmax2,imethod_in,iorbp,iorbq,iterm,jterm
+ real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old,Energy_2,Edft_xc,tol10
 !arrays
  real(dp),allocatable,dimension(:,:,:)::DM2_JK
  real(dp),allocatable,dimension(:)::DM2_L_saved
@@ -117,8 +117,9 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
 !************************************************************************
 
  tol10=1.0d-10
- icall_method=30
+ icall_max=30
  imethod_in=imethod
+ HESSIANd%hk=half
 
  Ediff=zero; Energy=zero; Energy_old=zero; Edft_xc=zero; convLambda=.false.;nogamma=.true.;
  allocated_DMNs=.false.;F_meth_printed=.false.;NR_meth_printed=.false.;all_ERIs=.false.;
@@ -133,9 +134,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  endif
 
  ! Select the method
- !if(imethod_in/=1 .and. iter>5 .and. abs(maxdiff)<tol3) then ! TODO Fix the size of the step in the QC method.
- if(imethod_in/=1 .and. iter>5) then ! TODO Fix the size of the step in the QC method.
-  hk=half
+ if(imethod_in/=1 .and. iter>1 .and. abs(maxdiff)<0.5d-3) then
   write(msg,'(a)') 'Performing QC method for orbital optimization'
   call write_output(msg)
   allocated_DMNs=.true.;all_ERIs=.true.;
@@ -186,7 +185,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  endif
 
  ! Optimization loop
- icall=0
+ icall=0; icall_2=0;
  do
   ! If we used a DIIS step, do not stop after DIIS for small Energy dif.
   diddiis=.false.
@@ -250,7 +249,8 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
    if(INTEGd%complex_ints) then
     call HESSIANd%quadratic_conver(icall,RDMd%NBF_tot,kappa_mat_cmplx=kappa_mat_cmplx) ! kappa = - H^-1 g -> norm(kappa)
     do
-     kappa_mat_cmplx_tmp=hk*kappa_mat_cmplx
+     icall_2=icall_2+1
+     kappa_mat_cmplx_tmp=HESSIANd%hk*kappa_mat_cmplx
      call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=kappa_mat_cmplx_tmp,U_mat_cmplx=U_mat_cmplx)
      NO_COEF_cmplx_tmp=matmul(NO_COEF_cmplx,U_mat_cmplx)
      ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
@@ -280,25 +280,17 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
        &       +half*real(tmp_vec_cmplx(iterm)*kappa_mat_cmplx_tmp(iorbp,iorbq))
       enddo
      enddo
-     rk=(Energy-Energy_old+tol10)/(Energy_2-Energy_old+tol10)
-write(msg,'(a,f12.8)') 'Eold ',Energy_old
-call write_output(msg)
-write(msg,'(a,f12.8)') 'E ',Energy
-call write_output(msg)
-write(msg,'(a,f12.8)') 'E(2) ',Energy_2
-call write_output(msg)
-write(msg,'(a,f12.8)') 'rk ',rk
-call write_output(msg)
-     if(rk>half*half .and. rk<(half+half*half)) exit
-     if(rk<half*half .and. rk>zero) then
-      hk=2.0d0*hk/3.0d0
+     HESSIANd%rk=(Energy-Energy_old+tol10)/(Energy_2-Energy_old+tol10)
+     if(HESSIANd%rk>0.25d0 .and. HESSIANd%rk<0.75d0) exit
+     if(HESSIANd%rk<0.25d0 .and. HESSIANd%rk>zero) then
+      HESSIANd%hk=2.0d0*HESSIANd%hk/3.0d0
       exit
      endif
-     if(rk>half+half*half) then
-      hk=min(1.2d0*hk,half+half*half)
+     if(HESSIANd%rk>0.75d0) then
+      HESSIANd%hk=min(1.2d0*HESSIANd%hk,0.75d0)
       exit
      endif
-     if(rk<zero) hk=2.0d0*hk/3.0d0
+     if(HESSIANd%rk<zero) HESSIANd%hk=2.0d0*HESSIANd%hk/3.0d0
     enddo
     NO_COEF_cmplx=NO_COEF_cmplx_tmp
    else
@@ -309,7 +301,8 @@ call write_output(msg)
     endif
     call HESSIANd%quadratic_conver(icall,RDMd%NBF_tot,kappa_mat=kappa_mat)             ! kappa = - H^-1 g -> norm(kappa)
     do
-     kappa_mat_tmp=hk*kappa_mat
+     icall_2=icall_2+1
+     kappa_mat_tmp=HESSIANd%hk*kappa_mat
      call anti_2_unitary(RDMd%NBF_tot,X_mat=kappa_mat_tmp,U_mat=U_mat)                             
      NO_COEF_tmp=matmul(NO_COEF,U_mat)
      ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
@@ -338,17 +331,17 @@ call write_output(msg)
        &       +half*tmp_vec(iterm)*kappa_mat_tmp(iorbp,iorbq)
       enddo
      enddo
-     rk=(Energy-Energy_old+tol10)/(Energy_2-Energy_old+tol10)
-     if(rk>half*half .and. rk<(half+half*half)) exit
-     if(rk<half*half .and. rk>zero) then
-      hk=2.0d0*hk/3.0d0
+     HESSIANd%rk=(Energy-Energy_old+tol10)/(Energy_2-Energy_old+tol10)
+     if(HESSIANd%rk>0.25d0 .and. HESSIANd%rk<0.75d0) exit
+     if(HESSIANd%rk<0.25d0 .and. HESSIANd%rk>zero) then
+      HESSIANd%hk=2.0d0*HESSIANd%hk/3.0d0
       exit
      endif
-     if(rk>half+half*half) then
-      hk=min(1.2d0*hk,half+half*half)
+     if(HESSIANd%rk>0.75d0) then
+      HESSIANd%hk=min(1.2d0*HESSIANd%hk,0.75d0)
       exit
      endif
-     if(rk<zero) hk=2.0d0*hk/3.0d0
+     if(HESSIANd%rk<zero) HESSIANd%hk=2.0d0*HESSIANd%hk/3.0d0
     enddo
     NO_COEF=NO_COEF_tmp
    endif
@@ -369,7 +362,7 @@ call write_output(msg)
   Energy_old=Energy
 
   ! We allow at most 30 generations of new NO_COEF updates (and integrals) in Piris Ugalde Algoritms
-  if(icall==icall_method) exit
+  if(icall==icall_max) exit
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  enddo
 
@@ -400,7 +393,7 @@ call write_output(msg)
   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,Phases,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
  endif
- write(msg,'(a,f15.6,a,i6,a)') 'Orb. optimized energy= ',Energy+Vnn,' after ',icall,' iter.'
+ write(msg,'(a,f15.6,a,i6,a)') 'Orb. optimized energy= ',Energy+Vnn,' after ',icall+icall_2,' iter.'
  call write_output(msg)
  if(abs(Edft_xc)>tol8) then
   write(msg,'(a,f15.6)') 'Exc sr-DFT energy    = ',Edft_xc
