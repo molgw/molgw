@@ -19,6 +19,7 @@ module m_scalapack
   use m_mpi
   use m_linear_algebra
   use m_scalapack_interface
+  use m_elpa
 #if defined(HAVE_MPI)
   use mpi
 #endif
@@ -914,7 +915,7 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
   real(dp), allocatable :: work(:)
   integer, allocatable  :: iwork(:)
   integer              :: liwork
-  integer              :: neigval, neigvec
+  integer              :: neigval, neigvec, n_matrix
   real(dp)             :: ABSTOL
   integer              :: iclustr(2*nprow_sd*npcol_sd)
   real(dp)             :: gap(nprow_sd*npcol_sd)
@@ -923,6 +924,9 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
   real(sp), allocatable :: matrix_sp(:, :)
   real(sp), allocatable :: eigvec_sp(:, :)
   real(sp), allocatable :: eigval_sp(:)
+#if defined(HAVE_ELPA)
+  type(elpa_hdl_t) :: elpa_hdl
+#endif
   !=====
 
   nglobal = SIZE(eigval)
@@ -952,6 +956,24 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
                   neigval, neigvec, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, iwork, liwork, info)
       deallocate(iwork)
       deallocate(work)
+
+    case('l','L')
+
+#if defined(HAVE_ELPA)
+      n_matrix = SIZE(matrix, DIM=2)
+      neigvec  = SIZE(eigvec, DIM=1)
+      call elpa_func_allocate(elpa_hdl, blacs_ctx=desc(CTXT_))
+
+      call elpa_func_set_matrix(elpa_hdl,desc(N_),desc(MB_),nglobal,neigvec,n_matrix)
+
+      call elpa_func_get_communicators(elpa_hdl,world%comm,iprow_sd,ipcol_sd)
+
+      call elpa_func_solve_evp_2stage(elpa_hdl,matrix,eigvec,eigval,nglobal)
+
+      call elpa_func_deallocate(elpa_hdl)
+#else
+      call die('You requested diago flavor "L" but MOLGW is not compiled with ELPA.')
+#endif
 
     case('d','D')
       lwork = -1

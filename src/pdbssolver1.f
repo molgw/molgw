@@ -15,7 +15,7 @@
      $                        LAMBDA, X1, IX, JX, DESCX, X2, WORK,
      $                        LWORK, IWORK, LIWORK, INFO )
 *
-#if defined(HAVE_ELPA)
+#if defined(HAVE_ELPA_OLD)
 #if defined(HAVE_MPI)
       USE MPI,only: MPI_COMM_WORLD
 #endif
@@ -277,7 +277,7 @@
       DOUBLE PRECISION   PDLAMCH
       INTEGER,ALLOCATABLE ::         ICLUSTR(:)
       DOUBLE PRECISION,ALLOCATABLE :: GAP(:)
-#if defined(HAVE_ELPA)
+#if defined(HAVE_ELPA_OLD)
       LOGICAL         :: SUCCESS
       INTEGER         :: COMM_ROW,COMM_COL
 #endif
@@ -428,7 +428,7 @@
 *     Diagonalization: V**T * (L**T * K * L) * V = diag(lambda).
 *
       T_DIAG = MPI_WTIME()
-#if !defined(HAVE_ELPA)
+#if !defined(HAVE_ELPA_OLD)
       SELECT CASE(FLAVOR)
       CASE('r','R')
          CALL PDSYEVR( 'V', 'A', 'L', N, K, IK, JK, DESCK, ZERO, ZERO,

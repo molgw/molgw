@@ -84,6 +84,8 @@ module m_definitions
   ! Name of the output file used by NOFT calcs.
   character(len=140)::output_name
 
+  integer,parameter :: ELPA_MIN_VERSION = 20170403
+
 contains
 
 
