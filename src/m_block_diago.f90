@@ -18,6 +18,7 @@ module m_block_diago
   use m_scalapack
   use m_linear_algebra
   use m_inputparam
+  use m_elpa
 
 
 contains
@@ -43,6 +44,7 @@ subroutine diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, bigomega, xpy_ma
   !=====
 
   call start_clock(timing_diago_h2p)
+  call start_clock(timing_tmp2)
 
   write(stdout, '(/,a)') ' Performing the block diago with Cholesky'
 
@@ -129,6 +131,7 @@ subroutine diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, bigomega, xpy_ma
   endif
 #endif
 
+  call stop_clock(timing_tmp2)
   call stop_clock(timing_diago_h2p)
 
 end subroutine diago_4blocks_chol
@@ -136,11 +139,6 @@ end subroutine diago_4blocks_chol
 
 !=========================================================================
 subroutine diago_4blocks_rpa_sca(amb_diag_rpa, apb_matrix, desc_apb, bigomega, xpy_matrix, desc_x)
-#if defined(HAVE_ELPA)
-  use elpa1
-  use elpa2
-  use elpa
-#endif
   implicit none
 
   integer, intent(in)     :: desc_apb(NDEL), desc_x(NDEL)
@@ -152,10 +150,6 @@ subroutine diago_4blocks_rpa_sca(amb_diag_rpa, apb_matrix, desc_apb, bigomega, x
   integer         :: nmat, m_apb, n_apb, m_x, n_x
   integer         :: info
   real(dp)        :: amb_diag_sqrt(SIZE(bigomega))
-#if defined(HAVE_ELPA)
-  logical         :: success
-  integer         :: comm_row, comm_col
-#endif
   !=====
 
   call start_clock(timing_diago_h2p)
@@ -188,13 +182,7 @@ subroutine diago_4blocks_rpa_sca(amb_diag_rpa, apb_matrix, desc_apb, bigomega, x
 
 
   ! Diagonalization
-#if defined(HAVE_ELPA)
-  info = get_elpa_communicators(comm_world, iprow_sd, ipcol_sd, comm_row, comm_col)
-  success = elpa_solve_evp_real(nmat, nmat, apb_matrix, m_apb, bigomega, xpy_matrix, m_x, desc_apb(MB_), n_apb, &
-                                 comm_row, comm_col, comm_world, method='2stage')
-#else
   call diagonalize_sca(postscf_diago_flavor, apb_matrix, desc_apb, bigomega, xpy_matrix, desc_x)
-#endif
 
   bigomega(:) = SQRT( bigomega(:) )
 
@@ -261,6 +249,7 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
   !=====
 
   call start_clock(timing_diago_h2p)
+  call start_clock(timing_tmp1)
 
   write(stdout, '(/,a,i4)') ' Performing the Davidson block diago'
 
@@ -665,6 +654,7 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
   deallocate(eigvec_left, eigvec_right)
 
 
+  call stop_clock(timing_tmp1)
   call stop_clock(timing_diago_h2p)
 
 
