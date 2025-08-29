@@ -78,7 +78,7 @@ program molgw
   logical                 :: is_restart, is_big_restart, is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
-  real(dp)                :: erpa_tmp, egw_tmp, eext, temperature_
+  real(dp)                :: erpa_tmp, egw_tmp, eext
   real(dp), allocatable    :: hamiltonian_kinetic(:, :)
   real(dp), allocatable    :: hamiltonian_nucleus(:, :)
   real(dp), allocatable    :: hamiltonian_fock(:, :, :)
@@ -473,7 +473,7 @@ program molgw
                                 c_matrix, c_matrix_cmplx, en_gks, scf_has_converged)
             
             write(stdout, '(/,a)') ' Comment: The wavefunctions C contain the projected real natural orbitals'
-            !MRM: WARNING! After this point, c_matrix contains the nat. orb. representation of the dens. mat.
+            !MRM: WARNING! After this point, c_matrix contains the natural orbital representation of the density matrix
             !     and the occupation numbers (i.e. occupations(:, 1)) are \in [0, 2].
             write(stdout, '(/,1x,a)')  'Natural occupations: '
             write(stdout, '(8(2x,f14.6))') occupation(:, 1)
@@ -482,14 +482,13 @@ program molgw
           endif
 
           if( bogoliubov_scf_ ) then
-            temperature_=0d0
             call scf_loop(is_restart,                                     &
                           basis,                                          &
                           x_matrix, s_matrix,                             &
                           hamiltonian_kinetic, hamiltonian_nucleus,       &
                           occupation, energy,                             &
                           hamiltonian_fock,                               &
-                          c_matrix, en_gks, scf_has_converged, temperature_in=temperature_)
+                          c_matrix, en_gks, scf_has_converged, temperature_in=0.0_dp)
             call scf_loop_bogoliubov(is_restart,                                &
                                      basis,                                     &
                                      x_matrix, s_matrix,                        &
