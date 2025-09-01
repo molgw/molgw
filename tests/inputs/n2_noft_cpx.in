@@ -2,8 +2,8 @@
  scf='hf'
  tolscf=1.0e-1
 
- basis='cc-pVDZ'
- auxil_basis='cc-pVDZ-RI'
+ basis='6-31G'
+ auxil_basis='PAUTO'
  gaussian_type='cart'
 
  natom=2

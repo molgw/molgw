@@ -429,7 +429,7 @@ subroutine print_fcidump(INTEGd,Nel,Vnn)
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1,iorb2,iorb3,iunit=312
- real(dp)::ERIval
+ real(dp)::ERIval,tol10=1d-10
 !arrays
  character(len=200)::msg
 !************************************************************************
@@ -445,19 +445,19 @@ subroutine print_fcidump(INTEGd,Nel,Vnn)
     do iorb2=iorb,INTEGd%NBF_jkl
      do iorb3=1,iorb2
       ERIval=INTEGd%ERImol(iorb,iorb2,iorb1,iorb3) ! <ij|kl>
-      if(dabs(ERIval)>tol8) write(iunit,'(f15.8,4i4)') ERIval,iorb,iorb1,iorb2,iorb3
+      if(dabs(ERIval)>tol10) write(iunit,'(e20.12,4i4)') ERIval,iorb,iorb1,iorb2,iorb3
      enddo
     enddo
    enddo
   enddo 
   do iorb=1,INTEGd%NBF_jkl
    do iorb1=1,iorb
-    if(dabs(INTEGd%hCORE(iorb,iorb1))>tol8) then
-     write(iunit,'(f15.8,4i4)') INTEGd%hCORE(iorb,iorb1),iorb,iorb1,0,0
+    if(dabs(INTEGd%hCORE(iorb,iorb1))>tol10) then
+     write(iunit,'(e20.12,4i4)') INTEGd%hCORE(iorb,iorb1),iorb,iorb1,0,0
     endif
    enddo
   enddo
-  write(iunit,'(f15.8,4i4)') Vnn,0,0,0,0
+  write(iunit,'(e20.12,4i4)') Vnn,0,0,0,0
   close(iunit)
  else ! TODO
   write(msg,'(a)') 'FCIDUMP file not programed/produced for complex orbitals'

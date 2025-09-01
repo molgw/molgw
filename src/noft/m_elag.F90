@@ -546,11 +546,11 @@ subroutine diag_lambda_ekt(ELAGd,RDMd,INTEGd,NO_COEF,NO_COEF_cmplx,ekt)
  call write_output(msg)
  Eigval_nocc=Ha_ev*Eigval_nocc
  do iorb=1,(RDMd%NBF_occ/10)*10,10
-  write(msg,'(f12.6,9f11.6)') Eigval_nocc(iorb:iorb+9)
+  write(msg,'(e14.4,9e12.4)') Eigval_nocc(iorb:iorb+9)
   call write_output(msg)
  enddo
  iorb=(RDMd%NBF_occ/10)*10+1
- write(msg,'(f12.6,*(f11.6))') Eigval_nocc(iorb:)
+ write(msg,'(e14.4,*(e12.4))') Eigval_nocc(iorb:)
  call write_output(msg)
  write(msg,'(a)') ' '
  call write_output(msg)

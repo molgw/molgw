@@ -246,7 +246,23 @@ complex_scf:
   mandatory: 'no'
   experimental: 'yes'
   default: 'no'
-  comment: 'EXPERIMENTAL. Perform a ground state calculation with complex molecular orbitals.'
+  comment: EXPERIMENTAL. Perform a ground state calculation with complex molecular orbitals.
+
+bogoliubov_scf:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 'no'
+  comment: Perform a ground state calculation with Kohn-Sham Bogoliubov-de-Gennes formalism.
+
+bogoliubov_sigma:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 1.0e0
+  comment: Sets the sign to be used when building the pairing potential in Kohn-Sham Bogoliubov-de-Gennes formalism.
 
 tolforce:
   family: general
@@ -263,7 +279,7 @@ x2c:
   mandatory: 'no'
   experimental: 'yes'
   default: 'no'
-  comment: 'EXPERIMENTAL. Build the X2C Hamiltonian and orbitals.'
+  comment: EXPERIMENTAL. Build the X2C Hamiltonian and orbitals.
 
 c_speedlight:
   family: general
@@ -1719,6 +1735,14 @@ noft_dft:
   experimental: 'no'
   default: 'no'
   comment: Use the hybdrid approach NOFT + DFT in NOFT calcs. (default=no).
+
+noft_dft0:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: Use the hybdrid approach (DFT+NOFT)@NOFT in NOFT calcs. (default=yes).
 
 noft_rsinter:
   family: noft
