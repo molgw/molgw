@@ -10,13 +10,16 @@
 - RESTART from a optmized virtual orbital space
 - Linking with accelerated integral library `qcint`
 - Interface with CC4S
+- Now available the HF/DFT Bogoliubov methods for molecular systems
 
 ### Contributors
 
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
+- Mauricio Rodriguez-Mayorga (LCPQ, CNRS-Toulouse, France)
 
 ### Changes affecting the usage
 
+- New keywords are set to trigger the HF/DFT Bogoliubov calculations for molecular systems
 - Positive semi-definite version of GW+2SOSEX self-energy
 - Export data to CC4S for MP2 or coupled-cluster post-processing
 - Import Coulomb integrals and HF eigenvalues in the CC4S formats
@@ -32,6 +35,8 @@
 - Possibility to linking against `qcint` or `libcint` without any change
 
 ### Changes affecting the developers
+
+- A new self-consistent procedure is added (to run HF/DFT Bogoliubov calculations)
 
 ---
 
