@@ -926,6 +926,7 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
   real(sp), allocatable :: eigval_sp(:)
 #if defined(HAVE_ELPA)
   type(elpa_hdl_t) :: elpa_hdl
+  integer          :: use_gpu
 #endif
   !=====
 
@@ -973,6 +974,25 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
       call elpa_func_deallocate(elpa_hdl)
 #else
       call die('You requested diago flavor "L" but MOLGW is not compiled with ELPA.')
+#endif
+
+    case('g','G')
+
+#if defined(HAVE_ELPA_GPU)
+      n_matrix = SIZE(matrix, DIM=2)
+      neigvec  = SIZE(eigvec, DIM=1)
+      use_gpu  = 1
+      call elpa_func_allocate(elpa_hdl, gpu=use_gpu, blacs_ctx=desc(CTXT_))
+
+      call elpa_func_set_matrix(elpa_hdl,desc(N_),desc(MB_),nglobal,neigvec,n_matrix)
+
+      call elpa_func_get_communicators(elpa_hdl,world%comm,iprow_sd,ipcol_sd)
+
+      call elpa_func_solve_evp_2stage(elpa_hdl,matrix,eigvec,eigval,nglobal)
+
+      call elpa_func_deallocate(elpa_hdl)
+#else
+      call die('You requested diago flavor "G" but MOLGW is not compiled with GPU ELPA.')
 #endif
 
     case('d','D')
