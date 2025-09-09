@@ -1,0 +1,17 @@
+OPENMP= -fopenmp
+PYTHON=python3
+
+# gfortran
+FC=mpifort
+
+CPPFLAGS=-DHAVE_MPI -DHAVE_ELPA
+
+CXX=mpic++
+FCFLAGS= -cpp -O3 -march=native -mtune=native
+CXXFLAGS= -cpp -O3 -march=native -mtune=native
+
+ELPA= -L${ELPA_ROOT}/lib -lelpa_openmp
+ELPA_INCS=-I${ELPA_ROOT}/include/elpa_openmp-2025.01.002/modules
+LAPACK=  -L${OPENBLAS_ROOT}/lib -lopenblas -lm -ldl -lpthread
+SCALAPACK=-L${NETLIB_SCALAPACK_ROOT}/lib -lscalapack
+LIBCINT=-L${LIBCINT_ROOT}/lib -lcint -Wl,-rpath,${LIBCINT_ROOT}
