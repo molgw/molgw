@@ -165,7 +165,7 @@ level005: m_warning.o real_spherical_harmonics.o m_lbfgs_intern.o m_integd.o m_r
 
 level008: m_mpi_tools.o m_elag.o
 
-level010: m_elements.o m_timing.o m_hdf5_tools.o m_memory.o \
+level010: m_elements.o m_nvtx.o m_timing.o m_hdf5_tools.o m_memory.o \
           m_string_tools.o m_numerical_tools.o m_linear_algebra.o  \
 	  m_mpi.o m_lbfgs.o m_cart_to_pure.o m_libxc_tools.o m_hessian.o m_gammatodm2.o
 
@@ -207,7 +207,7 @@ level100: molgw.o
         lebedev_quadrature.o pdbssolver1.o boys_function.o \
         m_warning.o real_spherical_harmonics.o m_lbfgs.o \
         m_mpi_tools.o m_libxc_tools.o \
-        m_elements.o m_timing.o m_memory.o m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_mpi.o m_cart_to_pure.o \
+        m_elements.o m_nvtx.o m_timing.o m_memory.o m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_mpi.o m_cart_to_pure.o \
         m_scalapack.o m_elpa.o m_atoms.o m_ecp.o m_gaussian.o m_block_diago.o \
         m_basis_set.o \
         m_inputparam.o \
@@ -225,7 +225,7 @@ level100: molgw.o
 	$(LINKER) \
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_cart_to_pure.o \
                         m_mpi.o m_mpi_tools.o m_hdf5_tools.o m_scalapack_interface.o \
-                        m_libxc_tools.o m_scalapack.o m_elpa.o m_timing.o m_memory.o m_inputparam.o \
+                        m_libxc_tools.o m_scalapack.o m_elpa.o m_nvtx.o m_timing.o m_memory.o m_inputparam.o \
                         m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_scf.o m_selfenergy_tools.o m_atoms.o m_ecp.o \
                         m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o m_libcint_tools.o \
                         m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o m_dm_mbpt.o m_spectra.o \
@@ -556,7 +556,10 @@ m_linear_algebra.o: m_definitions.o m_warning.o m_linear_algebra.f90
 m_memory.o: m_definitions.o m_warning.o m_memory.f90
 	$(FC_W_OPTS) -c m_memory.f90 $(LIBXC_INCS)
 
-m_timing.o: m_definitions.o m_warning.o m_timing.f90
+m_nvtx.o: m_nvtx.f90
+	$(FC_W_OPTS) -c m_nvtx.f90 $(LIBXC_INCS)
+
+m_timing.o: m_definitions.o m_warning.o m_nvtx.o m_timing.f90
 	$(FC_W_OPTS) -c m_timing.f90 $(LIBXC_INCS)
 
 m_hdf5_tools.o: m_definitions.o m_hdf5_tools.f90

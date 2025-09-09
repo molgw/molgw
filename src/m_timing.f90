@@ -10,6 +10,9 @@
 module m_timing
   use m_definitions
   use m_warning, only: die
+#ifdef HAVE_NVTX
+  use m_nvtx
+#endif
 
   integer, parameter :: NTIMING=150
 
@@ -144,6 +147,7 @@ module m_timing
   real(dp), private    :: time_start(NTIMING)
   real(dp), private    :: timing(NTIMING)
   integer(dp), private :: calls(NTIMING)
+  character(len=46)    :: names(-1:NTIMING)
 
   logical, protected   :: in_rt_tddft = .FALSE.
 
@@ -160,6 +164,147 @@ subroutine init_timing()
   time_running(:) = .FALSE.
   timing(:)       = 0.0_dp
   calls(:)        = 0
+  names(1:NTIMING)='***                             '
+
+  names( timing_total )='Total time'
+
+
+  names(timing_relativistic )='Total Relativistic'
+  names(timing_prescf)='Total pre SCF'
+  names(timing_scf)='Total SCF'
+  names(timing_postscf)='Total post SCF'
+
+
+  names(timing_auto_auxil)='Automatic auxiliary basis'
+  names(timing_eri_screening)='Integral pre-screening'
+  names(timing_eri_4center)='4-center integrals'
+  names(timing_eri_2center)='2-center integrals'
+  names(timing_eri_2center_ints)='Integrals evaluation'
+  names(timing_eri_2center_invert)='Matrix inversion'
+  names(timing_eri_2center_inverse_sqrt)='Matrix inverse sqrt'
+  names(timing_eri_3center)='3-center integrals'
+  names(timing_eri_3center_ints)='Integrals evaluation'
+  names(timing_eri_3center_matmul)='Matrix multiplication'
+  names(timing_overlap)='Overlap matrix S'
+  names(timing_approx_ham)='Approximate guess Hamiltonian'
+  names(timing_hamiltonian_kin)='Kinetic Hamiltonian'
+  names(timing_hamiltonian_nuc)='Electron-nucleus Hamiltonian'
+  names(timing_hamiltonian_ecp)='ECP Hamiltonian'
+
+
+  names(timing_grid_init)='DFT grid initialization'
+  names(timing_grid_generation)='Grid generation'
+  names(timing_grid_wfn)='Wavefunction evaluation'
+  names(timing_density_matrix)='Density matrix'
+  names(timing_rhoauxil)='Auxiliary basis density'
+  names(timing_hartree)='Hartree potential'
+  names(timing_exchange)='Exchange operator'
+  names(timing_dft_xc)='DFT xc potential'
+  names(timing_dft_densities)='Densities on a grid'
+  names(timing_dft_libxc)='LIBXC calls'
+  names(timing_dft_vxc)='Setting up Vxc '
+  names(timing_diago_hamiltonian)='Hamiltonian diagonalization'
+  names(timing_diis)='Pulay DIIS mixing'
+  names(timing_restart_file)='RESTART file writing'
+  names(timing_fno)='Virtual FNO generation'
+  names(timing_force)='Forces'
+
+
+
+  ! Prepare post scf
+  names(timing_read_coulombvertex)='Reading Coulomb vertex file'
+  names(timing_x_m_vxc)='Sigma_x - Vxc'
+
+  ! Linear response polarization RPA or TDDFT or BSE
+  names(timing_eri_3center_ao2mo)='3-center AO to MO transform'
+  names(timing_rpa_dynamic)='Response function chi on grid'
+  names(timing_pola)='Response function chi'
+  names(timing_aomo_pola)='3-center AO to MO transform in chi'
+  names(timing_eri_4center_ao2mo)='4-center AO to MO transform'
+  names(timing_rpa_static)='Static polarization for BSE'
+  names(timing_build_h2p)='Build 2-particle Hamiltonian'
+  names(timing_build_common)='RPA part'
+  names(timing_build_tddft)='TDDFT part'
+  names(timing_build_bse)='BSE part'
+  names(timing_diago_h2p)='Diago 2 particle H'
+  names(timing_vchiv)='Build W'
+  names(timing_spectrum)='Optical spectrum'
+  names(timing_stopping)='Stopping power'
+
+  ! Self-energies
+  names(timing_mbpt_dm)='MBPT density matrix'
+  names(timing_gw_self)='GW self-energy'
+  names(timing_aomo_gw)='3-center AO to MO transform in GW'
+  names(timing_pt_self)='PT self-energy'
+  names(timing_mp2_energy)='MP2 energy'
+
+  ! CI
+  names(timing_full_ci)='Full CI for few electrons'
+  names(timing_ci_config)='Setup CI configurations'
+  names(timing_zeroes_ci)='Screen CI Hamiltonian zeroes'
+  names(timing_ham_ci)='Build CI Hamiltonian'
+  names(timing_ci_diago)='CI diagonalization'
+  names(timing_ci_selfenergy)='CI self-energy'
+
+  ! NOFT
+  names(timing_noft_energy)='NOFT calculation'
+
+  ! RT-TDDFT
+  names(timing_tddft_loop)='Real-time TDDFT'
+  names(timing_tddft_propagation)='TDDFT propagator'
+  names(timing_propagate_diago)='TDDFT propagator diago'
+  names(timing_propagate_matmul)='TDDFT propagator matmul'
+  names(timing_propagate_inverse)='TDDFT propagator invert'
+
+  names(timing_update_basis_eri)='Update basis, auxilary and eri'
+  names(timing_tddft_eri_2center_ints)='Update 2-center ERI'
+  names(timing_tddft_eri_2center_ints)='Integrals evaluation'
+  names(timing_tddft_eri_2center_invert)='Matrix inversion'
+  names(timing_tddft_eri_3center)='Update 3-center ERI'
+  names(timing_tddft_eri_3center_ints)='Integrals evaluation'
+  names(timing_update_overlaps)='Update S and D matrices'
+  names(timing_overlap_grad)='Overlap gradient'
+  names(timing_tddft_grid_init)='Grid initialization'
+  names(timing_tddft_grid_generation)='Grid generation'
+  names(timing_tddft_grid_wfn)='Wavefunction evaluation'
+
+  names(timing_tddft_frozen_core)='TDDFT frozen core'
+  names(timing_tddft_q_matrix)='TDDFT q_matrix'
+
+  names(timing_tddft_hamiltonian)='Hamiltonian calculation'
+  names(timing_tddft_kin)='Kinetic energy'
+  names(timing_density_matrix_cmplx)='Complex density matrix'
+  names(timing_density_matrix_MO)='P in MO basis'
+  names(timing_tddft_hamiltonian_nuc)='Electron-Nucleus potential'
+  names(timing_tddft_rhoauxil)='Auxiliary basis density'
+  names(timing_tddft_hartree)='Hartree potential'
+  names(timing_tddft_exchange)='Exchange operator'
+  names(timing_tddft_xc)='XC potential'
+  names(timing_grad_kin)='Kinetic energy gradient'
+  names(timing_grad_nuc)='Nucleus energy gradient'
+  names(timing_tddft_densities)='Densities on a grid'
+  names(timing_tddft_libxc)='LIBXC calls'
+  names(timing_tddft_vxc)='Setting up Vxc '
+  names(timing_tddft_ham_orthobasis)='Orthogonal basis'
+
+  names(timing_restart_tddft_file)='RESTART_TDDFT file writing'
+  names(timing_print_cube_rho_tddft)='Cube density file writing'
+  names(timing_print_line_rho_tddft)='Line density file writing'
+  names(timing_calc_dens_disc)='Electronic density in discs'
+
+
+  names(timing_sca_distr1)='timing SCALAPACK tmp1'
+  names(timing_sca_distr2)='timing SCALAPACK tmp2'
+  names(timing_tmp0)='Tmp timing 0'
+  names(timing_tmp1)='Tmp timing 1'
+  names(timing_tmp2)='Tmp timing 2'
+  names(timing_tmp3)='Tmp timing 3'
+  names(timing_tmp4)='Tmp timing 4'
+  names(timing_tmp5)='Tmp timing 5'
+  names(timing_tmp6)='Tmp timing 6'
+  names(timing_tmp7)='Tmp timing 7'
+  names(timing_tmp8)='Tmp timing 8'
+  names(timing_tmp9)='Tmp timing 9'
 
   call system_clock(COUNT_RATE=count_rate, COUNT_MAX=count_max)
 
@@ -200,6 +345,9 @@ subroutine start_clock(itiming)
 
   time_running(itiming)=.TRUE.
 
+#ifdef HAVE_NVTX
+  call nvtxStartRange(names(itiming),itiming)
+#endif
   call system_clock(COUNT=count_tmp)
   time_start(itiming) = count_tmp
   calls(itiming) = calls(itiming) + 1
@@ -231,6 +379,9 @@ subroutine stop_clock(itiming)
 
   call system_clock(COUNT=count_tmp)
   timing(itiming) = timing(itiming) + MODULO( count_tmp - NINT(time_start(itiming)) , count_max) / REAL(count_rate, dp)
+#ifdef HAVE_NVTX
+  call nvtxEndRange()
+#endif
 
 end subroutine stop_clock
 
