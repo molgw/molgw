@@ -28,7 +28,12 @@ module m_scalapack
   ! SCALAPACK variables
   !
   ! Choose a rather large value of block size to avoid the scattering of the basis function shells across different processors
+#ifdef HAVE_ELPA
+  ! ELPA doesn't like when block size is higher than matrix size
+  integer, parameter :: SCALAPACK_BLOCKSIZE_MAX = 4
+#else
   integer, parameter :: SCALAPACK_BLOCKSIZE_MAX = 64
+#endif
 
   integer, parameter :: block_row = SCALAPACK_BLOCKSIZE_MAX
   integer, parameter :: block_col = SCALAPACK_BLOCKSIZE_MAX
