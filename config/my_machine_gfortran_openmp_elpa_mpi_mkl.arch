@@ -1,0 +1,20 @@
+OPENMP= -fopenmp
+PYTHON=python3
+
+# Parallel MPI SCALAPACK compilation
+FC=mpifort
+
+CPPFLAGS=-DHAVE_SCALAPACK -DHAVE_MKL -DHAVE_ELPA
+
+# maybe use icx instead icpc if using a recent version of Intel OneAPI
+CXX=g++
+FCFLAGS= -cpp -m64 -I${MKLROOT}/include -O3 -march=native -mtune=native
+CXXFLAGS= -O3 -march=native -mtune=native
+
+LAPACK=  -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_gnu_thread -lmkl_core -lpthread -lm -ldl
+SCALAPACK= -L${MKLROOT}/lib/intel64 -lmkl_scalapack_lp64 -lmkl_gf_lp64 -lmkl_gnu_thread -lmkl_core -lmkl_blacs_openmpi_lp64 -lpthread -lm
+
+ELPA= -L${ELPA_ROOT}/lib -lelpa_openmp
+ELPA_INCS=-I${ELPA_ROOT}/include/elpa_openmp-2025.06.001/modules
+
+LIBCINT=-L${LIBCINT_ROOT}/lib64 -lm -lcint -Wl,-rpath,${LIBCINT_ROOT}
