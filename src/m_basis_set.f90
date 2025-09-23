@@ -325,7 +325,7 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
       endif
 
       !
-      ! Include here the normalization part that does not depend on (nx,ny,nz)
+      ! Include here the normalization part that does not depend on (nx, ny, nz)
       basis%shell(ishell)%coeff(:) = basis%bfc(jbf_cart-number_basis_function_am(gaussian_type, am_read)+1)%coeff(:) &
                * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**am_read * alpha(:)**( 0.25_dp * ( 2.0_dp*am_read + 3.0_dp ) )
 
@@ -349,6 +349,7 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
   call echo_basis_summary(basis)
 
 end subroutine init_basis_set
+
 
 !=========================================================================
 subroutine split_basis_set(basis, basis_t, basis_p)
