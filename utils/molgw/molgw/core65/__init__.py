@@ -525,7 +525,7 @@ def mae_mse_max(data1, data2):
     errors = list( diff(data1, data2).values() )
 
     ndata = len(errors)
-    mse = sum(errors) / float(ndata)
-    mae = sum(np.abs(errors)) / float(ndata)
+    mse = np.sum(errors) / float(ndata)
+    mae = np.sum(np.abs(errors)) / float(ndata)
     mxe = np.max(np.abs(errors))
     return mae, mse, mxe
