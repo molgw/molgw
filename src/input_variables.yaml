@@ -1658,6 +1658,14 @@ mixing_scheme:
     are 'pulay' for Pulay DIIS method, 'adiis' for Hu-Yang method, or 'simple' for
     a simple linear mixing between input and output density-matrices.
 
+pbe_plus_alpha:
+  family: scf
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Adds an empirical +alpha potential shift. So far, only working for Germanium.
+
 tolscf:
   family: scf
   datatype: real

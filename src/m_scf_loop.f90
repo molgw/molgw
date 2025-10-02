@@ -110,10 +110,9 @@ subroutine scf_loop(is_restart, &
 
   !
   ! Add +alpha empirical correction
-  if( .TRUE. ) then
-    allocate(hamiltonian_pbealpha(basis%nbf, basis%nbf))
+  if( ABS(pbe_plus_alpha) > 1.0e-6_dp ) then
+    call clean_allocate('+alpha potental', hamiltonian_pbealpha, basis%nbf, basis%nbf)
     call setup_pbe_plus_alpha(basis, hamiltonian_pbealpha)
-    !FIXME FBFB should deallocate it somewhere
   endif
 
   !
@@ -135,7 +134,7 @@ subroutine scf_loop(is_restart, &
       hamiltonian(:, :, ispin) = hamiltonian_kinetic(:, :) + hamiltonian_nucleus(:, :)
     enddo
 
-    if( ALLOCATED(hamiltonian_pbealpha) ) then
+    if( ABS(pbe_plus_alpha) > 1.0e-6_dp ) then
       do ispin=1, nspin
         hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + hamiltonian_pbealpha(:, :)
         en_gks%pbe_alpha = SUM( hamiltonian_pbealpha(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
@@ -397,6 +396,8 @@ subroutine scf_loop(is_restart, &
   call clean_deallocate('Hartree potential Vh', hamiltonian_hartree)
   call clean_deallocate('Exchange operator Sigx', hamiltonian_exx)
   call clean_deallocate('XC operator Vxc', hamiltonian_xc)
+  if( ALLOCATED(hamiltonian_pbealpha)) &
+    call clean_deallocate('+alpha potential', hamiltonian_pbealpha)
 
 
   write(stdout, '(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):', en_gks%total
@@ -420,6 +421,7 @@ subroutine scf_loop(is_restart, &
   call stop_clock(timing_scf)
 
 end subroutine scf_loop
+
 
 !=========================================================================
 subroutine scf_loop_cmplx(is_restart, &

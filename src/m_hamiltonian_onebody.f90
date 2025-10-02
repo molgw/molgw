@@ -2688,17 +2688,13 @@ subroutine setup_pbe_plus_alpha(basis, h_pbea)
   real(dp), intent(out)        :: h_pbea(:, :)
   !=====
   integer, parameter           :: Z_Ge = 32
-  real(dp), parameter          :: plus_alpha = 1.6_dp / Ha_eV
   type(basis_set)              :: proj
-! s [ 0.78596354  0.18230788 -0.32477869  0.89226145]
-! p [0.17327672 0.12321487 0.23096316 0.41049002]
-! d [ 1.60392155  1.18726471 -0.04369226  4.14752914]
   integer, parameter :: lmax = 2
-  integer, parameter :: ng = 2
+  integer, parameter :: ng = 3
   real(dp), parameter :: alpha(ng, lmax + 1) = &
-            RESHAPE( [ 0.18230788, 0.89226145, 0.12321487, 0.41049002, 1.18726471, 4.14752914], [2, 3] )
+            RESHAPE( [ 1.80, 1.60, 1.40, 0.12321487, 0.41049002, 1.0, 1.18726471, 4.14752914, 1.0], [3, 3] )
   real(dp), parameter :: coeff(ng, lmax + 1) = &
-                     RESHAPE([0.78596354, -0.32477869, 0.17327672, 0.23096316, 1.60392155, -0.04369226], [2, 3])
+            RESHAPE( [58.43768366, -123.83961231, 66.53001345, 0.17327672, 0.23096316, 0.0, 1.60392155, -0.04369226, 0.0], [3, 3])
   real(dp), allocatable :: overlap_proj(:, :), matrix_tmp(:, :), overlap_invsqrt(:, :)
   real(dp), allocatable :: projectors(:, :), projectors_ortho(:, :)
   real(dp), allocatable :: eigenvalue(:)
@@ -2868,7 +2864,7 @@ subroutine setup_pbe_plus_alpha(basis, h_pbea)
   do iproj=1, proj%nbf
     ! Only s projectors are applied
     if( proj%bff(iproj)%am == 0 ) then
-      call DSYR('L', basis%nbf, plus_alpha, projectors_ortho(:, iproj), 1, h_pbea(:, :), basis%nbf)
+      call DSYR('L', basis%nbf, pbe_plus_alpha, projectors_ortho(:, iproj), 1, h_pbea(:, :), basis%nbf)
     endif
   enddo
   call matrix_lower_to_full(h_pbea)
