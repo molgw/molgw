@@ -1203,3 +1203,6 @@ RPA correlation           ,  -0.0914355959      , 0 , 1.0e-7
 kr_ccECP.in               , RPA correlation Kr atom with a ccECP pseudo and basis
 SCF Total Energy          ,  -18.228067580      , 0 , 1.0e-7
 RPA correlation           ,  -0.2186444854      , 0 , 1.0e-7
+
+benzene_Si_energy_shift.in , tests the scf_energy_shift_input
+SCF Total Energy          ,  -513.3732976608    , 0 , 1.0e-7

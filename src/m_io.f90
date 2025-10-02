@@ -708,7 +708,7 @@ subroutine lowdin_pdos(basis, s_matrix_sqrt, c_matrix, occupation, energy)
   enddo
 
   write(stdout, '(1x,a)') '==========================================='
-  write(stdout, '(1x,a,f12.6)') 'Total Lowdin charge: ', proj_charge
+  write(stdout, '(1x,a,f12.6)') 'Total Lowdin charge : ', proj_charge
 
 
 end subroutine lowdin_pdos

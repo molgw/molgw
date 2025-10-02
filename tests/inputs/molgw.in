@@ -1,0 +1,27 @@
+&molgw
+  scf                            = 'hf'
+  basis                          = 'cc-pVDZ'
+  auxil_basis                    = 'cc-pVDZ-RI'
+  natom                          = 1
+  charge = 0
+  postscf                        = 'real_time'
+  eri3_genuine                   = 'yes'
+  time_step                      = 0.1
+  time_sim                       = 0.1
+  tddft_predictor_corrector      = 'MB_PC1'
+  tddft_propagator               = 'CN'
+  length_unit                    = 'Angstrom'
+  nscf = 100
+  tolscf = 1e-5
+  excit_name                     = 'ION'
+  vel_projectile                 = 0.0 0.0 1.0
+  write_step                     = 0.1
+  scf_energy_shift = 0
+print_pdos = 'yes'
+!tddft_wfn_t0 = 'STATIONARY'
+print_charge_tddft = 'yes'
+calc_charge_step = 0.1
+!moving_frame_kinetic_energy = 'yes'
+/
+He     0.0    0.0    0.0
+H     10.0    10.0    0.3
