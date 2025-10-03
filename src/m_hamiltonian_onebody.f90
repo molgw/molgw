@@ -2687,21 +2687,30 @@ subroutine setup_pbe_plus_alpha(basis, h_pbea)
   type(basis_set), intent(in)  :: basis
   real(dp), intent(out)        :: h_pbea(:, :)
   !=====
-  integer, parameter           :: Z_Ge = 32
+  integer, parameter           :: Z_Ge = 32, Z_H = 1
   type(basis_set)              :: proj
-  integer, parameter :: lmax = 2
+  integer, parameter :: lmax_h  = 0
+  integer, parameter :: lmax_ge = 2
   integer, parameter :: ng = 3
-  real(dp), parameter :: alpha(ng, lmax + 1) = &
-            RESHAPE( [ 1.80, 1.60, 1.40, 0.12321487, 0.41049002, 1.0, 1.18726471, 4.14752914, 1.0], [3, 3] )
-  real(dp), parameter :: coeff(ng, lmax + 1) = &
-            RESHAPE( [58.43768366, -123.83961231, 66.53001345, 0.17327672, 0.23096316, 0.0, 1.60392155, -0.04369226, 0.0], [3, 3])
+  
+  ! STO-3G orbital for H
+  real(dp), parameter :: alpha_h(ng, lmax_h + 1) = &
+   RESHAPE( [0.3425250914e+01, 0.6239137298e+00, 0.1688554040e+00], [ng, lmax_h+1] )
+  real(dp), parameter :: coeff_h(ng, lmax_h + 1) = &
+   RESHAPE( [0.1543289673e+00, 0.5353281423e+00, 0.4446345422e+00], [ng, lmax_h+1])
+  real(dp), parameter :: alpha_ge(ng, lmax_ge + 1) = &
+   RESHAPE( [ 1.80, 1.60, 1.40, 0.12321487, 0.41049002, 1.0, 1.18726471, 4.14752914, 1.0], [ng, lmax_ge + 1] )
+  real(dp), parameter :: coeff_ge(ng, lmax_ge + 1) = &
+   RESHAPE( [58.43768366, -123.83961231, 66.53001345, 0.17327672, 0.23096316, 0.0, 1.60392155, -0.04369226, 0.0], [ng, lmax_ge + 1])
+
   real(dp), allocatable :: overlap_proj(:, :), matrix_tmp(:, :), overlap_invsqrt(:, :)
   real(dp), allocatable :: projectors(:, :), projectors_ortho(:, :)
   real(dp), allocatable :: eigenvalue(:)
+  real(dp), allocatable :: alpha(:, :), coeff(:, :)
   integer :: jbf, jbf_cart, ishell, icenter, il, iproj
   logical, parameter :: normalized = .TRUE.
   logical, parameter :: orthogonalization = .TRUE.
-  integer :: nx, ny, nz, index_in_shell, mm
+  integer :: nx, ny, nz, index_in_shell, mm, lmax
   !=====
 
   call issue_warning('PBE+alpha is hard-coded for Germanium')
@@ -2721,13 +2730,19 @@ subroutine setup_pbe_plus_alpha(basis, h_pbea)
   ! Loop over basis centers that are Germanium
   !
   do icenter=1, ncenter_basis
-    if( zbasis(icenter) == Z_Ge ) then
-      do il=0, lmax  ! Hard-coded to s, p, d
+    select case(zbasis(icenter))
+    case(Z_Ge)
+      do il=0, lmax_ge  ! Hard-coded to s, p, d
         proj%nbf_cart = proj%nbf_cart + number_basis_function_am('CART'            , il)
         proj%nbf      = proj%nbf      + number_basis_function_am(proj%gaussian_type, il)
         proj%nshell   = proj%nshell   + 1
       enddo
-    endif
+    case(Z_H)
+      ! only 1s for H
+      proj%nbf_cart = proj%nbf_cart + 1
+      proj%nbf      = proj%nbf      + 1
+      proj%nshell   = proj%nshell   + 1
+    end select
   enddo
 
   allocate(proj%bfc(proj%nbf_cart))
@@ -2738,8 +2753,22 @@ subroutine setup_pbe_plus_alpha(basis, h_pbea)
   jbf_cart    = 0
   ishell      = 0
   do icenter=1, ncenter_basis
-    if( zbasis(icenter) == Z_Ge ) then
-      do il=0, lmax ! Hard-coded to s, p, d
+    select case(zbasis(icenter))
+    case(Z_Ge)
+      lmax = lmax_ge
+      allocate(alpha(ng, lmax + 1), coeff(ng, lmax + 1))
+      alpha(:, :) = alpha_ge(:, :)
+      coeff(:, :) = coeff_ge(:, :)
+    case(Z_H)
+      lmax = lmax_h
+      allocate(alpha(ng, lmax + 1), coeff(ng, lmax + 1))
+      alpha(:, :) = alpha_h(:, :)
+      coeff(:, :) = coeff_h(:, :)
+    end select
+
+    select case(zbasis(icenter))
+    case(Z_Ge, Z_H)
+      do il=0, lmax
         ishell = ishell + 1
 
         proj%shell(ishell)%am      = il
@@ -2815,7 +2844,8 @@ subroutine setup_pbe_plus_alpha(basis, h_pbea)
                  * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**il * proj%shell(ishell)%alpha(:)**( 0.25_dp * ( 2.0_dp*il + 3.0_dp ) )
 
       enddo
-    endif
+      deallocate(alpha, coeff)
+    end select
   enddo
 
 
@@ -2830,7 +2860,7 @@ subroutine setup_pbe_plus_alpha(basis, h_pbea)
   allocate(overlap_proj(proj%nbf, proj%nbf))
   call setup_overlap(proj, overlap_proj)
 
-  call dump_out_matrix(.TRUE., 'overlap projectors', overlap_proj)
+  call dump_out_matrix(.TRUE., 'overlap projectors', overlap_proj, form='f6.3')
 
   ! Orthogonalize the projectors using the S^{-1/2}
   ! First calculate S^{-1/2}
@@ -2872,7 +2902,7 @@ subroutine setup_pbe_plus_alpha(basis, h_pbea)
   write(stdout, '(1x,a,f8.4)')     'Maximum element (eV): ', MAXVAL(h_pbea) * Ha_eV
   write(stdout, '(1x,a,i4,1x,i4)') 'Maximum element location: ', MAXLOC(h_pbea)
 
-  call dump_out_matrix(.TRUE., 'PBE + alpha correction', h_pbea)
+  call dump_out_matrix(.TRUE., 'PBE + alpha correction', h_pbea, form='f6.3')
 
   call destroy_libcint(proj)
 
