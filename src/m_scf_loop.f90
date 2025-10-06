@@ -75,6 +75,7 @@ subroutine scf_loop(is_restart, &
   real(dp), allocatable   :: hamiltonian_xc(:, :, :)
   real(dp), allocatable   :: hamiltonian_pbealpha(:, :)
   real(dp), allocatable   :: selfenergy_ao(:, :, :)
+  real(dp), allocatable   :: diag_tmp(:, :)
   !=====
 
 
@@ -396,8 +397,15 @@ subroutine scf_loop(is_restart, &
   call clean_deallocate('Hartree potential Vh', hamiltonian_hartree)
   call clean_deallocate('Exchange operator Sigx', hamiltonian_exx)
   call clean_deallocate('XC operator Vxc', hamiltonian_xc)
-  if( ALLOCATED(hamiltonian_pbealpha)) &
+
+  if( ALLOCATED(hamiltonian_pbealpha)) then
+    allocate(diag_tmp(nstate, nspin))
+    call h_ao_to_mo_diag(c_matrix, hamiltonian_pbealpha, diag_tmp)
+    call dump_out_energy('=== + alpha shift ===', occupation, diag_tmp)
+    deallocate(diag_tmp)
+
     call clean_deallocate('+alpha potential', hamiltonian_pbealpha)
+  endif
 
 
   write(stdout, '(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):', en_gks%total
