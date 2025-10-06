@@ -73,7 +73,9 @@ subroutine scf_loop(is_restart, &
   real(dp), allocatable   :: hamiltonian_hartree(:, :)
   real(dp), allocatable   :: hamiltonian_exx(:, :, :)
   real(dp), allocatable   :: hamiltonian_xc(:, :, :)
+  real(dp), allocatable   :: hamiltonian_pbealpha(:, :)
   real(dp), allocatable   :: selfenergy_ao(:, :, :)
+  real(dp), allocatable   :: diag_tmp(:, :)
   !=====
 
 
@@ -107,6 +109,12 @@ subroutine scf_loop(is_restart, &
   ! Setup the density matrix: p_matrix
   call setup_density_matrix(c_matrix, occupation, p_matrix)
 
+  !
+  ! Add +alpha empirical correction
+  if( ABS(pbe_plus_alpha) > 1.0e-6_dp ) then
+    call clean_allocate('+alpha potental', hamiltonian_pbealpha, basis%nbf, basis%nbf)
+    call setup_pbe_plus_alpha(basis, hamiltonian_pbealpha)
+  endif
 
   !
   ! Start the big scf loop
@@ -126,6 +134,13 @@ subroutine scf_loop(is_restart, &
     do ispin=1, nspin
       hamiltonian(:, :, ispin) = hamiltonian_kinetic(:, :) + hamiltonian_nucleus(:, :)
     enddo
+
+    if( ABS(pbe_plus_alpha) > 1.0e-6_dp ) then
+      do ispin=1, nspin
+        hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + hamiltonian_pbealpha(:, :)
+        en_gks%pbe_alpha = SUM( hamiltonian_pbealpha(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
+      enddo
+    endif
 
     !
     ! Hartree contribution to the Hamiltonian
@@ -243,7 +258,8 @@ subroutine scf_loop(is_restart, &
 
     ! All the components of the energy have been calculated at this stage
     ! Sum up to get the total energy
-    en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc
+    en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc &
+                     + en_gks%pbe_alpha
 
     ! Make sure all the MPI tasks have the exact same Hamiltonian
     ! It helps stabilizing the SCF cycles in parallel
@@ -294,6 +310,9 @@ subroutine scf_loop(is_restart, &
     endif
     if( calc_type%is_dft ) then
       write(stdout, '(a25,1x,f19.10)') 'XC Energy       (Ha):', en_gks%xc
+    endif
+    if( ABS(en_gks%pbe_alpha) > 1.0e-8_dp )  then
+      write(stdout, '(a25,1x,f19.10)') '+ alpha correction (Ha):', en_gks%pbe_alpha
     endif
     write(stdout, '(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):', en_gks%total
 
@@ -379,6 +398,15 @@ subroutine scf_loop(is_restart, &
   call clean_deallocate('Exchange operator Sigx', hamiltonian_exx)
   call clean_deallocate('XC operator Vxc', hamiltonian_xc)
 
+  if( ALLOCATED(hamiltonian_pbealpha)) then
+    allocate(diag_tmp(nstate, nspin))
+    call h_ao_to_mo_diag(c_matrix, hamiltonian_pbealpha, diag_tmp)
+    call dump_out_energy('=== + alpha shift ===', occupation, diag_tmp)
+    deallocate(diag_tmp)
+
+    call clean_deallocate('+alpha potential', hamiltonian_pbealpha)
+  endif
+
 
   write(stdout, '(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):', en_gks%total
 
@@ -401,6 +429,7 @@ subroutine scf_loop(is_restart, &
   call stop_clock(timing_scf)
 
 end subroutine scf_loop
+
 
 !=========================================================================
 subroutine scf_loop_cmplx(is_restart, &

@@ -627,11 +627,11 @@ end subroutine output_homolumo
 !
 ! Get the MO diagonal from the hamiltonian-like matrix in AO basis
 !
-subroutine h_ao_to_mo_diag(c_matrix, h_ao, diag_out)
+subroutine h_ao_to_mo_diag(c_matrix, h_ao, diag_mo)
   implicit none
   real(dp), intent(in)  :: c_matrix(:, :, :)
   real(dp), intent(in)  :: h_ao(..)
-  real(dp), intent(out) :: diag_out(:, :)
+  real(dp), intent(out) :: diag_mo(:, :)
   !=====
   integer              :: nbf, nstate, nspin_local
   integer              :: ispin, istate
@@ -663,7 +663,7 @@ subroutine h_ao_to_mo_diag(c_matrix, h_ao, diag_out)
                           0.0d0, vector_tmp, 1)
       end select
       ! C_i**T * (H * C_i)
-      diag_out(istate, ispin) = DOT_PRODUCT( c_matrix(:, istate, ispin) , vector_tmp(:) )
+      diag_mo(istate, ispin) = DOT_PRODUCT( c_matrix(:, istate, ispin) , vector_tmp(:) )
 
     enddo
   enddo
