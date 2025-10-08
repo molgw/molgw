@@ -1251,7 +1251,7 @@ subroutine plot_cube_wfn(rootname, basis, occupation, c_matrix)
   real(dp)                    :: dx, dy, dz
   real(dp)                    :: basis_function_r(basis%nbf)
   integer                     :: ix, iy, iz, icenter
-  integer, allocatable         :: ocubefile(:, :)
+  integer, allocatable        :: ocubefile(:, :)
   integer                     :: ocuberho(nspin)
   character(len=200)          :: file_name
   integer                     :: icubefile
@@ -4288,6 +4288,58 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
 
 
 end subroutine print_restart_hdf5
+
+
+!=========================================================================
+! Write a volumetric data in a cube format file
+!
+subroutine write_cube_file(cubefilename, n1, n2, n3, dr, data, comment)
+  implicit none
+
+  character(len=*), intent(in) :: cubefilename
+  integer, intent(in) :: n1, n2, n3
+  real(dp), intent(in) :: dr(3, 3)
+  real(dp), intent(in) :: data(:)
+  character(len=*), intent(in), optional :: comment
+  !=====
+  integer :: fileunit, icenter, i1, i2, i3, ii
+  real(dp), allocatable :: data_reshuffled(:)
+  !=====
+
+  open(newunit=fileunit, file=TRIM(cubefilename))
+  write(fileunit, '(a)') 'Cube file generated from MOLGW'
+  if( PRESENT(comment) ) then
+    write(fileunit, '(a)') TRIM(comment)
+  else
+    write(fileunit, '(a)') ' volumetric data'
+  endif
+
+  write(fileunit, '(i6,3(f12.6,2x))') ncenter_nuclei, 0.0_dp, 0.0_dp, 0.0_dp
+  write(fileunit, '(i6,3(f12.6,2x))') n1, dr(:, 1)
+  write(fileunit, '(i6,3(f12.6,2x))') n2, dr(:, 2)
+  write(fileunit, '(i6,3(f12.6,2x))') n3, dr(:, 3)
+  do icenter=1, ncenter_nuclei
+    write(fileunit, '(i6,4(2x,f12.6))') NINT(zatom(icenter)), 0.0_dp, xatom(:, icenter)
+  enddo
+
+  ! cube files have C-ordering
+  allocate(data_reshuffled, MOLD=data)
+  ii = 0
+  do i1=1, n1
+    do i2=1, n2
+      do i3=1, n3
+        ii = ii + 1
+        data_reshuffled(ii) = data(i1 + (i2-1) * n1 + (i3-1) * n1 * n2)
+      enddo
+    enddo
+  enddo
+
+  write(fileunit, '(10(e16.8,2x))') data_reshuffled(:)
+  deallocate(data_reshuffled)
+
+  close(fileunit)
+
+end subroutine write_cube_file
 
 
 !=========================================================================

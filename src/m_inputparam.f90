@@ -988,6 +988,8 @@ subroutine read_inputfile_namelist()
 
   call setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, ecp_auxil_basis, ecp_small_basis)
 
+  call setup_periodicity_vectors(length_unit, a1, a2, a3)
+
   has_auxil_basis = TRIM(auxil_basis_name(1)) /= '' .OR. TRIM(ecp_auxil_basis_name(1)) /= ''
   has_small_basis = TRIM(small_basis_name(1)) /= '' .OR. TRIM(ecp_small_basis_name(1)) /= ''
 
@@ -1160,7 +1162,7 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
 
   select case(TRIM(length_unit))
   case('A', 'ANGSTROM')
-    length_factor = 1.0_dp/bohr_A
+    length_factor = 1.0_dp / bohr_A
   case('BOHR', 'AU','A.U','A.U.')
     length_factor = 1.0_dp
   case default

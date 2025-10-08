@@ -18,6 +18,7 @@ module m_hamiltonian_wrapper
   use m_basis_set
   use m_hamiltonian_twobodies
   use m_hamiltonian_tools
+  use m_hamiltonian_periodic
   use m_scf
 
   interface calculate_exchange
@@ -54,7 +55,11 @@ subroutine calculate_hartree(basis, p_matrix, hhartree, eh)
     end select
   else
     if( .NOT. eri3_genuine_ ) then
-      call setup_hartree_ri(p_matrix, hhartree, ehartree)
+      if( pbc_ ) then
+        call setup_hartree_periodic(basis, p_matrix, hhartree, ehartree)
+      else
+        call setup_hartree_ri(p_matrix, hhartree, ehartree)
+      endif
     else
       call calculate_density_auxilbasis(p_matrix, rho_coeff)
       call setup_hartree_genuine_ri(p_matrix, rho_coeff, hhartree, ehartree)

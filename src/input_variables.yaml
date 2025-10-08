@@ -1949,6 +1949,39 @@ noft_tolE:
 #                 Physical system setup input variables
 #============================================================================
 
+a1:
+  family: system
+  datatype: vector_1d_3
+  mandatory: 'no'
+  experimental: 'no'
+  default: !!python/tuple
+  - 0.0
+  - 0.0
+  - 0.0
+  comment: a1 periodicity vector
+
+a2:
+  family: system
+  datatype: vector_1d_3
+  mandatory: 'no'
+  experimental: 'no'
+  default: !!python/tuple
+  - 0.0
+  - 0.0
+  - 0.0
+  comment: a2 periodicity vector
+
+a3:
+  family: system
+  datatype: vector_1d_3
+  mandatory: 'no'
+  experimental: 'no'
+  default: !!python/tuple
+  - 0.0
+  - 0.0
+  - 0.0
+  comment: a3 periodicity vector
+
 charge:
   family: system
   datatype: real
