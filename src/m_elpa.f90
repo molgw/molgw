@@ -33,12 +33,12 @@ module m_elpa
  public :: elpa_func_error_handler       ! Manage errors (print a readable message)
  public :: elpa_func_get_communicators   ! Get rows and cols communicators (not supposed to be called directly)
  public :: elpa_func_set_matrix          ! Set matrix specifications in a ELPA handle
- public :: elpa_func_solve_evp_2stage    ! Solve the diagonalization problem (use a ELPA handle)
+ public :: elpa_func_solve_evp           ! Solve the diagonalization problem (use a ELPA handle)
 
- interface elpa_func_solve_evp_2stage
-   module procedure elpa_func_solve_evp_2stage_real
-   module procedure elpa_func_solve_evp_2stage_complex
- end interface elpa_func_solve_evp_2stage
+ interface elpa_func_solve_evp
+   module procedure elpa_func_solve_evp_real
+   module procedure elpa_func_solve_evp_complex
+ end interface elpa_func_solve_evp
 
 !ELPA generalized handle
  type,public :: elpa_hdl_t
@@ -102,21 +102,15 @@ subroutine elpa_func_allocate(elpa_hdl,gpu,blacs_ctx)
   call elpa_func_error_handler(err_code=err,err_msg='Error in initialization')
 
   if(l_gpu==1) then
-#if defined HAVE_ELPA_GPU
     varname="nvidia-gpu"
-#else
-    call die("Requested unsupported GPU model with ELPA!")
-#endif
     if (err==ELPA_OK) call elpa_hdl%elpa%set(varname,l_gpu,err)
-
     call elpa_func_error_handler(err_code=err,err_msg='Error when enabling GPU on ELPA')
-
   end if
+
   if (debug_mode) then
     if (err==ELPA_OK) call elpa_hdl%elpa%set("debug",1,err) 
     call elpa_func_error_handler(err_code=err,err_msg='Error when enabling debug on ELPA')
   end if
-
 
   if (present(blacs_ctx)) then
     if (err==ELPA_OK) call elpa_hdl%elpa%set("blacs_context",int(blacs_ctx,kind=c_int),err)
@@ -365,15 +359,16 @@ end subroutine elpa_func_set_matrix
 
 !----------------------------------------------------------------------
 
-!!****f* m_elpa/elpa_func_solve_evp_2stage_real
+!!****f* m_elpa/elpa_func_solve_evp_real
 !! NAME
-!!  elpa_func_solve_evp_2stage_real
+!!  elpa_func_solve_evp_real
 !!
 !! FUNCTION
-!!  Wrapper to elpa_solve_evp_real_2stage ELPA function
+!!  Wrapper to elpa_solve_evp_real ELPA function
 !!
 !! INPUTS
 !!  nev=Number of eigenvalues needed.
+!!  use_two_stage=if true, use ELPA 2-stage solver (better on CPU, worse on GPU)
 !!
 !! OUTPUT
 !!  ev(na)=Eigenvalues of a, every processor gets the complete set
@@ -391,12 +386,13 @@ end subroutine elpa_func_set_matrix
 !!
 !! SOURCE
 
-subroutine elpa_func_solve_evp_2stage_real(elpa_hdl,aa,qq,ev,nev)
+subroutine elpa_func_solve_evp_real(elpa_hdl,aa,qq,ev,nev,use_two_stage)
 
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)  :: nev
  type(elpa_hdl_t),intent(inout) :: elpa_hdl
+ logical :: use_two_stage
 !arrays
  real(dp),intent(inout) :: aa(:,:)
  real(dp),intent(out) :: ev(:),qq(:,:)
@@ -419,26 +415,31 @@ subroutine elpa_func_solve_evp_2stage_real(elpa_hdl,aa,qq,ev,nev)
  if(size(qq)/=elpa_hdl%elpa%local_nrows*elpa_hdl%elpa%local_ncols) call die('BUG: matrix Q has wrong sizes!')
  if(size(ev)/=elpa_hdl%elpa%na) call die('BUG: matrix EV has wrong sizes!')
 
- if (err==ELPA_OK) call elpa_hdl%elpa%set("solver",ELPA_SOLVER_2STAGE,err)
+ if(use_two_stage) then
+   if (err==ELPA_OK) call elpa_hdl%elpa%set("solver",ELPA_SOLVER_2STAGE,err)
+ else
+   if (err==ELPA_OK) call elpa_hdl%elpa%set("solver",ELPA_SOLVER_1STAGE,err)
+ end if
  if (err==ELPA_OK) call elpa_hdl%elpa%eigenvectors(aa,ev,qq,err)
  success=(err==ELPA_OK)
 
- if (.not.success) call elpa_func_error_handler(err_msg='Error in solve_evp_2stage_real!')
+ if (.not.success) call elpa_func_error_handler(err_msg='Error in solve_evp_real!')
 
-end subroutine elpa_func_solve_evp_2stage_real
+end subroutine elpa_func_solve_evp_real
 !!***
 
 !----------------------------------------------------------------------
 
-!!****f* m_elpa/elpa_func_solve_evp_2stage_complex
+!!****f* m_elpa/elpa_func_solve_evp_complex
 !! NAME
-!!  elpa_func_solve_evp_2stage_complex
+!!  elpa_func_solve_evp_complex
 !!
 !! FUNCTION
-!!  Wrapper to elpa_solve_evp_complex_2stage ELPA function
+!!  Wrapper to elpa_solve_evp_complex ELPA function
 !!
 !! INPUTS
 !!  nev=Number of eigenvalues needed.
+!!  use_two_stage=if true, use ELPA 2-stage solver (better on CPU, worse on GPU)
 !!
 !! OUTPUT
 !!  ev(na)=Eigenvalues of a, every processor gets the complete set
@@ -456,12 +457,13 @@ end subroutine elpa_func_solve_evp_2stage_real
 !!
 !! SOURCE
 
-subroutine elpa_func_solve_evp_2stage_complex(elpa_hdl,aa,qq,ev,nev)
+subroutine elpa_func_solve_evp_complex(elpa_hdl,aa,qq,ev,nev,use_two_stage)
 
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)  :: nev
  type(elpa_hdl_t),intent(inout) :: elpa_hdl
+ logical :: use_two_stage
 !arrays
  complex(dp),intent(inout) :: aa(:,:)
  real(dp),intent(out) :: ev(:)
@@ -485,13 +487,17 @@ subroutine elpa_func_solve_evp_2stage_complex(elpa_hdl,aa,qq,ev,nev)
  if(size(qq)/=elpa_hdl%elpa%local_nrows*elpa_hdl%elpa%local_ncols) call die('BUG: matrix Q has wrong sizes!')
  if(size(ev)/=elpa_hdl%elpa%na) call die('BUG: matrix EV has wrong sizes!')
 
- if (err==ELPA_OK) call elpa_hdl%elpa%set("solver",ELPA_SOLVER_2STAGE,err)
+ if(use_two_stage) then
+   if (err==ELPA_OK) call elpa_hdl%elpa%set("solver",ELPA_SOLVER_2STAGE,err)
+ else
+   if (err==ELPA_OK) call elpa_hdl%elpa%set("solver",ELPA_SOLVER_1STAGE,err)
+ end if
  if (err==ELPA_OK) call elpa_hdl%elpa%eigenvectors(aa,ev,qq,err)
  success=(err==ELPA_OK)
 
- if (.not.success) call elpa_func_error_handler(err_msg='Error in solve_evp_2stage_complex!')
+ if (.not.success) call elpa_func_error_handler(err_msg='Error in solve_evp_complex!')
 
-end subroutine elpa_func_solve_evp_2stage_complex
+end subroutine elpa_func_solve_evp_complex
 !!***
 
 !----------------------------------------------------------------------
