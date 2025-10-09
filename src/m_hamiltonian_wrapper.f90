@@ -59,9 +59,6 @@ subroutine setup_kinetic(basis, hkin_ao)
     call setup_kinetic_finite(basis, hkin_ao)
   endif
 
-  call dump_out_matrix(.TRUE., 'kinetic', hkin_ao)
-  stop 'ENOUGh'
-
 end subroutine setup_kinetic
 
 

@@ -21,13 +21,13 @@ module m_ecp
   integer, parameter :: ECP_GTH    = 4
 
   integer, protected                :: nelement_ecp
-  integer, protected, allocatable    :: element_ecp(:)
+  integer, protected, allocatable   :: element_ecp(:)
 
   type effective_core_potential
     integer              :: ecp_format
     integer              :: ncore          ! number of core electrons
     integer              :: necp           ! number of projectors
-    integer, allocatable  :: lk(:)          ! angular momentum of the projector (-1 stands for local component)
+    integer, allocatable :: lk(:)          ! angular momentum of the projector (-1 stands for local component)
     ! ECP
     integer, allocatable  :: nk(:)          ! r**(nk-2)
     real(dp), allocatable :: dk(:)          ! dk coefficient
@@ -35,13 +35,13 @@ module m_ecp
     ! Analytic GTH
     real(dp)              :: gth_rpploc      ! r_loc^pp   following Krack's notation [Theor Chem Acc 114, 145 (2005)]
     integer               :: gth_nloc        ! number of Ci^pp coefficients in the local potential
-    real(dp), allocatable  :: gth_cipp(:)     ! Ci^pp      following Krack's notation
+    real(dp), allocatable :: gth_cipp(:)     ! Ci^pp      following Krack's notation
     integer               :: gth_nl          ! number of angular momenta
-    integer, allocatable   :: gth_npl(:)      ! number of projectors for angular momentum l
-    real(dp), allocatable  :: gth_rl(:)       ! r^l        following Krack's notation
-    real(dp), allocatable  :: gth_hijl(:, :)   ! h_ij^l     following Krack's notation
+    integer, allocatable  :: gth_npl(:)      ! number of projectors for angular momentum l
+    real(dp), allocatable :: gth_rl(:)       ! r^l        following Krack's notation
+    real(dp), allocatable :: gth_hijl(:, :)   ! h_ij^l     following Krack's notation
     ! KB numerical pseudo on a grid
-    integer              :: mmax = 0
+    integer               :: mmax = 0
     real(dp), allocatable :: rad(:)
     real(dp), allocatable :: wfll(:, :)
     real(dp), allocatable :: vpspll(:, :)
