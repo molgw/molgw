@@ -20,12 +20,49 @@ module m_hamiltonian_wrapper
   use m_hamiltonian_tools
   use m_hamiltonian_periodic
   use m_scf
+  use m_atoms
 
   interface calculate_exchange
     module procedure calculate_exchange_real
   end interface
 
 contains
+
+!=========================================================================
+subroutine setup_overlap(basis, s_matrix)
+  implicit none
+
+  type(basis_set), intent(in) :: basis
+  real(dp), intent(out)       :: s_matrix(:, :)
+  !=====
+
+  if( pbc_ ) then
+    call setup_overlap_periodic(basis, s_matrix)
+  else
+    call setup_overlap_finite(basis, s_matrix)
+  endif
+
+end subroutine setup_overlap
+
+
+!=========================================================================
+subroutine setup_kinetic(basis, hkin_ao)
+  implicit none
+
+  type(basis_set), intent(in) :: basis
+  real(dp), intent(out)       :: hkin_ao(:, :)
+  !=====
+
+  if( pbc_ ) then
+    call setup_kinetic_periodic(basis, hkin_ao)
+  else
+    call setup_kinetic_finite(basis, hkin_ao)
+  endif
+
+  call dump_out_matrix(.TRUE., 'kinetic', hkin_ao)
+  stop 'ENOUGh'
+
+end subroutine setup_kinetic
 
 
 !=========================================================================

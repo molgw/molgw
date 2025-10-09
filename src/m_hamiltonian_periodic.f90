@@ -28,13 +28,238 @@ module m_hamiltonian_periodic
   use m_ecp
   use m_eri
   use m_hamiltonian_tools
+  use m_hamiltonian_onebody
 #if defined(HAVE_FFTW3)
   use m_fftw3
 #endif
 
+  integer, private, parameter :: nx=1
 
 
 contains
+
+
+!=========================================================================
+subroutine setup_overlap_periodic(basis, overlap_ao)
+  implicit none
+
+  type(basis_set), intent(in) :: basis
+  real(dp), intent(out) :: overlap_ao(:, :)
+  !=====
+  integer :: ix, iy, iz
+  real(dp) :: shift(3)
+  real(dp), allocatable :: s_matrix(:, :)
+  !=====
+
+  allocate(s_matrix, MOLD=overlap_ao)
+
+  overlap_ao(:, :) = 0.0_dp
+  do iz=-nx, nx
+    do iy=-nx, nx
+      do ix=-nx, nx
+
+        shift(:) = MATMUL( aprim(:, :), [ix, iy, iz] )
+        s_matrix(:, :) = 0.0_dp
+        call setup_overlap_onecell(basis, shift, s_matrix)
+        overlap_ao(:, :) = overlap_ao(:, :) + s_matrix(:, :)
+
+      enddo
+    enddo
+  enddo
+
+  deallocate(s_matrix)
+
+end subroutine setup_overlap_periodic
+
+
+!=========================================================================
+! Calculate ( \alpha | \beta ) with | beta) that may be shifted in the neighboring cell
+!
+subroutine setup_overlap_onecell(basis, shift, s_matrix)
+  implicit none
+  type(basis_set), intent(in) :: basis
+  real(dp), intent(in)        :: shift(3)
+  real(dp), intent(out)       :: s_matrix(:, :)
+  !=====
+  integer              :: ishell, jshell
+  integer              :: ibf1, ibf2, jbf1, jbf2
+  integer              :: ni, nj, ni_cart, nj_cart, li, lj
+  real(dp), allocatable :: matrix(:, :)
+
+  real(C_DOUBLE), allocatable :: array_cart(:)
+  integer(C_INT)             :: amA, contrdepthA
+  real(C_DOUBLE)             :: A(3)
+  real(C_DOUBLE), allocatable :: alphaA(:)
+  real(C_DOUBLE), allocatable :: cA(:)
+  integer(C_INT)             :: amB, contrdepthB
+  real(C_DOUBLE)             :: B(3)
+  real(C_DOUBLE), allocatable :: alphaB(:)
+  real(C_DOUBLE), allocatable :: cB(:)
+  !=====
+  integer :: i_cart, j_cart, ij
+  integer :: ibf_cart, jbf_cart
+  !=====
+
+  call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
+
+  do jshell=1, basis%nshell
+    lj      = basis%shell(jshell)%am
+    nj_cart = number_basis_function_am('CART',lj)
+    nj      = number_basis_function_am(basis%gaussian_type, lj)
+    jbf1    = basis%shell(jshell)%istart
+    jbf2    = basis%shell(jshell)%iend
+
+    call set_libint_shell(basis%shell(jshell), amB, contrdepthB, B, alphaB, cB)
+    ! Apply shift here
+    B(:) = B(:) + shift(:)
+
+    do ishell=1, basis%nshell
+      li      = basis%shell(ishell)%am
+      ni_cart = number_basis_function_am('CART',li)
+      ni      = number_basis_function_am(basis%gaussian_type, li)
+      ibf1    = basis%shell(ishell)%istart
+      ibf2    = basis%shell(ishell)%iend
+
+      call set_libint_shell(basis%shell(ishell), amA, contrdepthA, A, alphaA, cA)
+
+
+      allocate(array_cart(ni_cart*nj_cart))
+
+#if defined(HAVE_LIBCINT)
+      call libcint_overlap(amA, contrdepthA, A, alphaA, cA, &
+                           amB, contrdepthB, B, alphaB, cB, &
+                           array_cart)
+
+      call transform_libint_to_molgw(basis%gaussian_type, li, lj, array_cart, matrix)
+#endif
+
+      deallocate(alphaA, cA)
+
+
+      s_matrix(ibf1:ibf2, jbf1:jbf2) = matrix(:, :)
+
+      deallocate(array_cart, matrix)
+
+    enddo
+    deallocate(alphaB, cB)
+  enddo
+
+
+  call stop_clock(MERGE(0, timing_overlap, in_rt_tddft))
+
+
+end subroutine setup_overlap_onecell
+
+
+!=========================================================================
+subroutine setup_kinetic_periodic(basis, kin_ao)
+  implicit none
+
+  type(basis_set), intent(in) :: basis
+  real(dp), intent(out) :: kin_ao(:, :)
+  !=====
+  integer :: ix, iy, iz
+  real(dp) :: shift(3)
+  real(dp), allocatable :: hkin(:, :)
+  !=====
+
+  allocate(hkin, MOLD=kin_ao)
+
+  kin_ao(:, :) = 0.0_dp
+  do iz=-nx, nx
+    do iy=-nx, nx
+      do ix=-nx, nx
+
+        shift(:) = MATMUL( aprim(:, :), [ix, iy, iz] )
+        call setup_kinetic_onecell(basis, shift, hkin)
+        kin_ao(:, :) = kin_ao(:, :) + hkin(:, :)
+
+      enddo
+    enddo
+  enddo
+
+  deallocate(hkin)
+
+end subroutine setup_kinetic_periodic
+
+
+!=========================================================================
+! Calculate ( \alpha | p^2/2 |\beta ) with | beta) that may be shifted in the neighboring cell
+!
+subroutine setup_kinetic_onecell(basis, shift, kin_ao)
+  implicit none
+  type(basis_set), intent(in) :: basis
+  real(dp), intent(in)        :: shift(3)
+  real(dp), intent(out)       :: kin_ao(:, :)
+  !=====
+  integer              :: ishell, jshell
+  integer              :: ibf1, ibf2, jbf1, jbf2
+  integer              :: ni, nj, ni_cart, nj_cart, li, lj
+  real(dp), allocatable :: matrix(:, :)
+
+  real(C_DOUBLE), allocatable :: array_cart(:)
+  integer(C_INT)             :: amA, contrdepthA
+  real(C_DOUBLE)             :: A(3)
+  real(C_DOUBLE), allocatable :: alphaA(:)
+  real(C_DOUBLE), allocatable :: cA(:)
+  integer(C_INT)             :: amB, contrdepthB
+  real(C_DOUBLE)             :: B(3)
+  real(C_DOUBLE), allocatable :: alphaB(:)
+  real(C_DOUBLE), allocatable :: cB(:)
+  !=====
+  integer :: i_cart, j_cart, ij
+  integer :: ibf_cart, jbf_cart
+  !=====
+
+  call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
+
+  do jshell=1, basis%nshell
+    lj      = basis%shell(jshell)%am
+    nj_cart = number_basis_function_am('CART',lj)
+    nj      = number_basis_function_am(basis%gaussian_type, lj)
+    jbf1    = basis%shell(jshell)%istart
+    jbf2    = basis%shell(jshell)%iend
+
+    call set_libint_shell(basis%shell(jshell), amB, contrdepthB, B, alphaB, cB)
+    ! Apply shift here
+    B(:) = B(:) + shift(:)
+
+    do ishell=1, basis%nshell
+      li      = basis%shell(ishell)%am
+      ni_cart = number_basis_function_am('CART',li)
+      ni      = number_basis_function_am(basis%gaussian_type, li)
+      ibf1    = basis%shell(ishell)%istart
+      ibf2    = basis%shell(ishell)%iend
+
+      call set_libint_shell(basis%shell(ishell), amA, contrdepthA, A, alphaA, cA)
+
+
+      allocate(array_cart(ni_cart*nj_cart))
+
+#if defined(HAVE_LIBCINT)
+      call libcint_kinetic(amA, contrdepthA, A, alphaA, cA, &
+                           amB, contrdepthB, B, alphaB, cB, &
+                           array_cart)
+
+      call transform_libint_to_molgw(basis%gaussian_type, li, lj, array_cart, matrix)
+#endif
+
+      deallocate(alphaA, cA)
+
+
+      kin_ao(ibf1:ibf2, jbf1:jbf2) = matrix(:, :)
+
+      deallocate(array_cart, matrix)
+
+    enddo
+    deallocate(alphaB, cB)
+  enddo
+
+
+  call stop_clock(MERGE(0, timing_overlap, in_rt_tddft))
+
+
+end subroutine setup_kinetic_onecell
 
 
 !=========================================================================
@@ -269,7 +494,6 @@ subroutine calculate_density_periodic(basis, c_matrix, occupation, rr, rhor)
   real(dp), intent(in)  :: rr(:, :)
   real(dp), intent(out) :: rhor(:, :)
   !=====
-  integer :: nx=1
   integer :: ispin, ir, nr, nstate, ix, iy, iz
   real(dp) :: shift(3)
   real(dp), allocatable :: rr_shifted(:, :)
@@ -285,9 +509,9 @@ subroutine calculate_density_periodic(basis, c_matrix, occupation, rr, rhor)
   allocate(phir(nr, nstate))
 
   rhor(:, :) = 0.0_dp
-  do iz=-nx,nx
-    do iy=-nx,nx
-      do ix=-nx,nx
+  do iz=-nx, nx
+    do iy=-nx ,nx
+      do ix=-nx, nx
         shift(:) = MATMUL( aprim(:, :), [ix, iy, iz] )
 
         do ir=1, nr
@@ -334,9 +558,9 @@ subroutine calculate_hao_periodic(basis, rr, vr, h_ao)
   allocate(bfr(basis%nbf,nr))
 
   h_ao(:, :) = 0.0_dp
-  do iz=-nx,nx
-    do iy=-nx,nx
-      do ix=-nx,nx
+  do iz=-nx, nx
+    do iy=-nx, nx
+      do ix=-nx, nx
         shift(:) = MATMUL( aprim(:, :), [ix, iy, iz] )
 
         do ir=1, nr

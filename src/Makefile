@@ -206,9 +206,9 @@ level030: m_eri_calculate.o m_density_tools.o m_io.o
 
 level035: m_eri_ao_mo.o
 
-level040: m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_hamiltonian_periodic.o m_tddft_fxc.o 
+level040: m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_tddft_fxc.o
 
-level045: m_spectral_function.o
+level045: m_spectral_function.o m_hamiltonian_periodic.o
 
 level050: m_hamiltonian_wrapper.o m_restart.o m_multipole.o m_spectra.o m_build_bse.o
 

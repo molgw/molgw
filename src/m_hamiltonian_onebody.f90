@@ -37,7 +37,7 @@ contains
 !=========================================================================
 ! Calculate ( \alpha | \beta )
 !
-subroutine setup_overlap(basis, s_matrix)
+subroutine setup_overlap_finite(basis, s_matrix)
   implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: s_matrix(:, :)
@@ -94,7 +94,7 @@ subroutine setup_overlap(basis, s_matrix)
       call set_libint_shell(basis%shell(ishell), amA, contrdepthA, A, alphaA, cA)
 
 
-      allocate(array_cart(ni_cart*nj_cart))  ! it may be too large for spherical gaussian
+      allocate(array_cart(ni_cart * nj_cart))  ! it may be too large for spherical gaussian
 
 #if defined(HAVE_LIBCINT)
 
@@ -148,7 +148,7 @@ subroutine setup_overlap(basis, s_matrix)
   call stop_clock(MERGE(0, timing_overlap, in_rt_tddft))
 
 
-end subroutine setup_overlap
+end subroutine setup_overlap_finite
 
 
 !=========================================================================
@@ -632,11 +632,11 @@ end subroutine recalc_overlap_grad
 !=========================================================================
 ! Calculate  ( \alpha | p**2 / 2 | \beta )
 !
-subroutine setup_kinetic(basis, hamiltonian_kinetic, timing)
+subroutine setup_kinetic_finite(basis, hamiltonian_kinetic, timing)
   implicit none
   type(basis_set), intent(in) :: basis
-  real(dp), intent(out)       :: hamiltonian_kinetic(basis%nbf, basis%nbf)
-  integer, optional           :: timing
+  real(dp), intent(out)       :: hamiltonian_kinetic(:, :)
+  integer, intent(in), optional  :: timing
   !=====
   integer              :: ishell, jshell
   integer              :: ibf1, ibf2, jbf1, jbf2
@@ -671,7 +671,6 @@ subroutine setup_kinetic(basis, hamiltonian_kinetic, timing)
   write(stdout, '(/,a)') ' Setup kinetic part of the Hamiltonian (internal)'
 #endif
 
-
   do jshell=1, basis%nshell
     lj      = basis%shell(jshell)%am
     nj_cart = number_basis_function_am('CART',lj)
@@ -691,7 +690,7 @@ subroutine setup_kinetic(basis, hamiltonian_kinetic, timing)
       call set_libint_shell(basis%shell(ishell), amA, contrdepthA, A, alphaA, cA)
 
 
-      allocate(array_cart(ni_cart*nj_cart))
+      allocate(array_cart(ni_cart * nj_cart))
 
 
 #if defined(HAVE_LIBCINT)
@@ -737,7 +736,7 @@ subroutine setup_kinetic(basis, hamiltonian_kinetic, timing)
 
   call stop_clock(MERGE(0, timing_hamiltonian_kin, in_rt_tddft))
 
-end subroutine setup_kinetic
+end subroutine setup_kinetic_finite
 
 
 !=========================================================================
@@ -2858,7 +2857,7 @@ subroutine setup_pbe_plus_alpha(basis, h_pbea)
   enddo
 
   allocate(overlap_proj(proj%nbf, proj%nbf))
-  call setup_overlap(proj, overlap_proj)
+  call setup_overlap_finite(proj, overlap_proj)
 
   call dump_out_matrix(.TRUE., 'overlap projectors', overlap_proj, form='f6.3')
 
