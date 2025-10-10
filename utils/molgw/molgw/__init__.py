@@ -48,7 +48,7 @@ periodic_table = [ 'H',                                                         
                 ]
 z_element = {element: index+1 for index, element in enumerate(periodic_table)}
 
-molgw_rootfolder = str(pathlib.Path(__file__).resolve().parent.parent.parent)
+molgw_rootfolder = str(pathlib.Path(__file__).resolve().parent.parent.parent.parent)
 exe  = molgw_rootfolder + "/molgw"
 
 ########################################################################
@@ -123,7 +123,7 @@ def get_chemical_formula(calc):
         i = element_list.index(atom[0])
         numbers[i] += 1
     formula = ''
-    for e,n in zip(element_list,numbers):
+    for e, n in zip(element_list, numbers):
         if n > 1:
             formula += e + str(n)
         elif n > 0:

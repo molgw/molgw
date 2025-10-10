@@ -12,13 +12,19 @@
 import numpy as np
 import json
 import matplotlib.pyplot as plt
-from . import __version__
+from molgw import __version__, Molecule
+
 
 chemical_formulas = { '7446-09-5': 'SO2', '71-30-7': 'C4H5N3O', '66-22-8': 'C4H4N2O2', '74-84-0': 'C2H6', '1603-84-5': 'OCSe', '74-90-8': 'NCH', '7784-18-1': 'AlF3', '7784-23-8': 'AlI3', '7727-37-9': 'N2', '75-73-0': 'CF4', '507-25-5': 'CI4', '7722-84-1': 'H2O2', '7783-63-3': 'TiF4', '56-23-5': 'CCl4', '558-13-4': 'CBr4', '13768-60-0': 'BF', '302-01-2': 'N2H4', '7553-56-2': 'I2', '12184-80-4': 'C4', '74-98-6': 'C3H8', '19287-45-7': 'B2H6', '7726-95-6': 'Br2', '7786-30-3': 'MgCl2', '7782-50-5': 'Cl2', '13283-31-3': 'BH3', '1304-56-9': 'BeO', '7664-39-3': 'HF', '7784-42-1': 'AsH3', '74-86-2': 'C2H2', '60-29-7': 'C4H10O', '65-71-4': 'C5H6N2O2', '73-40-5': 'C5H5N5O', '7439-90-9': 'Kr', '463-58-1': 'OCS', '67-56-1': 'CH4O', '64-17-5': 'C2H6O', '64-18-6': 'CH2O2', '1333-74-0': 'H2', '12190-70-4': 'Cu2', '7440-37-1': 'Ar', '75-15-0': 'CS2', '7664-41-7': 'NH3', '7782-79-8': 'HN3', '7758-02-3': 'KBr', '50-00-0': 'H2CO', '7440-59-7': 'He', '7647-01-0': 'HCl', '17108-85-9': 'GaCl', '7693-26-7': 'KH', '7803-51-2': 'PH3', '73-24-5': 'C5H5N5', '630-08-0': 'CO', '1590-87-0': 'Si2H6', '7732-18-5': 'H2O', '75-07-0': 'C2H4O', '124-38-9': 'CO2', '75-02-5': 'C2H3F', '7783-06-4': 'SH2', '75-01-4': 'C2H3Cl', '7783-60-0': 'SF4', '7647-14-5': 'NaCl', '74-85-1': 'C2H4', '12187-06-3': 'Ag2', '75-19-4': 'C3H6', '7789-24-4': 'LiF', '7440-01-9': 'Ne', '14868-53-2': 'Si5H12', '74-82-8': 'CH4', '25681-79-2': 'Na2', '7782-65-2': 'GeH4', '7803-62-5': 'SiH4', '25681-80-5': 'K2', '25681-81-6': 'Rb2', '39297-86-4': 'Na4', '7580-67-8': 'LiH', '542-92-7': 'C5H6', '7783-40-6': 'MgF2', '39297-88-6': 'Na6', '629-20-9': 'C8H8', '62-53-3': 'C6H5NH2', '12185-09-0': 'P2', '100-41-4': 'C8H10', '71-43-2': 'C6H6', '23878-46-8': 'As2', '108-88-3': 'C7H8', '110-86-1': 'C5H5N', '14452-59-6': 'Li2', '17739-47-8': 'PN', '392-56-3': 'C6F6', '7782-41-4': 'F2', '10028-15-6': 'O3', '106-97-8': 'C4H10', '544-92-3': 'NCCu', '10043-11-5': 'BN', '1309-48-4': 'MgO', '57-13-6': 'CH4N2O', '593-66-8': 'C2H3I', '108-95-2': 'C6H5OH', '108-95-2_old': 'C6H5OH', '593-60-2': 'C2H3Br', '593-60-2_old': 'C2H3Br', '7440-63-3': 'Xe' }
 
 names = { '10028-15-6':  "Ozone", '100-41-4':  "Ethylbenzene", '10043-11-5':  "Boron nitride", '106-97-8':  "Butane", '108-88-3':  "Toluene", '108-95-2':  "Phenol", '108-95-2_old':  "Phenol", '110-86-1':  "Pyridine", '12184-80-4':  "Tetracarbon", '7440-63-3':  "Xenon", '12185-09-0':  "Phosphorus dimer", '12187-06-3':  "Silver dimer", '12190-70-4':  "Copper dimer", '124-38-9':  "Carbon dioxide", '1304-56-9':  "Beryllium oxide", '1309-48-4':  "Magnesium oxide", '13283-31-3':  "Borane", '1333-74-0':  "Hydrogen", '13768-60-0':  "Boron fluoride", '14452-59-6':  "Lithium dimer", '14868-53-2':  "Pentasilane", '1590-87-0':  "Disilane", '1603-84-5':  "Carbonyl selenide", '17108-85-9':  "Gallium monochloride", '17739-47-8':  "Phosphorus mononitride", '19287-45-7':  "Diborane", '23878-46-8':  "Arsenic dimer", '25681-79-2':  "Disodium", '25681-80-5':  "Dipotassium", '25681-81-6':  "Dirubidium", '302-01-2':  "Hydrazine", '392-56-3':  "Hexafluorobenzene", '39297-86-4':  "Sodium tetramer", '39297-88-6':  "Sodium hexamer", '463-58-1':  "Carbonyl sulfide", '50-00-0':  "Formaldehyde", '507-25-5':  "Tetraiodomethane", '542-92-7':  "1,3-Cyclopentadiene", '544-92-3':  "Copper cyanide", '558-13-4':  "Carbon tetrabromide", '56-23-5':  "Carbon tetrachloride", '57-13-6':  "Urea", '593-60-2':  "Vinyl bromide", '593-60-2_old':  "Vinyl bromide", '593-66-8':  "Iodoethene", '60-29-7':  "Ethyl ether", '62-53-3':  "Aniline", '629-20-9':  "1,3,5,7-Cyclooctatetraene", '630-08-0':  "Carbon monoxide", '64-17-5':  "Ethanol", '64-18-6':  "Formic acid", '65-71-4':  "Thymine", '66-22-8':  "Uracil", '67-56-1':  "Methyl alcohol", '71-30-7':  "Cytosine", '71-43-2':  "Benzene", '73-24-5':  "Adenine", '73-40-5':  "Guanine", '7439-90-9':  "Krypton", '7440-01-9':  "Neon", '7440-37-1':  "Argon", '7440-59-7':  "Helium", '7446-09-5':  "Sulfur dioxide", '74-82-8':  "Methane", '74-84-0':  "Ethane", '74-85-1':  "Ethylene", '74-86-2':  "Acetylene", '74-90-8':  "Hydrogen cyanide", '74-98-6':  "Propane", '75-01-4':  "Chloroethene", '75-02-5':  "Fluoroethene", '75-07-0':  "Acetaldehyde", '75-15-0':  "Carbon disulfide", '75-19-4':  "Cyclopropane", '7553-56-2':  "Iodine", '75-73-0':  "Tetrafluoromethane", '7580-67-8':  "Lithium hydride", '7647-01-0':  "Hydrogen chloride", '7647-14-5':  "Sodium chloride", '7664-39-3':  "Hydrogen fluoride", '7664-41-7':  "Ammonia", '7693-26-7':  "Potassium hydride", '7722-84-1':  "Hydrogen peroxide", '7726-95-6':  "Bromine", '7727-37-9':  "Nitrogen", '7732-18-5':  "Water", '7758-02-3':  "Potassium bromide", '7782-41-4':  "Fluorine", '7782-50-5':  "Chlorine", '7782-65-2':  "Germanium tetrahydride", '7782-79-8':  "Hydrogen azide", '7783-06-4':  "Hydrogen sulfide", '7783-40-6':  "Magnesium fluoride", '7783-60-0':  "Sulfur tetrafluoride", '7783-63-3':  "Titanium tetrafluoride", '7784-18-1':  "Aluminum fluoride", '7784-23-8':  "Aluminum iodide", '7784-42-1':  "Arsine", '7786-30-3':  "Magnesium chloride", '7789-24-4':  "Lithium fluoride", '7803-51-2':  "Phosphine", '7803-62-5':  "Silane" }
 
-molecules = list(chemical_formulas.keys())
+cas = list(chemical_formulas.keys())
+
+get_cas = {}
+for k, v in chemical_formulas.items():
+    if not "_old" in k:
+        get_cas[v] = k
 
 default_input_parameters = { 
       'scf': 'pbeh',
@@ -182,6 +188,13 @@ structures = {
     "14868-53-2": "17\nPentasilane; def2-QZVP pbe optimized; m\nSi   -0.0048335   -3.8969717   -0.5238439 \nH     1.1887767   -3.9134075   -1.4252499 \nH     0.0223993   -5.1288186    0.3252902 \nH    -1.2385400   -3.9282984   -1.3688912 \nSi    0.0104464   -1.9536989    0.7969029 \nSi   -0.0004053    0.0000130   -0.5100885 \nH    -1.1904082   -1.9457891    1.6943990 \nH     1.2296666   -1.9529052    1.6693294 \nSi   -0.0104987    1.9536727    0.7969268 \nH    -1.2088685   -0.0034247   -1.3978287 \nH     1.2088478    0.0037073   -1.3964714 \nSi    0.0051940    3.8969653   -0.5238481 \nH    -0.0191436    5.1288161    0.3253672 \nH     1.2377333    3.9262510   -1.3707348 \nH    -1.1896928    3.9156075   -1.4234610 \nH     1.1910193    1.9496877    1.6935745 \nH    -1.2290887    1.9491200    1.6702050 ",
     "100-41-4": "18\nEthybenzene; TM optimized def2-QZVP pbe structure; l\nC    -2.2693535   -0.0000389   -0.2398724 \nC    -1.5797056   -1.2063053   -0.1005171 \nC    -0.2110721   -1.2030110    0.1749198 \nC     0.4952604    0.0000401    0.3167968 \nC    -0.2111286    1.2030501    0.1748811 \nC    -1.5797652    1.2062634   -0.1005510 \nH    -3.3389696   -0.0000690   -0.4503195 \nH    -2.1102702   -2.1538484   -0.2012097 \nH     0.3195630   -2.1509209    0.2885225 \nH     0.3194582    2.1509892    0.2884519 \nH    -2.1103902    2.1537683   -0.2012753 \nC     2.8147071   -0.0000376   -0.7147854 \nC     1.9829690    0.0000498    0.5777693 \nH     2.5926203   -0.8860058   -1.3248301 \nH     2.5930639    0.8861475   -1.3246747 \nH     3.8904081   -0.0003286   -0.4914695 \nH     2.2473809   -0.8820350    1.1803103 \nH     2.2474159    0.8821780    1.1802303 "
 }
+
+#
+# gw100.molecule: dictionary of molgw.Molecule objects
+# 
+molecule = dict()
+for k, v in structures.items():
+    molecule[k] = Molecule(v)
 
 
 ccsdt_homo = {
@@ -614,7 +627,7 @@ def mae_mse_max(data1, data2):
     errors = list( diff(data1, data2).values() )
 
     ndata = len(errors)
-    mse = sum(errors) / float(ndata)
-    mae = sum(np.abs(errors)) / float(ndata)
+    mse = np.sum(errors) / float(ndata)
+    mae = np.sum(np.abs(errors)) / float(ndata)
     mxe = np.max(np.abs(errors))
     return mae, mse, mxe

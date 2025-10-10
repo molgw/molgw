@@ -163,7 +163,7 @@ module m_scalapack
 
 #if defined(HAVE_SCALAPACK)
   integer, external  :: NUMROC, INDXL2G, INDXG2L, INDXG2P
-  real(dp), external :: PDLATRA, PDLAMCH
+  real(dp), external :: PDLATRA, PDLAMCH, PDLANGE
 #endif
 
 
@@ -441,7 +441,7 @@ subroutine gather_distributed_copy_nospin_dp(desc, matrix, matrix_global)
     enddo
 
     ! Only the master proc (0,0) gets the complete information
-    call DGSUM2D(cntxt, 'A', ' ', mglobal, nglobal, matrix_global(1,1),nglobal,0,0)
+    call DGSUM2D(cntxt, 'A', ' ', mglobal, nglobal, matrix_global(1, 1), mglobal, 0, 0)
 
   endif
 
@@ -504,7 +504,7 @@ subroutine gather_distributed_copy_spin_dp(desc, matrix, matrix_global)
       enddo
 
       ! Only the master proc (0,0) gets the complete information
-      call DGSUM2D(cntxt, 'A', ' ', mglobal, nglobal, matrix_global(1, 1, idim3),nglobal,0,0)
+      call DGSUM2D(cntxt, 'A', ' ', mglobal, nglobal, matrix_global(1, 1, idim3), mglobal, 0, 0)
     enddo
 
   endif
@@ -562,7 +562,7 @@ subroutine gather_distributed_copy_nospin_cdp(desc, matrix, matrix_global)
     enddo
 
     ! Only the master proc (0,0) gets the complete information
-    call ZGSUM2D(cntxt, 'A', ' ', mglobal, nglobal, matrix_global,nglobal,0,0)
+    call ZGSUM2D(cntxt, 'A', ' ', mglobal, nglobal, matrix_global, mglobal, 0, 0)
 
   endif
 
@@ -679,7 +679,7 @@ subroutine diagonalize_eigval_sca(flavor, matrix, desc, eigval)
   ! First call to get the dimension of the array work
   lwork = -1
   allocate(work(1))
-  call PDSYEV('N', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec,work,lwork,info)
+  call PDSYEV('N', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, info)
 
 
   !
@@ -688,7 +688,7 @@ subroutine diagonalize_eigval_sca(flavor, matrix, desc, eigval)
 
   deallocate(work)
   allocate(work(lwork))
-  call PDSYEV('N', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec,work,lwork,info)
+  call PDSYEV('N', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, info)
 
   deallocate(work)
 
@@ -768,7 +768,7 @@ subroutine diagonalize_inplace_sca_dp(flavor, matrix, desc, eigval)
                   eigvec, 1, 1, desc_eigvec, work, lwork, iwork, liwork,        &
                   ifail, iclustr, gap, info)
     case default
-      call PDSYEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec,work,lwork,info)
+      call PDSYEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, info)
     end select
 
     !
@@ -795,7 +795,7 @@ subroutine diagonalize_inplace_sca_dp(flavor, matrix, desc, eigval)
                   ifail, iclustr, gap, info)
       deallocate(iwork, ifail)
     case default
-      call PDSYEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec,work,lwork,info)
+      call PDSYEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, info)
     end select
 
 

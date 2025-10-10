@@ -56,7 +56,7 @@ module m_timing
   integer, parameter :: timing_sca_distr2          = 35
   integer, parameter :: timing_fno                 = 36
   integer, parameter :: timing_full_ci             = 37
-  integer, parameter :: timing_gwgamma_self        = 38
+  integer, parameter :: timing_vertex_selfenergy   = 38
   integer, parameter :: timing_ecp                 = 39
   integer, parameter :: timing_density_matrix      = 40
   integer, parameter :: timing_force               = 41
@@ -321,7 +321,7 @@ subroutine output_timing()
   call output_timing_line('GW self-energy', timing_gw_self, 1)
   call output_timing_line('3-center AO to MO transform in GW', timing_aomo_gw, 2)
   call output_timing_line('PT self-energy', timing_pt_self, 1)
-  call output_timing_line('GWGamma self-energy', timing_gwgamma_self, 1)
+  call output_timing_line('Vertex corrected self-energy', timing_vertex_selfenergy, 1)
   call output_timing_line('MP2 energy', timing_mp2_energy, 1)
 
   ! CI

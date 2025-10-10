@@ -341,20 +341,28 @@ end subroutine dump_out_matrix_dp
 
 
 !=========================================================================
-subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix)
+subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, form)
   implicit none
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
   real(dp), intent(in)         :: matrix(:, :)
+  character(len=*), optional, intent(in) :: form
   !=====
   integer, parameter :: MAXSIZE=50
   !=====
   real(dp) :: row(MIN(SIZE(matrix, DIM=2), MAXSIZE))
   integer :: imat, mmat, nmat
+  character(20) :: form_
   !=====
 
   if( .NOT. print_matrix .AND. .NOT. debug ) return
+
+  if( PRESENT(form) ) then
+    form_ = '(1x,i3,*(1x,' // form // '))'
+  else
+    form_ = '(1x,i3,*(1x,f12.5))'
+  endif
 
   mmat  = SIZE(matrix, DIM=1)
   nmat  = SIZE(matrix, DIM=2)
@@ -367,7 +375,7 @@ subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix)
     elsewhere
     row(:) = 1.0e-6_dp
   end where
-  write(stdout, '(1x,i3,*(1x,f12.5))') imat, row(:)
+  write(stdout, form_) imat, row(:)
 enddo
 write(stdout, *)
 

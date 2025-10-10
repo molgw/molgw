@@ -1,0 +1,15 @@
+&molgw
+ scf='hf'
+
+ bogoliubov_scf='yes'
+ bogoliubov_sigma=-0.5e0
+
+ basis='6-31G'
+ auxil_basis='PAUTO'
+ gaussian_type='cart'
+ temperature=0.2
+
+ natom=2
+/
+Li   0. 0. 0.
+H    0. 0. 5.

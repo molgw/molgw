@@ -12,6 +12,7 @@
  postscf='noft'
  noft_ncoupled=2
  noft_dft='yes'
+ noft_dft0='no'
  
 /
 H  0. 0.    0.

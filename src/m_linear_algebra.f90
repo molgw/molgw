@@ -11,6 +11,13 @@ module m_linear_algebra
   use m_definitions
   use m_warning, only: die, issue_warning
 
+  real(kind=real32), parameter :: blas_sp_zero     = 0.0_real32
+  real(kind=real64), parameter :: blas_dp_zero     = 0.0_real64
+  complex(kind=real64), parameter :: blas_cdp_zero = (0.0_real64, 0.0_real64)
+  real(kind=real32), parameter :: blas_sp_one      = 1.0_real32
+  real(kind=real64), parameter :: blas_dp_one      = 1.0_real64
+  complex(kind=real64), parameter :: blas_cdp_one  = (1.0_real64, 0.0_real64)
+
   interface svd
     module procedure svd_dp
   end interface

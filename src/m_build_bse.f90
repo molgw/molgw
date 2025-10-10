@@ -66,8 +66,9 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
   write(stdout, '(a,f8.3)') ' Content of Exchange: ', alpha_local
   if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
      .OR. TRIM(w_screening)=='TDDFT' ) ) then
-    write(stdout, '(a,f8.3)') ' Content of LR-Exchange(missing): ', alpha_local
-    call die('Long-range exchange not available TD-DFT (Hint: try to use an auxiliary basis)')
+    write(stdout, '(a,f8.3)') ' Content of LR-Exchange(missing): ', beta_hybrid
+    call die('build_amb_apb_common: Long-range exchange not available in TD-DFT without RI.' &
+             // ' (Hint: try to use an auxiliary basis)')
   endif
 
   if( .NOT. has_auxil_basis) then
@@ -482,8 +483,8 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda, desc_
   call clean_deallocate('TMP 3-center integrals', eri_3tmp)
 
 
-  call PDSYRK('L', 'T', nmat, nauxil_global_, DBLE(2.0_dp*spin_fact*lambda), eri_3tmp_sd,1,1,desc_sd,  &
-                                          DBLE(1.0_dp), apb_matrix, 1, 1, desc_apb)
+  call PDSYRK('L', 'T', nmat, nauxil_global_, DBLE(2.0_dp*spin_fact*lambda), eri_3tmp_sd, 1, 1, desc_sd,  &
+                                              DBLE(1.0_dp), apb_matrix, 1, 1, desc_apb)
 
   call clean_deallocate('TMP 3-center integrals', eri_3tmp_sd)
 #endif
@@ -682,11 +683,12 @@ end subroutine build_amb_apb_bse
 
 
 !=========================================================================
-subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, wpol, wpol_static, m_apb, n_apb, &
+subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda, &
+                                                 desc_apb, wpol, wpol_static, m_apb, n_apb, &
                                                  amb_matrix, apb_matrix)
   implicit none
 
-  real(dp), intent(in)                :: alpha_local, lambda
+  real(dp), intent(in)                :: alpha_local, beta_local, lambda
   integer, intent(in)                 :: desc_apb(NDEL)
   type(spectral_function), intent(in) :: wpol, wpol_static
   integer, intent(in)                 :: m_apb, n_apb
@@ -705,6 +707,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
   integer              :: m_apb_block, n_apb_block
   real(dp), allocatable :: amb_block(:, :)
   real(dp), allocatable :: apb_block(:, :)
+  logical              :: include_long_range_exchange
 #if defined(HAVE_SCALAPACK)
   real(dp), allocatable :: vsqrt_chi_vsqrt_i(:), w_s(:), wp0_i(:, :)
 #else
@@ -717,7 +720,9 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
 
   write(stdout, '(a)')      ' Build W part Auxil'
   write(stdout, '(a,f8.3)') ' Content of Exchange: ', alpha_local
-  if( beta_hybrid > 1.0e-6_dp ) write(stdout, '(a,f8.3)') ' Content of LR-Exchange: ', beta_hybrid
+  if( beta_local > 1.0e-6_dp ) write(stdout, '(a,f8.3)') ' Content of LR-Exchange: ', beta_local
+  include_long_range_exchange = ( beta_local > 1.0e-6_dp ) &
+                          .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' .OR. TRIM(w_screening)=='TDDFT' )
 
   nmat = desc_apb(M_)
   ! Is it an exchange or a screened exchange calculation
@@ -738,9 +743,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
   call clean_allocate('Temporary array for W', wp0, 1, nauxil_local, ncore_W+1, nvirtual_W-1, jstate_min, jstate_max, 1, nspin)
   wp0(:, :, :, :) = 0.0_dp
 
-  if( ( beta_hybrid > 1.0e-6_dp ) &
-     .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
-       .OR. TRIM(w_screening)=='TDDFT' ) ) then
+  if( include_long_range_exchange ) then
     call clean_allocate('Temporary array for W_lr', wp0_lr, 1, nauxil_local_lr, ncore_W+1, nvirtual_W-1, &
                         jstate_min, jstate_max, 1, nspin)
     wp0_lr(:, :, :, :) = 0.0_dp
@@ -861,32 +864,27 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
 
 
   !
-  ! Add the exact exchange here
-  if( alpha_local > 1.0e-6_dp .OR. beta_hybrid > 1.0e-6_dp ) then
-
-    if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
-       .OR. TRIM(w_screening)=='TDDFT' ) ) then
-
-      do iaspin=1, nspin
-        do jstate=jstate_min, jstate_max
-          wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) = wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) &
-                             + alpha_local * lambda *  eri_3center_mo(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
-          wp0_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) = wp0_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) &
-                             + beta_hybrid * lambda *  eri_3center_mo_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
-        enddo
+  ! Add the global exact exchange here
+  !
+  if( alpha_local > 1.0e-6_dp ) then
+    do iaspin=1, nspin
+      do jstate=jstate_min, jstate_max
+        wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) = wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) &
+                           + alpha_local * lambda *  eri_3center_mo(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
       enddo
+    enddo
+  endif
 
-    else
-
-      do iaspin=1, nspin
-        do jstate=jstate_min, jstate_max
-          wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) = wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) &
-                             + alpha_local * lambda *  eri_3center_mo(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
-        enddo
+  !
+  ! Add the long-range exact exchange here
+  !
+  if( include_long_range_exchange ) then
+    do iaspin=1, nspin
+      do jstate=jstate_min, jstate_max
+        wp0_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) = wp0_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) &
+                           + beta_local * lambda *  eri_3center_mo_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
       enddo
-
-    endif
-
+    enddo
   endif
 
 
@@ -929,8 +927,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
           if( iaspin /= jbspin ) cycle
 
           wtmp = DOT_PRODUCT( eri_3center_mo(:, astate, bstate, iaspin) , wp0(:, istate, jstate, iaspin) )
-          if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
-             .OR. TRIM(w_screening)=='TDDFT' ) ) then
+          if( include_long_range_exchange ) then
             wtmp2 = DOT_PRODUCT( eri_3center_mo_lr(:, astate, bstate, iaspin) , wp0_lr(:, istate, jstate, iaspin) )
           endif
 
@@ -939,8 +936,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, lambda, desc_apb, 
 
 
           wtmp = DOT_PRODUCT( eri_3center_mo(:, istate, bstate, iaspin) , wp0(:, astate, jstate, iaspin) )
-          if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
-             .OR. TRIM(w_screening)=='TDDFT' ) ) then
+          if( include_long_range_exchange ) then
             wtmp2 = DOT_PRODUCT( eri_3center_mo_lr(:, istate, bstate, iaspin) , wp0_lr(:, astate, jstate, iaspin) )
           endif
             

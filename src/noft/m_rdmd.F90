@@ -139,7 +139,7 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
 
  if(irs_noft/=0) RDMd%irange_sep=irs_noft
  RDMd%INOF=INOF
- if(RDMd%INOF==101 .or. RDMd%INOF==70) then
+ if(RDMd%INOF==101) then
   if(present(Lpower)) then
    RDMd%Lpower=Lpower
   endif
@@ -189,6 +189,13 @@ subroutine rdm_init(RDMd,INOF,Ista,NBF_tot,NBF_occ,Nfrozen,Npairs,&
   allocate(RDMd%DDM2_gamma_Jsr(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_Jsr=zero; 
   allocate(RDMd%DDM2_gamma_Lsr(RDMd%NBF_occ*RDMd%NBF_occ*RDMd%Ngammas));RDMd%DDM2_gamma_Lsr=zero; 
   allocate(RDMd%Dfni_ni(RDMd%NBF_occ))
+  if(RDMd%INOF==70) then
+   allocate(RDMd%t_pccd(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%t_pccd=zero;
+   allocate(RDMd%t_pccd_old(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%t_pccd_old=zero;
+   allocate(RDMd%z_pccd(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%z_pccd=zero;
+   allocate(RDMd%z_pccd_old(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%z_pccd_old=zero;
+   allocate(RDMd%tz_residue(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%tz_residue=zero;
+  endif
  else
   allocate(RDMd%t_pccd(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%t_pccd=zero;
   allocate(RDMd%t_pccd_old(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)));RDMd%t_pccd_old=zero;
@@ -244,6 +251,13 @@ subroutine rdm_free(RDMd)
   deallocate(RDMd%DDM2_gamma_L)
   deallocate(RDMd%DDM2_gamma_Jsr)
   deallocate(RDMd%DDM2_gamma_Lsr)
+  if(RDMd%INOF==70) then
+   deallocate(RDMd%t_pccd)
+   deallocate(RDMd%t_pccd_old)
+   deallocate(RDMd%z_pccd)
+   deallocate(RDMd%z_pccd_old)
+   deallocate(RDMd%tz_residue)
+  endif
  else
   deallocate(RDMd%t_pccd)
   deallocate(RDMd%t_pccd_old)

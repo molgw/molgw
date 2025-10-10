@@ -45,6 +45,7 @@ module m_hessian
 
   logical::cpx_hessian=.false.  ! True for complex Hessian (i.e. complex orbitals)
   integer::NDIM_hess            ! Size of the HESSIAN
+  real(dp)::rk,hk               ! Convergence of the QC ratio (rk) and weight (hk)
 ! arrays 
   real(dp),allocatable,dimension(:)::Gradient_vec             ! F_pq - F_qp (Gradient matrix)
   complex(dp),allocatable,dimension(:)::Gradient_vec_cmplx    ! F_pq - F_qp* (Gradient matrix, complex)
@@ -107,6 +108,7 @@ subroutine hessian_init(HESSIANd,NBF_tot,cpx_mos)
  character(len=200)::msg
 !************************************************************************
 
+ HESSIANd%hk=half
  HESSIANd%cpx_hessian=cpx_mos
  HESSIANd%NDIM_hess=NBF_tot*NBF_tot-NBF_tot*(NBF_tot+1)/2
  ! Calculate memory needed
@@ -670,11 +672,13 @@ end subroutine build_hessian
 !!
 !! SOURCE
 
-subroutine diag_hessian(HESSIANd,mute)
+subroutine diag_hessian(HESSIANd,mute,eigval_istate,istate)
 !Arguments ------------------------------------
 !scalars
  class(hessian_t),intent(inout)::HESSIANd
  logical,intent(in),optional::mute
+ integer,intent(in),optional::istate
+ real(dp),intent(out),optional::eigval_istate
 !arrays
 !Local variables ------------------------------
  logical::mute_in
@@ -729,6 +733,8 @@ subroutine diag_hessian(HESSIANd,mute)
    if(Eigeval(iindex)<max_neg) max_neg=Eigeval(iindex)
   endif
  enddo
+
+ if(present(istate) .and. present(eigval_istate)) eigval_istate=Eigeval(istate)
  
  if(.not.mute_in) then
   write(msg,'(a,I10)') 'Number of negative eigenvalues',nneg
@@ -753,7 +759,6 @@ end subroutine diag_hessian
 !!
 !! INPUTS
 !!  icall
-!!  istate = 1 for the GS (use the direction with the lowest eigenvector)
 !!
 !! OUTPUT
 !!  kappa_mat or kappa_cmplx
@@ -764,102 +769,103 @@ end subroutine diag_hessian
 !!
 !! SOURCE
 
-subroutine quadratic_conver_step(HESSIANd,icall,istate,NBF_tot,kappa_mat,kappa_mat_cmplx)
+subroutine quadratic_conver_step(HESSIANd,icall,NBF_tot,kappa_mat,kappa_mat_cmplx)
 !Arguments ------------------------------------
 !scalars
  integer,intent(inout)::icall
- integer,intent(in)::istate,NBF_tot
+ integer,intent(in)::NBF_tot
  class(hessian_t),intent(inout)::HESSIANd
 !arrays
  real(dp),optional,dimension(NBF_tot,NBF_tot),intent(inout)::kappa_mat
  complex(dp),optional,dimension(NBF_tot,NBF_tot),intent(inout)::kappa_mat_cmplx
 !Local variables ------------------------------
 !scalars
- logical::mute=.true.
  integer::iorbp,iorbq,iterm
- integer::info
+ integer::info,istate
+ real(dp)::eigval_istate
 !arrays
  integer,allocatable,dimension(:)::IPIV
+ real(dp),allocatable,dimension(:)::kappa_vec
+ real(dp),allocatable,dimension(:,:)::hessian_mat
+ complex(dp),allocatable,dimension(:)::kappa_vec_cmplx
+ complex(dp),allocatable,dimension(:,:)::hessian_mat_cmplx
  character(len=200)::msg
 !************************************************************************
+
+ istate=1
 
  if(HESSIANd%cpx_hessian) then ! Complex
 
   kappa_mat_cmplx=complex_zero
 
-  allocate(IPIV(HESSIANd%NDIM_hess))
-  call ZGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,HESSIANd%Hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV,info)
+  allocate(IPIV(HESSIANd%NDIM_hess),kappa_vec_cmplx(HESSIANd%NDIM_hess))
+  allocate(hessian_mat_cmplx(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess))
+  kappa_vec_cmplx=-HESSIANd%Gradient_vec_cmplx
+  hessian_mat_cmplx=HESSIANd%Hessian_mat_cmplx
+! TODO This doesn't help for complex... why?
+!  call HESSIANd%diag(mute=.true.,istate=istate,eigval_istate=eigval_istate)
+!  HESSIANd%Hessian_mat_cmplx=hessian_mat_cmplx
+!  do iterm=1,HESSIANd%NDIM_hess
+!   hessian_mat_cmplx(iterm,iterm)=hessian_mat_cmplx(iterm,iterm)-eigval_istate
+!  enddo
+  call ZGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV,info)
   if(info==0) then
-   HESSIANd%Gradient_vec_cmplx=-HESSIANd%Gradient_vec_cmplx
-   call ZGETRS('N',HESSIANd%NDIM_hess,1,HESSIANd%Hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV, &
-   & HESSIANd%Gradient_vec_cmplx,HESSIANd%NDIM_hess,info)
+   call ZGETRS('N',HESSIANd%NDIM_hess,1,hessian_mat_cmplx,HESSIANd%NDIM_hess,IPIV, &
+   & kappa_vec_cmplx,HESSIANd%NDIM_hess,info)
    if(info==0) then
     iterm=1
     do iorbp=1,NBF_tot
      do iorbq=iorbp,NBF_tot
-      kappa_mat_cmplx(iorbp,iorbq)=HESSIANd%Gradient_vec_cmplx(iterm)
-      kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_mat_cmplx(iorbp,iorbq))
+      kappa_mat_cmplx(iorbp,iorbq)=kappa_vec_cmplx(iterm)
+      if(iorbp/=iorbq) kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_vec_cmplx(iterm))
       iterm=iterm+1
      enddo
     enddo
    else
-    write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
+    write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation in ZGETRS'
     call write_output(msg)
    endif
   else
-   write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
+   write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation in ZGETRF'
    call write_output(msg)
   endif
-  deallocate(IPIV)
-
-!  call HESSIANd%diag(mute=mute)
-!  iterm=1
-!  do iorbp=1,NBF_tot
-!   do iorbq=iorbp,NBF_tot
-!    kappa_mat_cmplx(iorbp,iorbq)=HESSIANd%Hessian_mat_cmplx(iterm,istate)
-!    kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_mat_cmplx(iorbp,iorbq))
-!    iterm=iterm+1
-!   enddo
-!  enddo
+  deallocate(IPIV,kappa_vec_cmplx,hessian_mat_cmplx)
 
  else  ! Real
 
   kappa_mat=zero
 
-  allocate(IPIV(HESSIANd%NDIM_hess))
-  call DGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,HESSIANd%Hessian_mat,HESSIANd%NDIM_hess,IPIV,info)
+  allocate(IPIV(HESSIANd%NDIM_hess),kappa_vec(HESSIANd%NDIM_hess))
+  allocate(hessian_mat(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess))
+  kappa_vec=-HESSIANd%Gradient_vec
+  hessian_mat=HESSIANd%Hessian_mat
+  call HESSIANd%diag(mute=.true.,istate=istate,eigval_istate=eigval_istate)
+  HESSIANd%Hessian_mat=hessian_mat
+  do iterm=1,HESSIANd%NDIM_hess
+   hessian_mat(iterm,iterm)=hessian_mat(iterm,iterm)-eigval_istate
+  enddo
+  call DGETRF(HESSIANd%NDIM_hess,HESSIANd%NDIM_hess,hessian_mat,HESSIANd%NDIM_hess,IPIV,info)
   if(info==0) then
-   HESSIANd%Gradient_vec=-HESSIANd%Gradient_vec
-   call DGETRS('N',HESSIANd%NDIM_hess,1,HESSIANd%Hessian_mat,HESSIANd%NDIM_hess,IPIV,       &
-   & HESSIANd%Gradient_vec,HESSIANd%NDIM_hess,info)
+   call DGETRS('N',HESSIANd%NDIM_hess,1,hessian_mat,HESSIANd%NDIM_hess,IPIV,       &
+   & kappa_vec,HESSIANd%NDIM_hess,info)
    if(info==0) then
     iterm=1
     do iorbp=1,NBF_tot
      do iorbq=iorbp+1,NBF_tot
-      kappa_mat(iorbp,iorbq)=HESSIANd%Gradient_vec(iterm)
-      kappa_mat(iorbq,iorbp)=-kappa_mat(iorbp,iorbq)
+      kappa_mat(iorbp,iorbq)=kappa_vec(iterm)
+      kappa_mat(iorbq,iorbp)=-kappa_vec(iterm)
       iterm=iterm+1
      enddo
     enddo
    else
-    write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
+    write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation in DGETRS'
     call write_output(msg)
    endif
   else
-   write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation'
+   write(msg,'(a)') 'Error in kappa = - H^-1 g evaluation in DGETRF'
    call write_output(msg)
   endif
-  deallocate(IPIV)
-
-!  call HESSIANd%diag(mute=mute)
-!  iterm=1
-!  do iorbp=1,NBF_tot
-!   do iorbq=iorbp+1,NBF_tot
-!    kappa_mat(iorbp,iorbq)=HESSIANd%Hessian_mat(iterm,istate)
-!    kappa_mat(iorbq,iorbp)=-kappa_mat(iorbp,iorbq)
-!    iterm=iterm+1
-!   enddo
-!  enddo
+  deallocate(IPIV,kappa_vec,hessian_mat)
 
  endif
 

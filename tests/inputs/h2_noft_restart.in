@@ -13,7 +13,7 @@
  noft_readCOEF='no'
  noft_readFdiag='yes'
  noft_NOTupdateOCC='yes'
- noft_NOTupdateORB='false'
+ noft_NOTupdateORB='no'
  noft_readGAMMAS='yes'
 
  postscf='noft'
