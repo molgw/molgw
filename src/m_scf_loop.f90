@@ -256,14 +256,17 @@ subroutine scf_loop(is_restart, &
     ! Add the XC part of the hamiltonian to the total hamiltonian
     hamiltonian(:, :, :) = hamiltonian(:, :, :) + hamiltonian_xc(:, :, :)
 
-    !    
-    ! Add the energy shift to the projectile
-    call split_basis_set(basis, basis_t, basis_p)
 
-    do ispin=1,nspin
-      hamiltonian(basis_t%nbf + 1:, basis_t%nbf + 1:, ispin) = hamiltonian(basis_t%nbf + 1:, basis_t%nbf + 1:, ispin) &
-              + scf_energy_shift * s_matrix(basis_t%nbf + 1:, basis_t%nbf + 1:)  
-    enddo
+    if( trim(excit_name) /= 'no' .AND. abs(scf_energy_shift) > 1e-6_dp ) then
+      !    
+      ! Add the energy shift to the projectile
+      call split_basis_set(basis, basis_t, basis_p)
+  
+      do ispin=1,nspin
+        hamiltonian(basis_t%nbf + 1:, basis_t%nbf + 1:, ispin) = hamiltonian(basis_t%nbf + 1:, basis_t%nbf + 1:, ispin) &
+                + scf_energy_shift * s_matrix(basis_t%nbf + 1:, basis_t%nbf + 1:)  
+      enddo
+    endif
 
 
     ! All the components of the energy have been calculated at this stage
