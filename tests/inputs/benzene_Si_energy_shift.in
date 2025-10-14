@@ -3,7 +3,7 @@
 
   gaussian_type='CART'
 
-  tolscf                         = 1.0e-10
+  tolscf                         = 1.0e-7
   scf                            = 'lda'
   read_tddft_restart             = 'no'
   print_tddft_restart            = 'no'
@@ -16,7 +16,7 @@
   tddft_grid_quality             = 'medium'
 
   ! Prepare a Ge4+ ion
-  scf_energy_shift               = 4.0
+  scf_energy_shift               = 4.2
   charge                         = 4.0
   print_pdos                     = 'yes'
 
@@ -42,4 +42,4 @@ C    1.209657     0.698396     0.000000
 C    -1.209657    -0.698396    0.000000
 C    -1.209657    0.698396     0.000000
 C    1.209657     -0.698396    0.000000
-Si   0.600000     0.300000     -2.00000
+Si   0.600000     0.300000     -5.00000
