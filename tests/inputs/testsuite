@@ -1211,7 +1211,7 @@ SCF Total Energy          ,  -18.228067580      , 0 , 1.0e-7
 RPA correlation           ,  -0.2186444854      , 0 , 1.0e-7
 
 benzene_Si_energy_shift.in , tests the scf_energy_shift_input
-SCF Total Energy          ,  -513.3733000523    , 0 , 1.0e-6
+SCF Total Energy          ,  -513.3733065194    , 0 , 1.0e-6
 
 c2h4_lc-wpbe_tddft.in     , LR-TDDFT with long-range only functional
 SCF Total Energy          ,  -78.5180274712     , 0 , 1.0e-7
