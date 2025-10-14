@@ -18,6 +18,7 @@ module m_virtual_orbital_space
   use m_hamiltonian_tools
   use m_basis_set
   use m_hamiltonian_onebody
+  use m_hamiltonian_wrapper, only: setup_overlap
   use m_linear_algebra
   use m_eri_ao_mo
   use m_io

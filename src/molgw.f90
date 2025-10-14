@@ -45,6 +45,7 @@ program molgw
   use m_spectral_function
   use m_hamiltonian_onebody
   use m_hamiltonian_twobodies
+  use m_hamiltonian_periodic
   use m_relativistic
   use m_selfenergy_tools
   use m_selfenergy_evaluation
@@ -85,7 +86,7 @@ program molgw
   real(dp), allocatable    :: s_matrix(:, :)
   real(dp), allocatable    :: x_matrix(:, :)
   real(dp), allocatable    :: s_matrix_sqrt(:, :)
-  real(dp), allocatable    :: c_matrix(:, :, :)
+  real(dp), allocatable    :: c_matrix(:, :, :), p_matrix(:, :, :)
   real(dp), allocatable    :: energy(:, :)
   real(dp), allocatable    :: energy_rel(:)
   real(dp), allocatable    :: occupation(:, :)
@@ -355,7 +356,14 @@ program molgw
    
     !
     ! Nucleus-electron interaction
-    call setup_nucleus(basis, hamiltonian_nucleus)
+    if( pbc_ ) then
+      allocate(p_matrix(basis%nbf, basis%nbf, nspin))
+      call setup_hartree_periodic(basis, p_matrix, hamiltonian_nucleus, en_gks%hartree, en_gks%nucleus, nucleus_only=.TRUE.)
+      deallocate(p_matrix)
+    else
+      call setup_nucleus(basis, hamiltonian_nucleus)
+    endif
+
     if( TRIM(parabolic_conf) == 'yes' ) call setup_para_conf(basis, hamiltonian_nucleus)
    
     !

@@ -124,17 +124,30 @@ subroutine scf_loop(is_restart, &
     write(stdout, '(a,1x,i4,/)') ' *** SCF cycle No:', iscf
 
 
-    en_gks%kinetic  = SUM( hamiltonian_kinetic(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
-    en_gks%nucleus  = SUM( hamiltonian_nucleus(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
 
     !
     ! Setup kinetic and nucleus contributions (that are independent of the
     ! density matrix and therefore of spin channel)
     !
+    en_gks%kinetic  = SUM( hamiltonian_kinetic(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
     do ispin=1, nspin
-      hamiltonian(:, :, ispin) = hamiltonian_kinetic(:, :) + hamiltonian_nucleus(:, :)
+      hamiltonian(:, :, ispin) = hamiltonian_kinetic(:, :)
     enddo
 
+    if( .NOT. pbc_ ) then
+      en_gks%nucleus  = SUM( hamiltonian_nucleus(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
+      do ispin=1, nspin
+        hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + hamiltonian_nucleus(:, :)
+      enddo
+    else
+      ! Nucleus part is grouped with Hartree in the case of PBC
+      en_gks%nucleus  = 0.0_dp
+    endif
+
+
+    !
+    ! PBE + alpha trick (experimental)
+    !
     if( ABS(pbe_plus_alpha) > 1.0e-6_dp ) then
       do ispin=1, nspin
         hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + hamiltonian_pbealpha(:, :)
@@ -145,13 +158,19 @@ subroutine scf_loop(is_restart, &
     !
     ! Hartree contribution to the Hamiltonian
     !
-    call calculate_hartree(basis, p_matrix, hamiltonian_hartree, eh=en_gks%hartree)
+    if( .NOT. pbc_ ) then
+      call calculate_hartree(basis, p_matrix, hamiltonian_hartree, eh=en_gks%hartree)
+    else
+      call setup_hartree_periodic(basis, p_matrix, hamiltonian_hartree, en_gks%hartree, en_gks%nucleus)
+    endif
+
 
     ! calc_type%is_core is an inefficient way to get the Kinetic + Nucleus Hamiltonian
     if( calc_type%is_core ) then
       hamiltonian_hartree(:, :) = 0.0_dp
       en_gks%hartree = 0.0_dp
     endif
+
     do ispin=1, nspin
       hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + hamiltonian_hartree(:, :)
     enddo

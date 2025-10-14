@@ -35,9 +35,9 @@ module m_hamiltonian_periodic
 
   integer, private, parameter :: nx = 1
 
-  integer(C_INT), parameter :: nfft1 = 60
-  integer(C_INT), parameter :: nfft2=nfft1
-  integer(C_INT), parameter :: nfft3=nfft1
+  integer(C_INT), parameter :: nfft1 = 120
+  integer(C_INT), parameter :: nfft2 = nfft1
+  integer(C_INT), parameter :: nfft3 = nfft1
   integer, parameter :: nfft = nfft1 * nfft2 * nfft3
 
 contains
@@ -268,28 +268,38 @@ end subroutine setup_kinetic_onecell
 
 
 !=========================================================================
-subroutine setup_hartree_periodic(basis, p_matrix, hartree_ao, ehartree)
+subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, nucleus_only)
   implicit none
 
   type(basis_set), intent(in) :: basis
   class(*), intent(in)  :: p_matrix(:, :, :)
-  real(dp), intent(out) :: hartree_ao(:, :)
-  real(dp), intent(out) :: ehartree
+  real(dp), intent(out) :: h_ao(:, :)
+  real(dp), intent(out) :: ehartree, enuc
+  logical, intent(in), optional :: nucleus_only
   !=====
   integer               :: timing_xxdft_hartree
   real(dp), allocatable :: hnucl_ao(:, :)
   real(dp), allocatable :: p_matrix_local(:, :, :)
   integer :: i1, i2, i3, ir
-  real(dp) :: rr(3), enuc
-  real(dp) :: rgrid(3, nfft), rhoelecr(nfft, nspin), rhonuclr(nfft)
+  real(dp) :: rr(3)
+  real(dp) :: rgrid(3, nfft), rhonuclr(nfft)
+  real(dp), allocatable :: rhoelecr(:, :)
   real(dp) :: vhartreegrid(nfft, nspin), vnuclgrid(nfft)
   real(dp) :: dr(3, 3)
   real(dp), allocatable :: c_matrix(:, :, :), occupation(:, :), s_matrix(:, :)
+  logical :: nucleus_only_
   !=====
 
 #if !defined(HAVE_FFTW3)
   call die('setup_hartree_periodic: requires FFTW at compilation time')
 #else
+
+  if( PRESENT(nucleus_only) ) then
+    nucleus_only_ = nucleus_only
+  else
+    nucleus_only_ = .FALSE.
+  endif
+
 
   select type(p_matrix)
   type is(real(dp))
@@ -302,7 +312,12 @@ subroutine setup_hartree_periodic(basis, p_matrix, hartree_ao, ehartree)
 
   call start_clock(timing_xxdft_hartree)
 
-  write(stdout, *) 'Calculate periodic Hartree term'
+  if( nucleus_only_ ) then
+    write(stdout, '(/,1x,a)') 'Calculate periodic nucleus term'
+  else
+    write(stdout, '(/,1x,a)') 'Calculate periodic Hartree + nucleus term'
+  endif
+
 
   ! Create the real-space grid
   ir = 0
@@ -322,37 +337,42 @@ subroutine setup_hartree_periodic(basis, p_matrix, hartree_ao, ehartree)
     p_matrix_local(:, :, :) = p_matrix(:, :, :)
   end select
 
-  call start_clock(timing_tmp1)
-  select type(p_matrix)
-  type is(real(dp))
-    !write(stdout,*) 'FBFB hack p matrix'
-    !p_matrix_local(:, :, :) = 0.59309
+
+  if( .NOT. nucleus_only_ ) then
+    call start_clock(timing_tmp1)
+
+    allocate(rhoelecr(nfft, nspin))
     call calculate_density_periodic(basis, p_matrix_local, rgrid, rhoelecr)
-  end select
-  call stop_clock(timing_tmp1)
-  call output_timing_line('set density on FFT grid' , timing_tmp1 , 1)
 
-  
-  !
-  ! Get the electrostatic potential of the electrons (Hartree)
-  !
-  call start_clock(timing_tmp2)
+    call stop_clock(timing_tmp1)
+    call output_timing_line('set density on FFT grid' , timing_tmp1 , 1)
 
-  !write(*,*) 'FBFB charge', SUM(rhoelecr(:, 1))/nfft*volume
-  !dr(:, 1) = aprim(:, 1) / nfft1
-  !dr(:, 2) = aprim(:, 2) / nfft2
-  !dr(:, 3) = aprim(:, 3) / nfft3
-  !call write_cube_file('toto.cube', nfft1, nfft2, nfft3, dr, rhoelecr(:, 1), comment='test')
+    
+    !
+    ! Get the electrostatic potential of the electrons (Hartree)
+    !
+    call start_clock(timing_tmp2)
 
-  call poisson_solver_fft(rhoelecr(:, 1), vhartreegrid(:, 1)) 
-  call stop_clock(timing_tmp2)
-  call output_timing_line('timing 2 FFTs' , timing_tmp2 , 1)
+    !write(*,*) 'FBFB charge', SUM(rhoelecr(:, 1))/nfft*volume
+    !dr(:, 1) = aprim(:, 1) / nfft1
+    !dr(:, 2) = aprim(:, 2) / nfft2
+    !dr(:, 3) = aprim(:, 3) / nfft3
+    !call write_cube_file('toto.cube', nfft1, nfft2, nfft3, dr, rhoelecr(:, 1), comment='test')
 
-  ehartree = 0.5_dp * SUM( rhoelecr * vhartreegrid ) * volume / REAL(nfft, KIND=dp)
-  write(stdout,'(1x,a,f16.8)') 'Hartree energy (Ha): ', ehartree
+    call poisson_solver_fft(rhoelecr(:, 1), vhartreegrid(:, 1)) 
+    call stop_clock(timing_tmp2)
+    call output_timing_line('timing 2 FFTs' , timing_tmp2 , 1)
 
-  call calculate_hao_periodic(basis, rgrid, vhartreegrid, hartree_ao)
-  call dump_out_matrix(.TRUE., '=== Hartree contribution (FFTW) ===', hartree_ao)
+    ehartree = 0.5_dp * SUM( rhoelecr * vhartreegrid ) * volume / REAL(nfft, KIND=dp)
+    write(stdout,'(1x,a,f16.8)') 'Hartree energy (Ha): ', ehartree
+
+    call calculate_hao_periodic(basis, rgrid, vhartreegrid, h_ao)
+    call dump_out_matrix(.TRUE., '=== Hartree contribution (FFTW) ===', h_ao)
+
+  else
+    ehartree = 0.0_dp
+    h_ao(:, :) = 0.0_dp
+  endif
 
   !
   ! Get the electrostatic potential of the nuclei
@@ -365,16 +385,23 @@ subroutine setup_hartree_periodic(basis, p_matrix, hartree_ao, ehartree)
   !call write_cube_file('toto.cube', nfft1, nfft2, nfft3, dr, rhonuclr, comment='test')
   call poisson_solver_fft(rhonuclr, vnuclgrid) 
 
-  enuc = SUM( rhoelecr(:, 1) * vnuclgrid ) * volume / REAL(nfft, KIND=dp)
-  write(stdout,'(1x,a,f16.8)') 'Enucl (Ha): ', enuc
-  ehartree = ehartree + enuc
+  if( ALLOCATED(rhoelecr) ) then
+    enuc = SUM( rhoelecr(:, 1) * vnuclgrid ) * volume / REAL(nfft, KIND=dp)
+    write(stdout,'(1x,a,f16.8)') 'Enucl (Ha): ', enuc
+  else
+    enuc = 0.0_dp
+  endif
 
-  allocate(hnucl_ao, MOLD=hartree_ao)
+  allocate(hnucl_ao, MOLD=h_ao)
   call calculate_hao_periodic(basis, rgrid, RESHAPE(vnuclgrid, [nfft, 1]), hnucl_ao)
   call dump_out_matrix(.TRUE., '=== Nuclei contribution (FFTW) ===', hnucl_ao)
 
-  deallocate(hnucl_ao)
+  h_ao(:, :) = h_ao(:, :) + hnucl_ao(:, :)
 
+  deallocate(hnucl_ao)
+  if( ALLOCATED(rhoelecr) ) deallocate(rhoelecr)
+
+  call stop_clock(timing_xxdft_hartree)
 
 #endif
 
@@ -478,7 +505,7 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr)
   integer :: nr, ir, irmin, irmax, nfft
   real(dp), allocatable :: rrad(:), vloc(:), dvdr(:), d2vdr2(:), rho(:)
   real(dp), allocatable :: rradfinal(:), rhofinal(:)
-  real(dp) :: zval, rmax, dr, shift(3)
+  real(dp) :: zval, rmax, dr, shift(3), factor
   integer :: i1, i2, i3, icenter, igrid
   !=====
 
@@ -520,9 +547,10 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr)
   rhofinal(2:nr) = rho(irmin+1:irmin+nr-1)
   rmax = rradfinal(nr)
 
-  do ir=1, nr
-    write(1001,'(*(es20.10,1x))') rradfinal(ir), rhofinal(ir)
-  enddo
+  ! FBFB debug
+  !do ir=1, nr
+  !  write(1001,'(*(es20.10,1x))') rradfinal(ir), rhofinal(ir)
+  !enddo
   zval = calculate_total_charge(rradfinal, rhofinal)
   write(stdout,'(1x,a,f12.8)') 'Integrated nucleus charge: ', zval
   rhofinal(:) = rhofinal(:) / zval * (-1.0_dp)
@@ -558,7 +586,13 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr)
   write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell: ', zval
   write(stdout, '(1x,a,f12.6)') 'whereas it should be: ', SUM(zvalence(:))
 
-  rhonuclr(:) = rhonuclr(:) / zval * SUM(zvalence(:))
+  factor = SUM(zvalence(:)) / zval
+  rhonuclr(:) = rhonuclr(:) * factor
+
+  if( ABS( factor - 1.0_dp ) > 0.05_dp ) then
+    call die('prepare_nuclei_density_periodic: wrong nucleus total charge. FFT grid is certainly too coarse')
+  endif
+
   zval = -SUM(rhonuclr(:)) * volume / REAL(nfft, KIND=dp)
   write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell (after renormalization): ', zval
 

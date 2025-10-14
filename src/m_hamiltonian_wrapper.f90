@@ -74,6 +74,9 @@ subroutine calculate_hartree(basis, p_matrix, hhartree, eh)
   real(dp), allocatable :: rho_coeff(:, :)
   !=====
 
+  if( pbc_ ) then
+    call die('calculate_hartree: should not happen. PBC are implemented somewhere else')
+  endif
 
   !
   if( .NOT. has_auxil_basis ) then
@@ -89,11 +92,7 @@ subroutine calculate_hartree(basis, p_matrix, hhartree, eh)
     end select
   else
     if( .NOT. eri3_genuine_ ) then
-      if( pbc_ ) then
-        call setup_hartree_periodic(basis, p_matrix, hhartree, ehartree)
-      else
-        call setup_hartree_ri(p_matrix, hhartree, ehartree)
-      endif
+      call setup_hartree_ri(p_matrix, hhartree, ehartree)
     else
       call calculate_density_auxilbasis(p_matrix, rho_coeff)
       call setup_hartree_genuine_ri(p_matrix, rho_coeff, hhartree, ehartree)

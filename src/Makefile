@@ -173,6 +173,7 @@ molgw:
 	+make  level040
 	+make  level045
 	+make  level050
+	+make  level055
 	+make  level060
 	+make  level065
 	+make  level068
@@ -210,7 +211,9 @@ level040: m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_tddft_fxc.o
 
 level045: m_spectral_function.o m_hamiltonian_periodic.o
 
-level050: m_hamiltonian_wrapper.o m_restart.o m_multipole.o m_spectra.o m_build_bse.o
+level050: m_hamiltonian_wrapper.o m_multipole.o m_spectra.o m_build_bse.o
+
+level055: m_restart.o
 
 level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_linear_response.o
 
