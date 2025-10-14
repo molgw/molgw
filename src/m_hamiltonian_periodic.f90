@@ -33,12 +33,12 @@ module m_hamiltonian_periodic
   use m_fftw3
 #endif
 
-  integer, private, parameter :: nx=1
+  integer, private, parameter :: nx = 1
 
-  integer(C_INT), parameter :: nfft1=60
-  integer(C_INT), parameter :: nfft2=60
-  integer(C_INT), parameter :: nfft3=60
-  integer :: nfft = nfft1 * nfft2 * nfft3
+  integer(C_INT), parameter :: nfft1 = 60
+  integer(C_INT), parameter :: nfft2=nfft1
+  integer(C_INT), parameter :: nfft3=nfft1
+  integer, parameter :: nfft = nfft1 * nfft2 * nfft3
 
 contains
 
@@ -126,7 +126,6 @@ subroutine setup_overlap_onecell(basis, shift, s_matrix)
 
       call set_libint_shell(basis%shell(ishell), amA, contrdepthA, A, alphaA, cA)
 
-
       allocate(array_cart(ni_cart*nj_cart))
 
 #if defined(HAVE_LIBCINT)
@@ -141,6 +140,7 @@ subroutine setup_overlap_onecell(basis, shift, s_matrix)
 
 
       s_matrix(ibf1:ibf2, jbf1:jbf2) = matrix(:, :)
+      s_matrix(jbf1:jbf2, ibf1:ibf2) = TRANSPOSE(matrix(:, :))
 
       deallocate(array_cart, matrix)
 
@@ -252,6 +252,7 @@ subroutine setup_kinetic_onecell(basis, shift, kin_ao)
 
 
       kin_ao(ibf1:ibf2, jbf1:jbf2) = matrix(:, :)
+      kin_ao(jbf1:jbf2, ibf1:ibf2) = TRANSPOSE(matrix(:, :))
 
       deallocate(array_cart, matrix)
 
@@ -275,27 +276,20 @@ subroutine setup_hartree_periodic(basis, p_matrix, hartree_ao, ehartree)
   real(dp), intent(out) :: hartree_ao(:, :)
   real(dp), intent(out) :: ehartree
   !=====
-  integer              :: nbf
-  integer              :: ibf, kbf, lbf
-  integer              :: ipair
-  real(dp), allocatable :: x_vector(:)
-  integer              :: timing_xxdft_hartree
-  real(dp), allocatable :: pmat(:)
+  integer               :: timing_xxdft_hartree
   real(dp), allocatable :: hnucl_ao(:, :)
-
+  real(dp), allocatable :: p_matrix_local(:, :, :)
   integer :: i1, i2, i3, ir
-  real(dp) :: rr(3)
-  real(dp) :: rgrid(3, nfft), rhogrid(nfft, nspin), rhonuclr(nfft)
+  real(dp) :: rr(3), enuc
+  real(dp) :: rgrid(3, nfft), rhoelecr(nfft, nspin), rhonuclr(nfft)
   real(dp) :: vhartreegrid(nfft, nspin), vnuclgrid(nfft)
   real(dp) :: dr(3, 3)
-  real(dp), allocatable :: c_matrix(:, :, :), occupation(:, :)
+  real(dp), allocatable :: c_matrix(:, :, :), occupation(:, :), s_matrix(:, :)
   !=====
 
 #if !defined(HAVE_FFTW3)
   call die('setup_hartree_periodic: requires FFTW at compilation time')
 #else
-
-  nbf = SIZE(hartree_ao(:, :), DIM=1)
 
   select type(p_matrix)
   type is(real(dp))
@@ -322,35 +316,40 @@ subroutine setup_hartree_periodic(basis, p_matrix, hartree_ao, ehartree)
   enddo
 
 
+  allocate(p_matrix_local(basis%nbf, basis%nbf, nspin))
   select type(p_matrix)
   type is(real(dp))
-    call get_c_matrix_from_p_matrix(p_matrix, c_matrix, occupation)
+    p_matrix_local(:, :, :) = p_matrix(:, :, :)
   end select
+
   call start_clock(timing_tmp1)
-  call calculate_density_periodic(basis, c_matrix, occupation, rgrid, rhogrid)
+  select type(p_matrix)
+  type is(real(dp))
+    !write(stdout,*) 'FBFB hack p matrix'
+    !p_matrix_local(:, :, :) = 0.59309
+    call calculate_density_periodic(basis, p_matrix_local, rgrid, rhoelecr)
+  end select
   call stop_clock(timing_tmp1)
-  call output_timing_line('tmp1' , timing_tmp1 , 0)
+  call output_timing_line('set density on FFT grid' , timing_tmp1 , 1)
 
   
-  ! FBFB testing rhonuclr
-  call prepare_nuclei_density_periodic(rgrid, rhonuclr)
-
-  dr(:, 1) = aprim(:, 1) / nfft1
-  dr(:, 2) = aprim(:, 2) / nfft2
-  dr(:, 3) = aprim(:, 3) / nfft3
-  call write_cube_file('toto.cube', nfft1, nfft2, nfft3, dr, rhonuclr, comment='test')
-
-  
-  do ir=1, nfft 
-    write(1001, '(1x,i8,1x,3(f12.6,1x),4x,f16.6)') ir, rgrid(:, ir), rhogrid(ir, 1)
-  enddo
-
   !
   ! Get the electrostatic potential of the electrons (Hartree)
   !
-  call poisson_solver_fft(rhogrid(:, 1), vhartreegrid(:, 1)) 
+  call start_clock(timing_tmp2)
 
-  write(stdout,*) 'FBFB Eh', 0.5_dp * SUM( rhogrid * vhartreegrid ) * volume / REAL(nfft, KIND=dp)
+  !write(*,*) 'FBFB charge', SUM(rhoelecr(:, 1))/nfft*volume
+  !dr(:, 1) = aprim(:, 1) / nfft1
+  !dr(:, 2) = aprim(:, 2) / nfft2
+  !dr(:, 3) = aprim(:, 3) / nfft3
+  !call write_cube_file('toto.cube', nfft1, nfft2, nfft3, dr, rhoelecr(:, 1), comment='test')
+
+  call poisson_solver_fft(rhoelecr(:, 1), vhartreegrid(:, 1)) 
+  call stop_clock(timing_tmp2)
+  call output_timing_line('timing 2 FFTs' , timing_tmp2 , 1)
+
+  ehartree = 0.5_dp * SUM( rhoelecr * vhartreegrid ) * volume / REAL(nfft, KIND=dp)
+  write(stdout,'(1x,a,f16.8)') 'Hartree energy (Ha): ', ehartree
 
   call calculate_hao_periodic(basis, rgrid, vhartreegrid, hartree_ao)
   call dump_out_matrix(.TRUE., '=== Hartree contribution (FFTW) ===', hartree_ao)
@@ -358,9 +357,18 @@ subroutine setup_hartree_periodic(basis, p_matrix, hartree_ao, ehartree)
   !
   ! Get the electrostatic potential of the nuclei
   !
+  call prepare_nuclei_density_periodic(rgrid, rhonuclr)
+
+  !dr(:, 1) = aprim(:, 1) / nfft1
+  !dr(:, 2) = aprim(:, 2) / nfft2
+  !dr(:, 3) = aprim(:, 3) / nfft3
+  !call write_cube_file('toto.cube', nfft1, nfft2, nfft3, dr, rhonuclr, comment='test')
   call poisson_solver_fft(rhonuclr, vnuclgrid) 
 
-  write(stdout,*) 'FBFB Enucl', SUM( rhogrid(:, 1) * vnuclgrid ) * volume / REAL(nfft, KIND=dp)
+  enuc = SUM( rhoelecr(:, 1) * vnuclgrid ) * volume / REAL(nfft, KIND=dp)
+  write(stdout,'(1x,a,f16.8)') 'Enucl (Ha): ', enuc
+  ehartree = ehartree + enuc
+
   allocate(hnucl_ao, MOLD=hartree_ao)
   call calculate_hao_periodic(basis, rgrid, RESHAPE(vnuclgrid, [nfft, 1]), hnucl_ao)
   call dump_out_matrix(.TRUE., '=== Nuclei contribution (FFTW) ===', hnucl_ao)
@@ -368,122 +376,50 @@ subroutine setup_hartree_periodic(basis, p_matrix, hartree_ao, ehartree)
   deallocate(hnucl_ao)
 
 
-  hartree_ao(:, :) = 0.0_dp
-
-  allocate(pmat(npair))
-  allocate(x_vector(nauxil_local))
-
-  select type(p_matrix)
-  type is(real(dp))
-    do ipair=1, npair
-      kbf = index_basis(1, ipair)
-      lbf = index_basis(2, ipair)
-      pmat(ipair) = SUM(p_matrix(kbf, lbf, :)) * 2.0_dp
-    enddo
-  type is(complex(dp))
-    do ipair=1, npair
-      kbf = index_basis(1, ipair)
-      lbf = index_basis(2, ipair)
-      ! As all pairs contribute twice for (k, l) and (l, k) and as P is hermitian,
-      ! only the real part survives
-      pmat(ipair) = SUM(p_matrix(kbf, lbf, :)%re) * 2.0_dp
-    enddo
-  end select
-
-  ! X_P = \sum_{\alpha \beta} P_{\alpha \beta} * ( \alpha \beta | P )
-  call DGEMV('T', npair, nauxil_local, 1.0d0, eri_3center, npair, pmat, 1, 0.0d0, x_vector, 1)
-  ! v_H_{alpha beta} = \sum_P ( alpha beta | P ) * X_P
-  call DGEMV('N', npair, nauxil_local, 1.0d0, eri_3center, npair, x_vector, 1, 0.0d0, pmat, 1)
-
-  !$OMP PARALLEL PRIVATE(kbf, lbf)
-  !$OMP DO
-  do ipair=1, npair
-    kbf = index_basis(1, ipair)
-    lbf = index_basis(2, ipair)
-    hartree_ao(kbf, lbf) = pmat(ipair)
-    hartree_ao(lbf, kbf) = pmat(ipair)
-  enddo
-  !$OMP END DO
-  !$OMP END PARALLEL
-
-  ! Do not forget that the eri_3center(ibf, ibf | P ) included a factor 0.50
-  do ibf=1, nbf
-    hartree_ao(ibf, ibf) = hartree_ao(ibf, ibf) * 2.0_dp
-  enddo
-  deallocate(x_vector, pmat)
-
-  !
-  ! Sum up the different contribution from different procs
-  call world%sum(hartree_ao)
-  hartree_ao(:, :) = hartree_ao(:, :) / REAL(poorman%nproc, dp)
-
-  call dump_out_matrix(.TRUE., '=== Hartree contribution (ref) ===', hartree_ao)
-
-  select type(p_matrix)
-  type is(real(dp))
-    ehartree = 0.5_dp * SUM( hartree_ao(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
-  type is(complex(dp))
-    ehartree = 0.5_dp * SUM( hartree_ao(:, :) * SUM(REAL(p_matrix(:, :, :), dp), DIM=3) )
-  end select
-
-  write(stdout,*) 'Eh 2 gaussian', ehartree
-
-  call stop_clock(timing_xxdft_hartree)
 #endif
 
-  call die("STOP: ENOUGH")
 
 end subroutine setup_hartree_periodic
 
 
 !=========================================================================
-subroutine calculate_density_periodic(basis, c_matrix, occupation, rr, rhor)
+subroutine calculate_density_periodic(basis, p_matrix, rr, rhor)
   implicit none
 
   type(basis_set), intent(in) :: basis
-  real(dp), intent(in)  :: c_matrix(:, :, :)
-  real(dp), intent(in)  :: occupation(:, :)
+  real(dp), intent(in)  :: p_matrix(:, :, :)
   real(dp), intent(in)  :: rr(:, :)
   real(dp), intent(out) :: rhor(:, :)
   !=====
-  integer :: ispin, ir, nr, nstate, i1, i2, i3
+  integer :: ispin, ir, nr, i1, i2, i3
   real(dp) :: shift(3)
   real(dp), allocatable :: rr_shifted(:, :)
   real(dp), allocatable :: bfr(:, :)
-  real(dp), allocatable :: phir(:, :)
+  real(dp), allocatable :: tmp(:, :)
   !=====
 
   nr = SIZE(rr, DIM=2)
-  nstate = SIZE(c_matrix, DIM=2)
 
   allocate(rr_shifted, MOLD=rr)
-  allocate(bfr(basis%nbf,nr))
-  allocate(phir(nr, nstate))
+  allocate(bfr(basis%nbf, nr))
+  allocate(tmp(basis%nbf, nr))
 
   rhor(:, :) = 0.0_dp
-  do i3=-nx, nx
-    do i2=-nx ,nx
-      do i1=-nx, nx
-        shift(:) = MATMUL( aprim(:, :), [i1, i2, i3] )
-
-        do ir=1, nr
-          rr_shifted(:, ir) = rr(:, ir) - shift(:)
-          call calculate_basis_functions_r(basis, rr_shifted(:, ir), bfr(:, ir))
-        enddo
-
-        do ispin=1, nspin
-          !phir(:, :) = MATMUL( TRANPOSE(bfr(:, :)) , c_matrix(:, :, ispin) )
-          call DGEMM('T', 'N', nr, nstate, basis%nbf, 1.0d0, bfr, basis%nbf, c_matrix(:,:,ispin), basis%nbf, 0.0d0, phir, nr)
-
-          rhor(:, :) = rhor(:, :) + MATMUL( phir(:, :)**2, occupation(:, :) )
-        enddo
-
-      enddo
-    enddo
+  call calculate_basis_functions_periodic(basis, rr, bfr)
+  do ispin=1, nspin
+    ! phi_α(r) * ( P_αβ * phi_β(r) )
+    call DGEMM('N', 'N', basis%nbf, nr, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
+               bfr(:, :), basis%nbf, 0.0d0, tmp, basis%nbf)
+  
+    rhor(:, ispin) = rhor(:, ispin) + SUM( bfr(:, :) * tmp(:, :), DIM=1)
   enddo
 
   deallocate(rr_shifted)
-  deallocate(bfr, phir)
+  deallocate(bfr, tmp)
+
+  ! write(stdout,*) 'sum_r ρ(r)',SUM(rhor)
+  ! write(stdout,*) 'dv', volume /REAL(nfft, KIND=dp)
+  ! write(stdout,*) 'FBFB total rho', SUM(rhor) * volume /REAL(nfft, KIND=dp)
 
 end subroutine calculate_density_periodic
 
@@ -507,30 +443,18 @@ subroutine calculate_hao_periodic(basis, rr, vr, h_ao)
   nr = SIZE(rr, DIM=2)
 
   allocate(rr_shifted, MOLD=rr)
-  allocate(bfr(basis%nbf,nr))
+  allocate(bfr(basis%nbf, nr))
 
   h_ao(:, :) = 0.0_dp
-  do i3=-nx, nx
-    do i2=-nx, nx
-      do i1=-nx, nx
-        shift(:) = MATMUL( aprim(:, :), [i1, i2, i3] )
-
-        do ir=1, nr
-          rr_shifted(:, ir) = rr(:, ir) - shift(:)
-          call calculate_basis_functions_r(basis, rr_shifted(:, ir), bfr(:, ir))
-        enddo
-
-        do ispin=1, nspin
-          do jbf=1, basis%nbf
-            do ibf=1, basis%nbf
-              h_ao(ibf, jbf) = h_ao(ibf, jbf) + SUM( bfr(ibf, :) * vr(:, ispin) * bfr(jbf, :) )
-            enddo
-          enddo
-        enddo
-
+  call calculate_basis_functions_periodic(basis, rr, bfr)
+  do ispin=1, nspin
+    do jbf=1, basis%nbf
+      do ibf=1, basis%nbf
+        h_ao(ibf, jbf) = h_ao(ibf, jbf) + SUM( bfr(ibf, :) * vr(:, ispin) * bfr(jbf, :) )
       enddo
     enddo
   enddo
+
   h_ao(:, :) = h_ao(:, :) * volume / nr
 
   deallocate(rr_shifted)
@@ -540,20 +464,25 @@ end subroutine calculate_hao_periodic
 
 
 !=========================================================================
+! Evaluate the nuclei charge density on the FFT grid
+! that induces the periodic local potential
+!
+! Convention: nuclei have a negative charge (since electrons have positive one)
+!
 subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr)
   implicit none
 
   real(dp), intent(in)  :: rgrid(:, :)
   real(dp), intent(out) :: rhonuclr(:)
   !=====
-  integer :: nr, ir, irmin, irmax, ngrid
+  integer :: nr, ir, irmin, irmax, nfft
   real(dp), allocatable :: rrad(:), vloc(:), dvdr(:), d2vdr2(:), rho(:)
   real(dp), allocatable :: rradfinal(:), rhofinal(:)
   real(dp) :: zval, rmax, dr, shift(3)
   integer :: i1, i2, i3, icenter, igrid
   !=====
 
-  ngrid = SIZE(rgrid, DIM=2)
+  nfft = SIZE(rgrid, DIM=2)
 
   call read_potential_data('vloc.dat', nr, rrad, vloc)
 
@@ -566,8 +495,8 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr)
   allocate(rho, MOLD=vloc)
   do ir=1, nr
     rho(ir) = -( d2vdr2(ir) + 2.0_dp * dvdr(ir) / rrad(ir)) / (4.0_dp * pi)
-    !write(1001,'(*(es20.10,1x))') rrad(ir), vloc(ir), dvdr(ir), d2vdr2(ir), rho(ir)
   enddo
+  deallocate(dvdr, d2vdr2)
 
   ! clean up rho
   ! remove the too low density values at large r
@@ -601,12 +530,11 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr)
   write(stdout,'(1x,a,f12.8)') 'Integrated nucleus charge (after renormalization): ', zval
 
 
-
   !
   ! Loop over the unitcell regular grid
   !
   rhonuclr(:) = 0.0_dp
-  do igrid=1, ngrid
+  do igrid=1, nfft
     do i3=-nx, nx
       do i2=-nx, nx
         do i1=-nx, nx
@@ -617,8 +545,8 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr)
             do ir=1, nr
               if( rradfinal(ir) > dr ) exit
             enddo
-            rhonuclr(igrid) = rhonuclr(igrid) + ( dr - rradfinal(ir)   ) / ( rradfinal(ir) - rradfinal(ir-1) ) * rhofinal(ir-1) &
-                                              + ( rradfinal(ir-1) - dr ) / ( rradfinal(ir) - rradfinal(ir-1) ) * rhofinal(ir)
+            rhonuclr(igrid) = rhonuclr(igrid) + ( rradfinal(ir) - dr   ) / ( rradfinal(ir) - rradfinal(ir-1) ) * rhofinal(ir-1) &
+                                              + ( dr - rradfinal(ir-1) ) / ( rradfinal(ir) - rradfinal(ir-1) ) * rhofinal(ir)
 
           enddo
         enddo
@@ -626,8 +554,14 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr)
     enddo
   enddo
  
+  zval = -SUM(rhonuclr(:)) * volume / REAL(nfft, KIND=dp)
+  write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell: ', zval
+  write(stdout, '(1x,a,f12.6)') 'whereas it should be: ', SUM(zvalence(:))
 
-  deallocate(dvdr, d2vdr2)
+  rhonuclr(:) = rhonuclr(:) / zval * SUM(zvalence(:))
+  zval = -SUM(rhonuclr(:)) * volume / REAL(nfft, KIND=dp)
+  write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell (after renormalization): ', zval
+
 
 contains
 
@@ -799,6 +733,71 @@ end function vcoulg
 end subroutine poisson_solver_fft
 
 
+!=========================================================================
+subroutine calculate_basis_functions_periodic(basis, rr, basis_function_r)
+  implicit none
+
+  type(basis_set), intent(in) :: basis
+  real(dp), intent(in)        :: rr(:, :)
+  real(dp), intent(out)       :: basis_function_r(:, :)
+  !=====
+  integer               :: gt
+  integer               :: ir, nr
+  integer               :: ishell, ibf1, ibf2, ibf1_cart
+  integer               :: i_cart
+  integer               :: ni_cart, li
+  real(dp), allocatable :: basis_function_r_cart(:, :), dr(:, :)
+  !=====
+
+  nr = SIZE(basis_function_r(:, :), DIM=2)
+  allocate(dr(3, nr))
+
+  gt = get_gaussian_type_tag(basis%gaussian_type)
+
+  !$OMP PARALLEL PRIVATE(li, ni_cart, ibf1, ibf1_cart, ibf2, basis_function_r_cart)
+  !$OMP DO
+  do ishell=1, basis%nshell
+    li      = basis%shell(ishell)%am
+    ni_cart = number_basis_function_am('CART',li)
+    ibf1      = basis%shell(ishell)%istart
+    ibf1_cart = basis%shell(ishell)%istart_cart
+    ibf2      = basis%shell(ishell)%iend
+
+    ! relative position to the shell center
+    do concurrent(ir=1:nr)
+      dr(:, ir) = rr(:, ir) - basis%shell(ishell)%x0(:)
+    enddo
+    ! transform to reduced coordinates
+    dr(:, :) = MATMUL( aprim_inv, dr)
+    ! minimum image convention
+    do concurrent(ir=1:nr)
+      dr(:, ir) = dr(:, ir) - NINT(dr(:, ir))
+    enddo
+    ! transform back to cartesian coordinates
+    dr(:, :) = MATMUL( aprim, dr) 
+    ! transform balck to absolute position
+    do concurrent(ir=1:nr)
+      dr(:, ir) = dr(:, ir) + basis%shell(ishell)%x0(:)
+    enddo
+
+    allocate(basis_function_r_cart(ni_cart, nr))
+
+    do ir=1, nr
+      do i_cart=1, ni_cart
+        basis_function_r_cart(i_cart, ir) = eval_basis_function(basis%bfc(ibf1_cart + i_cart - 1), dr(:, ir))
+      enddo
+    enddo
+
+    basis_function_r(ibf1:ibf2, :) = MATMUL(  TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)) , basis_function_r_cart(:, :) )
+    deallocate(basis_function_r_cart)
+
+  enddo
+  !$OMP END DO
+  !$OMP END PARALLEL
+
+  deallocate(dr)
+
+end subroutine calculate_basis_functions_periodic
 
 
 end module m_hamiltonian_periodic

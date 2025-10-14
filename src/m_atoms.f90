@@ -50,7 +50,8 @@ module m_atoms
   real(dp), protected             :: xnormal(3)
 
   logical, protected              :: pbc_ = .FALSE.
-  real(dp), protected             :: aprim(3, 3) =    0.0_dp
+  real(dp), protected             :: aprim(3, 3) = 0.0_dp
+  real(dp), protected             :: aprim_inv(3, 3) = 1000.0_dp
   real(dp), protected             :: bprim(3, 3) = 1000.0_dp
   real(dp), protected             :: volume
   real(dp), protected             :: recip_volume
@@ -511,7 +512,8 @@ subroutine setup_periodicity_vectors(length_unit, a1, a2, a3)
 
     volume = determinant_3x3_matrix(aprim)
     ! Calculate the reciprocal lattice vectors
-    bprim(:, :) = 2.0_dp * pi * TRANSPOSE(inverse_3x3_matrix(aprim))
+    aprim_inv(:, :) = inverse_3x3_matrix(aprim)
+    bprim(:, :) = 2.0_dp * pi * TRANSPOSE(aprim_inv)
     recip_volume = determinant_3x3_matrix(bprim)
 
     write(stdout, '(/,1x,a,/)') 'Periodic boundary conditions are on'

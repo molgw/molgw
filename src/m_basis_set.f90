@@ -33,8 +33,9 @@ module m_basis_set
     real(dp)                     :: x0(3)                      ! Coordinates of the gaussian center
     real(dp)                     :: v0(3)                      ! Velocity of the gaussian center
     integer                      :: ngaussian                  ! Number of primitive gausssians
-    type(gaussian), allocatable   :: g(:)                       ! The primitive gaussian functions
-    real(dp), allocatable         :: coeff(:)                   ! Their mixing coefficients
+    type(gaussian), allocatable  :: g(:)                       ! The primitive gaussian functions
+    real(dp), allocatable        :: coeff(:)                   ! Their mixing coefficients
+    real(dp)                     :: radius                     ! define radius as the 1.0/SQRT(MINVAl(g(:)%alpha))
   end type
 
   type shell_type
@@ -45,8 +46,8 @@ module m_basis_set
     real(dp)             :: x0(3)
     real(dp)             :: v0(3)
     integer              :: icenter
-    integer              :: istart, iend                        ! index of the shell's basis functions in the final basis set
-    integer              :: istart_cart, iend_cart              ! index of the shell's basis functions in the cartesian basis set
+    integer              :: istart, iend                ! index of the shell's basis functions in the final basis set
+    integer              :: istart_cart, iend_cart      ! index of the shell's basis functions in the cartesian basis set
   end type shell_type
 
 
@@ -64,9 +65,9 @@ module m_basis_set
                                                         ! the same exponents,
                                                         ! the same mixing coefficients
                                                         ! and the same angular momentum
-    character(len=4)                 :: gaussian_type   ! CART or PURE
-    type(basis_function), allocatable :: bfc(:)          ! Cartesian basis function
-    type(basis_function), allocatable :: bff(:)          ! Final basis function (can be Cartesian or Pure)
+    character(len=4)                  :: gaussian_type  ! CART or PURE
+    type(basis_function), allocatable :: bfc(:)         ! Cartesian basis function
+    type(basis_function), allocatable :: bff(:)         ! Final basis function (can be Cartesian or Pure)
     type(shell_type), allocatable     :: shell(:)
 
     integer(C_INT) :: LIBCINT_natm, LIBCINT_nbas
@@ -96,7 +97,7 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
   type(basis_set), intent(out)   :: basis
   !=====
   character(len=200)            :: basis_filename
-  integer                       :: ibf, jbf, ng, ig
+  integer                       :: jbf, ng, ig
   integer                       :: ishell, ishell_file
   integer                       :: jbf_cart
   real(dp), allocatable          :: alpha(:), coeff(:)
@@ -158,8 +159,8 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
       if(nshell_file<1) call die('ERROR in basis set file')
       do ishell=1, nshell_file
         read(basisfile, *) ng, am_read
-        if(ng<1) call die('ERROR in basis set file')
-        if(am_read==10) call die('Deprecated basis set file with shared exponent SP orbitals. Please split them')
+        if( ng < 1 ) call die('ERROR in basis set file')
+        if( am_read == 10 ) call die('Deprecated basis set file with shared exponent SP orbitals. Please split them')
         basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             , am_read)
         basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type, am_read)
         basis%nshell   = basis%nshell   + 1
@@ -345,6 +346,12 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
 
   ! Find the maximum angular momentum employed in the basis set
   basis%ammax = MAXVAL(basis%bfc(:)%am)
+  do jbf=1, basis%nbf
+    basis%bff(jbf)%radius = 1.0_dp / SQRT( MAXVAl(basis%bff(jbf)%g(:)%alpha) )
+  enddo
+  do jbf=1, basis%nbf_cart
+    basis%bfc(jbf)%radius = 1.0_dp / SQRT( MAXVAl(basis%bfc(jbf)%g(:)%alpha) )
+  enddo
 
   call echo_basis_summary(basis)
 
