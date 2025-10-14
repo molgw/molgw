@@ -572,6 +572,14 @@ for iinput in range(ninput):
   if failures != 0:
     ffailed.write(out + "\n")
 
+    # displays the content of the .out file associated with the failed test
+    output_path = os.path.join(tmpfolder, out)
+    print(f"\n===== TEST failure : {inp} =====")
+    print(f"----- Displaying the content of {out} associated with the failed test -----\n")
+    with open(output_path, "r", encoding="utf-8", errors="replace") as f:
+        print(f.read())
+    print("=================================\n")
+
 
 fdiff.close()
 ffailed.close()
