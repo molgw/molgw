@@ -40,6 +40,8 @@ module m_hamiltonian_periodic
   integer(C_INT), private :: nfft3
   integer, private        :: nfft
 
+  real(dp), allocatable, private :: rgrid(:, :)
+  real(dp), allocatable, private :: rhoelecr(:, :)
 
 contains
 
@@ -53,6 +55,7 @@ subroutine set_fft_grid()
   integer :: nfftx
   integer :: fft_grids(18) = [ 16, 24, 32, 48, 60, 64, 96, 120, 128, 144, &
                               180, 192, 256, 288, 384, 512, 768, 1024]
+  integer :: i1, i2, i3, ifft
   !=====
 
   write(stdout,'(/,1x,a)')    'Setting up the FFT grid'
@@ -73,6 +76,22 @@ subroutine set_fft_grid()
   nfft = nfft1 * nfft2 * nfft3
 
   write(stdout,'(1x,a,1x,i4,a,i4,a,i4)') 'FFT grid:', nfft1, ' x ', nfft2, ' x ', nfft3
+
+  allocate(rgrid(3, nfft))
+  ! Create the real-space grid
+  ifft = 0
+  do i3=0, nfft3 - 1
+    do i2=0, nfft2 - 1
+      do i1=0, nfft1 - 1
+        ifft = ifft + 1
+        rgrid(:, ifft) = MATMUL( aprim(:, :), [DBLE(i1)/nfft1, DBLE(i2)/nfft2, DBLE(i3)/nfft3] )
+      enddo
+    enddo
+  enddo
+
+  allocate(rhoelecr(nfft, nspin))
+  rhoelecr(:, :) = 0.0_dp
+
 
 contains
   ! Find smallest fft_grid greater than fftx
@@ -336,11 +355,9 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, enucnuc
   integer               :: timing_xxdft_hartree
   real(dp), allocatable :: hnucl_ao(:, :)
   real(dp), allocatable :: p_matrix_local(:, :, :)
-  integer :: i1, i2, i3, ir
   real(dp) :: nuc_selfenergy
-  real(dp) :: rr(3)
-  real(dp) :: rgrid(3, nfft), rhonuclr(nfft)
-  real(dp), allocatable :: rhoelecr(:, :)
+  real(dp) :: rhonuclr(nfft)
+  !real(dp), allocatable :: rhoelecr(:, :)
   real(dp) :: vhartreegrid(nfft, nspin), vnuclgrid(nfft)
   real(dp) :: dr(3, 3)
   real(dp), allocatable :: c_matrix(:, :, :), occupation(:, :), s_matrix(:, :)
@@ -376,16 +393,6 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, enucnuc
   endif
 
 
-  ! Create the real-space grid
-  ir = 0
-  do i3=0, nfft3 - 1
-    do i2=0, nfft2 - 1
-      do i1=0, nfft1 - 1
-        ir = ir + 1
-        rgrid(:, ir) = MATMUL( aprim(:, :), [DBLE(i1)/nfft1, DBLE(i2)/nfft2, DBLE(i3)/nfft3] )
-      enddo
-    enddo
-  enddo
 
 
   allocate(p_matrix_local(basis%nbf, basis%nbf, nspin))
@@ -398,8 +405,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, enucnuc
   if( .NOT. nucleus_only_ ) then
     call start_clock(timing_tmp1)
 
-    allocate(rhoelecr(nfft, nspin))
-    call calculate_density_periodic(basis, p_matrix_local, rgrid, rhoelecr)
+    call calculate_density_periodic(basis, p_matrix_local, rhoelecr)
 
     call stop_clock(timing_tmp1)
     call output_timing_line('set density on FFT grid' , timing_tmp1 , 1)
@@ -423,7 +429,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, enucnuc
     ehartree = 0.5_dp * SUM( rhoelecr * vhartreegrid ) * volume / REAL(nfft, KIND=dp)
     write(stdout,'(1x,a,f16.8)') 'Hartree energy (Ha): ', ehartree
 
-    call calculate_hao_periodic(basis, rgrid, vhartreegrid, h_ao)
+    call calculate_hao_periodic(basis, vhartreegrid, h_ao)
     call dump_out_matrix(.TRUE., '=== Hartree contribution (FFTW) ===', h_ao)
 
   else
@@ -434,7 +440,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, enucnuc
   !
   ! Get the electrostatic potential of the nuclei
   !
-  call prepare_nuclei_density_periodic(rgrid, rhonuclr, nuc_selfenergy)
+  call prepare_nuclei_density_periodic(rhonuclr, nuc_selfenergy)
 
   !dr(:, 1) = aprim(:, 1) / nfft1
   !dr(:, 2) = aprim(:, 2) / nfft2
@@ -442,7 +448,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, enucnuc
   !call write_cube_file('toto.cube', nfft1, nfft2, nfft3, dr, rhonuclr, comment='test')
   call poisson_solver_fft(rhonuclr, vnuclgrid) 
 
-  if( ALLOCATED(rhoelecr) ) then
+  if( ANY(rhoelecr(:, :) > 1.0e-6_dp) ) then
     enuc = SUM( rhoelecr(:, 1) * vnuclgrid(:) ) * volume / REAL(nfft, KIND=dp)
     write(stdout,'(1x,a,f16.8)') 'Enucl (Ha): ', enuc
   else
@@ -452,13 +458,12 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, enucnuc
   write(stdout,'(1x,a,f16.8)') 'Nucleus-nucleus (Ha): ', enucnuc
 
   allocate(hnucl_ao, MOLD=h_ao)
-  call calculate_hao_periodic(basis, rgrid, RESHAPE(vnuclgrid, [nfft, 1]), hnucl_ao)
+  call calculate_hao_periodic(basis, RESHAPE(vnuclgrid, [nfft, 1]), hnucl_ao)
   call dump_out_matrix(.TRUE., '=== Nuclei contribution (FFTW) ===', hnucl_ao)
 
   h_ao(:, :) = h_ao(:, :) + hnucl_ao(:, :)
 
   deallocate(hnucl_ao)
-  if( ALLOCATED(rhoelecr) ) deallocate(rhoelecr)
 
   call stop_clock(timing_xxdft_hartree)
 
@@ -469,70 +474,157 @@ end subroutine setup_hartree_periodic
 
 
 !=========================================================================
-subroutine calculate_density_periodic(basis, p_matrix, rr, rhor)
+subroutine setup_vxc_periodic(basis, occupation, c_matrix, vxc_ao, exc_xc, dft_xc_in)
+  implicit none
+
+  type(basis_set), intent(in) :: basis
+  real(dp), intent(in)        :: occupation(:, :)
+  real(dp), intent(in)        :: c_matrix(:, :, :)
+  real(dp), intent(out)       :: vxc_ao(:, :, :)
+  real(dp), intent(out)       :: exc_xc
+  type(dft_xc_info), intent(in), optional :: dft_xc_in(:)
+  !=====
+  real(dp), parameter            :: TOL_RHO = 1.0e-9_dp
+  type(dft_xc_info), allocatable :: dft_xc_local(:)
+  integer              :: nstate
+  integer              :: ispin
+  integer              :: ixc
+  integer              :: igrid_start, igrid_end
+  integer              :: timing_xxdft_xc, timing_xxdft_densities, timing_xxdft_libxc, timing_xxdft_vxc
+  !real(dp), allocatable :: weight_batch(:)
+  !real(dp), allocatable :: tmp_batch(:, :)
+  !real(dp), allocatable :: basis_function_r_batch(:, :)
+  !real(dp), allocatable :: bf_gradx_batch(:, :)
+  !real(dp), allocatable :: bf_grady_batch(:, :)
+  !real(dp), allocatable :: bf_gradz_batch(:, :)
+  !real(dp), allocatable :: dedd_r_batch(:, :)
+  !real(dp), allocatable :: grad_rhor_batch(:, :, :)
+  !real(dp), allocatable :: dedgd_r_batch(:, :, :)
+  real(C_DOUBLE), allocatable :: rhor(:, :)
+  !real(C_DOUBLE), allocatable :: sigma_batch(:, :)
+  real(C_DOUBLE), allocatable :: vrho(:, :)
+  real(C_DOUBLE), allocatable :: excgrid(:)
+  !real(C_DOUBLE), allocatable :: vsigma_batch(:, :)
+  real(dp), allocatable :: vxcgrid(:, :)
+  !=====
+
+  !
+  ! create a local copy of dft_xc (from m_inputparam) or dft_xc_in (optional argument)
+  !
+  if( PRESENT(dft_xc_in) ) then
+    call copy_libxc_info(dft_xc_in, dft_xc_local)
+  else
+    call copy_libxc_info(dft_xc, dft_xc_local)
+  endif
+
+  exc_xc = 0.0_dp
+  vxcgrid(:, :) = 0.0_dp
+
+  if( dft_xc_local(1)%nxc == 0 ) return
+
+  timing_xxdft_xc    = timing_dft_xc
+  timing_xxdft_libxc = timing_dft_libxc
+  timing_xxdft_vxc   = timing_dft_vxc
+
+  call start_clock(timing_xxdft_xc)
+  write(stdout, '(/,1x,a)') 'Calculate DFT XC periodic potential'
+
+  allocate(rhor(nfft, nspin))
+  ! Assume rhoelecr is already known
+  ! nspin x nfft
+  rhor(:, :) = TRANSPOSE(rhoelecr(:, :))
+
+
+  call start_clock(timing_xxdft_libxc)
+
+  allocate(vrho(nspin, nfft))
+  allocate(excgrid(nfft))
+
+  do ixc=1, dft_xc_local(1)%nxc
+    if( ABS(dft_xc_local(ixc)%coeff) < 1.0e-6_dp ) cycle
+
+    select case(dft_xc_local(ixc)%family)
+    case(XC_FAMILY_LDA)
+      call xc_lda_exc_vxc(dft_xc_local(ixc)%func, INT(nfft, KIND=C_INT), rhor(1, 1), excgrid(1), vrho(1, 1))
+    case default
+      call die('setup_vxc_periodic: only LDA is implemented right now')
+    end select  
+
+    exc_xc = SUM(SUM(rhor(:, :), DIM=1) * excgrid(:)) * volume / REAL(nfft, dp)
+    vxcgrid(:, :) = vxcgrid(:, :) + TRANSPOSE(vrho(:, :))
+
+  enddo 
+
+  deallocate(vrho)
+  deallocate(excgrid)
+  call stop_clock(timing_xxdft_libxc)
+
+  write(stdout, *) 'Exc LDA (Ha): ', exc_xc
+
+
+
+  call start_clock(timing_xxdft_vxc)
+  call calculate_hao_periodic(basis, vxcgrid, vxc_ao(:, :, 1))
+  call stop_clock(timing_xxdft_vxc)
+
+
+  call stop_clock(timing_xxdft_xc)
+
+
+end subroutine setup_vxc_periodic
+
+
+!=========================================================================
+subroutine calculate_density_periodic(basis, p_matrix, rhor)
   implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)  :: p_matrix(:, :, :)
-  real(dp), intent(in)  :: rr(:, :)
   real(dp), intent(out) :: rhor(:, :)
   !=====
-  integer :: ispin, ir, nr, i1, i2, i3
+  integer :: ispin
   real(dp) :: shift(3)
-  real(dp), allocatable :: rr_shifted(:, :)
   real(dp), allocatable :: bfr(:, :)
   real(dp), allocatable :: tmp(:, :)
   !=====
 
-  nr = SIZE(rr, DIM=2)
 
-  allocate(rr_shifted, MOLD=rr)
-  allocate(bfr(basis%nbf, nr))
-  allocate(tmp(basis%nbf, nr))
+  allocate(bfr(basis%nbf, nfft))
+  allocate(tmp(basis%nbf, nfft))
 
   rhor(:, :) = 0.0_dp
-  call calculate_basis_functions_periodic(basis, rr, bfr)
+  call calculate_basis_functions_periodic(basis, rgrid, bfr)
   do ispin=1, nspin
     ! phi_α(r) * ( P_αβ * phi_β(r) )
-    call DGEMM('N', 'N', basis%nbf, nr, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
+    call DGEMM('N', 'N', basis%nbf, nfft, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
                bfr(:, :), basis%nbf, 0.0d0, tmp, basis%nbf)
   
     rhor(:, ispin) = rhor(:, ispin) + SUM( bfr(:, :) * tmp(:, :), DIM=1)
   enddo
 
-  deallocate(rr_shifted)
   deallocate(bfr, tmp)
-
-  ! write(stdout,*) 'sum_r ρ(r)',SUM(rhor)
-  ! write(stdout,*) 'dv', volume /REAL(nfft, KIND=dp)
-  ! write(stdout,*) 'FBFB total rho', SUM(rhor) * volume /REAL(nfft, KIND=dp)
 
 end subroutine calculate_density_periodic
 
 
 !=========================================================================
-subroutine calculate_hao_periodic(basis, rr, vr, h_ao)
+subroutine calculate_hao_periodic(basis, vr, h_ao)
   implicit none
 
   type(basis_set), intent(in) :: basis
-  real(dp), intent(in)  :: rr(:, :)
   real(dp), intent(in) :: vr(:, :)
   real(dp), intent(out) :: h_ao(:, :)
   !=====
   integer :: nx=1
-  integer :: ispin, ir, nr, nstate, i1, i2, i3, ibf, jbf
+  integer :: ispin, ibf, jbf
   real(dp) :: shift(3)
-  real(dp), allocatable :: rr_shifted(:, :)
   real(dp), allocatable :: bfr(:, :)
   !=====
 
-  nr = SIZE(rr, DIM=2)
-
-  allocate(rr_shifted, MOLD=rr)
-  allocate(bfr(basis%nbf, nr))
+  allocate(bfr(basis%nbf, nfft))
 
   h_ao(:, :) = 0.0_dp
-  call calculate_basis_functions_periodic(basis, rr, bfr)
+  call calculate_basis_functions_periodic(basis, rgrid, bfr)
   do ispin=1, nspin
     do jbf=1, basis%nbf
       do ibf=1, basis%nbf
@@ -541,9 +633,8 @@ subroutine calculate_hao_periodic(basis, rr, vr, h_ao)
     enddo
   enddo
 
-  h_ao(:, :) = h_ao(:, :) * volume / nr
+  h_ao(:, :) = h_ao(:, :) * volume / nfft
 
-  deallocate(rr_shifted)
   deallocate(bfr)
 
 end subroutine calculate_hao_periodic
@@ -555,23 +646,21 @@ end subroutine calculate_hao_periodic
 !
 ! Convention: nuclei have a negative charge (since electrons have positive one)
 !
-subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr, selfenergy)
+subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
   implicit none
 
-  real(dp), intent(in)  :: rgrid(:, :)
   real(dp), intent(out) :: rhonuclr(:)
   real(dp), intent(out) :: selfenergy
   !=====
-  integer :: nr, ir, irmin, irmax, nfft
+  integer :: nrad, irad, irmin, irmax
   real(dp), allocatable :: rrad(:), vloc(:), dvdr(:), d2vdr2(:), rho(:)
   real(dp), allocatable :: rradfinal(:), rhofinal(:)
   real(dp) :: zval, rmax, dr, shift(3), factor
   integer :: i1, i2, i3, icenter, igrid
   !=====
 
-  nfft = SIZE(rgrid, DIM=2)
 
-  call read_potential_data('vloc.dat', nr, rrad, vloc)
+  call read_potential_data('vloc.dat', nrad, rrad, vloc)
 
   allocate(dvdr, MOLD=vloc)
   call calc_derivative(rrad, vloc, dvdr)
@@ -580,8 +669,8 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr, selfenergy)
 
 
   allocate(rho, MOLD=vloc)
-  do ir=1, nr
-    rho(ir) = -( d2vdr2(ir) + 2.0_dp * dvdr(ir) / rrad(ir)) / (4.0_dp * pi)
+  do irad=1, nrad
+    rho(irad) = -( d2vdr2(irad) + 2.0_dp * dvdr(irad) / rrad(irad)) / (4.0_dp * pi)
   enddo
   deallocate(dvdr, d2vdr2)
 
@@ -589,23 +678,23 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr, selfenergy)
   ! remove the too low density values at large r
   ! remove the too low r
 
-  do ir=nr, 1, -1
-    if( ABS(rho(ir)) > 1.0e-6_dp ) exit
+  do irad=nrad, 1, -1
+    if( ABS(rho(irad)) > 1.0e-6_dp ) exit
   enddo
-  irmax = ir
-  do ir=1, nr
-    if( rrad(ir) > 1.0e-3_dp ) exit
+  irmax = irad
+  do irad=1, nrad
+    if( rrad(irad) > 1.0e-3_dp ) exit
   enddo
-  irmin = ir
+  irmin = irad
 
-  nr = irmax-irmin+1
-  allocate(rradfinal(nr))
-  allocate(rhofinal(nr))
+  nrad = irmax - irmin + 1
+  allocate(rradfinal(nrad))
+  allocate(rhofinal(nrad))
   rradfinal(1) = 0.0_dp
   rhofinal(1) = SUM(rho(1:irmin)) / REAL(irmin, KIND=dp)
-  rradfinal(2:nr) = rrad(irmin+1:irmin+nr-1)
-  rhofinal(2:nr) = rho(irmin+1:irmin+nr-1)
-  rmax = rradfinal(nr)
+  rradfinal(2:nrad) = rrad(irmin+1:irmin+nrad-1)
+  rhofinal(2:nrad) = rho(irmin+1:irmin+nrad-1)
+  rmax = rradfinal(nrad)
 
   zval = calculate_total_charge(rradfinal, rhofinal)
   write(stdout,'(1x,a,f12.8)') 'Integrated nucleus charge: ', zval
@@ -621,8 +710,8 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr, selfenergy)
 
 
   !! FBFB debug
-  !do ir=1, nr
-  !  write(1001,'(*(es20.10,1x))') rradfinal(ir), rhofinal(ir)
+  !do irad=1, nrad
+  !  write(1001,'(*(es20.10,1x))') rradfinal(irad), rhofinal(irad)
   !enddo
 
   !
@@ -637,11 +726,11 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr, selfenergy)
           do icenter=1, ncenter_nuclei
             dr = NORM2( rgrid(:, igrid) - xatom(:, icenter) - shift(:) )
             if( dr > rmax ) cycle
-            do ir=1, nr
-              if( rradfinal(ir) > dr ) exit
+            do irad=1, nrad
+              if( rradfinal(irad) > dr ) exit
             enddo
-            rhonuclr(igrid) = rhonuclr(igrid) + ( rradfinal(ir) - dr   ) / ( rradfinal(ir) - rradfinal(ir-1) ) * rhofinal(ir-1) &
-                                              + ( dr - rradfinal(ir-1) ) / ( rradfinal(ir) - rradfinal(ir-1) ) * rhofinal(ir)
+            rhonuclr(igrid) = rhonuclr(igrid) + ( rradfinal(irad) - dr   ) / ( rradfinal(irad) - rradfinal(irad-1) ) * rhofinal(irad-1) &
+                                              + ( dr - rradfinal(irad-1) ) / ( rradfinal(irad) - rradfinal(irad-1) ) * rhofinal(irad)
 
           enddo
         enddo
@@ -666,31 +755,31 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr, selfenergy)
 
 contains
 
-  subroutine read_potential_data(filename, nr, r, phi)
+  subroutine read_potential_data(filename, nrad, r, phi)
     implicit none
     character(len=*), intent(in) :: filename
   
     !=====
-    integer, intent(out) :: nr
+    integer, intent(out) :: nrad
     real(dp), allocatable, intent(out) :: r(:), phi(:)
-    integer :: iostat, ir
+    integer :: iostat, irad
     integer :: file_unit
     !=====
     
     ! Count lines
     open(newunit=file_unit, file=filename, status='old', action='read')
-    nr = 0
+    nrad = 0
     do
         read(file_unit, *, iostat=iostat)
         if (iostat /= 0) exit
-        nr = nr + 1
+        nrad = nrad + 1
     enddo
     rewind(file_unit)
     
     ! Allocate and read
-    allocate(r(nr), phi(nr))
-    do ir = 1, nr
-        read(file_unit, *) r(ir), phi(ir)
+    allocate(r(nrad), phi(nrad))
+    do irad = 1, nrad
+        read(file_unit, *) r(irad), phi(irad)
     enddo
     close(file_unit)
       
@@ -736,15 +825,15 @@ contains
   function calculate_total_charge(r, rho) result(total_charge)
     real(dp), intent(in) :: r(:), rho(:)
     real(dp) :: total_charge
-    integer :: ir, nr
+    integer :: irad, nrad
   
-    nr = SIZE(rho)
+    nrad = SIZE(rho)
     ! Integrate 4πr²ρ(r) dr using trapezoidal rule
     total_charge = 0.0_dp
-    do ir = 1, nr - 1
+    do irad = 1, nrad - 1
       total_charge = total_charge &
-           + 4.0_dp * pi * 0.5_dp * ( r(ir + 1) - r(ir) )   &
-               * ( r(ir)**2 * rho(ir) + r(ir + 1)**2 * rho(ir + 1) )
+           + 4.0_dp * pi * 0.5_dp * ( r(irad + 1) - r(irad) )   &
+               * ( r(irad)**2 * rho(irad) + r(irad + 1)**2 * rho(irad + 1) )
     enddo
   end function calculate_total_charge
   
@@ -752,49 +841,49 @@ contains
     real(dp), intent(in) :: r(:), rho(:)
     real(dp) :: total_charge, selfenergy
     !=====
-    integer  :: ir, nr
+    integer  :: irad, nrad
     real(dp), allocatable :: Q(:), S(:), phi(:)
     real(dp) :: dr1
     !=====
   
-    nr = SIZE(rho)
+    nrad = SIZE(rho)
   
-    allocate(Q(nr), S(nr), phi(nr))
+    allocate(Q(nrad), S(nrad), phi(nrad))
     
     !------------------------------------------------------------
     ! 1. Compute cumulative charge Q(r)
     !    Q(i) = 4π ∫0^r(i) r'^2 ρ(r') dr'   (trapezoidal, nonuniform)
     !------------------------------------------------------------
     Q(1) = 0.0_dp
-    do ir = 2, nr
-       dr1 = r(ir) - r(ir-1)
-       Q(ir) = Q(ir-1) + 0.5_dp * 4.0_dp*pi * (r(ir)**2*rho(ir) + r(ir-1)**2*rho(ir-1)) * dr1
+    do irad = 2, nrad
+       dr1 = r(irad) - r(irad-1)
+       Q(irad) = Q(irad-1) + 0.5_dp * 4.0_dp*pi * (r(irad)**2*rho(irad) + r(irad-1)**2*rho(irad-1)) * dr1
     end do
-    total_charge = Q(nr)
+    total_charge = Q(nrad)
     
     !------------------------------------------------------------
     ! 2. Compute reverse cumulative S(r)
     !    S(i) = 4π ∫_r(i)^∞ r' ρ(r') dr'
     !------------------------------------------------------------
-    S(nr) = 0.0_dp
-    do ir = nr-1, 1, -1
-       dr1 = r(ir+1) - r(ir)
-       S(ir) = S(ir+1) + 0.5_dp * 4.0_dp*pi * (r(ir)*rho(ir) + r(ir+1)*rho(ir+1)) * dr1
+    S(nrad) = 0.0_dp
+    do irad = nrad-1, 1, -1
+       dr1 = r(irad+1) - r(irad)
+       S(irad) = S(irad+1) + 0.5_dp * 4.0_dp*pi * (r(irad)*rho(irad) + r(irad+1)*rho(irad+1)) * dr1
     end do
     
     !------------------------------------------------------------
     ! 3. Potential φ(r) = Q(r)/r + S(r)
     !------------------------------------------------------------
     phi(1) = S(1)
-    phi(2:nr) = Q(2:nr) / r(2:nr) + S(2:nr)
+    phi(2:nrad) = Q(2:nrad) / r(2:nrad) + S(2:nrad)
     
     !------------------------------------------------------------
     ! 4. Energy integral: U = 1/2 * ∫ 4π r^2 ρ(r) φ(r) dr
     !------------------------------------------------------------
     selfenergy = 0.0_dp
-    do ir = 2, nr
-       dr1 = r(ir) - r(ir-1)
-       selfenergy = selfenergy + 0.5_dp * (4.0_dp*pi*(r(ir)**2*rho(ir)*phi(ir) + r(ir-1)**2*rho(ir-1)*phi(ir-1))) * dr1 * 0.5_dp
+    do irad = 2, nrad
+       dr1 = r(irad) - r(irad-1)
+       selfenergy = selfenergy + 0.5_dp * (4.0_dp*pi*(r(irad)**2*rho(irad)*phi(irad) + r(irad-1)**2*rho(irad-1)*phi(irad-1))) * dr1 * 0.5_dp
     end do
     
     deallocate(Q, S, phi)
@@ -888,23 +977,22 @@ end subroutine poisson_solver_fft
 
 
 !=========================================================================
-subroutine calculate_basis_functions_periodic(basis, rr, basis_function_r)
+subroutine calculate_basis_functions_periodic(basis, rgrid_in, basis_function_r)
   implicit none
 
   type(basis_set), intent(in) :: basis
-  real(dp), intent(in)        :: rr(:, :)
+  real(dp), intent(in)        :: rgrid_in(:, :)
   real(dp), intent(out)       :: basis_function_r(:, :)
   !=====
   integer               :: gt
-  integer               :: ir, nr
+  integer               :: ifft
   integer               :: ishell, ibf1, ibf2, ibf1_cart
   integer               :: i_cart
   integer               :: ni_cart, li
   real(dp), allocatable :: basis_function_r_cart(:, :), dr(:, :)
   !=====
 
-  nr = SIZE(basis_function_r(:, :), DIM=2)
-  allocate(dr(3, nr))
+  allocate(dr(3, nfft))
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -918,27 +1006,27 @@ subroutine calculate_basis_functions_periodic(basis, rr, basis_function_r)
     ibf2      = basis%shell(ishell)%iend
 
     ! relative position to the shell center
-    do concurrent(ir=1:nr)
-      dr(:, ir) = rr(:, ir) - basis%shell(ishell)%x0(:)
+    do concurrent(ifft=1:nfft)
+      dr(:, ifft) = rgrid_in(:, ifft) - basis%shell(ishell)%x0(:)
     enddo
     ! transform to reduced coordinates
     dr(:, :) = MATMUL( aprim_inv, dr)
     ! minimum image convention
-    do concurrent(ir=1:nr)
-      dr(:, ir) = dr(:, ir) - NINT(dr(:, ir))
+    do concurrent(ifft=1:nfft)
+      dr(:, ifft) = dr(:, ifft) - NINT(dr(:, ifft))
     enddo
     ! transform back to cartesian coordinates
     dr(:, :) = MATMUL( aprim, dr) 
     ! transform balck to absolute position
-    do concurrent(ir=1:nr)
-      dr(:, ir) = dr(:, ir) + basis%shell(ishell)%x0(:)
+    do concurrent(ifft=1:nfft)
+      dr(:, ifft) = dr(:, ifft) + basis%shell(ishell)%x0(:)
     enddo
 
-    allocate(basis_function_r_cart(ni_cart, nr))
+    allocate(basis_function_r_cart(ni_cart, nfft))
 
-    do ir=1, nr
+    do ifft=1, nfft
       do i_cart=1, ni_cart
-        basis_function_r_cart(i_cart, ir) = eval_basis_function(basis%bfc(ibf1_cart + i_cart - 1), dr(:, ir))
+        basis_function_r_cart(i_cart, ifft) = eval_basis_function(basis%bfc(ibf1_cart + i_cart - 1), dr(:, ifft))
       enddo
     enddo
 
@@ -953,6 +1041,18 @@ subroutine calculate_basis_functions_periodic(basis, rr, basis_function_r)
 
 end subroutine calculate_basis_functions_periodic
 
+
+!=========================================================================
+subroutine destroy_fft_grid()
+  implicit none
+
+  !=====
+  !=====
+
+  deallocate(rgrid)
+  deallocate(rhoelecr)
+
+end subroutine destroy_fft_grid
 
 end module m_hamiltonian_periodic
 
