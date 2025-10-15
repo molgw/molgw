@@ -35,13 +35,68 @@ module m_hamiltonian_periodic
 
   integer, private, parameter :: nx = 1
 
-  integer(C_INT), parameter :: nfft1 = 120
-  integer(C_INT), parameter :: nfft2 = nfft1
-  integer(C_INT), parameter :: nfft3 = nfft1
-  integer, parameter :: nfft = nfft1 * nfft2 * nfft3
+  integer(C_INT), private :: nfft1
+  integer(C_INT), private :: nfft2
+  integer(C_INT), private :: nfft3
+  integer, private        :: nfft
 
 
 contains
+
+
+!=========================================================================
+! Set FFT grid points so to accommodate variations at Δx scale in real space
+!
+subroutine set_fft_grid()
+  implicit none
+  !=====
+  integer :: nfftx
+  integer :: fft_grids(18) = [ 16, 24, 32, 48, 60, 64, 96, 120, 128, 144, &
+                              180, 192, 256, 288, 384, 512, 768, 1024]
+  !=====
+
+  write(stdout,'(/,1x,a)')    'Setting up the FFT grid'
+  write(stdout,'(1x,a,f8.4)') 'spacing fft_delta_x: ', fft_delta_x
+
+  ! Direction 1
+  nfftx = CEILING( NORM2(aprim(:, 1)) / fft_delta_x )
+  nfft1 = next_in_grid(nfftx)
+
+  ! Direction 2
+  nfftx = CEILING( NORM2(aprim(:, 2)) / fft_delta_x )
+  nfft2 = next_in_grid(nfftx)
+
+  ! Direction 3
+  nfftx = CEILING( NORM2(aprim(:, 3)) / fft_delta_x )
+  nfft3 = next_in_grid(nfftx)
+
+  nfft = nfft1 * nfft2 * nfft3
+
+  write(stdout,'(1x,a,1x,i4,a,i4,a,i4)') 'FFT grid:', nfft1, ' x ', nfft2, ' x ', nfft3
+
+contains
+  ! Find smallest fft_grid greater than fftx
+  function next_in_grid(nfftx)
+    implicit none
+
+    integer, intent(in) :: nfftx
+    integer :: next_in_grid
+    !=====
+    integer :: i
+    !=====
+
+    next_in_grid = -1   ! default value if none found
+
+    do i = 1, SIZE(fft_grids)
+      if( fft_grids(i) > nfftx) then
+          next_in_grid = fft_grids(i)
+          exit
+      endif
+    enddo
+
+  end function next_in_grid
+
+end subroutine set_fft_grid
 
 
 !=========================================================================
@@ -554,11 +609,11 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr, selfenergy)
 
   zval = calculate_total_charge(rradfinal, rhofinal)
   write(stdout,'(1x,a,f12.8)') 'Integrated nucleus charge: ', zval
+  ! Renormalize charge to correct value
   rhofinal(:) = rhofinal(:) / zval * (-1.0_dp)
-  !zval = calculate_total_charge(rradfinal, rhofinal)
-  !write(stdout,'(1x,a,f12.8)') 'Integrated nucleus charge (after renormalization): ', zval
-  write(stdout,'(1x,a,f12.8)') 'Integrated nucleus charge (after renormalization): ', zval
+
   call calculate_selfenergy(rradfinal, rhofinal, zval, selfenergy)
+  write(stdout,'(1x,a,f12.8)') 'Integrated nucleus charge (after renormalization): ', zval
   write(stdout,'(1x,a,f12.8)') 'Selfenergy per atom (Ha): ', selfenergy
   
   selfenergy = selfenergy * ncenter_nuclei

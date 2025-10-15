@@ -355,8 +355,9 @@ program molgw
     call setup_kinetic(basis, hamiltonian_kinetic)
    
     !
-    ! Nucleus-electron interaction
+    ! Nucleus-electron interaction and set up the FFT grid
     if( pbc_ ) then
+      call set_fft_grid()
       allocate(p_matrix(basis%nbf, basis%nbf, nspin))
       call setup_hartree_periodic(basis, p_matrix, hamiltonian_nucleus, en_gks%hartree, en_gks%nucleus, en_gks%nuc_nuc, &
                                   nucleus_only=.TRUE.)

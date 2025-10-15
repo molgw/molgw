@@ -188,6 +188,14 @@ even_tempered_n_list:
            The maximum angular momentum is determined from the number of integers in the string.
            Only meaningful when basis='even_tempered'.
 
+fft_delta_x:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.15
+  comment: Maximum spacing between grid points in the real space FFT grid. Default is 0.15 bohr.
+
 gaussian_type:
   family: general
   datatype: characters
