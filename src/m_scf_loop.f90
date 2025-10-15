@@ -161,7 +161,7 @@ subroutine scf_loop(is_restart, &
     if( .NOT. pbc_ ) then
       call calculate_hartree(basis, p_matrix, hamiltonian_hartree, eh=en_gks%hartree)
     else
-      call setup_hartree_periodic(basis, p_matrix, hamiltonian_hartree, en_gks%hartree, en_gks%nucleus)
+      call setup_hartree_periodic(basis, p_matrix, hamiltonian_hartree, en_gks%hartree, en_gks%nucleus, en_gks%nuc_nuc)
     endif
 
 

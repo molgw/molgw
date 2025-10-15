@@ -358,7 +358,8 @@ program molgw
     ! Nucleus-electron interaction
     if( pbc_ ) then
       allocate(p_matrix(basis%nbf, basis%nbf, nspin))
-      call setup_hartree_periodic(basis, p_matrix, hamiltonian_nucleus, en_gks%hartree, en_gks%nucleus, nucleus_only=.TRUE.)
+      call setup_hartree_periodic(basis, p_matrix, hamiltonian_nucleus, en_gks%hartree, en_gks%nucleus, en_gks%nuc_nuc, &
+                                  nucleus_only=.TRUE.)
       deallocate(p_matrix)
     else
       call setup_nucleus(basis, hamiltonian_nucleus)

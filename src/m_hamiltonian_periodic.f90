@@ -40,6 +40,7 @@ module m_hamiltonian_periodic
   integer(C_INT), parameter :: nfft3 = nfft1
   integer, parameter :: nfft = nfft1 * nfft2 * nfft3
 
+
 contains
 
 
@@ -268,19 +269,20 @@ end subroutine setup_kinetic_onecell
 
 
 !=========================================================================
-subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, nucleus_only)
+subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, enucnuc, nucleus_only)
   implicit none
 
   type(basis_set), intent(in) :: basis
   class(*), intent(in)  :: p_matrix(:, :, :)
   real(dp), intent(out) :: h_ao(:, :)
-  real(dp), intent(out) :: ehartree, enuc
+  real(dp), intent(out) :: ehartree, enuc, enucnuc
   logical, intent(in), optional :: nucleus_only
   !=====
   integer               :: timing_xxdft_hartree
   real(dp), allocatable :: hnucl_ao(:, :)
   real(dp), allocatable :: p_matrix_local(:, :, :)
   integer :: i1, i2, i3, ir
+  real(dp) :: nuc_selfenergy
   real(dp) :: rr(3)
   real(dp) :: rgrid(3, nfft), rhonuclr(nfft)
   real(dp), allocatable :: rhoelecr(:, :)
@@ -377,7 +379,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, nucleus
   !
   ! Get the electrostatic potential of the nuclei
   !
-  call prepare_nuclei_density_periodic(rgrid, rhonuclr)
+  call prepare_nuclei_density_periodic(rgrid, rhonuclr, nuc_selfenergy)
 
   !dr(:, 1) = aprim(:, 1) / nfft1
   !dr(:, 2) = aprim(:, 2) / nfft2
@@ -386,11 +388,13 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, nucleus
   call poisson_solver_fft(rhonuclr, vnuclgrid) 
 
   if( ALLOCATED(rhoelecr) ) then
-    enuc = SUM( rhoelecr(:, 1) * vnuclgrid ) * volume / REAL(nfft, KIND=dp)
+    enuc = SUM( rhoelecr(:, 1) * vnuclgrid(:) ) * volume / REAL(nfft, KIND=dp)
     write(stdout,'(1x,a,f16.8)') 'Enucl (Ha): ', enuc
   else
     enuc = 0.0_dp
   endif
+  enucnuc = 0.5_dp * SUM( rhonuclr(:) * vnuclgrid(:) ) * volume / REAL(nfft, KIND=dp) - nuc_selfenergy
+  write(stdout,'(1x,a,f16.8)') 'Nucleus-nucleus (Ha): ', enucnuc
 
   allocate(hnucl_ao, MOLD=h_ao)
   call calculate_hao_periodic(basis, rgrid, RESHAPE(vnuclgrid, [nfft, 1]), hnucl_ao)
@@ -496,11 +500,12 @@ end subroutine calculate_hao_periodic
 !
 ! Convention: nuclei have a negative charge (since electrons have positive one)
 !
-subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr)
+subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr, selfenergy)
   implicit none
 
   real(dp), intent(in)  :: rgrid(:, :)
   real(dp), intent(out) :: rhonuclr(:)
+  real(dp), intent(out) :: selfenergy
   !=====
   integer :: nr, ir, irmin, irmax, nfft
   real(dp), allocatable :: rrad(:), vloc(:), dvdr(:), d2vdr2(:), rho(:)
@@ -547,16 +552,23 @@ subroutine prepare_nuclei_density_periodic(rgrid, rhonuclr)
   rhofinal(2:nr) = rho(irmin+1:irmin+nr-1)
   rmax = rradfinal(nr)
 
-  ! FBFB debug
-  !do ir=1, nr
-  !  write(1001,'(*(es20.10,1x))') rradfinal(ir), rhofinal(ir)
-  !enddo
   zval = calculate_total_charge(rradfinal, rhofinal)
   write(stdout,'(1x,a,f12.8)') 'Integrated nucleus charge: ', zval
   rhofinal(:) = rhofinal(:) / zval * (-1.0_dp)
-  zval = calculate_total_charge(rradfinal, rhofinal)
+  !zval = calculate_total_charge(rradfinal, rhofinal)
+  !write(stdout,'(1x,a,f12.8)') 'Integrated nucleus charge (after renormalization): ', zval
   write(stdout,'(1x,a,f12.8)') 'Integrated nucleus charge (after renormalization): ', zval
+  call calculate_selfenergy(rradfinal, rhofinal, zval, selfenergy)
+  write(stdout,'(1x,a,f12.8)') 'Selfenergy per atom (Ha): ', selfenergy
+  
+  selfenergy = selfenergy * ncenter_nuclei
+  write(stdout,'(1x,a,f12.8)') 'Selfenergy (Ha): ', selfenergy
 
+
+  !! FBFB debug
+  !do ir=1, nr
+  !  write(1001,'(*(es20.10,1x))') rradfinal(ir), rhofinal(ir)
+  !enddo
 
   !
   ! Loop over the unitcell regular grid
@@ -602,7 +614,7 @@ contains
   subroutine read_potential_data(filename, nr, r, phi)
     implicit none
     character(len=*), intent(in) :: filename
-
+  
     !=====
     integer, intent(out) :: nr
     real(dp), allocatable, intent(out) :: r(:), phi(:)
@@ -628,13 +640,13 @@ contains
     close(file_unit)
       
   end subroutine read_potential_data
-
+  
   subroutine calc_derivative(r, phi, dphi_dr)
     real(dp), intent(in) :: r(:), phi(:)
     real(dp), intent(out) :: dphi_dr(:)
     real(dp) :: h1, h2, a, b, c
     integer :: i, n
-
+  
     n = SIZE(r)
     
     ! First derivative using non-uniform grid formulas
@@ -663,14 +675,14 @@ contains
     b = -(h1 + h2) / (h1 * h2)
     c = (2.0_dp*h2 + h1) / (h2 * (h1 + h2))
     dphi_dr(n) = a*phi(n-2) + b*phi(n-1) + c*phi(n)
-
+  
   end subroutine calc_derivative
-
+  
   function calculate_total_charge(r, rho) result(total_charge)
     real(dp), intent(in) :: r(:), rho(:)
     real(dp) :: total_charge
     integer :: ir, nr
-
+  
     nr = SIZE(rho)
     ! Integrate 4πr²ρ(r) dr using trapezoidal rule
     total_charge = 0.0_dp
@@ -680,6 +692,59 @@ contains
                * ( r(ir)**2 * rho(ir) + r(ir + 1)**2 * rho(ir + 1) )
     enddo
   end function calculate_total_charge
+  
+  subroutine calculate_selfenergy(r, rho, total_charge, selfenergy)
+    real(dp), intent(in) :: r(:), rho(:)
+    real(dp) :: total_charge, selfenergy
+    !=====
+    integer  :: ir, nr
+    real(dp), allocatable :: Q(:), S(:), phi(:)
+    real(dp) :: dr1
+    !=====
+  
+    nr = SIZE(rho)
+  
+    allocate(Q(nr), S(nr), phi(nr))
+    
+    !------------------------------------------------------------
+    ! 1. Compute cumulative charge Q(r)
+    !    Q(i) = 4π ∫0^r(i) r'^2 ρ(r') dr'   (trapezoidal, nonuniform)
+    !------------------------------------------------------------
+    Q(1) = 0.0_dp
+    do ir = 2, nr
+       dr1 = r(ir) - r(ir-1)
+       Q(ir) = Q(ir-1) + 0.5_dp * 4.0_dp*pi * (r(ir)**2*rho(ir) + r(ir-1)**2*rho(ir-1)) * dr1
+    end do
+    total_charge = Q(nr)
+    
+    !------------------------------------------------------------
+    ! 2. Compute reverse cumulative S(r)
+    !    S(i) = 4π ∫_r(i)^∞ r' ρ(r') dr'
+    !------------------------------------------------------------
+    S(nr) = 0.0_dp
+    do ir = nr-1, 1, -1
+       dr1 = r(ir+1) - r(ir)
+       S(ir) = S(ir+1) + 0.5_dp * 4.0_dp*pi * (r(ir)*rho(ir) + r(ir+1)*rho(ir+1)) * dr1
+    end do
+    
+    !------------------------------------------------------------
+    ! 3. Potential φ(r) = Q(r)/r + S(r)
+    !------------------------------------------------------------
+    phi(1) = S(1)
+    phi(2:nr) = Q(2:nr) / r(2:nr) + S(2:nr)
+    
+    !------------------------------------------------------------
+    ! 4. Energy integral: U = 1/2 * ∫ 4π r^2 ρ(r) φ(r) dr
+    !------------------------------------------------------------
+    selfenergy = 0.0_dp
+    do ir = 2, nr
+       dr1 = r(ir) - r(ir-1)
+       selfenergy = selfenergy + 0.5_dp * (4.0_dp*pi*(r(ir)**2*rho(ir)*phi(ir) + r(ir-1)**2*rho(ir-1)*phi(ir-1))) * dr1 * 0.5_dp
+    end do
+    
+    deallocate(Q, S, phi)
+
+  end subroutine calculate_selfenergy
 
 
 end subroutine prepare_nuclei_density_periodic
