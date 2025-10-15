@@ -1,0 +1,34 @@
+&molgw
+  comment                 = 'Si4+ -> H'
+
+  gaussian_type='CART'
+
+  tolscf                         = 1.0e-10
+  scf                            = 'lda'
+  read_tddft_restart             = 'no'
+  print_tddft_restart            = 'no'
+  basis                          = 'cc-pVDZ'
+  auxil_basis                    = 'cc-pVDZ-RI'
+  natom                          = 1
+  nghost                         = 0
+  postscf                        = 'real_time'
+  grid_quality                   = 'medium'
+  tddft_grid_quality             = 'medium'
+
+  ! Prepare a Si4+ ion
+  scf_energy_shift               = 4.0
+  charge                         = 4.0
+  print_pdos                     = 'yes'
+
+  eri3_genuine                   = 'yes'
+
+  time_step                      =  0.05
+  write_step                     =  0.05
+  time_sim                       =  0.01
+  tddft_predictor_corrector      = 'MB_PC1'
+  excit_name                     = 'ion'
+  vel_projectile                 = 0.0 0.0 1.0
+
+/
+H    0.000000     0.000000      0.00000
+Si   0.000000     0.800000     -5.00000

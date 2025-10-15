@@ -50,7 +50,7 @@ subroutine scf_loop(is_restart, &
   !=====
   logical, intent(in)                 :: is_restart
   type(basis_set), intent(inout)      :: basis
-  real(dp), optional                  :: temperature_in
+  real(dp), intent(in), optional      :: temperature_in
   real(dp), intent(in)                :: x_matrix(:, :)
   real(dp), intent(in)                :: s_matrix(:, :)
   real(dp), intent(in)                :: hamiltonian_kinetic(:, :)
@@ -67,6 +67,7 @@ subroutine scf_loop(is_restart, &
   logical                 :: stopfile_found
   integer                 :: file_density_matrix
   integer                 :: ispin, iscf
+  type(basis_set)         :: basis_t, basis_p
   real(dp)                :: temperature_
   real(dp), allocatable   :: p_matrix(:, :, :)
   real(dp), allocatable   :: hamiltonian(:, :, :)
@@ -254,6 +255,18 @@ subroutine scf_loop(is_restart, &
     !
     ! Add the XC part of the hamiltonian to the total hamiltonian
     hamiltonian(:, :, :) = hamiltonian(:, :, :) + hamiltonian_xc(:, :, :)
+
+
+    if( trim(excit_name) /= 'no' .AND. abs(scf_energy_shift) > 1e-6_dp ) then
+      !    
+      ! Add the energy shift to the projectile
+      call split_basis_set(basis, basis_t, basis_p)
+  
+      do ispin=1,nspin
+        hamiltonian(basis_t%nbf + 1:, basis_t%nbf + 1:, ispin) = hamiltonian(basis_t%nbf + 1:, basis_t%nbf + 1:, ispin) &
+                + scf_energy_shift * s_matrix(basis_t%nbf + 1:, basis_t%nbf + 1:)  
+      enddo
+    endif
 
 
     ! All the components of the energy have been calculated at this stage

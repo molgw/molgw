@@ -1210,6 +1210,9 @@ kr_ccECP.in               , RPA correlation Kr atom with a ccECP pseudo and basi
 SCF Total Energy          ,  -18.228067580      , 0 , 1.0e-7
 RPA correlation           ,  -0.2186444854      , 0 , 1.0e-7
 
+Si_energy_shift.in        , tests the scf_energy_shift input
+SCF Total Energy          ,  -284.8534330027    , 0 , 1.0e-6
+
 c2h4_lc-wpbe_tddft.in     , LR-TDDFT with long-range only functional
 SCF Total Energy          ,  -78.5180274712     , 0 , 1.0e-7
 Exc. 0001                 ,     8.13898708      , 0 , 1.0e-4
@@ -1220,5 +1223,3 @@ SCF Total Energy          ,   -591.7684606578   , 0 , 1.0e-7
 + alpha correction        ,      0.4192824813   , 0 , 1.0e-7
 gKS HOMO energy           ,     -7.463168       , 0 , 1.0e-4
 gKS LUMO energy           ,     -0.373146       , 0 , 1.0e-4
-
-
