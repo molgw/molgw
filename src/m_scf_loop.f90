@@ -160,16 +160,14 @@ subroutine scf_loop(is_restart, &
     ! Hartree contribution to the Hamiltonian
     !
     if( .NOT. pbc_ ) then
-      call calculate_hartree(basis, p_matrix, hamiltonian_hartree, eh=en_gks%hartree)
+      if( .NOT. calc_type%is_core ) then
+        call calculate_hartree(basis, p_matrix, hamiltonian_hartree, eh=en_gks%hartree)
+      else
+        hamiltonian_hartree(:, :) = 0.0_dp
+        en_gks%hartree = 0.0_dp
+      endif
     else
       call setup_hartree_periodic(basis, p_matrix, hamiltonian_hartree, en_gks%hartree, en_gks%nucleus, en_gks%nuc_nuc)
-    endif
-
-
-    ! calc_type%is_core is an inefficient way to get the Kinetic + Nucleus Hamiltonian
-    if( calc_type%is_core ) then
-      hamiltonian_hartree(:, :) = 0.0_dp
-      en_gks%hartree = 0.0_dp
     endif
 
     do ispin=1, nspin
@@ -187,7 +185,11 @@ subroutine scf_loop(is_restart, &
     ! DFT XC potential is added here
     ! hamiltonian_xc is used as a temporary matrix
     if( calc_type%is_dft ) then
-      call dft_exc_vxc_batch(BATCH_SIZE, basis, occupation, c_matrix, hamiltonian_xc, en_gks%xc)
+      if( .NOT. pbc_ ) then
+        call dft_exc_vxc_batch(BATCH_SIZE, basis, occupation, c_matrix, hamiltonian_xc, en_gks%xc)
+      else
+        call setup_vxc_periodic(basis, hamiltonian_xc, en_gks%xc)
+      endif
     endif
 
     !

@@ -39,9 +39,12 @@ module m_hamiltonian_periodic
   integer(C_INT), private :: nfft2
   integer(C_INT), private :: nfft3
   integer, private        :: nfft
+  integer, private        :: nfft_local
 
   real(dp), allocatable, private :: rgrid(:, :)
   real(dp), allocatable, private :: rhoelecr(:, :)
+
+  real(dp), allocatable, private :: bfr(:, :)
 
 contains
 
@@ -49,8 +52,10 @@ contains
 !=========================================================================
 ! Set FFT grid points so to accommodate variations at Δx scale in real space
 !
-subroutine set_fft_grid()
+subroutine set_fft_grid(basis)
   implicit none
+
+  type(basis_set), intent(in) :: basis
   !=====
   integer :: nfftx
   integer :: fft_grids(18) = [ 16, 24, 32, 48, 60, 64, 96, 120, 128, 144, &
@@ -77,21 +82,34 @@ subroutine set_fft_grid()
 
   write(stdout,'(1x,a,1x,i4,a,i4,a,i4)') 'FFT grid:', nfft1, ' x ', nfft2, ' x ', nfft3
 
-  allocate(rgrid(3, nfft))
+  ! Distribute grid points according to dft_grid
+  nfft_local = 0
+  do ifft=1, nfft
+    if( MODULO(ifft-1, grid%nproc) == grid%rank ) nfft_local = nfft_local + 1
+  enddo
+  write(stdout,'(1x,a,i9,a,i9)') 'This MPI task treats ', nfft_local , ' grid points out of ', nfft
+
+  allocate(rgrid(3, nfft_local))
   ! Create the real-space grid
   ifft = 0
   do i3=0, nfft3 - 1
     do i2=0, nfft2 - 1
       do i1=0, nfft1 - 1
-        ifft = ifft + 1
-        rgrid(:, ifft) = MATMUL( aprim(:, :), [DBLE(i1)/nfft1, DBLE(i2)/nfft2, DBLE(i3)/nfft3] )
+        if( MODULO(ifft-1, grid%nproc) == grid%rank ) then
+          ifft = ifft + 1
+          rgrid(:, ifft) = MATMUL( aprim(:, :), [DBLE(i1)/nfft1, DBLE(i2)/nfft2, DBLE(i3)/nfft3] )
+        endif
       enddo
     enddo
   enddo
 
-  allocate(rhoelecr(nfft, nspin))
+  allocate(rhoelecr(nfft_local, nspin))
   rhoelecr(:, :) = 0.0_dp
 
+  allocate(bfr(basis%nbf, nfft_local))
+  call start_clock(timing_tmp4)
+  call calculate_basis_functions_periodic(basis, rgrid, bfr)
+  call stop_clock(timing_tmp4)
 
 contains
   ! Find smallest fft_grid greater than fftx
@@ -360,7 +378,6 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, enucnuc
   !real(dp), allocatable :: rhoelecr(:, :)
   real(dp) :: vhartreegrid(nfft, nspin), vnuclgrid(nfft)
   real(dp) :: dr(3, 3)
-  real(dp), allocatable :: c_matrix(:, :, :), occupation(:, :), s_matrix(:, :)
   logical :: nucleus_only_
   !=====
 
@@ -429,7 +446,10 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, enucnuc
     ehartree = 0.5_dp * SUM( rhoelecr * vhartreegrid ) * volume / REAL(nfft, KIND=dp)
     write(stdout,'(1x,a,f16.8)') 'Hartree energy (Ha): ', ehartree
 
-    call calculate_hao_periodic(basis, vhartreegrid, h_ao)
+    ! Spin channel 1 will contain the total Hartree potential
+    vhartreegrid(:, 1) = SUM(vhartreegrid(:, :), DIM=2)
+
+    call calculate_hao_periodic(basis, vhartreegrid(:, 1), h_ao)
     call dump_out_matrix(.TRUE., '=== Hartree contribution (FFTW) ===', h_ao)
 
   else
@@ -458,7 +478,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, enucnuc
   write(stdout,'(1x,a,f16.8)') 'Nucleus-nucleus (Ha): ', enucnuc
 
   allocate(hnucl_ao, MOLD=h_ao)
-  call calculate_hao_periodic(basis, RESHAPE(vnuclgrid, [nfft, 1]), hnucl_ao)
+  call calculate_hao_periodic(basis, vnuclgrid, hnucl_ao)
   call dump_out_matrix(.TRUE., '=== Nuclei contribution (FFTW) ===', hnucl_ao)
 
   h_ao(:, :) = h_ao(:, :) + hnucl_ao(:, :)
@@ -474,12 +494,10 @@ end subroutine setup_hartree_periodic
 
 
 !=========================================================================
-subroutine setup_vxc_periodic(basis, occupation, c_matrix, vxc_ao, exc_xc, dft_xc_in)
+subroutine setup_vxc_periodic(basis, vxc_ao, exc_xc, dft_xc_in)
   implicit none
 
   type(basis_set), intent(in) :: basis
-  real(dp), intent(in)        :: occupation(:, :)
-  real(dp), intent(in)        :: c_matrix(:, :, :)
   real(dp), intent(out)       :: vxc_ao(:, :, :)
   real(dp), intent(out)       :: exc_xc
   type(dft_xc_info), intent(in), optional :: dft_xc_in(:)
@@ -517,6 +535,7 @@ subroutine setup_vxc_periodic(basis, occupation, c_matrix, vxc_ao, exc_xc, dft_x
     call copy_libxc_info(dft_xc, dft_xc_local)
   endif
 
+  allocate(vxcgrid(nfft, nspin))
   exc_xc = 0.0_dp
   vxcgrid(:, :) = 0.0_dp
 
@@ -529,16 +548,15 @@ subroutine setup_vxc_periodic(basis, occupation, c_matrix, vxc_ao, exc_xc, dft_x
   call start_clock(timing_xxdft_xc)
   write(stdout, '(/,1x,a)') 'Calculate DFT XC periodic potential'
 
-  allocate(rhor(nfft, nspin))
-  ! Assume rhoelecr is already known
-  ! nspin x nfft
-  rhor(:, :) = TRANSPOSE(rhoelecr(:, :))
-
-
   call start_clock(timing_xxdft_libxc)
 
+  allocate(rhor(nspin, nfft))
   allocate(vrho(nspin, nfft))
   allocate(excgrid(nfft))
+
+  ! Need to transpose rho to adapt to libxc convention
+  ! nspin x nfft
+  rhor(:, :) = TRANSPOSE(rhoelecr(:, :))
 
   do ixc=1, dft_xc_local(1)%nxc
     if( ABS(dft_xc_local(ixc)%coeff) < 1.0e-6_dp ) cycle
@@ -550,10 +568,11 @@ subroutine setup_vxc_periodic(basis, occupation, c_matrix, vxc_ao, exc_xc, dft_x
       call die('setup_vxc_periodic: only LDA is implemented right now')
     end select  
 
-    exc_xc = SUM(SUM(rhor(:, :), DIM=1) * excgrid(:)) * volume / REAL(nfft, dp)
+    exc_xc = exc_xc + SUM(SUM(rhor(:, :), DIM=1) * excgrid(:)) * volume / REAL(nfft, dp)
     vxcgrid(:, :) = vxcgrid(:, :) + TRANSPOSE(vrho(:, :))
 
   enddo 
+
 
   deallocate(vrho)
   deallocate(excgrid)
@@ -562,9 +581,8 @@ subroutine setup_vxc_periodic(basis, occupation, c_matrix, vxc_ao, exc_xc, dft_x
   write(stdout, *) 'Exc LDA (Ha): ', exc_xc
 
 
-
   call start_clock(timing_xxdft_vxc)
-  call calculate_hao_periodic(basis, vxcgrid, vxc_ao(:, :, 1))
+  call calculate_hao_periodic(basis, vxcgrid, vxc_ao)
   call stop_clock(timing_xxdft_vxc)
 
 
@@ -584,16 +602,12 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
   !=====
   integer :: ispin
   real(dp) :: shift(3)
-  real(dp), allocatable :: bfr(:, :)
   real(dp), allocatable :: tmp(:, :)
   !=====
 
-
-  allocate(bfr(basis%nbf, nfft))
-  allocate(tmp(basis%nbf, nfft))
+  allocate(tmp(basis%nbf, nfft_local))
 
   rhor(:, :) = 0.0_dp
-  call calculate_basis_functions_periodic(basis, rgrid, bfr)
   do ispin=1, nspin
     ! phi_α(r) * ( P_αβ * phi_β(r) )
     call DGEMM('N', 'N', basis%nbf, nfft, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
@@ -602,7 +616,7 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
     rhor(:, ispin) = rhor(:, ispin) + SUM( bfr(:, :) * tmp(:, :), DIM=1)
   enddo
 
-  deallocate(bfr, tmp)
+  deallocate(tmp)
 
 end subroutine calculate_density_periodic
 
@@ -612,30 +626,72 @@ subroutine calculate_hao_periodic(basis, vr, h_ao)
   implicit none
 
   type(basis_set), intent(in) :: basis
-  real(dp), intent(in) :: vr(:, :)
-  real(dp), intent(out) :: h_ao(:, :)
+  real(dp), intent(in) :: vr(..)
+  real(dp), intent(out) :: h_ao(..)
   !=====
   integer :: nx=1
-  integer :: ispin, ibf, jbf
+  integer :: ispin, ibf, jbf, ifft
   real(dp) :: shift(3)
-  real(dp), allocatable :: bfr(:, :)
   !=====
 
-  allocate(bfr(basis%nbf, nfft))
 
-  h_ao(:, :) = 0.0_dp
-  call calculate_basis_functions_periodic(basis, rgrid, bfr)
-  do ispin=1, nspin
-    do jbf=1, basis%nbf
-      do ibf=1, basis%nbf
-        h_ao(ibf, jbf) = h_ao(ibf, jbf) + SUM( bfr(ibf, :) * vr(:, ispin) * bfr(jbf, :) )
+  call start_clock(timing_tmp5)
+
+  select rank(h_ao)
+  !
+  ! vr and h_ao have a spin index
+  !
+  rank(3)
+    select rank(vr)
+      rank(2)
+      h_ao(:, :, :) = 0.0_dp
+      do ispin=1, nspin
+#if 0
+        do jbf=1, basis%nbf
+          do ibf=1, basis%nbf
+            h_ao(ibf, jbf, ispin) = h_ao(ibf, jbf, ispin) + SUM( bfr(ibf, :) * vr(:, ispin) * bfr(jbf, :) )
+          enddo
+        enddo
+#else
+        do ifft=1, nfft
+          call DSYR('L', basis%nbf, vr(ifft, ispin), bfr(:, ifft), 1, h_ao(:, :, ispin), basis%nbf)
+        enddo
+        call matrix_lower_to_full(h_ao(:, :, ispin))
+#endif
       enddo
-    enddo
-  enddo
+      h_ao(:, :, :) = h_ao(:, :, :) * volume / nfft
+    rank(1)
+      call die('calculate_hao_periodic: rank mismatch') 
+    end select
 
-  h_ao(:, :) = h_ao(:, :) * volume / nfft
+  !
+  ! vr and h_ao don't have a spin index
+  !
+  rank(2)
+    select rank(vr)
+    rank(1)
+      h_ao(:, :) = 0.0_dp
+#if 0
+      do jbf=1, basis%nbf
+        do ibf=1, basis%nbf
+          h_ao(ibf, jbf) = h_ao(ibf, jbf) + SUM( bfr(ibf, :) * vr(:) * bfr(jbf, :) )
+        enddo
+      enddo
+#else
+      do ifft=1, nfft
+        call DSYR('L', basis%nbf, vr(ifft), bfr(:, ifft), 1, h_ao(:, :), basis%nbf)
+      enddo
+      call matrix_lower_to_full(h_ao(:, :))
+#endif
+      h_ao(:, :) = h_ao(:, :) * volume / nfft
 
-  deallocate(bfr)
+    rank(2)
+      call die('calculate_hao_periodic: rank mismatch') 
+    end select
+  end select
+
+  call stop_clock(timing_tmp5)
+
 
 end subroutine calculate_hao_periodic
 
@@ -709,13 +765,13 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
   write(stdout,'(1x,a,f12.8)') 'Selfenergy (Ha): ', selfenergy
 
 
-  !! FBFB debug
+  !DEBUG
   !do irad=1, nrad
   !  write(1001,'(*(es20.10,1x))') rradfinal(irad), rhofinal(irad)
   !enddo
 
   !
-  ! Loop over the unitcell regular grid
+  ! Loop over the unit-cell regular grid
   !
   rhonuclr(:) = 0.0_dp
   do igrid=1, nfft
@@ -744,9 +800,10 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
 
   factor = SUM(zvalence(:)) / zval
   rhonuclr(:) = rhonuclr(:) * factor
-
+ 
+  ! If the deviation from expected charge is larger than 5%, then stop and ask for a finer fft_delta_x
   if( ABS( factor - 1.0_dp ) > 0.05_dp ) then
-    call die('prepare_nuclei_density_periodic: wrong nucleus total charge. FFT grid is certainly too coarse')
+    call die('prepare_nuclei_density_periodic: wrong nucleus total charge. FFT grid is certainly too coarse. Try to decrease fft_delta_x.')
   endif
 
   zval = -SUM(rhonuclr(:)) * volume / REAL(nfft, KIND=dp)
@@ -1051,6 +1108,7 @@ subroutine destroy_fft_grid()
 
   deallocate(rgrid)
   deallocate(rhoelecr)
+  deallocate(bfr)
 
 end subroutine destroy_fft_grid
 
