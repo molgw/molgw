@@ -2640,7 +2640,7 @@ subroutine setup_nucleus_ecp_analytic(basis, hamiltonian_nucleus)
             call DSYRK('L', 'N', basis%nbf, ni, ecp(ie)%gth_hijl(ijpl, il), proj_i(:, :, ipl), basis%nbf, &
                        1.0_dp, hamiltonian_tmp,basis%nbf)
           else
-            call DSYR2K('L', 'N', basis%nbf, ni, ecp(ie)%gth_hijl(ijpl, il), proj_i(:, :,ipl),basis%nbf, &
+            call DSYR2K('L', 'N', basis%nbf, ni, ecp(ie)%gth_hijl(ijpl, il), proj_i(:, :,ipl), basis%nbf, &
                         proj_i(:, :, jpl), basis%nbf, 1.0_dp, hamiltonian_tmp, basis%nbf)
           endif
         enddo
