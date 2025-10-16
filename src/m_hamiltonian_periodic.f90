@@ -363,111 +363,37 @@ end subroutine setup_kinetic_onecell
 
 
 !=========================================================================
-subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, enucnuc, nucleus_only)
+subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
   implicit none
 
   type(basis_set), intent(in) :: basis
-  class(*), intent(in)  :: p_matrix(:, :, :)
   real(dp), intent(out) :: h_ao(:, :)
-  real(dp), intent(out) :: ehartree, enuc, enucnuc
-  logical, intent(in), optional :: nucleus_only
+  real(dp), intent(out) :: enucnuc
   !=====
-  integer               :: timing_xxdft_hartree
-  real(dp), allocatable :: hnucl_ao(:, :)
-  real(dp), allocatable :: p_matrix_local(:, :, :)
-  real(dp) :: nuc_selfenergy
+  real(dp) :: nuc_selfenergy, enuc
   real(dp) :: rhonuclr(nfft_local)
-  real(dp) :: vhartreegrid(nfft_local, nspin), vnuclgrid(nfft_local)
-  real(dp) :: dr(3, 3)
-  logical :: nucleus_only_
+  real(dp) :: vnuclgrid(nfft_local)
   !=====
 
 #if !defined(HAVE_FFTW3)
-  call die('setup_hartree_periodic: requires FFTW at compilation time')
-#else
+  call die('setup_periodic_periodic: requires FFTW at compilation time')
+#endif
 
-  if( PRESENT(nucleus_only) ) then
-    nucleus_only_ = nucleus_only
+
+  if( in_rt_tddft ) then
+    call start_clock(timing_tddft_hamiltonian_nuc)
   else
-    nucleus_only_ = .FALSE.
+    call start_clock(timing_hamiltonian_nuc)
   endif
 
-
-  select type(p_matrix)
-  type is(real(dp))
-    timing_xxdft_hartree   = timing_hartree
-  type is(complex(dp))
-    timing_xxdft_hartree   = timing_tddft_hartree
-  class default
-    call die("setup_hartree_periodic: p_matrix is neither real nor complex")
-  end select
-
-  call start_clock(timing_xxdft_hartree)
-
-  if( nucleus_only_ ) then
-    write(stdout, '(/,1x,a)') 'Calculate periodic nucleus term'
-  else
-    write(stdout, '(/,1x,a)') 'Calculate periodic Hartree + nucleus term'
-  endif
+  write(stdout, '(/,1x,a)') 'Calculate periodic nucleus term'
 
 
-
-
-  allocate(p_matrix_local(basis%nbf, basis%nbf, nspin))
-  select type(p_matrix)
-  type is(real(dp))
-    p_matrix_local(:, :, :) = p_matrix(:, :, :)
-  end select
-
-
-  if( .NOT. nucleus_only_ ) then
-    call start_clock(timing_tmp1)
-
-    call calculate_density_periodic(basis, p_matrix_local, rhoelecr)
-
-    call stop_clock(timing_tmp1)
-    call output_timing_line('set density on FFT grid' , timing_tmp1 , 1)
-
-    
-    !
-    ! Get the electrostatic potential of the electrons (Hartree)
-    !
-    call start_clock(timing_tmp2)
-
-    !write(*,*) 'FBFB charge', SUM(rhoelecr(:, 1))/nfft_global*volume
-    !dr(:, 1) = aprim(:, 1) / nfft1
-    !dr(:, 2) = aprim(:, 2) / nfft2
-    !dr(:, 3) = aprim(:, 3) / nfft3
-    !call write_cube_file('toto.cube', nfft1, nfft2, nfft3, dr, rhoelecr(:, 1), comment='test')
-
-    call poisson_solver_fft(rhoelecr(:, 1), vhartreegrid(:, 1)) 
-    call stop_clock(timing_tmp2)
-    call output_timing_line('timing 2 FFTs' , timing_tmp2 , 1)
-
-    ehartree = 0.5_dp * SUM( rhoelecr * vhartreegrid ) * volume / REAL(nfft_global, KIND=dp)
-    call grid%sum(ehartree)
-    write(stdout,'(1x,a,f16.8)') 'Hartree energy (Ha): ', ehartree
-
-    ! Spin channel 1 will contain the total Hartree potential
-    vhartreegrid(:, 1) = SUM(vhartreegrid(:, :), DIM=2)
-
-    call calculate_hao_periodic(basis, vhartreegrid(:, 1), h_ao)
-    call dump_out_matrix(.TRUE., '=== Hartree contribution (FFTW) ===', h_ao)
-
-  else
-    ehartree = 0.0_dp
-    h_ao(:, :) = 0.0_dp
-  endif
 
   !
   ! Get the electrostatic potential of the nuclei
   !
   call prepare_nuclei_density_periodic(rhonuclr, nuc_selfenergy)
-
-  !dr(:, 1) = aprim(:, 1) / nfft1
-  !dr(:, 2) = aprim(:, 2) / nfft2
-  !dr(:, 3) = aprim(:, 3) / nfft3
-  !call write_cube_file('toto.cube', nfft1, nfft2, nfft3, dr, rhonuclr, comment='test')
   call poisson_solver_fft(rhonuclr, vnuclgrid) 
 
   if( ANY(rhoelecr(:, :) > 1.0e-6_dp) ) then
@@ -482,17 +408,95 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree, enuc, enucnuc
   enucnuc = enucnuc - nuc_selfenergy
   write(stdout,'(1x,a,f16.8)') 'Nucleus-nucleus (Ha): ', enucnuc
 
-  allocate(hnucl_ao, MOLD=h_ao)
-  call calculate_hao_periodic(basis, vnuclgrid, hnucl_ao)
-  call dump_out_matrix(.TRUE., '=== Nuclei contribution (FFTW) ===', hnucl_ao)
+  call calculate_hao_periodic(basis, vnuclgrid, h_ao)
+  call dump_out_matrix(.TRUE., '=== Nuclei contribution (FFTW) ===', h_ao)
 
-  h_ao(:, :) = h_ao(:, :) + hnucl_ao(:, :)
+  if( in_rt_tddft ) then
+    call stop_clock(timing_tddft_hamiltonian_nuc)
+  else
+    call stop_clock(timing_hamiltonian_nuc)
+  endif
 
-  deallocate(hnucl_ao)
+
+end subroutine setup_nucleus_periodic
+
+
+!=========================================================================
+subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree)
+  implicit none
+
+  type(basis_set), intent(in) :: basis
+  class(*), intent(in)  :: p_matrix(:, :, :)
+  real(dp), intent(out) :: h_ao(:, :)
+  real(dp), intent(out) :: ehartree
+  !=====
+  integer               :: timing_xxdft_hartree
+  real(dp), allocatable :: p_matrix_local(:, :, :)
+  real(dp) :: vhartreegrid(nfft_local, nspin)
+  !real(dp) :: dr(3, 3)
+  !=====
+
+#if !defined(HAVE_FFTW3)
+  call die('setup_hartree_periodic: requires FFTW at compilation time')
+#endif
+
+  select type(p_matrix)
+  type is(real(dp))
+    timing_xxdft_hartree   = timing_hartree
+  type is(complex(dp))
+    timing_xxdft_hartree   = timing_tddft_hartree
+  class default
+    call die("setup_hartree_periodic: p_matrix is neither real nor complex")
+  end select
+
+  call start_clock(timing_xxdft_hartree)
+
+  write(stdout, '(/,1x,a)') 'Calculate periodic Hartree term'
+
+
+  allocate(p_matrix_local(basis%nbf, basis%nbf, nspin))
+  select type(p_matrix)
+  type is(real(dp))
+    p_matrix_local(:, :, :) = p_matrix(:, :, :)
+  end select
+
+
+  call start_clock(timing_tmp1)
+
+  call calculate_density_periodic(basis, p_matrix_local, rhoelecr)
+
+  call stop_clock(timing_tmp1)
+  call output_timing_line('set density on FFT grid' , timing_tmp1 , 1)
+
+  
+  !
+  ! Get the electrostatic potential of the electrons (Hartree)
+  !
+  call start_clock(timing_tmp2)
+
+  !DEBUG
+  !dr(:, 1) = aprim(:, 1) / nfft1
+  !dr(:, 2) = aprim(:, 2) / nfft2
+  !dr(:, 3) = aprim(:, 3) / nfft3
+  !call write_cube_file('rhoelecr.cube', nfft1, nfft2, nfft3, dr, rhoelecr(:, 1), comment='test')
+
+  call poisson_solver_fft(rhoelecr(:, 1), vhartreegrid(:, 1)) 
+  call stop_clock(timing_tmp2)
+  call output_timing_line('timing 2 FFTs' , timing_tmp2 , 1)
+
+  ehartree = 0.5_dp * SUM( rhoelecr * vhartreegrid ) * volume / REAL(nfft_global, KIND=dp)
+  call grid%sum(ehartree)
+  write(stdout,'(1x,a,f16.8)') 'Hartree energy (Ha): ', ehartree
+
+  ! Spin channel 1 will contain the total Hartree potential
+  vhartreegrid(:, 1) = SUM(vhartreegrid(:, :), DIM=2)
+
+  call calculate_hao_periodic(basis, vhartreegrid(:, 1), h_ao)
+  call dump_out_matrix(.TRUE., '=== Hartree contribution (FFTW) ===', h_ao)
+
+
 
   call stop_clock(timing_xxdft_hartree)
-
-#endif
 
 
 end subroutine setup_hartree_periodic
@@ -976,6 +980,7 @@ subroutine poisson_solver_fft(rhor, vcoulr)
   real(dp), intent(in)  :: rhor(:)
   real(dp), intent(out) :: vcoulr(:)
   !=====
+#if defined(HAVE_FFTW3)
   type(C_PTR) :: plan
   type(C_PTR) :: pr, pg, pvr, pvg
   real(C_DOUBLE), pointer :: rhor_fftw(:, :, :), vr_fftw(:, :, :)
@@ -1060,6 +1065,11 @@ subroutine poisson_solver_fft(rhor, vcoulr)
       enddo
     enddo
   enddo
+
+#else
+  vcoulr(:) = rhor(:) ! Fake operation to cheat on the unused dummy variable check of the compiler:w
+  call die('poisson_solver_fft: requires to be compiled FFTs (-DHAVE_FFTW3)')
+#endif
 
 
 contains

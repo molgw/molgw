@@ -86,7 +86,7 @@ program molgw
   real(dp), allocatable    :: s_matrix(:, :)
   real(dp), allocatable    :: x_matrix(:, :)
   real(dp), allocatable    :: s_matrix_sqrt(:, :)
-  real(dp), allocatable    :: c_matrix(:, :, :), p_matrix(:, :, :)
+  real(dp), allocatable    :: c_matrix(:, :, :)
   real(dp), allocatable    :: energy(:, :)
   real(dp), allocatable    :: energy_rel(:)
   real(dp), allocatable    :: occupation(:, :)
@@ -358,10 +358,7 @@ program molgw
     ! Nucleus-electron interaction and set up the FFT grid
     if( pbc_ ) then
       call set_fft_grid(basis)
-      allocate(p_matrix(basis%nbf, basis%nbf, nspin))
-      call setup_hartree_periodic(basis, p_matrix, hamiltonian_nucleus, en_gks%hartree, en_gks%nucleus, en_gks%nuc_nuc, &
-                                  nucleus_only=.TRUE.)
-      deallocate(p_matrix)
+      call setup_nucleus_periodic(basis, hamiltonian_nucleus, en_gks%nuc_nuc)
     else
       call setup_nucleus(basis, hamiltonian_nucleus)
     endif

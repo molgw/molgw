@@ -25,6 +25,7 @@ module m_scf_loop
   use m_hamiltonian_tools
   use m_hamiltonian_twobodies
   use m_hamiltonian_wrapper
+  use m_hamiltonian_periodic
   use m_selfenergy_tools
   use m_linear_response
   use m_restart
@@ -135,15 +136,10 @@ subroutine scf_loop(is_restart, &
       hamiltonian(:, :, ispin) = hamiltonian_kinetic(:, :)
     enddo
 
-    if( .NOT. pbc_ ) then
-      en_gks%nucleus  = SUM( hamiltonian_nucleus(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
-      do ispin=1, nspin
-        hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + hamiltonian_nucleus(:, :)
-      enddo
-    else
-      ! Nucleus part is grouped with Hartree in the case of PBC
-      en_gks%nucleus  = 0.0_dp
-    endif
+    en_gks%nucleus  = SUM( hamiltonian_nucleus(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
+    do ispin=1, nspin
+      hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + hamiltonian_nucleus(:, :)
+    enddo
 
 
     !
@@ -163,11 +159,12 @@ subroutine scf_loop(is_restart, &
       if( .NOT. calc_type%is_core ) then
         call calculate_hartree(basis, p_matrix, hamiltonian_hartree, eh=en_gks%hartree)
       else
+        ! is_core completely neglects the electron-electron interaction. (This is exact for 1 electron.)
         hamiltonian_hartree(:, :) = 0.0_dp
         en_gks%hartree = 0.0_dp
       endif
     else
-      call setup_hartree_periodic(basis, p_matrix, hamiltonian_hartree, en_gks%hartree, en_gks%nucleus, en_gks%nuc_nuc)
+      call setup_hartree_periodic(basis, p_matrix, hamiltonian_hartree, en_gks%hartree)
     endif
 
     do ispin=1, nspin
