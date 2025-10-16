@@ -370,7 +370,7 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
   real(dp), intent(out) :: h_ao(:, :)
   real(dp), intent(out) :: enucnuc
   !=====
-  real(dp) :: nuc_selfenergy, enuc
+  real(dp) :: nuc_selfenergy
   real(dp) :: rhonuclr(nfft_local)
   real(dp) :: vnuclgrid(nfft_local)
   !=====
@@ -389,27 +389,22 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
   write(stdout, '(/,1x,a)') 'Calculate periodic nucleus term'
 
 
-
   !
   ! Get the electrostatic potential of the nuclei
   !
+  call start_clock(timing_tmp1)
   call prepare_nuclei_density_periodic(rhonuclr, nuc_selfenergy)
+  call stop_clock(timing_tmp1)
+
   call poisson_solver_fft(rhonuclr, vnuclgrid) 
 
-  if( ANY(rhoelecr(:, :) > 1.0e-6_dp) ) then
-    enuc = SUM( rhoelecr(:, 1) * vnuclgrid(:) ) * volume / REAL(nfft_global, KIND=dp)
-    call grid%sum(enuc)
-    write(stdout,'(1x,a,f16.8)') 'Enucl (Ha): ', enuc
-  else
-    enuc = 0.0_dp
-  endif
   enucnuc = 0.5_dp * SUM( rhonuclr(:) * vnuclgrid(:) ) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(enucnuc)
   enucnuc = enucnuc - nuc_selfenergy
   write(stdout,'(1x,a,f16.8)') 'Nucleus-nucleus (Ha): ', enucnuc
 
   call calculate_hao_periodic(basis, vnuclgrid, h_ao)
-  call dump_out_matrix(.TRUE., '=== Nuclei contribution (FFTW) ===', h_ao)
+  call dump_out_matrix(.FALSE., '=== Nuclei contribution (FFTW) ===', h_ao)
 
   if( in_rt_tddft ) then
     call stop_clock(timing_tddft_hamiltonian_nuc)
@@ -461,18 +456,16 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree)
   end select
 
 
-  call start_clock(timing_tmp1)
+  call start_clock(timing_tmp2)
 
   call calculate_density_periodic(basis, p_matrix_local, rhoelecr)
 
-  call stop_clock(timing_tmp1)
-  call output_timing_line('set density on FFT grid' , timing_tmp1 , 1)
+  call stop_clock(timing_tmp2)
 
   
   !
   ! Get the electrostatic potential of the electrons (Hartree)
   !
-  call start_clock(timing_tmp2)
 
   !DEBUG
   !dr(:, 1) = aprim(:, 1) / nfft1
@@ -481,8 +474,6 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree)
   !call write_cube_file('rhoelecr.cube', nfft1, nfft2, nfft3, dr, rhoelecr(:, 1), comment='test')
 
   call poisson_solver_fft(rhoelecr(:, 1), vhartreegrid(:, 1)) 
-  call stop_clock(timing_tmp2)
-  call output_timing_line('timing 2 FFTs' , timing_tmp2 , 1)
 
   ehartree = 0.5_dp * SUM( rhoelecr * vhartreegrid ) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(ehartree)
@@ -492,7 +483,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree)
   vhartreegrid(:, 1) = SUM(vhartreegrid(:, :), DIM=2)
 
   call calculate_hao_periodic(basis, vhartreegrid(:, 1), h_ao)
-  call dump_out_matrix(.TRUE., '=== Hartree contribution (FFTW) ===', h_ao)
+  call dump_out_matrix(.FALSE., '=== Hartree contribution (FFTW) ===', h_ao)
 
 
 
@@ -644,6 +635,7 @@ subroutine calculate_hao_periodic(basis, vr, h_ao)
   !=====
 
 
+
   call start_clock(timing_tmp5)
 
   select rank(h_ao)
@@ -664,6 +656,18 @@ subroutine calculate_hao_periodic(basis, vr, h_ao)
         do ifft_local=1, nfft_local
           call DSYR('L', basis%nbf, vr(ifft_local, ispin), bfr(:, ifft_local), 1, h_ao(:, :, ispin), basis%nbf)
         enddo
+
+        !block
+        !real(dp), allocatable :: tmp(:, :)
+        !allocate(tmp, MOLD=bfr)
+        !do concurrent(ifft_local=1:nfft_local)
+        !  tmp(:, ifft_local) = bfr(:, ifft_local) * vr(ifft_local, ispin)
+        !enddo
+        !call DSYR2K('L', 'N', basis%nbf, nfft_local, 0.5d0, bfr, basis%nbf, &
+        !            tmp, basis%nbf, 0.0d0, h_ao(:, :, ispin), basis%nbf)
+        !deallocate(tmp)
+        !end block
+
         call matrix_lower_to_full(h_ao(:, :, ispin))
 
       enddo
@@ -722,6 +726,7 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
   real(dp), allocatable :: rradfinal(:), rhofinal(:)
   real(dp) :: zval, rmax, dr, shift(3), factor
   integer :: i1, i2, i3, icenter, ifft_local
+  real(dp) :: agrid, bgrid, irad_float
   !=====
 
 
@@ -782,7 +787,19 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
   !
   ! Loop over the unit-cell regular grid
   !
+
+  ! Assume a logarithmic grid (and check it is correct)
+  bgrid = rradfinal(2)
+  agrid = rradfinal(3) / rradfinal(2)
+  if( ABS( rradfinal(101) / rradfinal(100) - agrid ) > 1.0e-6_dp ) then
+    call die('prepare_nuclei_density_periodic: vloc grid is not logarithmic. Not implemented')
+  endif
+
+  call start_clock(timing_tmp9)
   rhonuclr(:) = 0.0_dp
+
+  !$OMP PARALLEL PRIVATE(shift, dr, irad_float, irad)
+  !$OMP DO
   do ifft_local=1, nfft_local
     do i3=-nx, nx
       do i2=-nx, nx
@@ -791,9 +808,15 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
           do icenter=1, ncenter_nuclei
             dr = NORM2( rgrid(:, ifft_local) - xatom(:, icenter) - shift(:) )
             if( dr > rmax ) cycle
-            do irad=1, nrad
-              if( rradfinal(irad) > dr ) exit
-            enddo
+
+            ! Calculate the radial indices [irad-1, irad] that braket dr
+            irad_float = ( LOG(dr) - LOG(bgrid) ) / LOG(agrid) + 2.0d0
+            irad = CEILING(irad_float)
+
+            !do irad=1, nrad
+            !  if( rradfinal(irad) > dr ) exit
+            !enddo
+
             rhonuclr(ifft_local) = rhonuclr(ifft_local) &
                                    + ( rradfinal(irad) - dr   ) / ( rradfinal(irad) - rradfinal(irad-1) ) * rhofinal(irad-1) &
                                    + ( dr - rradfinal(irad-1) ) / ( rradfinal(irad) - rradfinal(irad-1) ) * rhofinal(irad)
@@ -803,6 +826,10 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
       enddo
     enddo
   enddo
+  !$OMP END DO
+  !$OMP END PARALLEL
+  call stop_clock(timing_tmp9)
+
  
   zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(zval)
@@ -983,8 +1010,8 @@ subroutine poisson_solver_fft(rhor, vcoulr)
 #if defined(HAVE_FFTW3)
   type(C_PTR) :: plan
   type(C_PTR) :: pr, pg, pvr, pvg
-  real(C_DOUBLE), pointer :: rhor_fftw(:, :, :), vr_fftw(:, :, :)
-  complex(C_DOUBLE_COMPLEX), pointer ::  rhog_fftw(:, :, :), vg_fftw(:, :, :)
+  real(C_DOUBLE), pointer            :: rhor_fftw(:, :, :), vr_fftw(:, :, :)
+  complex(C_DOUBLE_COMPLEX), pointer :: rhog_fftw(:, :, :), vg_fftw(:, :, :)
   integer :: ig1, ig2, ig3, i1, i2, i3, ifft_local, ifft_global
   !=====
 
@@ -1113,7 +1140,7 @@ subroutine calculate_basis_functions_periodic(basis)
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  !$OMP PARALLEL PRIVATE(li, ni_cart, ibf1, ibf1_cart, ibf2, basis_function_r_cart)
+  !$OMP PARALLEL PRIVATE(li, ni_cart, ibf1, ibf1_cart, ibf2, basis_function_r_cart, dr)
   !$OMP DO
   do ishell=1, basis%nshell
     li      = basis%shell(ishell)%am
