@@ -25,6 +25,7 @@ nprocs = 1
 ncores = 1
 debug = False
 listing = False
+verbose = False
 
 in_timing_section = True
 sections_separator = "--- Timings in (s) and # of calls ---"
@@ -190,7 +191,7 @@ def check_output(out, testinfo):
 ###################################
 # Parse the command line
 
-option_list = ['--keep', '--np', '--nc', '--mpirun', '--input', '--exclude', '--input-parameter', '--debug', '--list']
+option_list = ['--keep', '--np', '--nc', '--mpirun', '--input', '--exclude', '--input-parameter', '--debug', '--list', '--verbose']
 
 if len(sys.argv) > 1:
   if '--help' in sys.argv:
@@ -205,6 +206,7 @@ if len(sys.argv) > 1:
     print('  --input-parameter  Only run input files that contain this input parameter. Example:')
     print('                     --input-parameter scf = \'LDA\' ')
     print('  --debug            Output debug information for this script')
+    print('  --verbose          Displays the output file for any failed test')
     sys.exit(0)
 
   for argument in sys.argv:
@@ -254,6 +256,9 @@ if len(sys.argv) > 1:
 
   if '--list' in sys.argv:
     listing = True
+
+  if '--verbose' in sys.argv:
+    verbose = True
 
   if len(selected_input_files) * len(excluded_input_files) > 0:
     print('--input and --exclude options are mutually exclusive. Select the one you really want.')
@@ -571,6 +576,15 @@ for iinput in range(ninput):
   failures = check_output(out, testinfo[iinput])
   if failures != 0:
     ffailed.write(out + "\n")
+
+    # displays the content of the .out file associated with the failed test
+    if verbose :
+        output_path = os.path.join(tmpfolder, out)
+        print(f"\n===== TEST failure : {inp} =====")
+        print(f"----- Displaying the content of {out} associated with the failed test -----\n")
+        with open(output_path, "r", encoding="utf-8", errors="replace") as f:
+            print(f.read())
+        print("=================================\n")
 
 
 fdiff.close()

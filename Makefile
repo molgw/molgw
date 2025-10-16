@@ -18,12 +18,12 @@ molgw: $(wildcard src/*.f90) $(wildcard src/*.yaml) $(wildcard src/*.py) $(wildc
 
 test:
 ifeq ($(NP),1)
-	cd tests && $(PYTHON) ./run_testsuite.py --keep --nc $(NC)
+	cd tests && $(PYTHON) ./run_testsuite.py --verbose --keep --nc $(NC)
 else
 ifeq ($(MPIRUN),)
-	cd tests && $(PYTHON) ./run_testsuite.py --keep --np $(NP) --nc $(NC)
+	cd tests && $(PYTHON) ./run_testsuite.py --verbose --keep --np $(NP) --nc $(NC)
 else
-	cd tests && $(PYTHON) ./run_testsuite.py --keep --np $(NP) --nc $(NC) --mpirun $(MPIRUN)
+	cd tests && $(PYTHON) ./run_testsuite.py --verbose --keep --np $(NP) --nc $(NC) --mpirun $(MPIRUN)
 endif
 endif
 
