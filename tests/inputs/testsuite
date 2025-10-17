@@ -1228,3 +1228,14 @@ h2_gth.in                 , H2 with analytical pseudo in GTH formalism, need_lib
 SCF Total Energy          , -1.1339680189      , 0 , 1.0e-7
 gKS HOMO energy           , -10.411908         , 0 , 1.0e-4
 
+h2_gth_periodic.in        , periodic H2 with analytical GTH pseudo, need_libcint
+SCF Total Energy          , -1.1350281353      , 0 , 1.0e-7
+gKS HOMO energy           , -10.268088         , 0 , 1.0e-4
+Nucleus-Nucleus           ,   0.2579637066     , 0 , 1.0e-7
+Kinetic Energy            ,   1.1449095204     , 0 , 1.0e-7
+Nucleus Energy            ,  -2.7138086745     , 0 , 1.0e-7 
+Hartree Energy            ,   0.8425514958     , 0 , 1.0e-7
+XC Energy                 ,  -0.6666441836     , 0 , 1.0e-7
+
+
+

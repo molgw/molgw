@@ -393,7 +393,12 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
   ! Get the electrostatic potential of the nuclei
   !
   call start_clock(timing_tmp1)
-  call prepare_nuclei_density_periodic(rhonuclr, nuc_selfenergy)
+!#if 0
+!  call prepare_nuclei_density_periodic(rhonuclr, nuc_selfenergy)
+!#else
+  ! Analytic for GTH pseudos only
+  call prepare_nuclei_density_analytic_periodic(rhonuclr, nuc_selfenergy)
+!#endif
   call stop_clock(timing_tmp1)
 
   call poisson_solver_fft(rhonuclr, vnuclgrid) 
@@ -523,6 +528,7 @@ subroutine setup_vxc_periodic(basis, vxc_ao, exc_xc, dft_xc_in)
   real(C_DOUBLE), allocatable :: excgrid(:)
   !real(C_DOUBLE), allocatable :: vsigma_batch(:, :)
   real(dp), allocatable :: vxcgrid(:, :)
+  real(dp) :: vxc_avg
   !=====
 
   !
@@ -567,8 +573,8 @@ subroutine setup_vxc_periodic(basis, vxc_ao, exc_xc, dft_xc_in)
       call die('setup_vxc_periodic: only LDA is implemented right now')
     end select  
 
-    exc_xc = exc_xc + SUM(SUM(rhor(:, :), DIM=1) * excgrid(:)) * volume / REAL(nfft_global, dp)
-    vxcgrid(:, :) = vxcgrid(:, :) + TRANSPOSE(vrho(:, :))
+    vxcgrid(:, :) = vxcgrid(:, :) + dft_xc_local(ixc)%coeff * TRANSPOSE(vrho(:, :))
+    exc_xc = exc_xc + dft_xc_local(ixc)%coeff * SUM(SUM(rhor(:, :), DIM=1) * excgrid(:)) * volume / REAL(nfft_global, dp)
 
   enddo 
 
@@ -578,8 +584,11 @@ subroutine setup_vxc_periodic(basis, vxc_ao, exc_xc, dft_xc_in)
   deallocate(excgrid)
   call stop_clock(timing_xxdft_libxc)
 
-  write(stdout, *) 'Exc LDA (Ha): ', exc_xc
+  write(stdout, '(1x,a,f14.8)') 'Exc LDA (Ha): ', exc_xc
 
+  vxc_avg = SUM(vxcgrid(:, :)) / REAL(nspin * nfft_global, dp)
+  call grid%sum(vxc_avg)
+  write(stdout, '(1x,a,f12.5)') 'Average vxc (eV): ', vxc_avg * Ha_eV
 
   call start_clock(timing_xxdft_vxc)
   call calculate_hao_periodic(basis, vxcgrid, vxc_ao)
@@ -992,6 +1001,193 @@ contains
 
 
 end subroutine prepare_nuclei_density_periodic
+
+
+!=========================================================================
+! Evaluate the nuclei charge density on the FFT grid
+! that induces the periodic local potential
+!
+! Convention: nuclei have a negative charge (since electrons have positive one)
+!
+subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
+  implicit none
+
+  real(dp), intent(out) :: rhonuclr(:)
+  real(dp), intent(out) :: selfenergy
+  !=====
+  real(dp) :: zval, rmax, dr, shift(3), factor
+  integer :: i1, i2, i3, icenter, ifft_local, iloc, ie
+
+  real(dp) :: factor_zeff, factor_c1, factor_c2, factor_c3, factor_c4
+  real(dp) :: zeff, rloc, ci(4)
+  real(dp) :: alphapp, selfenergy_nucleus
+  logical :: element_has_ecp
+  !=====
+
+  selfenergy = 0.0_dp
+  rhonuclr(:) = 0.0_dp
+
+  do icenter=1, ncenter_nuclei
+
+    element_has_ecp = .FALSE.
+    do ie=1, nelement_ecp
+      if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then
+        element_has_ecp = .TRUE.
+        exit
+      endif
+    enddo
+ 
+    if( ecp(ie)%ecp_format /= ECP_GTH ) call die('prepare_nuclei_density_analytic_periodic: only for GTH pseudos')
+
+
+    zeff = -zvalence(icenter)
+    rloc = ecp(ie)%gth_rpploc
+    ci(:) = 0.0_dp
+    do iloc=1, ecp(ie)%gth_nloc
+      ci(iloc) = ecp(ie)%gth_cipp(iloc)
+    enddo
+    alphapp = 1.0_dp / SQRT(2.0_dp) / rloc
+
+
+    !
+    ! Loop over the unit-cell regular grid
+    !
+    call start_clock(timing_tmp9)
+
+    factor_zeff = zeff * ( alphapp / SQRT(pi) )**3
+    factor_c1 = ci(1) * alphapp**2 / (2.0_dp * pi)
+    factor_c2 = ci(2) * alphapp**2 / pi
+    factor_c3 = ci(3) * alphapp**2 * 2.0_dp / pi
+    factor_c4 = ci(4) * alphapp**2 * 4.0_dp / pi
+
+    !$OMP PARALLEL PRIVATE(shift, dr, irad_float, irad)
+    !$OMP DO
+    do ifft_local=1, nfft_local
+      do i3=-nx, nx
+        do i2=-nx, nx
+          do i1=-nx, nx
+            shift(:) = MATMUL( aprim(:, :), [i1, i2, i3] )
+
+            dr = NORM2( rgrid(:, ifft_local) - xatom(:, icenter) - shift(:) )
+
+            ! Skip points that are too far, where the density is close to zero
+            if( dr > 10.0_dp * rloc ) cycle
+
+            rhonuclr(ifft_local) = rhonuclr(ifft_local) + gth_rhonucl(dr) ! &
+
+          enddo
+        enddo
+      enddo
+    enddo
+    !$OMP END DO
+    !$OMP END PARALLEL
+    call stop_clock(timing_tmp9)
+
+    !selfenergy = zeff**2 * alphapp / SQRT(2.0_dp * pi) &
+    !            + c1**2 / alphapp * 3.0_dp / 16.0_dp * SQRT(pi / 2.0_dp) &
+    !            + c2**2 / alphapp * 33.0_dp / 128.0_dp * SQRT(2.0_dp * pi ) &
+    !            + zeff * c1 / ( 2.0_dp * SQRT(2.0_dp)) &
+    !            + zeff * c2 * 3.0_dp / 8.0_dp  * SQRT(2.0_dp) &
+    !            + c1 * c2 / alphapp * 3.0_dp / 32.0_dp  * SQRT(2.0_dp * pi)
+
+    !write(stdout,'(1x,a,f12.8)') 'Selfenergy per atom (Ha): ', selfenergy
+
+    selfenergy_nucleus = selfenergy_quadrature()
+    write(stdout,'(1x,a,i4,a,f12.8)') 'Nucleus selfenergy for center ', icenter, ' (Ha): ', selfenergy_nucleus
+
+    selfenergy = selfenergy + selfenergy_nucleus
+
+  enddo ! icenter
+ 
+  zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
+  call grid%sum(zval)
+
+  write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell: ', zval
+  write(stdout, '(1x,a,f12.6)') 'whereas it should be: ', SUM(zvalence(:))
+
+  factor = SUM(zvalence(:)) / zval
+
+  ! If the deviation from expected charge is larger than 1%, then stop and ask for a finer fft_delta_x
+  if( ABS( factor - 1.0_dp ) > 0.01_dp ) then
+    call die('prepare_nuclei_density_periodic: wrong nucleus total charge. ' // &
+             'FFT grid is certainly too coarse. Try to decrease fft_delta_x.')
+  endif
+
+  rhonuclr(:) = rhonuclr(:) * factor
+  zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
+  call grid%sum(zval)
+  write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell (after renormalization): ', zval
+
+  write(stdout,'(1x,a,f12.8)') 'Total nucleus selfenergy (Ha): ', selfenergy
+
+contains
+
+pure function gth_potnucl(rr) result(potr)
+  implicit none
+
+  real(dp), intent(in) :: rr
+  real(dp)             :: potr
+  !=====
+  real(dp) ::  xx
+  !=====
+ 
+  xx = (alphapp * rr)**2
+  potr = zeff * ERF(alphapp * rr) / rr &
+         + EXP(-xx) * (                     ci(1) &
+                       + (2.0_dp * xx)    * ci(2) &
+                       + (2.0_dp * xx)**2 * ci(3) &
+                       + (2.0_dp * xx)**3 * ci(4) )  
+
+end function gth_potnucl
+
+pure function gth_rhonucl(rr) result(rhor)
+  implicit none
+
+  real(dp), intent(in) :: rr
+  real(dp)             :: rhor
+  !=====
+  real(dp) ::  xx
+  !=====
+ 
+  xx = (alphapp * rr)**2
+  rhor = EXP( - xx )  &
+           * ( &
+                factor_zeff &
+              + factor_c1 *         (  3.0_dp -  2.0_dp * xx ) &
+              + factor_c2 *         ( -3.0_dp +  7.0_dp * xx - 2.0_dp * xx**2) &
+              + factor_c3 * xx    * (-10.0_dp + 11.0_dp * xx - 2.0_dp * xx**2) &
+              + factor_c4 * xx**2 * (-21.0_dp + 15.0_dp * xx - 2.0_dp * xx**2) &
+             )
+
+end function gth_rhonucl
+
+
+pure function selfenergy_quadrature() result(integral)
+  implicit none
+
+  real(dp) :: integral
+  !=====
+  real(dp) :: stepr, rr
+  integer, parameter :: nrad = 10000
+  integer :: irad
+  !=====
+
+  stepr = 10.0_dp * rloc / REAL(nrad, KIND=dp)
+  
+  rr = -stepr / 2.0_dp
+  stepr = 0.01_dp
+  integral = 0.0_dp
+  do irad=1, nrad
+    rr = rr + stepr
+    integral = integral + 0.5_dp * stepr * 4.0_dp * pi * rr**2  &
+                            * gth_rhonucl(rr) * gth_potnucl(rr)
+  enddo
+
+
+end function selfenergy_quadrature
+
+
+end subroutine prepare_nuclei_density_analytic_periodic
 
 
 !=========================================================================
