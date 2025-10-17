@@ -39,7 +39,7 @@ module m_ecp
     integer               :: gth_nl          ! number of angular momenta
     integer, allocatable  :: gth_npl(:)      ! number of projectors for angular momentum l
     real(dp), allocatable :: gth_rl(:)       ! r^l        following Krack's notation
-    real(dp), allocatable :: gth_hijl(:, :)   ! h_ij^l     following Krack's notation
+    real(dp), allocatable :: gth_hijl(:, :)  ! h_ij^l     following Krack's notation
     ! KB numerical pseudo on a grid
     integer               :: mmax = 0
     real(dp), allocatable :: rad(:)

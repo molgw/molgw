@@ -812,6 +812,7 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
             ! Calculate the radial indices [irad-1, irad] that braket dr
             irad_float = ( LOG(dr) - LOG(bgrid) ) / LOG(agrid) + 2.0d0
             irad = CEILING(irad_float)
+            if( irad > nrad ) cycle
 
             !do irad=1, nrad
             !  if( rradfinal(irad) > dr ) exit

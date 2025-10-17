@@ -1223,3 +1223,8 @@ SCF Total Energy          ,   -591.7684606578   , 0 , 1.0e-7
 + alpha correction        ,      0.4192824813   , 0 , 1.0e-7
 gKS HOMO energy           ,     -7.463168       , 0 , 1.0e-4
 gKS LUMO energy           ,     -0.373146       , 0 , 1.0e-4
+
+h2_gth.in                 , H2 with analytical pseudo in GTH formalism, need_libcint
+SCF Total Energy          , -1.1339680189      , 0 , 1.0e-7
+gKS HOMO energy           , -10.411908         , 0 , 1.0e-4
+
