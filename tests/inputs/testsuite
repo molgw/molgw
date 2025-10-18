@@ -1237,5 +1237,13 @@ Nucleus Energy            ,  -2.7130567342     , 0 , 1.0e-7
 Hartree Energy            ,   0.8421894456     , 0 , 1.0e-7
 XC Energy                 ,  -0.6664789340     , 0 , 1.0e-7
 
+h2_gth_periodic_shifted.in, periodic H2 with analytical GTH pseudo, need_libcint
+SCF Total Energy          , -1.1342602990      , 0 , 5.0e-6    # shifting atoms induces small changes
+gKS HOMO energy           , -10.261857         , 0 , 5.0e-4    # shifting atoms induces small changes
+Nucleus-Nucleus           ,   0.2579637066     , 0 , 5.0e-5    # shifting atoms induces small changes
+Kinetic Energy            ,   1.1451222170     , 0 , 5.0e-5    # shifting atoms induces small changes
+Nucleus Energy            ,  -2.7130567342     , 0 , 5.0e-5    # shifting atoms induces small changes
+Hartree Energy            ,   0.8421894456     , 0 , 5.0e-5    # shifting atoms induces small changes
+XC Energy                 ,  -0.6664789340     , 0 , 5.0e-5    # shifting atoms induces small changes
 
 
