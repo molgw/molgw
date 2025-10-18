@@ -159,9 +159,6 @@ program molgw
  
     call start_clock(timing_prescf)
  
-    !
-    ! Nucleus-nucleus repulsion contribution to the energy
-    call nucleus_nucleus_energy(en_gks%nuc_nuc)
  
     if( x2c_ ) then
       !
@@ -346,21 +343,35 @@ program molgw
     ! When a BIG RESTART file is provided, assume it contains converged SCF information
     scf_has_converged = is_big_restart
    
+    ! PBC set up the FFT here
+    if( pbc_ ) then
+      call set_fft_grid(basis)
+    endif
    
     !
     ! Calculate the parts of the hamiltonian that does not change along
     ! with the SCF cycles
     !
+
+    !
     ! Kinetic energy contribution
+    !
     call setup_kinetic(basis, hamiltonian_kinetic)
    
     !
-    ! Nucleus-electron interaction and set up the FFT grid
+    ! Nucleus-nucleus interaction
+    ! and Nucleus-electron interaction (including ECP)
+    !
     if( pbc_ ) then
-      call set_fft_grid(basis)
       call setup_nucleus_periodic(basis, hamiltonian_nucleus, en_gks%nuc_nuc)
     else
+      !
+      ! Nucleus-nucleus repulsion contribution to the energy
+      call nucleus_nucleus_energy(en_gks%nuc_nuc)
       call setup_nucleus(basis, hamiltonian_nucleus)
+      if( nelement_ecp > 0 ) then
+        call setup_nucleus_ecp(basis, hamiltonian_nucleus)
+      endif
     endif
 
     if( TRIM(parabolic_conf) == 'yes' ) call setup_para_conf(basis, hamiltonian_nucleus)
@@ -382,9 +393,6 @@ program molgw
     !endif
    
    
-    if( nelement_ecp > 0 ) then
-      call setup_nucleus_ecp(basis, hamiltonian_nucleus)
-    endif
    
     !If RESTART_TDDFT file exists and is correct, skip the SCF loop and start RT-TDDFT simulation
     if( read_tddft_restart_ ) then
