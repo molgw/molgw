@@ -61,10 +61,22 @@ subroutine set_fft_grid(basis)
   integer :: fft_grids(18) = [ 16, 24, 32, 48, 60, 64, 96, 120, 128, 144, &
                               180, 192, 256, 288, 384, 512, 768, 1024]
   integer :: i1, i2, i3, ifft_global, ifft_local
+  integer :: ibf
+  real(dp) :: maximum_extension
   !=====
 
   write(stdout,'(/,1x,a)')    'Setting up the FFT grid'
   write(stdout,'(1x,a,f8.4)') 'spacing fft_delta_x: ', fft_delta_x
+
+  maximum_extension = 0.0_dp
+  do ibf=1, basis%nbf
+    maximum_extension = MAX(maximum_extension, basis%bff(ibf)%radius)
+  enddo
+  if( maximum_extension > minimal_image_distance * 0.45_dp) then
+    call issue_warning('Basis set too diffuse compared to box dimension')
+    write(stdout, '(1x,a,f8.2)') 'Basis extension    (bohr): ', maximum_extension
+    write(stdout, '(1x,a,f8.2)') 'Box image distance (bohr): ', minimal_image_distance
+  endif
 
   ! Direction 1
   nfftx = CEILING( NORM2(aprim(:, 1)) / fft_delta_x )
@@ -393,12 +405,9 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
   ! Get the electrostatic potential of the nuclei
   !
   call start_clock(timing_tmp1)
-!#if 0
 !  call prepare_nuclei_density_periodic(rhonuclr, nuc_selfenergy)
-!#else
   ! Analytic for GTH pseudos only
   call prepare_nuclei_density_analytic_periodic(rhonuclr, nuc_selfenergy)
-!#endif
   call stop_clock(timing_tmp1)
 
   call poisson_solver_fft(rhonuclr, vnuclgrid) 
@@ -409,6 +418,7 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
   write(stdout,'(1x,a,f16.8)') 'Nucleus-nucleus (Ha): ', enucnuc
 
   call calculate_hao_periodic(basis, vnuclgrid, h_ao)
+
   call dump_out_matrix(.FALSE., '=== Nuclei contribution (FFTW) ===', h_ao)
 
   if( in_rt_tddft ) then
@@ -1048,7 +1058,6 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
     enddo
     alphapp = 1.0_dp / SQRT(2.0_dp) / rloc
 
-
     !
     ! Loop over the unit-cell regular grid
     !
@@ -1073,7 +1082,7 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
             ! Skip points that are too far, where the density is close to zero
             if( dr > 10.0_dp * rloc ) cycle
 
-            rhonuclr(ifft_local) = rhonuclr(ifft_local) + gth_rhonucl(dr) ! &
+            rhonuclr(ifft_local) = rhonuclr(ifft_local) + gth_rhonucl(dr)
 
           enddo
         enddo

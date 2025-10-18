@@ -55,6 +55,7 @@ module m_atoms
   real(dp), protected             :: bprim(3, 3) = 1000.0_dp
   real(dp), protected             :: volume
   real(dp), protected             :: recip_volume
+  real(dp), protected             :: minimal_image_distance
 
 
 contains
@@ -481,7 +482,8 @@ subroutine setup_periodicity_vectors(length_unit, a1, a2, a3)
   character(len=*), intent(in) :: length_unit
   real(dp), intent(in) :: a1(3), a2(3), a3(3)
   !=====
-  real(dp) :: length_factor
+  real(dp) :: length_factor, x(3)
+  integer :: i1, i2, i3
   !=====
 
   select case(TRIM(length_unit))
@@ -516,12 +518,24 @@ subroutine setup_periodicity_vectors(length_unit, a1, a2, a3)
     bprim(:, :) = 2.0_dp * pi * TRANSPOSE(aprim_inv)
     recip_volume = determinant_3x3_matrix(bprim)
 
-    write(stdout, '(/,1x,a,/)') 'Periodic boundary conditions are on'
+    minimal_image_distance = 9999.9_dp
+    do i3=-5, 5
+      do i2=-5, 5
+        do i1=-5, 5
+          if( i1 == 0 .AND. i2 == 0 .AND. i3 == 0 ) cycle
+          x(:) = MATMUL(aprim, [i1, i2, i3])
+          minimal_image_distance = MIN(minimal_image_distance, NORM2(x(:)) )
+        enddo
+      enddo
+    enddo
+
+    write(stdout, '(/,1x,a,/)') 'Periodic boundary conditions are switched on'
     write(stdout, '(1x,a)') 'Primitive cell vectors (bohr):'
     write(stdout, '(1x,3(f12.6,1x))')  aprim(:, 1)
     write(stdout, '(1x,3(f12.6,1x))')  aprim(:, 2)
     write(stdout, '(1x,3(f12.6,1x))')  aprim(:, 3)
-    write(stdout, '(1x,a,1x,f12.6)') 'Volume (bohr**3):', volume
+    write(stdout, '(1x,a,1x,f12.6)') 'Volume (bohr**3):             ', volume
+    write(stdout, '(1x,a,1x,f12.6)') 'Minimal image distance (bohr):', minimal_image_distance
     write(stdout, '(1x,a)') 'Reciprocal lattice vectors (bohr**-1):'
     write(stdout, '(1x,3(f12.6,1x))')  bprim(:, 1)
     write(stdout, '(1x,3(f12.6,1x))')  bprim(:, 2)
