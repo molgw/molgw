@@ -1069,7 +1069,7 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
     factor_c3 = ci(3) * alphapp**2 * 2.0_dp / pi
     factor_c4 = ci(4) * alphapp**2 * 4.0_dp / pi
 
-    !$OMP PARALLEL PRIVATE(shift, dr, irad_float, irad)
+    !$OMP PARALLEL PRIVATE(shift, dr)
     !$OMP DO
     do ifft_local=1, nfft_local
       do i3=-nx, nx
