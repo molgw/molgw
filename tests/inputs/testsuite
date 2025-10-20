@@ -1233,7 +1233,7 @@ SCF Total Energy          , -31.5478831094     , 0 , 1.0e-7
 gKS HOMO energy           ,  -6.298148         , 0 , 1.0e-4
 gKS LUMO energy           ,  -1.373452         , 0 , 1.0e-4
 
-h2_gth_periodic.in        , periodic H2 with analytical GTH pseudo, need_libcint
+h2_gth_box.in             , H2 in a periodic box with analytical GTH pseudo, need_libcint
 SCF Total Energy          , -1.1342602990      , 0 , 1.0e-7
 gKS HOMO energy           , -10.261857         , 0 , 1.0e-4
 Nucleus-Nucleus           ,   0.2579637066     , 0 , 1.0e-7
@@ -1242,7 +1242,7 @@ Nucleus Energy            ,  -2.7130567342     , 0 , 1.0e-7
 Hartree Energy            ,   0.8421894456     , 0 , 1.0e-7
 XC Energy                 ,  -0.6664789340     , 0 , 1.0e-7
 
-h2_gth_periodic_shifted.in, periodic H2 with analytical GTH pseudo, need_libcint
+h2_gth_box_shifted.in     , H2 in a periodic box with analytical GTH pseudo, need_libcint
 SCF Total Energy          , -1.1342602990      , 0 , 5.0e-6    # shifting atoms induces small changes
 gKS HOMO energy           , -10.261857         , 0 , 5.0e-4    # shifting atoms induces small changes
 Nucleus-Nucleus           ,   0.2579637066     , 0 , 5.0e-5    # shifting atoms induces small changes
@@ -1251,7 +1251,7 @@ Nucleus Energy            ,  -2.7130567342     , 0 , 5.0e-5    # shifting atoms 
 Hartree Energy            ,   0.8421894456     , 0 , 5.0e-5    # shifting atoms induces small changes
 XC Energy                 ,  -0.6664789340     , 0 , 5.0e-5    # shifting atoms induces small changes
 
-li2_gth_periodic.in       , periodic Li2 GTH pseudo (local only), need_libcint
+li2_gth_box.in            , Li2 in a periodic box GTH pseudo (local only), need_libcint
 SCF Total Energy          ,  -14.6520079800    , 0 , 1.0e-7
 Nucleus-Nucleus           ,   -1.3333009531    , 0 , 1.0e-7
 Kinetic Energy            ,   13.1535845115    , 0 , 1.0e-7
@@ -1261,4 +1261,8 @@ XC Energy                 ,   -3.3156027999    , 0 , 1.0e-7
 gKS HOMO energy           ,   -2.777124        , 0 , 1.0e-4
 gKS LUMO energy           ,   -1.784842        , 0 , 1.0e-4
 
+lif_gth_box.in            , LiF molecule in a periodic box (GTH pseudo local and non-local), need_libcint
+SCF Total Energy          , -31.5316459408     , 0 , 1.0e-7
+gKS HOMO energy           ,  -5.918236         , 0 , 1.0e-4
+gKS LUMO energy           ,  -1.005779         , 0 , 1.0e-4
 

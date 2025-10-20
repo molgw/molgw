@@ -914,6 +914,9 @@ program molgw
   !
   ! Cleanly exiting the code
   !
+  if( pbc_ ) then
+    call destroy_fft_grid()
+  endif
   call destroy_eri_3center_mo(force=.TRUE.)
   call clean_deallocate('Full RKB wavefunctions C', c_matrix_rel)
   call clean_deallocate('Wavefunctions C_cmplx', c_matrix_cmplx)

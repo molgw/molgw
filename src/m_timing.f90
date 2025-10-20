@@ -87,9 +87,16 @@ module m_timing
   integer, parameter :: timing_grid_generation     = 66
   integer, parameter :: timing_grid_wfn            = 67
   integer, parameter :: timing_read_coulombvertex  = 68
-
   integer, parameter :: timing_density_matrix_MO   = 70
 
+  !
+  ! PBC related timers
+  !
+  integer, parameter :: timing_pbc_eval_bf         = 85
+
+  !
+  ! temporary timers to be used when coding and then freed again
+  !
   integer, parameter :: timing_tmp0                = 90
   integer, parameter :: timing_tmp1                = 91
   integer, parameter :: timing_tmp2                = 92
@@ -101,6 +108,9 @@ module m_timing
   integer, parameter :: timing_tmp8                = 98
   integer, parameter :: timing_tmp9                = 99
 
+  !
+  ! RT-TDDFT timers
+  !
   integer, parameter :: timing_tddft_loop             = 110
   integer, parameter :: timing_tddft_fourier          = 111
   integer, parameter :: timing_tddft_one_iter         = 112
@@ -271,6 +281,7 @@ subroutine output_timing()
   call output_timing_line('Kinetic Hamiltonian', timing_hamiltonian_kin, 1)
   call output_timing_line('Electron-nucleus Hamiltonian', timing_hamiltonian_nuc, 1)
   call output_timing_line('ECP Hamiltonian', timing_hamiltonian_ecp, 1)
+  call output_timing_line('PBC: basis functions on grid', timing_pbc_eval_bf, 1)
 
   write(stdout, '(/,a,/)') '                 -------------------------------------'
   write(stdout, '(a,/)')   '                                 SCF'

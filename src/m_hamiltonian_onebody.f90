@@ -2618,28 +2618,22 @@ end subroutine setup_nucleus_gth_local
 
 !=========================================================================
 ! Non-local part of the GTH pseudopotentials
-! Add it to the input h_ecp
-subroutine setup_nucleus_gth_nonlocal(basis, h_ecp, shift)
+!
+subroutine setup_nucleus_gth_nonlocal(basis, h_ecp)
   implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: h_ecp(:, :)
-  real(dp), optional :: shift(3)
   !=====
   integer :: icenter, ie, il, li, lj, jbf, jbf1, jbf2, ibf, ijpl
   integer :: ni, ni_cart, nj, nj_cart, jshell
   logical :: element_has_ecp
-  real(dp) :: xcenter(3)
   real(dp), allocatable :: h_tmp(:, :)
   real(dp), allocatable :: matrix(:, :)
   real(dp), allocatable :: proj_i(:, :, :)
 
   real(C_DOUBLE), allocatable :: array_cart(:)
   real(C_DOUBLE), allocatable :: array_cart_C(:)
-  integer(C_INT)              :: amA, contrdepthA
-  real(C_DOUBLE)              :: A(3)
-  real(C_DOUBLE), allocatable :: alphaA(:)
-  real(C_DOUBLE), allocatable :: cA(:)
   integer(C_INT)              :: amB, contrdepthB
   real(C_DOUBLE)              :: B(3)
   real(C_DOUBLE), allocatable :: alphaB(:)
@@ -2669,17 +2663,12 @@ subroutine setup_nucleus_gth_nonlocal(basis, h_ecp, shift)
     enddo
     if( .NOT. element_has_ecp ) cycle
 
-    if( PRESENT(shift) ) then
-      xcenter(:) = xatom(:, icenter) + shift(:)
-    else
-      xcenter(:) = xatom(:, icenter)
-    endif
-    C(:) = xcenter(:)
+    C(:) = xatom(:, icenter)
 
     h_tmp(:, :) = 0.0_dp
 
     allocate(env_local, SOURCE=basis%LIBCINT_env)
-    call set_rinv_origin_libcint(xcenter(:), env_local)
+    call set_rinv_origin_libcint(xatom(:, icenter), env_local)
 
     do il=1, ecp(ie)%gth_nl
       li      = il -1
@@ -2706,6 +2695,7 @@ subroutine setup_nucleus_gth_nonlocal(basis, h_ecp, shift)
           call set_libint_shell(basis%shell(jshell), amB, contrdepthB, B, alphaB, cB)
 
 
+
           allocate(array_cart(ni_cart * nj_cart))
           allocate(array_cart_C(ni_cart * nj_cart))
 
@@ -2713,6 +2703,7 @@ subroutine setup_nucleus_gth_nonlocal(basis, h_ecp, shift)
           call libcint_gth_projector(amB, contrdepthB, B, alphaB, cB, &
                                      amC, contrdepthC, C, alphaC, cC, &
                                      ipl, array_cart_C)
+
           array_cart(:) = array_cart_C(:)
 #endif
 

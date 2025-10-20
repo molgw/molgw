@@ -58,8 +58,8 @@ subroutine set_fft_grid(basis)
   type(basis_set), intent(in) :: basis
   !=====
   integer :: nfftx
-  integer :: fft_grids(18) = [ 16, 24, 32, 48, 60, 64, 96, 120, 128, 144, &
-                              180, 192, 256, 288, 384, 512, 768, 1024]
+  integer :: fft_grids(23) = [ 16, 24, 32, 48, 60, 64, 72, 80, 90, 96, 108, 120, 128, 144, &
+                              160, 180, 192, 256, 288, 384, 512, 768, 1024]
   integer :: i1, i2, i3, ifft_global, ifft_local
   integer :: ibf
   real(dp) :: maximum_extension
@@ -120,10 +120,11 @@ subroutine set_fft_grid(basis)
   allocate(rhoelecr(nfft_local, nspin))
   rhoelecr(:, :) = 0.0_dp
 
-  allocate(bfr(basis%nbf, nfft_local))
-  call start_clock(timing_tmp4)
+
+  !
+  ! Evaluate and store basis functions on the real-space grid
   call calculate_basis_functions_periodic(basis)
-  call stop_clock(timing_tmp4)
+
 
 contains
   ! Find smallest fft_grid greater than fftx
@@ -170,7 +171,6 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
       do i1=-nx, nx
 
         shift(:) = MATMUL( aprim(:, :), [i1, i2, i3] )
-        s_matrix(:, :) = 0.0_dp
         call setup_overlap_onecell(basis, shift, s_matrix)
         overlap_ao(:, :) = overlap_ao(:, :) + s_matrix(:, :)
 
@@ -385,10 +385,11 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
   real(dp) :: nuc_selfenergy
   real(dp) :: rhonuclr(nfft_local)
   real(dp) :: vnuclgrid(nfft_local)
+  real(dp), allocatable :: h_nl(:, :)
   !=====
 
 #if !defined(HAVE_FFTW3)
-  call die('setup_periodic_periodic: requires FFTW at compilation time')
+  call die('setup_nucleus_periodic: requires FFTW at compilation time')
 #endif
 
 
@@ -419,7 +420,14 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
 
   call calculate_hao_periodic(basis, vnuclgrid, h_ao)
 
-  call dump_out_matrix(.FALSE., '=== Nuclei contribution (FFTW) ===', h_ao)
+  allocate(h_nl, MOLD=h_ao)
+  call setup_nucleus_gth_nonlocal_periodic(basis, h_nl)
+
+  h_ao(:, :) = h_ao(:, :) + h_nl(:, :)
+
+
+  call dump_out_matrix(.FALSE., '=== Nuclei contribution (FFTW) ===', h_nl)
+  deallocate(h_nl)
 
   if( in_rt_tddft ) then
     call stop_clock(timing_tddft_hamiltonian_nuc)
@@ -525,7 +533,6 @@ subroutine setup_vxc_periodic(basis, vxc_ao, exc_xc, dft_xc_in)
   integer              :: igrid_start, igrid_end
   integer              :: timing_xxdft_xc, timing_xxdft_densities, timing_xxdft_libxc, timing_xxdft_vxc
   !real(dp), allocatable :: tmp_batch(:, :)
-  !real(dp), allocatable :: basis_function_r_batch(:, :)
   !real(dp), allocatable :: bf_gradx_batch(:, :)
   !real(dp), allocatable :: bf_grady_batch(:, :)
   !real(dp), allocatable :: bf_gradz_batch(:, :)
@@ -854,7 +861,7 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
   zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(zval)
   write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell: ', zval
-  write(stdout, '(1x,a,f12.6)') 'whereas it should be: ', SUM(zvalence(:))
+  write(stdout, '(1x,a,f12.6)') '     whereas it should be: ', SUM(zvalence(:))
 
   factor = SUM(zvalence(:)) / zval
  
@@ -1091,15 +1098,6 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
     !$OMP END DO
     !$OMP END PARALLEL
     call stop_clock(timing_tmp9)
-
-    !selfenergy = zeff**2 * alphapp / SQRT(2.0_dp * pi) &
-    !            + c1**2 / alphapp * 3.0_dp / 16.0_dp * SQRT(pi / 2.0_dp) &
-    !            + c2**2 / alphapp * 33.0_dp / 128.0_dp * SQRT(2.0_dp * pi ) &
-    !            + zeff * c1 / ( 2.0_dp * SQRT(2.0_dp)) &
-    !            + zeff * c2 * 3.0_dp / 8.0_dp  * SQRT(2.0_dp) &
-    !            + c1 * c2 / alphapp * 3.0_dp / 32.0_dp  * SQRT(2.0_dp * pi)
-
-    !write(stdout,'(1x,a,f12.8)') 'Selfenergy per atom (Ha): ', selfenergy
 
     selfenergy_nucleus = selfenergy_quadrature()
     write(stdout,'(1x,a,i4,a,f12.8)') 'Nucleus selfenergy for center ', icenter, ' (Ha): ', selfenergy_nucleus
@@ -1342,6 +1340,11 @@ subroutine calculate_basis_functions_periodic(basis)
   real(dp), allocatable :: basis_function_r_cart(:, :), dr(:, :)
   !=====
 
+  call start_clock(timing_pbc_eval_bf)
+  write(stdout,'(/,1x,a)') 'Evaluate and store basis functions on real-space grid'
+
+  call clean_allocate('PBC basis functions on grid', bfr, basis%nbf, nfft_local)
+
   allocate(dr(3, nfft_local))
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
@@ -1389,7 +1392,156 @@ subroutine calculate_basis_functions_periodic(basis)
 
   deallocate(dr)
 
+  call stop_clock(timing_pbc_eval_bf)
+
 end subroutine calculate_basis_functions_periodic
+
+
+!=========================================================================
+! Non-local part of the GTH pseudopotentials
+! Add it to the input h_ecp
+subroutine setup_nucleus_gth_nonlocal_periodic(basis, h_ecp)
+  implicit none
+
+  type(basis_set), intent(in) :: basis
+  real(dp), intent(out)       :: h_ecp(:, :)
+  !=====
+  integer :: icenter, ie, il, li, lj, jbf, jbf1, jbf2, ibf, ijpl
+  integer :: ni, ni_cart, nj, nj_cart, jshell
+  logical :: element_has_ecp
+  real(dp), allocatable :: h_tmp(:, :)
+  real(dp), allocatable :: matrix(:, :)
+  real(dp), allocatable :: proj_i(:, :, :)
+
+  real(C_DOUBLE), allocatable :: array_cart(:)
+  real(C_DOUBLE), allocatable :: array_cart_C(:)
+  integer(C_INT)              :: amB, contrdepthB
+  real(C_DOUBLE)              :: B(3)
+  real(C_DOUBLE)              :: B_shifted(3)
+  real(C_DOUBLE), allocatable :: alphaB(:)
+  real(C_DOUBLE), allocatable :: cB(:)
+  integer(C_INT)              :: amC, contrdepthC
+  real(C_DOUBLE)              :: C(3)
+  real(C_DOUBLE), allocatable :: alphaC(:)
+  real(C_DOUBLE), allocatable :: cC(:)
+  integer(C_INT) :: info, ipl, jpl
+  integer(C_INT) :: shls(2)
+  real(C_DOUBLE), allocatable :: env_local(:)
+  integer :: i1, i2, i3
+  !=====
+
+  allocate(h_tmp, MOLD=h_ecp)
+  h_ecp(:, :) = 0.0_dp
+
+  do icenter=1, ncenter_nuclei
+    ! MPI parallelization over ECP centers
+    if( MODULO(icenter - 1, world%nproc) /= world%rank ) cycle
+
+    element_has_ecp = .FALSE.
+    do ie=1, nelement_ecp
+      if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then
+        element_has_ecp = .TRUE.
+        exit
+      endif
+    enddo
+    if( .NOT. element_has_ecp ) cycle
+
+    C(:) = xatom(:, icenter)
+
+    h_tmp(:, :) = 0.0_dp
+
+    allocate(env_local, SOURCE=basis%LIBCINT_env)
+    call set_rinv_origin_libcint(xatom(:, icenter), env_local)
+
+    do il=1, ecp(ie)%gth_nl
+      li      = il -1
+      ni      = number_basis_function_am('PURE',li)
+      ni_cart = number_basis_function_am('CART',li)
+      allocate(proj_i(basis%nbf, ni, ecp(ie)%gth_npl(il)))
+
+      proj_i(:, :, :) = 0.0_dp
+
+      do ipl=1, ecp(ie)%gth_npl(il)
+
+        amC = li
+        contrdepthC = 1
+        allocate(cC(contrdepthC), alphaC(contrdepthC))
+        alphaC(1) = 1.0_dp / ( 2.0_dp * ecp(ie)%gth_rl(il)**2 )
+        ! Normalization factor from HGH PRB 58, 3641 (1998)
+        cC(1) = SQRT( 2.0_dp / GAMMA(li+(4.0_dp*ipl-1.0_dp)/2.0_dp) ) / ecp(ie)%gth_rl(il)**(li+(4.0_dp*ipl-1.0_dp)/2.0_dp)
+
+        do jshell=1, basis%nshell
+          lj      = basis%shell(jshell)%am
+          nj_cart = number_basis_function_am('CART',lj)
+          nj      = number_basis_function_am(basis%gaussian_type, lj)
+          jbf1    = basis%shell(jshell)%istart
+          jbf2    = basis%shell(jshell)%iend
+
+          call set_libint_shell(basis%shell(jshell), amB, contrdepthB, B, alphaB, cB)
+
+          allocate(array_cart(ni_cart * nj_cart))
+          allocate(array_cart_C(ni_cart * nj_cart))
+
+          do i3=-nx, nx
+            do i2=-nx, nx
+              do i1=-nx, nx
+    
+                B_shifted(:) = B(:) + MATMUL( aprim(:, :), [i1, i2, i3] )
+    
+    
+#if defined(HAVE_LIBCINT)
+                call libcint_gth_projector(amB, contrdepthB, B_shifted, alphaB, cB, &
+                                           amC, contrdepthC, C, alphaC, cC, &
+                                           ipl, array_cart_C)
+
+                array_cart(:) = array_cart_C(:)
+#endif
+                call transform_libint_to_molgw_gth_projector(basis%gaussian_type, li, lj, array_cart, matrix)
+
+                proj_i(jbf1:jbf2, :, ipl) = proj_i(jbf1:jbf2, :, ipl) + TRANSPOSE(matrix(:, :))
+
+              enddo
+            enddo
+          enddo
+
+
+          deallocate(array_cart, array_cart_C, matrix)
+        enddo ! jshell
+
+        deallocate(cC, alphaC)
+      enddo ! ipl
+
+      ijpl = 0
+      do ipl=1, ecp(ie)%gth_npl(il)
+        do jpl=ipl, ecp(ie)%gth_npl(il)
+          ijpl = ijpl + 1
+          if( ipl == jpl ) then
+            call DSYRK('L', 'N', basis%nbf, ni, ecp(ie)%gth_hijl(ijpl, il), proj_i(:, :, ipl), basis%nbf, &
+                       1.0_dp, h_tmp, basis%nbf)
+          else
+            call DSYR2K('L', 'N', basis%nbf, ni, ecp(ie)%gth_hijl(ijpl, il), proj_i(:, :,ipl), basis%nbf, &
+                        proj_i(:, :, jpl), basis%nbf, 1.0_dp, h_tmp, basis%nbf)
+          endif
+        enddo
+      enddo
+
+      deallocate(proj_i)
+
+    enddo ! il
+
+    deallocate(env_local)
+
+    call matrix_lower_to_full(h_tmp)
+
+    h_ecp(:, :) = h_ecp(:, :) + h_tmp(:, :)
+
+  enddo ! icenter
+
+  call world%sum(h_ecp)
+
+  deallocate(h_tmp)
+
+end subroutine setup_nucleus_gth_nonlocal_periodic
 
 
 !=========================================================================
@@ -1401,7 +1553,7 @@ subroutine destroy_fft_grid()
 
   deallocate(rgrid)
   deallocate(rhoelecr)
-  deallocate(bfr)
+  call clean_deallocate('PBC basis functions on grid', bfr)
 
 end subroutine destroy_fft_grid
 

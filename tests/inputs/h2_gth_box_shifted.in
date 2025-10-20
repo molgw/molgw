@@ -10,7 +10,7 @@
  a1=  6., 0., 0.       ! angstrom
  a2=  0., 6., 0.       ! angstrom
  a3=  0., 0., 6.       ! angstrom
- fft_delta_x = 0.15    ! bohr
+ fft_delta_x = 0.12    ! bohr
 
  natom=2
 /
