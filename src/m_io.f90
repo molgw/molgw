@@ -300,21 +300,29 @@ end subroutine header
 
 
 !=========================================================================
-subroutine dump_out_matrix_dp(print_matrix, title, matrix)
+subroutine dump_out_matrix_dp(print_matrix, title, matrix, fmt)
   implicit none
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
   real(dp), intent(in)         :: matrix(:, :, :)
+  character(len=*), intent(in), optional :: fmt
   !=====
   integer, parameter :: MAXSIZE=50
   !=====
   real(dp) :: row(MIN(SIZE(matrix, DIM=2), MAXSIZE))
   integer  :: imat, ispin, nspin, mmat, nmat
+  character(:), allocatable :: fmt_
   !=====
 
   if( .NOT. print_matrix .AND. .NOT. debug ) return
 
+  if( PRESENT(fmt) ) then
+    fmt_ = fmt
+  else
+    fmt_ = 'f12.5'
+  endif
+ 
   mmat  = SIZE(matrix, DIM=1)
   nmat  = SIZE(matrix, DIM=2)
   nspin = SIZE(matrix, DIM=3)
@@ -322,7 +330,7 @@ subroutine dump_out_matrix_dp(print_matrix, title, matrix)
   write(stdout, '(/,1x,a)') TRIM(title)
 
   do ispin=1, nspin
-    if(nspin==2) then
+    if( nspin == 2 ) then
       write(stdout, '(a,i1)') ' spin polarization # ', ispin
     endif
     write(stdout,'(4x,*(1x,i12))') (imat, imat=1,SIZE(row))
@@ -332,36 +340,36 @@ subroutine dump_out_matrix_dp(print_matrix, title, matrix)
       elsewhere
         row(:) = 1.0e-6_dp
       end where
-      write(stdout, '(1x,i3,*(1x,f12.5))') imat, row(:)
+      write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
     enddo
-  write(stdout, *)
+    write(stdout, *)
   enddo
 
 end subroutine dump_out_matrix_dp
 
 
 !=========================================================================
-subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, form)
+subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, fmt)
   implicit none
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
   real(dp), intent(in)         :: matrix(:, :)
-  character(len=*), optional, intent(in) :: form
+  character(len=*), optional, intent(in) :: fmt
   !=====
   integer, parameter :: MAXSIZE=50
   !=====
   real(dp) :: row(MIN(SIZE(matrix, DIM=2), MAXSIZE))
   integer :: imat, mmat, nmat
-  character(20) :: form_
+  character(:), allocatable :: fmt_
   !=====
 
   if( .NOT. print_matrix .AND. .NOT. debug ) return
 
-  if( PRESENT(form) ) then
-    form_ = '(1x,i3,*(1x,' // form // '))'
+  if( PRESENT(fmt) ) then
+    fmt_ = fmt
   else
-    form_ = '(1x,i3,*(1x,f12.5))'
+    fmt_ = 'f12.5'
   endif
 
   mmat  = SIZE(matrix, DIM=1)
@@ -371,32 +379,40 @@ subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, form)
 
   do imat=1, MIN(mmat, MAXSIZE)
     where( ABS(matrix(imat, 1:MIN(nmat, MAXSIZE))) > 1.0e-5_dp )
-    row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE))
+      row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE))
     elsewhere
-    row(:) = 1.0e-6_dp
-  end where
-  write(stdout, form_) imat, row(:)
-enddo
-write(stdout, *)
+      row(:) = 1.0e-6_dp
+    end where
+    write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
+  enddo
+  write(stdout, *)
 
 end subroutine dump_out_matrix_nospin_dp
 
 
 !=========================================================================
-subroutine dump_out_matrix_cdp(print_matrix, title, matrix)
+subroutine dump_out_matrix_cdp(print_matrix, title, matrix, fmt)
   implicit none
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
   complex(dp), intent(in)      :: matrix(:, :, :)
+  character(len=*), optional, intent(in) :: fmt
   !=====
   integer, parameter :: MAXSIZE=50
   !=====
   real(dp) :: row(MIN(SIZE(matrix, DIM=2), MAXSIZE))
   integer  :: imat, ispin, mmat, nmat, nspin
+  character(:), allocatable :: fmt_
   !=====
 
   if( .NOT. print_matrix .AND. .NOT. debug ) return
+
+  if( PRESENT(fmt) ) then
+    fmt_ = fmt
+  else
+    fmt_ = 'f12.5'
+  endif
 
   mmat  = SIZE(matrix, DIM=1)
   nmat  = SIZE(matrix, DIM=2)
@@ -405,20 +421,33 @@ subroutine dump_out_matrix_cdp(print_matrix, title, matrix)
   write(stdout, '(/,1x,a)') TRIM(title)
 
   do ispin=1, nspin
-    if(nspin==2) then
+    if( nspin == 2 ) then
       write(stdout, '(a,i1)') ' spin polarization # ', ispin
     endif
+
+    write(stdout, '(1x,a)') '=== Real part ==='
     do imat=1, MIN(mmat, MAXSIZE)
-      where( ABS(matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)) > 1.0e-5_dp )
-      row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)
-      elsewhere
-      row(:) = 1.0e-6_dp
-    end where
-    write(stdout, '(1x,i3,*(1x,2(1x,f12.5)))') imat, row(:)
+        where( ABS(matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)) > 1.0e-5_dp )
+          row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)%re
+        elsewhere
+          row(:) = 1.0e-6_dp
+      end where
+      write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
+    enddo
+    write(stdout, *)
+
+    write(stdout, '(1x,a)') '=== Imaginary part ==='
+    do imat=1, MIN(mmat, MAXSIZE)
+        where( ABS(matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)) > 1.0e-5_dp )
+          row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)%im
+        elsewhere
+          row(:) = 1.0e-6_dp
+      end where
+      write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
+    enddo
+    write(stdout, *)
   enddo
   write(stdout, *)
-enddo
-write(stdout, *)
 
 end subroutine dump_out_matrix_cdp
 

@@ -39,15 +39,15 @@ module m_basis_set
   end type
 
   type shell_type
-    integer              :: am
-    integer              :: ng
+    integer               :: am
+    integer               :: ng
     real(dp), allocatable :: alpha(:)
     real(dp), allocatable :: coeff(:)
-    real(dp)             :: x0(3)
-    real(dp)             :: v0(3)
-    integer              :: icenter
-    integer              :: istart, iend                ! index of the shell's basis functions in the final basis set
-    integer              :: istart_cart, iend_cart      ! index of the shell's basis functions in the cartesian basis set
+    real(dp)              :: x0(3)
+    real(dp)              :: v0(3)
+    integer               :: icenter
+    integer               :: istart, iend                ! index of the shell's basis functions in the final basis set
+    integer               :: istart_cart, iend_cart      ! index of the shell's basis functions in the cartesian basis set
   end type shell_type
 
 

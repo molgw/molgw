@@ -2934,7 +2934,7 @@ subroutine setup_pbe_plus_alpha(basis, h_pbea)
   allocate(overlap_proj(proj%nbf, proj%nbf))
   call setup_overlap_finite(proj, overlap_proj)
 
-  call dump_out_matrix(.TRUE., 'overlap projectors', overlap_proj, form='f6.3')
+  call dump_out_matrix(.TRUE., 'overlap projectors', overlap_proj, fmt='f6.3')
 
   ! Orthogonalize the projectors using the S^{-1/2}
   ! First calculate S^{-1/2}
@@ -2976,7 +2976,7 @@ subroutine setup_pbe_plus_alpha(basis, h_pbea)
   write(stdout, '(1x,a,f8.4)')     'Maximum element (eV): ', MAXVAL(h_pbea) * Ha_eV
   write(stdout, '(1x,a,i4,1x,i4)') 'Maximum element location: ', MAXLOC(h_pbea)
 
-  call dump_out_matrix(.TRUE., 'PBE + alpha correction', h_pbea, form='f6.3')
+  call dump_out_matrix(.TRUE., 'PBE + alpha correction', h_pbea, fmt='f6.3')
 
   call destroy_libcint(proj)
 
