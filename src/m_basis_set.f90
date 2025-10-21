@@ -80,6 +80,7 @@ module m_basis_set
 
   private :: form_n_list
 
+
 contains
 
 
@@ -100,11 +101,11 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
   integer                       :: jbf, ng, ig
   integer                       :: ishell, ishell_file
   integer                       :: jbf_cart
-  real(dp), allocatable          :: alpha(:), coeff(:)
+  real(dp), allocatable         :: alpha(:), coeff(:)
   logical                       :: file_exists
   integer                       :: basisfile
   integer                       :: am_read, nshell_file
-  logical, parameter             :: normalized=.TRUE.
+  logical, parameter            :: normalized=.TRUE.
   integer                       :: icenter
   integer                       :: index_in_shell
   integer                       :: nx, ny, nz, mm
@@ -346,11 +347,15 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
 
   ! Find the maximum angular momentum employed in the basis set
   basis%ammax = MAXVAL(basis%bfc(:)%am)
+
+  !
+  ! Define the radius of each basis function as
+  ! r = 1/√α with α from the slowest decaying primitive
   do jbf=1, basis%nbf
-    basis%bff(jbf)%radius = 1.0_dp / SQRT( MAXVAl(basis%bff(jbf)%g(:)%alpha) )
+    basis%bff(jbf)%radius = 1.0_dp / SQRT( MINVAl(basis%bff(jbf)%g(:)%alpha) )
   enddo
   do jbf=1, basis%nbf_cart
-    basis%bfc(jbf)%radius = 1.0_dp / SQRT( MAXVAl(basis%bfc(jbf)%g(:)%alpha) )
+    basis%bfc(jbf)%radius = 1.0_dp / SQRT( MINVAl(basis%bfc(jbf)%g(:)%alpha) )
   enddo
 
   call echo_basis_summary(basis)
@@ -1337,6 +1342,73 @@ subroutine print_basis_function(bf)
 end subroutine print_basis_function
 
 
+!!=========================================================================
+!pure function eval_basis_function_shell(shell, rr) RESULT(shellr)
+!  implicit none
+!  type(shell_type), intent(in) :: shell
+!  real(dp), intent(in)         :: rr(:, :)     ! 3 x nr
+!  real(dp)                     :: shellr(:, :) ! nbf_in_shell x nr
+!  !=====
+!  integer                      :: nr, ig, il, nbf_cart
+!  real(dp), allocatable        :: dr(:, :), dr2(:)
+!  !=====
+!
+!  nr = SIZE(rr, DIM=2)
+!  allocate(dr(3, nr))
+!  allocate(dr2(nr))
+!
+!  shellr(:, :) = 0.0_dp
+!
+!  il = shell%am
+!  nbf_cart = SIZE(shellr, DIM=1)
+!
+!  do concurrent(ir=1:nr)
+!    dr(:, ir) = rr(:, ir) - shell%x0(:)
+!  enddo
+!  dr2(:) = SUM( dr(:, :)**2, DIM=1 )
+!
+!  do concurrent(ir=1:nr)
+!    do ig=1, shell%ng
+!      shellr(:, ir) = shellr(:, ir) &
+!              + dr(1, ir)**ga%nx * dr(2, ir)**ga%ny * dr(3, ir)**ga%nz
+!                 * EXP( - shell%alpha(ig) * dr2(ir) ) * ga%norm_factor * shell%coeff(ig)
+!    enddo
+!  enddo
+!
+!
+!
+!
+!end function eval_basis_function_shell
+
+
+!=========================================================================
+pure function eval_basis_function2(bf, x) result(eval_basis_function)
+  implicit none
+  type(basis_function), intent(in) :: bf
+  real(dp), intent(in)             :: x(3)
+  real(dp)                         :: eval_basis_function
+  !=====
+  integer  :: ig, nx, ny, nz
+  real(dp) :: polynomial, dx2, dx(3)
+  !=====
+
+  dx(:) = x(:) - bf%x0(:)
+  dx2 = SUM( dx(:)**2 )
+  eval_basis_function = 0.0_dp
+  nx = bf%g(1)%nx
+  ny = bf%g(1)%ny
+  nz = bf%g(1)%nz
+  polynomial = dx(1)**nx * dx(2)**ny * dx(3)**nz
+  do ig=1, bf%ngaussian
+    eval_basis_function = eval_basis_function &
+                  + bf%coeff(ig) * bf%g(ig)%norm_factor * EXP( - bf%g(ig)%alpha * dx2 ) &
+                    * polynomial
+  enddo
+
+
+end function eval_basis_function2
+
+
 !=========================================================================
 pure function eval_basis_function(bf, x)
   implicit none
@@ -1347,7 +1419,7 @@ pure function eval_basis_function(bf, x)
   integer                         :: ig
   !=====
 
-  eval_basis_function=0.0_dp
+  eval_basis_function = 0.0_dp
   do ig=1, bf%ngaussian
     eval_basis_function = eval_basis_function + eval_gaussian(bf%g(ig), x) * bf%coeff(ig)
   enddo
@@ -1365,7 +1437,7 @@ function eval_basis_function_grad(bf, x)
   integer                         :: ig
   !=====
 
-  eval_basis_function_grad(:)=0.0_dp
+  eval_basis_function_grad(:) = 0.0_dp
   do ig=1, bf%ngaussian
     eval_basis_function_grad(:) = eval_basis_function_grad(:) + eval_gaussian_grad(bf%g(ig), x) * bf%coeff(ig)
   enddo
@@ -1383,7 +1455,7 @@ function eval_basis_function_lapl(bf, x)
   integer                         :: ig
   !=====
 
-  eval_basis_function_lapl(:)=0.0_dp
+  eval_basis_function_lapl(:) = 0.0_dp
   do ig=1, bf%ngaussian
     eval_basis_function_lapl(:) = eval_basis_function_lapl(:) + eval_gaussian_lapl(bf%g(ig), x) * bf%coeff(ig)
   enddo
@@ -1401,7 +1473,7 @@ subroutine overlap_basis_function(bf1, bf2, overlap)
   real(dp)                        :: overlap_one_gaussian
   !=====
 
-  overlap=0.0_dp
+  overlap = 0.0_dp
   do ig=1, bf1%ngaussian
     do jg=1, bf2%ngaussian
       call overlap_recurrence(bf1%g(ig), bf2%g(jg), overlap_one_gaussian)
@@ -1423,7 +1495,7 @@ subroutine kinetic_basis_function(bf1, bf2, kinetic)
   real(dp)                        :: kinetic_one_gaussian
   !=====
 
-  kinetic=0.0_dp
+  kinetic = 0.0_dp
   do ig=1, bf1%ngaussian
     do jg=1, bf2%ngaussian
       call kinetic_recurrence(bf1%g(ig), bf2%g(jg), kinetic_one_gaussian)
@@ -1446,7 +1518,7 @@ subroutine nucleus_basis_function(bf1, bf2, zatom, x, nucleus_pot)
   real(dp)                        :: nucleus_pot_one_gaussian
   !=====
 
-  nucleus_pot=0.0_dp
+  nucleus_pot = 0.0_dp
   do ig=1, bf1%ngaussian
     do jg=1, bf2%ngaussian
       call nucleus_recurrence(zatom, x, bf1%g(ig), bf2%g(jg), nucleus_pot_one_gaussian)
@@ -1465,9 +1537,9 @@ subroutine basis_function_prod(bf1, bf2, bfprod)
   type(basis_function), allocatable, intent(out) :: bfprod(:)
   !=====
   integer           :: ig, jg
-  logical, parameter :: unnormalized=.FALSE.
-  integer           :: fake_shell=1
-  integer           :: fake_index=1
+  logical, parameter :: unnormalized = .FALSE.
+  integer           :: fake_shell = 1
+  integer           :: fake_index = 1
   integer           :: nbfprod, ibf
   integer           :: ix, iy, iz
   real(dp)          :: coeff_xyzg(1), c_x, c_y, c_z
@@ -1547,9 +1619,9 @@ subroutine basis_function_dipole(bf1, bf2, dipole)
   !=====
   type(basis_function)             :: bftmp
   real(dp)                         :: dipole_tmp
-  logical, parameter                :: normalized=.FALSE.
-  integer                          :: fake_shell=1
-  integer                          :: fake_index=1
+  logical, parameter                :: normalized = .FALSE.
+  integer                          :: fake_shell = 1
+  integer                          :: fake_index = 1
   real(dp), allocatable             :: bf2_alpha(:)
   !=====
 
