@@ -92,7 +92,10 @@ module m_timing
   !
   ! PBC related timers
   !
-  integer, parameter :: timing_pbc_eval_bf         = 85
+  integer, parameter :: timing_pbc_eval_bf          = 85
+  integer, parameter :: timing_pbc_density          = 86
+  integer, parameter :: timing_pbc_potential_to_hao = 87
+  integer, parameter :: timing_pbc_nuclei_density   = 88
 
   !
   ! temporary timers to be used when coding and then freed again
@@ -282,6 +285,7 @@ subroutine output_timing()
   call output_timing_line('Electron-nucleus Hamiltonian', timing_hamiltonian_nuc, 1)
   call output_timing_line('ECP Hamiltonian', timing_hamiltonian_ecp, 1)
   call output_timing_line('PBC: basis functions on grid', timing_pbc_eval_bf, 1)
+  call output_timing_line('PBC: nuclei density on FFT grid', timing_pbc_density, 1)
 
   write(stdout, '(/,a,/)') '                 -------------------------------------'
   write(stdout, '(a,/)')   '                                 SCF'
@@ -292,6 +296,8 @@ subroutine output_timing()
   call output_timing_line('Density matrix', timing_density_matrix, 1)
   call output_timing_line('Auxiliary basis density', timing_rhoauxil, 1)
   call output_timing_line('Hartree potential', timing_hartree, 1)
+  call output_timing_line('PBC: density on FFT grid', timing_pbc_density, 2)
+  call output_timing_line('PBC: from v(r) to H_AO', timing_pbc_potential_to_hao, 2)
   call output_timing_line('Exchange operator', timing_exchange, 1)
   call output_timing_line('DFT xc potential', timing_dft_xc, 1)
   call output_timing_line('Densities on a grid', timing_dft_densities, 2)

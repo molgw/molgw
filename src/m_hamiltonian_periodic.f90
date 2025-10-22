@@ -44,6 +44,8 @@ module m_hamiltonian_periodic
   real(dp), allocatable, private :: rgrid(:, :)
   real(dp), allocatable, private :: rhoelecr(:, :)
 
+  complex(C_DOUBLE_COMPLEX), pointer :: rhog_fftw_prev(:, :, :)
+
   real(dp), allocatable, private :: bfr(:, :)
 
 contains
@@ -72,7 +74,7 @@ subroutine set_fft_grid(basis)
   do ibf=1, basis%nbf
     maximum_extension = MAX(maximum_extension, basis%bff(ibf)%radius)
   enddo
-  if( maximum_extension > minimal_image_distance * 0.45_dp) then
+  if( maximum_extension > minimal_image_distance * 0.30_dp) then
     call issue_warning('Basis set too diffuse compared to box dimension')
     write(stdout, '(1x,a,f8.2)') 'Basis extension    (bohr): ', maximum_extension
     write(stdout, '(1x,a,f8.2)') 'Box image distance (bohr): ', minimal_image_distance
@@ -119,7 +121,6 @@ subroutine set_fft_grid(basis)
 
   allocate(rhoelecr(nfft_local, nspin))
   rhoelecr(:, :) = 0.0_dp
-
 
   !
   ! Evaluate and store basis functions on the real-space grid
@@ -405,11 +406,9 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
   !
   ! Get the electrostatic potential of the nuclei
   !
-  call start_clock(timing_tmp1)
 !  call prepare_nuclei_density_periodic(rhonuclr, nuc_selfenergy)
   ! Analytic for GTH pseudos only
   call prepare_nuclei_density_analytic_periodic(rhonuclr, nuc_selfenergy)
-  call stop_clock(timing_tmp1)
 
   call poisson_solver_fft(rhonuclr, vnuclgrid) 
 
@@ -479,11 +478,12 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree)
   end select
 
 
-  call start_clock(timing_tmp2)
 
   call calculate_density_periodic(basis, p_matrix_local, rhoelecr)
 
-  call stop_clock(timing_tmp2)
+  ! Kerker is not working properly
+  !call kerker_precond(rhoelecr(:, 1)) 
+
 
   
   !
@@ -631,6 +631,8 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
   real(dp), allocatable :: tmp(:, :)
   !=====
 
+  call start_clock(timing_pbc_density)
+
   allocate(tmp(basis%nbf, nfft_local))
 
   rhor(:, :) = 0.0_dp
@@ -643,6 +645,8 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
   enddo
 
   deallocate(tmp)
+
+  call stop_clock(timing_pbc_density)
 
 end subroutine calculate_density_periodic
 
@@ -662,7 +666,7 @@ subroutine calculate_hao_periodic(basis, vr, h_ao)
 
 
 
-  call start_clock(timing_tmp5)
+  call start_clock(timing_pbc_potential_to_hao)
 
   select rank(h_ao)
   !
@@ -729,7 +733,7 @@ subroutine calculate_hao_periodic(basis, vr, h_ao)
     end select
   end select
 
-  call stop_clock(timing_tmp5)
+  call stop_clock(timing_pbc_potential_to_hao)
 
 
 end subroutine calculate_hao_periodic
@@ -821,7 +825,6 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
     call die('prepare_nuclei_density_periodic: vloc grid is not logarithmic. Not implemented')
   endif
 
-  call start_clock(timing_tmp9)
   rhonuclr(:) = 0.0_dp
 
   !$OMP PARALLEL PRIVATE(shift, dr, irad_float, irad)
@@ -855,7 +858,6 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
   enddo
   !$OMP END DO
   !$OMP END PARALLEL
-  call stop_clock(timing_tmp9)
 
  
   zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
@@ -1041,6 +1043,10 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
   logical :: element_has_ecp
   !=====
 
+  call start_clock(timing_pbc_nuclei_density)
+
+  write(stdout, '(/,1x,a)') 'Set up nuclei density on FFT grid (GTH pseudos)'
+
   selfenergy = 0.0_dp
   rhonuclr(:) = 0.0_dp
 
@@ -1068,8 +1074,6 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
     !
     ! Loop over the unit-cell regular grid
     !
-    call start_clock(timing_tmp9)
-
     factor_zeff = zeff * ( alphapp / SQRT(pi) )**3
     factor_c1 = ci(1) * alphapp**2 / (2.0_dp * pi)
     factor_c2 = ci(2) * alphapp**2 / pi
@@ -1097,7 +1101,6 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
     enddo
     !$OMP END DO
     !$OMP END PARALLEL
-    call stop_clock(timing_tmp9)
 
     selfenergy_nucleus = selfenergy_quadrature()
     write(stdout,'(1x,a,i4,a,f12.8)') 'Nucleus selfenergy for center ', icenter, ' (Ha): ', selfenergy_nucleus
@@ -1126,6 +1129,8 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
   write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell (after renormalization): ', zval
 
   write(stdout,'(1x,a,f12.8)') 'Total nucleus selfenergy (Ha): ', selfenergy
+
+  call stop_clock(timing_pbc_nuclei_density)
 
 contains
 
@@ -1224,6 +1229,7 @@ subroutine poisson_solver_fft(rhor, vcoulr)
   call C_F_POINTER(pr, rhor_fftw, [nfft1, nfft2, nfft3])
   pg = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
   call C_F_POINTER(pg, rhog_fftw, [(nfft1/2+1), nfft2, nfft3])
+
 
   !
   ! Gather the densities from the different MPI tasks
@@ -1326,6 +1332,125 @@ end function vcoulg
 end subroutine poisson_solver_fft
 
 
+subroutine kerker_precond(rhor)
+  implicit none
+
+  real(dp), intent(inout)  :: rhor(:)
+  !=====
+#if defined(HAVE_FFTW3)
+  type(C_PTR) :: plan
+  type(C_PTR) :: pr, pg, pvr, pvg, pg2
+  real(C_DOUBLE), pointer            :: rhor_fftw(:, :, :), vr_fftw(:, :, :)
+  complex(C_DOUBLE_COMPLEX), pointer :: rhog_fftw(:, :, :), vg_fftw(:, :, :)
+  integer :: ig1, ig2, ig3, i1, i2, i3, ifft_local, ifft_global
+  real(dp), parameter :: q0sq = 10.00_dp
+  !=====
+
+  write(stdout, '(/,1x,a,es12.4)') 'Kerker preconditionning with q0**2: ', q0sq
+  ! Allocate arrays with FFTW functions
+  pr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
+  call C_F_POINTER(pr, rhor_fftw, [nfft1, nfft2, nfft3])
+  pg = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
+  call C_F_POINTER(pg, rhog_fftw, [(nfft1/2+1), nfft2, nfft3])
+
+  !
+  ! Gather the densities from the different MPI tasks
+  ifft_local = 0
+  ifft_global = 0
+  rhor_fftw(:, :, :) = 0.0_dp
+  do i3=1, nfft3
+    do i2=1, nfft2
+      do i1=1, nfft1
+        ifft_global = ifft_global + 1
+        if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
+          ifft_local = ifft_local + 1
+          rhor_fftw(i1, i2, i3) = rhor(ifft_local)
+        endif
+      enddo
+    enddo
+  enddo
+  call grid%sum(rhor_fftw)
+
+  !
+  ! Watch the reversed ordering nfft3, nfft2, nfft1
+  plan = fftw_plan_dft_r2c_3d(nfft3, nfft2, nfft1, rhor_fftw, rhog_fftw, FFTW_ESTIMATE)
+  call fftw_execute_dft_r2c(plan, rhor_fftw, rhog_fftw)
+  call fftw_destroy_plan(plan)
+
+  rhog_fftw(:, :, :) = rhog_fftw(:, :, :) / REAL(nfft_global, KIND=dp)
+
+  if( .NOT. ASSOCIATED(rhog_fftw_prev) ) then
+    pg2 = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
+    call C_F_POINTER(pg2, rhog_fftw_prev, [(nfft1/2+1), nfft2, nfft3])
+    rhog_fftw_prev(:, :, :) = rhog_fftw(:, :, :)
+    return
+  else
+
+    do ig3=1, nfft3
+      do ig2=1, nfft2
+        do ig1=1, nfft1/2+1
+          rhog_fftw(ig1, ig2, ig3) = kerker(ig1, ig2, ig3) * ( rhog_fftw(ig1, ig2, ig3) - rhog_fftw_prev(ig1, ig2, ig3) ) &
+                                    + rhog_fftw_prev(ig1, ig2, ig3)
+        enddo
+      enddo
+    enddo
+    rhog_fftw_prev(:, :, :) = rhog_fftw(:, :, :)
+
+  endif
+
+  pvr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
+  call C_F_POINTER(pvr, vr_fftw, [nfft1, nfft2, nfft3])
+
+  plan = fftw_plan_dft_c2r_3d(nfft3, nfft2, nfft1, rhog_fftw, vr_fftw, FFTW_ESTIMATE)
+  call fftw_execute_dft_c2r(plan, rhog_fftw, vr_fftw)
+  call fftw_destroy_plan(plan)
+
+
+  !
+  ! Keep the potential on the local section of the grid only
+  ifft_local = 0
+  ifft_global = 0
+  rhor_fftw(:, :, :) = 0.0_dp
+  do i3=1, nfft3
+    do i2=1, nfft2
+      do i1=1, nfft1
+        ifft_global = ifft_global + 1
+        if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
+          ifft_local = ifft_local + 1
+          rhor(ifft_local) = vr_fftw(i1, i2, i3)
+        endif
+      enddo
+    enddo
+  enddo
+
+#else
+  call die('kerker_precond: requires to be compiled FFTs (-DHAVE_FFTW3)')
+#endif
+
+
+contains
+
+pure function kerker(ig1, ig2, ig3) 
+  implicit none
+  integer, intent(in) :: ig1, ig2, ig3
+  real(dp) :: kerker
+  !=====
+  integer  :: ig1m, ig2m, ig3m
+  real(dp) :: g2
+  !=====
+  
+  ig1m = MERGE( ig1 - 1, ig1 - 1 - nfft1, ig1 <= nfft1/2)
+  ig2m = MERGE( ig2 - 1, ig2 - 1 - nfft2, ig2 <= nfft2/2)
+  ig3m = MERGE( ig3 - 1, ig3 - 1 - nfft3, ig3 <= nfft3/2)
+  g2 = SUM( MATMUL(bprim(:, :) , [ig1m, ig2m ,ig3m])**2 )
+
+  kerker = g2 / ( g2 + q0sq )
+
+end function kerker
+
+end subroutine kerker_precond
+
+
 !=========================================================================
 subroutine calculate_basis_functions_periodic(basis)
   implicit none
@@ -1334,10 +1459,11 @@ subroutine calculate_basis_functions_periodic(basis)
   !=====
   integer               :: gt
   integer               :: ifft
-  integer               :: ishell, ibf1, ibf2, ibf1_cart
+  integer               :: ishell, ibf1, ibf2, ibf1_cart, ibf
   integer               :: i_cart
   integer               :: ni_cart, li
   real(dp), allocatable :: basis_function_r_cart(:, :), dr(:, :)
+  real(dp)              :: norm(basis%nbf)
   !=====
 
   call start_clock(timing_pbc_eval_bf)
@@ -1379,7 +1505,7 @@ subroutine calculate_basis_functions_periodic(basis)
 
     do ifft=1, nfft_local
       do i_cart=1, ni_cart
-        basis_function_r_cart(i_cart, ifft) = eval_basis_function(basis%bfc(ibf1_cart + i_cart - 1), dr(:, ifft))
+        basis_function_r_cart(i_cart, ifft) = eval_basis_function2(basis%bfc(ibf1_cart + i_cart - 1), dr(:, ifft))
       enddo
     enddo
 
@@ -1391,6 +1517,18 @@ subroutine calculate_basis_functions_periodic(basis)
   !$OMP END PARALLEL
 
   deallocate(dr)
+
+  call start_clock(timing_tmp8)
+  write(stdout,'(1x,a)') 'Check normalization of the basis functions on the real-space grid'
+  norm(:) = SUM( bfr(:, :)**2, DIM=2 ) * volume / REAL(nfft_global, KIND=dp)
+  call grid%sum(norm)
+  write(stdout, '(1x,a,i4,1x,f11.8)') 'Worse normalization is basis function:', MINLOC(norm(:)), MINVAL(norm(:))
+
+  if( ANY( norm(:) < 0.995_dp ) ) then
+    call issue_warning('Some basis functions are not normalized properly. ' // &
+                       'Consider increasing the box or use less diffuse basis functions')
+  endif
+  call stop_clock(timing_tmp8)
 
   call stop_clock(timing_pbc_eval_bf)
 
@@ -1557,6 +1695,8 @@ subroutine destroy_fft_grid()
 
 end subroutine destroy_fft_grid
 
+
+!=========================================================================
 end module m_hamiltonian_periodic
 
 

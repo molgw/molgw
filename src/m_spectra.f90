@@ -528,16 +528,12 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
       iq = iqs + iiq - 1
       qvec(:) = qvec_list(:, iq)
       ! Get the gos oscillator strength on states
-      call start_clock(timing_tmp1)
       call setup_gos_ao(basis, qvec, gos_ao)
-      call stop_clock(timing_tmp1)
 
-      call start_clock(timing_tmp2)
       do mpspin=1, nspin
         gos_mo(:, :, mpspin, iiq) = MATMUL( TRANSPOSE( c_matrix(:, :, mpspin) ) ,  MATMUL( gos_ao(:, :) , c_matrix(:, :, mpspin) ) )
       enddo
       deallocate(gos_ao)
-      call stop_clock(timing_tmp2)
     enddo
 
     call world%sum(gos_mo)
@@ -545,7 +541,6 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
     do iiq=1, nq_batch
       iq = iqs + iiq - 1
       qvec(:) = qvec_list(:, iq)
-      call start_clock(timing_tmp3)
       gos_tddft(:) = (0.0_dp, 0.0_dp)
       do t_ia=1, m_x
         t_ia_global = rowindex_local_to_global(iprow_sd, nprow_sd, t_ia)
@@ -563,7 +558,6 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
 
       enddo
       call world%sum(gos_tddft)
-      call stop_clock(timing_tmp3)
 
 
       fnq(:) = 2.0_dp * ABS( gos_tddft(:) )**2 * eigenvalue(:) / SUM( qvec(:)**2 )
@@ -754,21 +748,16 @@ subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalu
                   + qq * costheta * v3(:)
           if( qq > QMAX ) cycle
 
-          call start_clock(timing_tmp1)
           call setup_gos_ao(basis, qvec, gos_ao)
-          call stop_clock(timing_tmp1)
 
-          call start_clock(timing_tmp2)
           allocate(gos_mo(nstate, nstate, nspin))
           gos_mo(:, :, :) = 0.0_dp
           do mpspin=1, nspin
             gos_mo(:, :, mpspin) = MATMUL( TRANSPOSE( c_matrix(:, :, mpspin) ) ,  MATMUL( gos_ao(:, :) , c_matrix(:, :, mpspin) ) )
           enddo
           deallocate(gos_ao)
-          call stop_clock(timing_tmp2)
           ! call world%sum(gos_mo)
 
-          call start_clock(timing_tmp3)
           gos_tddft = (0.0_dp, 0.0_dp)
           do t_ia=1, chi%npole_reso
             istate = chi%transition_table(1, t_ia)
@@ -778,7 +767,6 @@ subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalu
             gos_tddft = gos_tddft &
                            + gos_mo(istate, astate, iaspin) * xpy_matrix_global(t_ia, t_jb) * SQRT(spin_fact)
           enddo
-          call stop_clock(timing_tmp3)
           deallocate(gos_mo)
           fnq = 2.0_dp * ABS( gos_tddft )**2 * eigenvalue(t_jb) / SUM( qvec(:)**2 )
 

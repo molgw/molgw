@@ -90,7 +90,6 @@ subroutine setup_nucleus_fourier(basis_p, basis_t, reference)
   complex(dp) :: enucl(basis_p%nbf, basis_t%nbf)
   !=====
 
-  call start_clock(timing_tmp1)
 
   ! TODO the velocity should be read from the basis_t%bff(1)%velocity(:)
   velocity(:) = 0.0_dp
@@ -145,7 +144,6 @@ subroutine setup_nucleus_fourier(basis_p, basis_t, reference)
 
   call world%sum(enucl)
 
-  call stop_clock(timing_tmp1)
 
 
   if( basis_t%nbf < 6 .OR. basis_p%nbf < 6 ) return
