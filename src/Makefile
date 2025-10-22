@@ -129,25 +129,25 @@ endif
 
 ##################################
 #
-# FFTW variables
-#   if FFTW is already set, don't do anything
-#   if FFTW is not set, check out FFTW_ROOT and set FFTW accordingly
-#   if FFTW_INCS is already set, don't do anything
-#   if FFTW_INCS is not set, check out FFTW_ROOT and set FFTW_INCS accordingly
+# FFTW3 variables
+#   if FFTW3 is already set, don't do anything
+#   if FFTW3 is not set, check out FFTW3_ROOT and set FFTW3 accordingly
+#   if FFTW3_INCS is already set, don't do anything
+#   if FFTW3_INCS is not set, check out FFTW3_ROOT and set FFTW3_INCS accordingly
 #
 ##################################
-ifeq ($(FFTW),)
-  ifeq ($(FFTW_ROOT),)
-    FFTW=
+ifeq ($(FFTW3),)
+  ifeq ($(FFTW3_ROOT),)
+    FFTW3=
   else
-    FFTW=-L$(FFTW_ROOT)/lib/ -Wl,-rpath,$(FFTW_ROOT)/lib/ -lfftw3
+    FFTW3=-L$(FFTW3_ROOT)/lib/ -Wl,-rpath,$(FFTW3_ROOT)/lib/ -lfftw3
   endif
 endif
-ifeq ($(FFTW_INCS),)
-  ifeq ($(FFTW_ROOT),)
-    FFTW_INCS=
+ifeq ($(FFTW3_INCS),)
+  ifeq ($(FFTW3_ROOT),)
+    FFTW3_INCS=
   else
-    FFTW_INCS=-I$(FFTW_ROOT)/include/
+    FFTW3_INCS=-I$(FFTW3_ROOT)/include/
   endif
 endif
 
@@ -275,7 +275,7 @@ level100: molgw.o
                         $(ELPA) $(ELPA_INCS) \
                         $(LIBCINT) \
 			$(HDF5) $(HDF5_INCS) \
-			$(FFTW) $(FFTW_INCS) \
+			$(FFTW3) $(FFTW3_INCS) \
                         $(LINKS)
 
 molgw.o: m_definitions.o m_warning.o m_hdf5_tools.o m_fftw3.o m_timing.o m_memory.o m_inputparam.o m_lbfgs.o \
@@ -591,7 +591,7 @@ m_timing.o: m_definitions.o m_warning.o m_timing.f90
 	$(FC_W_OPTS) -c m_timing.f90 $(LIBXC_INCS)
 
 m_fftw3.o: m_definitions.o m_fftw3.f90
-	$(FC_W_OPTS) -c m_fftw3.f90 $(LIBXC_INCS) $(FFTW_INCS)
+	$(FC_W_OPTS) -c m_fftw3.f90 $(LIBXC_INCS) $(FFTW3_INCS)
 
 m_hdf5_tools.o: m_definitions.o m_hdf5_tools.f90
 	$(FC_W_OPTS) -c m_hdf5_tools.f90 $(LIBXC_INCS) $(HDF5_INCS)

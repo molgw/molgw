@@ -1347,13 +1347,13 @@ subroutine kerker_precond(rhor)
 
   real(dp), intent(inout)  :: rhor(:)
   !=====
+  real(dp), parameter :: q0sq = 10.00_dp
 #if defined(HAVE_FFTW3)
   type(C_PTR) :: plan
   type(C_PTR) :: pr, pg, pvr, pvg, pg2
   real(C_DOUBLE), pointer            :: rhor_fftw(:, :, :), vr_fftw(:, :, :)
   complex(C_DOUBLE_COMPLEX), pointer :: rhog_fftw(:, :, :), vg_fftw(:, :, :)
   integer :: ig1, ig2, ig3, i1, i2, i3, ifft_local, ifft_global
-  real(dp), parameter :: q0sq = 10.00_dp
   !=====
 
   write(stdout, '(/,1x,a,es12.4)') 'Kerker preconditionning with q0**2: ', q0sq
@@ -1470,10 +1470,9 @@ subroutine calculate_basis_functions_periodic(basis)
   integer               :: gt
   integer               :: ifft
   integer               :: ishell, ibf1, ibf2, ibf1_cart, ibf
-  integer               :: i_cart
-  integer               :: ni_cart, li
+  integer               :: ni_cart, li, i_cart, iworse
   real(dp), allocatable :: basis_function_r_cart(:, :), dr(:, :)
-  real(dp)              :: norm(basis%nbf)
+  real(dp)              :: norm(basis%nbf), most_diffuse
   !=====
 
   call start_clock(timing_pbc_eval_bf)
@@ -1532,7 +1531,12 @@ subroutine calculate_basis_functions_periodic(basis)
   write(stdout,'(1x,a)') 'Check normalization of the basis functions on the real-space grid'
   norm(:) = SUM( bfr(:, :)**2, DIM=2 ) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(norm)
-  write(stdout, '(1x,a,i4,1x,f11.8)') 'Worse normalization is basis function:', MINLOC(norm(:)), MINVAL(norm(:))
+  iworse = MINLOC(norm(:), DIM=1)
+  write(stdout, '(1x,a,i4,1x,f11.8)')      'Worse normalization is basis function:', iworse, norm(iworse)
+  most_diffuse = MINVAL(basis%bff(iworse)%g(:)%alpha)
+  write(stdout, '(1x,a,i4,1x,i4,1x,i4,1x,f12.4)') 'Function characteristics (center, angular momentum, primitives, alpha): ', &
+                                   basis%bff(iworse)%icenter, basis%bff(iworse)%am, basis%bff(iworse)%ngaussian, &
+                                   most_diffuse
 
   if( ANY( norm(:) < 0.995_dp ) ) then
     call issue_warning('Some basis functions are not normalized properly. ' // &
