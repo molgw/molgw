@@ -275,7 +275,7 @@ level100: molgw.o
                         $(ELPA) $(ELPA_INCS) \
                         $(LIBCINT) \
 			$(HDF5) $(HDF5_INCS) \
-			$(FFTW3) $(FFTW3_INCS) \
+			$(FFTW) $(FFTW_INCS) \
                         $(LINKS)
 
 molgw.o: m_definitions.o m_warning.o m_hdf5_tools.o m_fftw3.o m_timing.o m_memory.o m_inputparam.o m_lbfgs.o \
@@ -591,7 +591,7 @@ m_timing.o: m_definitions.o m_warning.o m_timing.f90
 	$(FC_W_OPTS) -c m_timing.f90 $(LIBXC_INCS)
 
 m_fftw3.o: m_definitions.o m_fftw3.f90
-	$(FC_W_OPTS) -c m_fftw3.f90 $(LIBXC_INCS) $(FFTW3_INCS)
+	$(FC_W_OPTS) -c m_fftw3.f90 $(LIBXC_INCS) $(FFTW_INCS)
 
 m_hdf5_tools.o: m_definitions.o m_hdf5_tools.f90
 	$(FC_W_OPTS) -c m_hdf5_tools.f90 $(LIBXC_INCS) $(HDF5_INCS)
