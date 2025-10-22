@@ -74,6 +74,7 @@
   write(stdout, '(1x,a32,2x,es16.8)') 'excit_width', excit_width 
   write(stdout, '(1x,a32,2x,es16.8)') 'fft_delta_x', fft_delta_x 
   write(stdout, '(1x,a32,6x,a)') 'fft_fix_density_integral', fft_fix_density_integral 
+  write(stdout, '(1x,a32,6x,a)') 'fft_read_density', fft_read_density 
   write(stdout, '(1x,a32,6x,a)') 'force_energy_qp', force_energy_qp 
   write(stdout, '(1x,a32,6x,a)') 'frozencore', frozencore 
   write(stdout, '(1x,a32,6x,a)') 'g3w2_skip_vv', g3w2_skip_vv 

@@ -25,6 +25,7 @@
     even_tempered_n_list,       &
     fft_delta_x,       &
     fft_fix_density_integral,       &
+    fft_read_density,       &
     gaussian_type,       &
     incore,       &
     memory_evaluation,       &
@@ -259,6 +260,7 @@
  even_tempered_n_list = '1'
  fft_delta_x = 0.15_dp 
  fft_fix_density_integral = 'yes'
+ fft_read_density = 'no'
  gaussian_type = 'pure'
  incore = 'yes'
  memory_evaluation = 'no'

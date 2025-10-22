@@ -50,6 +50,7 @@
 [even_tempered_n_list](#even_tempered_n_list)
 [fft_delta_x](#fft_delta_x)
 [fft_fix_density_integral](#fft_fix_density_integral)
+[fft_read_density](#fft_read_density)
 [gaussian_type](#gaussian_type)
 [incore](#incore)
 [memory_evaluation](#memory_evaluation)
@@ -1365,6 +1366,22 @@ Maximum spacing between grid points in the real space FFT grid. Default is 0.15 
 **Description:**
 
 Renormalize the density at each SCF cycle to integrate to the expected electron count.
+
+
+---
+### fft_read_density
+
+*Optional*
+
+**Family:** general
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Read the electronic density obtained from a previous calculation on the same FFT grid.
 
 
 ---

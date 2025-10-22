@@ -204,6 +204,14 @@ fft_fix_density_integral:
   default: 'yes'
   comment: Renormalize the density at each SCF cycle to integrate to the expected electron count.
 
+fft_read_density:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Read the electronic density obtained from a previous calculation on the same FFT grid.
+
 gaussian_type:
   family: general
   datatype: characters

@@ -527,6 +527,9 @@ program molgw
         call write_restart(SMALL_RESTART, 'RESTART', basis, occupation, c_matrix, energy)
       endif
     endif
+    if( scf_has_converged ) then
+      call write_restart_rhogrid()
+    endif
 
     !
     ! HDF5 file with scf data

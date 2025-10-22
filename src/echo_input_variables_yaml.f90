@@ -74,6 +74,7 @@
  write(unit_yaml, '(4x,a,19x,es16.8)') 'excit_width:', excit_width 
  write(unit_yaml, '(4x,a,19x,es16.8)') 'fft_delta_x:', fft_delta_x 
  write(unit_yaml, '(4x,a,6x,a)') 'fft_fix_density_integral:', yesno_to_TrueFalse(fft_fix_density_integral) 
+ write(unit_yaml, '(4x,a,14x,a)') 'fft_read_density:', yesno_to_TrueFalse(fft_read_density) 
  write(unit_yaml, '(4x,a,15x,a)') 'force_energy_qp:', yesno_to_TrueFalse(force_energy_qp) 
  write(unit_yaml, '(4x,a,20x,a)') 'frozencore:', yesno_to_TrueFalse(frozencore) 
  write(unit_yaml, '(4x,a,18x,a)') 'g3w2_skip_vv:', yesno_to_TrueFalse(g3w2_skip_vv) 

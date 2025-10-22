@@ -412,7 +412,7 @@ subroutine scf_loop(is_restart, &
   !
   ! Form the final Fock matrix and store it only if needed
   !
-  if( scf_has_converged  &
+  if( scf_has_converged  .AND. (.NOT. pbc_) &
    .AND. ( print_bigrestart_  &
           .OR. TRIM(pt_density_matrix) /= 'NO'   &
           .OR. calc_type%selfenergy_approx > 0  )  ) then
@@ -1335,7 +1335,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
     hamiltonian_pairing(:, :, :) = 0.0_dp
     en_gks%anomalous = 0.0_dp
     if( calc_type%need_exchange_pairing ) then
-      sqrt_occ_hole(:, :) = spin_fact*sqrt_occ_hole(:, :)
+      sqrt_occ_hole(:, :) = spin_fact * sqrt_occ_hole(:, :)
       call calculate_exchange(basis, p_anom_matrix, hamiltonian_pairing, ex=en_gks%anomalous, &
                               occupation=sqrt_occ_hole, c_matrix=c_matrix)
       en_gks%anomalous = -pairing_ri_fact*spin_fact*spin_fact*bogoliubov_sigma*en_gks%anomalous

@@ -48,6 +48,7 @@ module m_hamiltonian_periodic
 
   real(dp), allocatable, private :: bfr(:, :)
 
+
 contains
 
 
@@ -159,9 +160,10 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
   type(basis_set), intent(in) :: basis
   real(dp), intent(out) :: overlap_ao(:, :)
   !=====
-  integer :: i1, i2, i3
+  integer :: i1, i2, i3, ibf
   real(dp) :: shift(3)
   real(dp), allocatable :: s_matrix(:, :)
+  real(dp) :: normalization(basis%nbf)
   !=====
 
   allocate(s_matrix, MOLD=overlap_ao)
@@ -180,6 +182,17 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
   enddo
 
   deallocate(s_matrix)
+
+  ! Check normalization
+  do ibf=1, basis%nbf
+    normalization(ibf) = overlap_ao(ibf, ibf)
+  enddo
+
+  if( MINVAL(normalization) < 0.999_dp ) then
+    write(stdout, '(1x,a,f12.6)') 'Some basis functions are normalized at: ', MINVAL(normalization)
+    call issue_warning('Basis functions are not perfectly normalized. Consider increasing the box')
+  endif
+
 
 end subroutine setup_overlap_periodic
 
@@ -447,7 +460,9 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree)
   real(dp), intent(out) :: h_ao(:, :)
   real(dp), intent(out) :: ehartree
   !=====
-  integer               :: timing_xxdft_hartree
+  logical, save         :: first_step = .TRUE.
+  logical               :: rhoelecr_was_read
+  integer               :: timing_xxdft_hartree, rhofile
   real(dp), allocatable :: p_matrix_local(:, :, :)
   real(dp) :: vhartreegrid(nfft_local, nspin)
   real(dp) :: rhor_integral
@@ -479,12 +494,20 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree)
   end select
 
 
+  ! If first step, try to read an existing RESTART_RHOGRID file
+  if( first_step .AND. fft_read_density_ ) then
+    rhoelecr_was_read = read_restart_rhogrid()
+  else
+    rhoelecr_was_read = .FALSE.
+  endif
+  first_step = .FALSE.
 
-  call calculate_density_periodic(basis, p_matrix_local, rhoelecr)
+  if( .NOT. rhoelecr_was_read ) then
+    call calculate_density_periodic(basis, p_matrix_local, rhoelecr)
+  endif
 
   ! Kerker is not working properly
   !call kerker_precond(rhoelecr(:, 1)) 
-
 
   
   !
@@ -496,6 +519,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree)
   !dr(:, 2) = aprim(:, 2) / nfft2
   !dr(:, 3) = aprim(:, 3) / nfft3
   !call write_cube_file('rhoelecr.cube', nfft1, nfft2, nfft3, dr, rhoelecr(:, 1), comment='test')
+
 
   if( fft_fix_density_integral_ ) then
     rhor_integral = SUM(rhoelecr) * volume / REAL(nfft_global, KIND=dp)
@@ -1694,6 +1718,53 @@ subroutine setup_nucleus_gth_nonlocal_periodic(basis, h_ecp)
   deallocate(h_tmp)
 
 end subroutine setup_nucleus_gth_nonlocal_periodic
+
+
+!=========================================================================
+subroutine write_restart_rhogrid()
+  implicit none
+
+  !=====
+  integer :: rhofile
+  !=====
+
+  write(stdout, *) 'Write real-space grid electronic density on RESTART_RHOGRID file'
+
+  open(newunit=rhofile, file='RESTART_RHOGRID', form='unformatted', access='stream', status='replace', action='write')
+  write(rhofile) rhoelecr(:, :)
+  close(rhofile)
+
+
+end subroutine write_restart_rhogrid
+
+
+!=========================================================================
+function read_restart_rhogrid()
+  implicit none
+
+  logical :: read_restart_rhogrid
+  !=====
+  integer :: rhofile
+  logical :: file_exists
+  !=====
+
+  write(stdout, *) 'Read real-space grid electronic density from RESTART_RHOGRID file'
+  inquire(file='RESTART_RHOGRID', exist=file_exists)
+  if( .NOT. file_exists ) then
+    write(stdout, *) 'No RESTART_RHOGRID file found'
+    read_restart_rhogrid = .FALSE.
+  else
+
+    open(newunit=rhofile, file='RESTART_RHOGRID', form='unformatted', access='stream', status='old', action='read')
+    read(rhofile) rhoelecr(:, :)
+    close(rhofile)
+
+    write(stdout, *) 'RESTART_RHOGRID file read'
+
+    read_restart_rhogrid = .TRUE.
+  endif
+
+end function read_restart_rhogrid
 
 
 !=========================================================================

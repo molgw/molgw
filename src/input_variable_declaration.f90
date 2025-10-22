@@ -25,6 +25,8 @@
  real(dp), protected :: fft_delta_x
  character(len=3), protected :: fft_fix_density_integral
  logical, protected :: fft_fix_density_integral_
+ character(len=3), protected :: fft_read_density
+ logical, protected :: fft_read_density_
  character(len=256), protected :: gaussian_type
  character(len=3), protected :: incore
  logical, protected :: incore_
