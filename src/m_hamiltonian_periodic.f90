@@ -450,6 +450,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree)
   integer               :: timing_xxdft_hartree
   real(dp), allocatable :: p_matrix_local(:, :, :)
   real(dp) :: vhartreegrid(nfft_local, nspin)
+  real(dp) :: rhor_integral
   !real(dp) :: dr(3, 3)
   !=====
 
@@ -496,6 +497,13 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree)
   !dr(:, 3) = aprim(:, 3) / nfft3
   !call write_cube_file('rhoelecr.cube', nfft1, nfft2, nfft3, dr, rhoelecr(:, 1), comment='test')
 
+  if( fft_fix_density_integral_ ) then
+    rhor_integral = SUM(rhoelecr) * volume / REAL(nfft_global, KIND=dp)
+    call grid%sum(rhor_integral)
+    write(stdout, '(1x,a,f14.6,a,f14.6)') 'Electron density integral: ', rhor_integral, ' whereas it should be ', electrons
+    write(stdout, '(1x,a,f10.6)') 'Renormalize it with factor: ', electrons / rhor_integral
+    rhoelecr(:, :) = rhoelecr(:, :) * electrons / rhor_integral
+  endif
   call poisson_solver_fft(rhoelecr(:, 1), vhartreegrid(:, 1)) 
 
   ehartree = 0.5_dp * SUM( rhoelecr * vhartreegrid ) * volume / REAL(nfft_global, KIND=dp)
@@ -873,10 +881,12 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
              'FFT grid is certainly too coarse. Try to decrease fft_delta_x.')
   endif
 
-  rhonuclr(:) = rhonuclr(:) * factor
-  zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
-  call grid%sum(zval)
-  write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell (after renormalization): ', zval
+  if( fft_fix_density_integral_ ) then
+    rhonuclr(:) = rhonuclr(:) * factor
+    zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
+    call grid%sum(zval)
+    write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell (after renormalization): ', zval
+  endif
 
 
 contains
@@ -1128,7 +1138,7 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
   call grid%sum(zval)
   write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell (after renormalization): ', zval
 
-  write(stdout,'(1x,a,f12.8)') 'Total nucleus selfenergy (Ha): ', selfenergy
+  write(stdout,'(1x,a,es16.8)') 'Total nucleus selfenergy (Ha): ', selfenergy
 
   call stop_clock(timing_pbc_nuclei_density)
 
