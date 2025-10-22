@@ -155,16 +155,16 @@ subroutine scf_loop(is_restart, &
     !
     ! Hartree contribution to the Hamiltonian
     !
-    if( .NOT. pbc_ ) then
-      if( .NOT. calc_type%is_core ) then
-        call calculate_hartree(basis, p_matrix, hamiltonian_hartree, eh=en_gks%hartree)
+    if( .NOT. calc_type%is_core ) then
+      if( .NOT. pbc_ ) then
+          call calculate_hartree(basis, p_matrix, hamiltonian_hartree, eh=en_gks%hartree)
       else
-        ! is_core completely neglects the electron-electron interaction. (This is exact for 1 electron.)
-        hamiltonian_hartree(:, :) = 0.0_dp
-        en_gks%hartree = 0.0_dp
+          call setup_hartree_periodic(basis, p_matrix, hamiltonian_hartree, en_gks%hartree)
       endif
     else
-      call setup_hartree_periodic(basis, p_matrix, hamiltonian_hartree, en_gks%hartree)
+      ! is_core completely neglects the electron-electron interaction. (This is exact for 1 electron.)
+      hamiltonian_hartree(:, :) = 0.0_dp
+      en_gks%hartree = 0.0_dp
     endif
 
     do ispin=1, nspin
