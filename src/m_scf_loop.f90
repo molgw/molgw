@@ -157,9 +157,11 @@ subroutine scf_loop(is_restart, &
     !
     if( .NOT. calc_type%is_core ) then
       if( .NOT. pbc_ ) then
-          call calculate_hartree(basis, p_matrix, hamiltonian_hartree, eh=en_gks%hartree)
+        call calculate_hartree(basis, p_matrix, hamiltonian_hartree, eh=en_gks%hartree)
       else
-          call setup_hartree_periodic(basis, p_matrix, hamiltonian_hartree, en_gks%hartree)
+        !
+        ! Don't do anything since hartree will be contained in HXC
+        !
       endif
     else
       ! is_core completely neglects the electron-electron interaction. (This is exact for 1 electron.)
@@ -185,7 +187,10 @@ subroutine scf_loop(is_restart, &
       if( .NOT. pbc_ ) then
         call dft_exc_vxc_batch(BATCH_SIZE, basis, occupation, c_matrix, hamiltonian_xc, en_gks%xc)
       else
-        call setup_vxc_periodic(basis, hamiltonian_xc, en_gks%xc)
+        !
+        ! With PBC, hamiltonian_xc is actually H+XC hamiltonian
+        !
+        call setup_hxc_periodic(basis, p_matrix, hamiltonian_xc, en_gks%hartree, en_gks%xc)
       endif
     endif
 

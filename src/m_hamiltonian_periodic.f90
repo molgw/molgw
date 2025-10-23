@@ -452,20 +452,47 @@ end subroutine setup_nucleus_periodic
 
 
 !=========================================================================
-subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree)
+subroutine setup_hxc_periodic(basis, p_matrix, h_ao, ehartree, exc)
+  implicit none
+  type(basis_set), intent(in) :: basis
+  class(*), intent(in)  :: p_matrix(:, :, :)
+  real(dp), intent(out) :: h_ao(:, :, :)
+  real(dp), intent(out) :: ehartree, exc
+  !=====
+  real(dp), allocatable :: vloc(:, :)
+  !=====
+
+  allocate(vloc(nfft_local, nspin))
+  vloc(:, :) = 0.0_dp
+
+  call setup_hartree_periodic(basis, p_matrix, vloc, ehartree)
+
+  call setup_vxc_periodic(basis, vloc, exc)
+
+  call calculate_hao_periodic(basis, vloc, h_ao)
+
+  deallocate(vloc)
+
+end subroutine setup_hxc_periodic
+
+
+!=========================================================================
+subroutine setup_hartree_periodic(basis, p_matrix, vloc, ehartree, h_ao)
   implicit none
 
   type(basis_set), intent(in) :: basis
   class(*), intent(in)  :: p_matrix(:, :, :)
-  real(dp), intent(out) :: h_ao(:, :)
+  real(dp), intent(inout) :: vloc(:, :)
   real(dp), intent(out) :: ehartree
+  real(dp), intent(out), optional :: h_ao(:, :)
   !=====
   logical, save         :: first_step = .TRUE.
   logical               :: rhoelecr_was_read
   integer               :: timing_xxdft_hartree, rhofile
+  integer               :: ispin
   real(dp), allocatable :: p_matrix_local(:, :, :)
-  real(dp) :: vhartreegrid(nfft_local, nspin)
-  real(dp) :: rhor_integral
+  real(dp)              :: vhartreegrid(nfft_local)
+  real(dp)              :: rhor_integral
   !real(dp) :: dr(3, 3)
   !=====
 
@@ -528,19 +555,24 @@ subroutine setup_hartree_periodic(basis, p_matrix, h_ao, ehartree)
     write(stdout, '(1x,a,f10.6)') 'Renormalize it with factor: ', electrons / rhor_integral
     rhoelecr(:, :) = rhoelecr(:, :) * electrons / rhor_integral
   endif
-  call poisson_solver_fft(rhoelecr(:, 1), vhartreegrid(:, 1)) 
+  call poisson_solver_fft(rhoelecr(:, 1), vhartreegrid) 
 
-  ehartree = 0.5_dp * SUM( rhoelecr * vhartreegrid ) * volume / REAL(nfft_global, KIND=dp)
+  ehartree = 0.5_dp * SUM( SUM(rhoelecr(:, :), DIM=2) * vhartreegrid ) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(ehartree)
   write(stdout,'(1x,a,f16.8)') 'Hartree energy (Ha): ', ehartree
 
-  ! Spin channel 1 will contain the total Hartree potential
-  vhartreegrid(:, 1) = SUM(vhartreegrid(:, :), DIM=2)
 
-  call calculate_hao_periodic(basis, vhartreegrid(:, 1), h_ao)
-  call dump_out_matrix(.FALSE., '=== Hartree contribution (FFTW) ===', h_ao)
+  !
+  ! Add hartree potential to the total local potential
+  !
+  do ispin=1, nspin
+    vloc(:, ispin) = vloc(:, ispin) + vhartreegrid(:)
+  enddo
 
-
+  if( PRESENT(h_ao) ) then
+    call calculate_hao_periodic(basis, vhartreegrid, h_ao)
+    call dump_out_matrix(.FALSE., '=== Hartree contribution (FFTW) ===', h_ao)
+  endif
 
   call stop_clock(timing_xxdft_hartree)
 
@@ -549,12 +581,13 @@ end subroutine setup_hartree_periodic
 
 
 !=========================================================================
-subroutine setup_vxc_periodic(basis, vxc_ao, exc_xc, dft_xc_in)
+subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
   implicit none
 
   type(basis_set), intent(in) :: basis
-  real(dp), intent(out)       :: vxc_ao(:, :, :)
+  real(dp), intent(inout)     :: vloc(:, :)
   real(dp), intent(out)       :: exc_xc
+  real(dp), intent(out), optional :: vxc_ao(:, :, :)
   type(dft_xc_info), intent(in), optional :: dft_xc_in(:)
   !=====
   real(dp), parameter            :: TOL_RHO = 1.0e-9_dp
@@ -639,10 +672,14 @@ subroutine setup_vxc_periodic(basis, vxc_ao, exc_xc, dft_xc_in)
   call grid%sum(vxc_avg)
   write(stdout, '(1x,a,f12.5)') 'Average vxc (eV): ', vxc_avg * Ha_eV
 
-  call start_clock(timing_xxdft_vxc)
-  call calculate_hao_periodic(basis, vxcgrid, vxc_ao)
-  call stop_clock(timing_xxdft_vxc)
+  !
+  ! Add XC potential to the total local potential
+  !
+  vloc(:, :) = vloc(:, :) + vxcgrid(:, :)
 
+  if( PRESENT(vxc_ao) ) then
+    call calculate_hao_periodic(basis, vxcgrid, vxc_ao)
+  endif
 
   call stop_clock(timing_xxdft_xc)
 
@@ -684,6 +721,9 @@ end subroutine calculate_density_periodic
 
 
 !=========================================================================
+! From v_local(r) to H_alphabeta
+! works with or without spin index
+!
 subroutine calculate_hao_periodic(basis, vr, h_ao)
   implicit none
 
