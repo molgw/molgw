@@ -162,6 +162,7 @@ subroutine scf_loop(is_restart, &
         !
         ! Don't do anything since hartree will be contained in HXC
         !
+        hamiltonian_hartree(:, :) = 0.0_dp
       endif
     else
       ! is_core completely neglects the electron-electron interaction. (This is exact for 1 electron.)
