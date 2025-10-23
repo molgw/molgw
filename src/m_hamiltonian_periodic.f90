@@ -707,8 +707,10 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
   rhor(:, :) = 0.0_dp
   do ispin=1, nspin
     ! phi_α(r) * ( P_αβ * phi_β(r) )
+    call start_clock(timing_tmp1)
     call DGEMM('N', 'N', basis%nbf, nfft_local, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
                bfr(:, :), basis%nbf, 0.0d0, tmp, basis%nbf)
+    call stop_clock(timing_tmp1)
   
     rhor(:, ispin) = rhor(:, ispin) + SUM( bfr(:, :) * tmp(:, :), DIM=1)
   enddo
@@ -721,14 +723,14 @@ end subroutine calculate_density_periodic
 
 
 !=========================================================================
-! From v_local(r) to H_alphabeta
+! From vloc(r) to H_αβ
 ! works with or without spin index
 !
-subroutine calculate_hao_periodic(basis, vr, h_ao)
+subroutine calculate_hao_periodic(basis, vloc, h_ao)
   implicit none
 
   type(basis_set), intent(in) :: basis
-  real(dp), intent(in) :: vr(..)
+  real(dp), intent(in) :: vloc(..)
   real(dp), intent(out) :: h_ao(..)
   !=====
   integer :: nx=1
@@ -737,38 +739,60 @@ subroutine calculate_hao_periodic(basis, vr, h_ao)
   !=====
 
 
-
   call start_clock(timing_pbc_potential_to_hao)
+
+  write(stdout,'(/,1x,a)') 'From local potential to hamiltonian in AO basis'
 
   select rank(h_ao)
   !
-  ! vr and h_ao have a spin index
+  ! vloc and h_ao have a spin index
   !
   rank(3)
-    select rank(vr)
+    select rank(vloc)
       rank(2)
       h_ao(:, :, :) = 0.0_dp
       do ispin=1, nspin
         !do jbf=1, basis%nbf
         !  do ibf=1, basis%nbf
-        !    h_ao(ibf, jbf, ispin) = h_ao(ibf, jbf, ispin) + SUM( bfr(ibf, :) * vr(:, ispin) * bfr(jbf, :) )
+        !    h_ao(ibf, jbf, ispin) = h_ao(ibf, jbf, ispin) + SUM( bfr(ibf, :) * vloc(:, ispin) * bfr(jbf, :) )
         !  enddo
         !enddo
 
         do ifft_local=1, nfft_local
-          call DSYR('L', basis%nbf, vr(ifft_local, ispin), bfr(:, ifft_local), 1, h_ao(:, :, ispin), basis%nbf)
+          call DSYR('L', basis%nbf, vloc(ifft_local, ispin), bfr(:, ifft_local), 1, h_ao(:, :, ispin), basis%nbf)
         enddo
 
         !block
-        !real(dp), allocatable :: tmp(:, :)
-        !allocate(tmp, MOLD=bfr)
-        !do concurrent(ifft_local=1:nfft_local)
-        !  tmp(:, ifft_local) = bfr(:, ifft_local) * vr(ifft_local, ispin)
-        !enddo
-        !call DSYR2K('L', 'N', basis%nbf, nfft_local, 0.5d0, bfr, basis%nbf, &
-        !            tmp, basis%nbf, 0.0d0, h_ao(:, :, ispin), basis%nbf)
-        !deallocate(tmp)
+        !  real(dp), allocatable :: tmp1(:, :)
+        !  real(dp), allocatable :: tmp2(:, :)
+        !  integer :: npos, nneg, ipos, ineg
+        !  npos = COUNT( vloc(:, ispin) > 0.0_dp )
+        !  nneg = COUNT( vloc(:, ispin) < 0.0_dp )
+        !  allocate(tmp1(basis%nbf, npos))
+        !  allocate(tmp2(basis%nbf, nneg))
+        !  ipos=0
+        !  ineg=0
+        !  call start_clock(timing_tmp9)
+        !  do ifft_local=1, nfft_local
+        !    if( (vloc(ifft_local, ispin) > 0.0_dp) ) then
+        !      ipos = ipos + 1
+        !      tmp1(:, ipos) = bfr(:, ifft_local) * SQRT(vloc(ifft_local, ispin))
+        !    else
+        !      ineg = ineg + 1
+        !      tmp2(:, ineg) = bfr(:, ifft_local) * SQRT(-vloc(ifft_local, ispin))
+        !    endif
+        !  enddo
+        !  call stop_clock(timing_tmp9)
+
+        !  call DSYRK('L', 'N', basis%nbf, npos, 1.0d0, tmp1, basis%nbf, &
+        !             0.0_dp, h_ao(:, :, ispin), basis%nbf)
+        !  call DSYRK('L', 'N', basis%nbf, nneg,-1.0d0, tmp2, basis%nbf, &
+        !             1.0_dp, h_ao(:, :, ispin), basis%nbf)
+
+
+        !  deallocate(tmp1, tmp2)
         !end block
+
 
         call matrix_lower_to_full(h_ao(:, :, ispin))
 
@@ -781,19 +805,19 @@ subroutine calculate_hao_periodic(basis, vr, h_ao)
     end select
 
   !
-  ! vr and h_ao don't have a spin index
+  ! vloc and h_ao don't have a spin index
   !
   rank(2)
-    select rank(vr)
+    select rank(vloc)
     rank(1)
       h_ao(:, :) = 0.0_dp
       !do jbf=1, basis%nbf
       !  do ibf=1, basis%nbf
-      !    h_ao(ibf, jbf) = h_ao(ibf, jbf) + SUM( bfr(ibf, :) * vr(:) * bfr(jbf, :) )
+      !    h_ao(ibf, jbf) = h_ao(ibf, jbf) + SUM( bfr(ibf, :) * vloc(:) * bfr(jbf, :) )
       !  enddo
       !enddo
       do ifft_local=1, nfft_local
-        call DSYR('L', basis%nbf, vr(ifft_local), bfr(:, ifft_local), 1, h_ao(:, :), basis%nbf)
+        call DSYR('L', basis%nbf, vloc(ifft_local), bfr(:, ifft_local), 1, h_ao(:, :), basis%nbf)
       enddo
       call matrix_lower_to_full(h_ao(:, :))
 
@@ -1551,6 +1575,7 @@ subroutine calculate_basis_functions_periodic(basis)
   !$OMP PARALLEL PRIVATE(li, ni_cart, ibf1, ibf1_cart, ibf2, basis_function_r_cart, dr)
   !$OMP DO
   do ishell=1, basis%nshell
+    call start_clock(timing_tmp4)
     li      = basis%shell(ishell)%am
     ni_cart = number_basis_function_am('CART',li)
     ibf1      = basis%shell(ishell)%istart
@@ -1575,14 +1600,19 @@ subroutine calculate_basis_functions_periodic(basis)
     enddo
 
     allocate(basis_function_r_cart(ni_cart, nfft_local))
+    call stop_clock(timing_tmp4)
 
+    call start_clock(timing_tmp2)
     do ifft=1, nfft_local
       do i_cart=1, ni_cart
         basis_function_r_cart(i_cart, ifft) = eval_basis_function2(basis%bfc(ibf1_cart + i_cart - 1), dr(:, ifft))
       enddo
     enddo
+    call stop_clock(timing_tmp2)
 
-    bfr(ibf1:ibf2, :) = MATMUL(  TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)) , basis_function_r_cart(:, :) )
+    call start_clock(timing_tmp3)
+    bfr(ibf1:ibf2, :) = MATMUL( TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)) , basis_function_r_cart(:, :) )
+    call stop_clock(timing_tmp3)
     deallocate(basis_function_r_cart)
 
   enddo
