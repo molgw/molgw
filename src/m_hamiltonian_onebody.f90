@@ -1205,8 +1205,8 @@ subroutine recalc_nucleus(basis_t, basis_p, hamiltonian_nucleus)
   write(stdout, '(/,1x,a)') 'Recalculate nucleus-electron part of the Hamiltonian (internal)'
 #endif
 
-  hamiltonian_nucleus( :, basis_t%nbf+1: ) = 0.0_dp
-  hamiltonian_nucleus( basis_t%nbf+1:, 1:basis_t%nbf ) = 0.0_dp
+  hamiltonian_nucleus( :, basis_t%nbf+1: ) = 0.0_dp ! coin haut droit
+  hamiltonian_nucleus( basis_t%nbf+1:, 1:basis_t%nbf ) = 0.0_dp ! coin bas gauche
 
   do jshell = 1, basis_p%nshell
     lj      = basis_p%shell(jshell)%am
@@ -2086,10 +2086,11 @@ end subroutine setup_gos_ao
 !=========================================================================
 ! Calculate ( \alpha | V_ecp - Z/r | \beta )
 !
-subroutine setup_nucleus_ecp(basis, hamiltonian_nucleus)
+subroutine setup_nucleus_ecp(basis, hamiltonian_nucleus, atom_list)
   implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(inout)     :: hamiltonian_nucleus(basis%nbf, basis%nbf)
+  integer, intent(in), optional :: atom_list(:)
   !=====
   !=====
 
@@ -2101,9 +2102,9 @@ subroutine setup_nucleus_ecp(basis, hamiltonian_nucleus)
 
   select case(ecp(1)%ecp_format)
   case(ECP_GTH)
-    call setup_nucleus_ecp_analytic(basis, hamiltonian_nucleus)
+    call setup_nucleus_ecp_analytic(basis, hamiltonian_nucleus, atom_list)
   case default
-    call setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus)
+    call setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus, atom_list)
   end select
 
   call dump_out_matrix(.FALSE., '=== ECP Nucleus potential contribution ===', hamiltonian_nucleus)
@@ -2117,10 +2118,11 @@ end subroutine setup_nucleus_ecp
 !=========================================================================
 ! Calculate ( \alpha | V_ecp - Z/r | \beta ) with a real space quadrature
 !
-subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus)
+subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus, atom_list)
   implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(inout)     :: hamiltonian_nucleus(basis%nbf, basis%nbf)
+  integer, intent(in), optional :: atom_list(:)
   !=====
   integer              :: ibf, jbf
   integer              :: icenter
@@ -2140,12 +2142,15 @@ subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus)
   logical              :: element_has_ecp
   real(dp), allocatable :: vr(:), ur(:)
   real(dp), allocatable :: kb(:, :)
-  real(dp)             :: hamiltonian_ecp(basis%nbf, basis%nbf)
+!  real(dp)             :: hamiltonian_ecp(basis%nbf, basis%nbf)
+  real(dp), allocatable :: hamiltonian_ecp(:, :)
   real(dp), allocatable :: hamiltonian_kb(:, :)
   !=====
 
+  allocate(hamiltonian_ecp(basis%nbf, basis%nbf))
   hamiltonian_ecp(:, :) = 0.0_dp
 
+  write(stdout, *) 'setup_nucleus_ecp_quadrature'
 
   n1 = nangular_ecp
   select case(nangular_ecp)
@@ -2180,6 +2185,9 @@ subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus)
     call die('setup_nucleus_ecp_quadrature: Lebedev grid is not available')
   end select
 
+  if( PRESENT(atom_list) ) then
+    write(stdout, '(1x,a,i5,a)') 'Only calculate the contribution from ', SIZE(atom_list), ' nucleus/nuclei'
+  endif
 
   if( ANY(ecp(:)%ecp_format==ECP_PSP6) .OR. ANY(ecp(:)%ecp_format==ECP_PSP8) ) then
     if( .NOT. allocated(hamiltonian_kb) ) then
@@ -2188,7 +2196,11 @@ subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus)
     endif
   endif
 
-  do icenter=1, ncenter_nuclei
+  do icenter=1, ncenter_nuclei 
+    ! Skip the contribution if icenter is not contained in the list
+    if( PRESENT(atom_list) ) then
+      if( ALL(atom_list(:) /= icenter ) ) cycle
+    endif
     element_has_ecp = .FALSE.
     do ie=1, nelement_ecp
       if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then
@@ -2357,6 +2369,7 @@ subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus)
     ! non-local numerical grid contribution
     select case(ecp(ie)%ecp_format)
     case(ECP_PSP6, ECP_PSP8)
+      hamiltonian_kb(:,:) = 0.0_dp
       call world%sum(kb)
       iproj = 0
       do iecp=1, necp
@@ -2384,8 +2397,15 @@ subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus)
   enddo ! icenter
 
   call world%sum(hamiltonian_ecp)
+  if (allocated(hamiltonian_kb)) call world%sum(hamiltonian_kb)
+
+  hamiltonian_ecp = 0.5_dp * (hamiltonian_ecp + transpose(hamiltonian_ecp))
+  if (allocated(hamiltonian_kb)) then
+    hamiltonian_kb = 0.5_dp * (hamiltonian_kb + transpose(hamiltonian_kb))
+  endif
 
   hamiltonian_nucleus(:, :) = hamiltonian_nucleus(:, :) + hamiltonian_ecp(:, :)
+  deallocate(hamiltonian_ecp)
   if( ALLOCATED(hamiltonian_kb) ) then
     hamiltonian_nucleus(:, :) = hamiltonian_nucleus(:, :) + hamiltonian_kb(:, :)
     deallocate(hamiltonian_kb)
@@ -2393,14 +2413,14 @@ subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus)
 
 end subroutine setup_nucleus_ecp_quadrature
 
-
 !=========================================================================
 ! Calculate ( \alpha | V_ecp - Z/r | \beta ) with an analytic formula for GTH pseudos
 !
-subroutine setup_nucleus_ecp_analytic(basis, hamiltonian_nucleus)
+subroutine setup_nucleus_ecp_analytic(basis, hamiltonian_nucleus, atom_list)
   implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(inout)     :: hamiltonian_nucleus(basis%nbf, basis%nbf)
+  integer, intent(in), optional :: atom_list(:)
   !=====
   integer              :: ishell, jshell
   integer              :: ibf1, ibf2, jbf1, jbf2
@@ -2442,10 +2462,19 @@ subroutine setup_nucleus_ecp_analytic(basis, hamiltonian_nucleus)
   call die('setup_nucleus_ecp_analytic: GTH pseudo potentials need LIBCINT')
 #endif
 
+  if( PRESENT(atom_list) ) then
+    write(stdout, '(1x,a,i5,a)') 'Only calculate the contribution from ', SIZE(atom_list), ' nucleus/nuclei'
+  endif
+
 
   hamiltonian_ecp(:, :) = 0.0_dp
 
   do icenter=1, ncenter_nuclei
+    ! Skip the contribution if icenter is not contained in the list
+    if( PRESENT(atom_list) ) then
+      if( ALL(atom_list(:) /= icenter ) ) cycle
+    endif
+
     ! MPI parallelization over ECP centers
     if( MODULO(icenter-1, world%nproc) /= world%rank ) cycle
 
@@ -2458,15 +2487,15 @@ subroutine setup_nucleus_ecp_analytic(basis, hamiltonian_nucleus)
     enddo
     if( .NOT. element_has_ecp ) cycle
 
-    C(:) = xatom(:, icenter)
-    hamiltonian_tmp(:, :) = 0.0_dp
+    C(:) = xatom(:, icenter)  ! coodinates of the atomic center
+    hamiltonian_tmp(:, :) = 0.0_dp ! accumulates the local + non_local contribution for a given center
 
     !
     ! First, the local part
     !
-    allocate(env_local, SOURCE=basis%LIBCINT_env)
+    allocate(env_local, SOURCE=basis%LIBCINT_env) ! copie des environement LIBCINT dans env_local
     allocate(env_local_erf, SOURCE=basis%LIBCINT_env)
-    call set_rinv_origin_libcint(xatom(:, icenter), env_local)
+    call set_rinv_origin_libcint(xatom(:, icenter), env_local) ! place les origines des integrales 1/r en C
     call set_rinv_origin_libcint(xatom(:, icenter), env_local_erf)
     alphapp = 1.0_dp / SQRT(2.0_dp) / ecp(ie)%gth_rpploc   ! \alpha_pp in Krack's notations
     ! LIBCINT needs the square since the input is the Gaussian distribution exponent
@@ -2639,7 +2668,7 @@ subroutine setup_nucleus_ecp_analytic(basis, hamiltonian_nucleus)
           ijpl = ijpl + 1
           if( ipl == jpl ) then
             call DSYRK('L', 'N', basis%nbf, ni, ecp(ie)%gth_hijl(ijpl, il), proj_i(:, :, ipl), basis%nbf, &
-                       1.0_dp, hamiltonian_tmp,basis%nbf)
+                       1.0_dp, hamiltonian_tmp, basis%nbf)
           else
             call DSYR2K('L', 'N', basis%nbf, ni, ecp(ie)%gth_hijl(ijpl, il), proj_i(:, :,ipl),basis%nbf, &
                         proj_i(:, :, jpl), basis%nbf, 1.0_dp, hamiltonian_tmp, basis%nbf)
@@ -2676,6 +2705,918 @@ subroutine setup_nucleus_ecp_analytic(basis, hamiltonian_nucleus)
 
 end subroutine setup_nucleus_ecp_analytic
 
+!=========================================================================
+! Calculate ( \alpha | V_ecp - Z/r | \beta )
+!
+subroutine recalc_nucleus_ecp(basis, basis_t, basis_p, hamiltonian_nucleus, atom_list)
+  implicit none
+  type(basis_set), intent(in) :: basis, basis_t, basis_p
+  real(dp), intent(inout)     :: hamiltonian_nucleus(basis%nbf, basis%nbf)
+  integer, intent(in), optional :: atom_list(:)
+  !=====
+  !=====
+
+  ! Check if there are some ECP
+  if( nelement_ecp == 0 ) return
+
+
+  call start_clock(timing_ecp)
+
+  select case(ecp(1)%ecp_format)
+  case(ECP_GTH)
+    call recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucleus)
+  case default
+    call recalc_nucleus_ecp_quadrature(basis, basis_t, basis_p, hamiltonian_nucleus)
+  end select
+
+  call dump_out_matrix(.FALSE., '=== ECP Nucleus potential contribution ===', hamiltonian_nucleus)
+
+
+  call stop_clock(timing_ecp)
+
+end subroutine recalc_nucleus_ecp
+
+!=========================================================================
+! Calculate ( \alpha | V_ecp - Z/r | \beta ) with a real space quadrature
+!
+subroutine recalc_nucleus_ecp_quadrature(basis, basis_t, basis_p, hamiltonian_nucleus)
+  implicit none
+  type(basis_set), intent(in) :: basis, basis_t, basis_p
+  real(dp), intent(inout)     :: hamiltonian_nucleus(basis%nbf, basis%nbf)
+  !=====
+  integer              :: ibf, jbf
+  integer              :: icenter
+  integer              :: iecp
+  integer              :: iproj, nproj, iproj_TT
+  integer              :: mm
+  real(dp)             :: rr(3)
+  real(dp)             :: basis_function_r(basis%nbf)
+  integer              :: iradial
+  integer              :: i1, n1
+  real(dp)             :: xtmp, phi, cos_theta
+  real(dp)             :: wxa(nradial_ecp), xa(nradial_ecp)
+  real(dp)             :: w1(nangular_ecp), x1(nangular_ecp), y1(nangular_ecp), z1(nangular_ecp)
+  real(dp), allocatable :: int_fixed_r(:, :)
+  real(dp), external    :: real_spherical_harmonics
+  integer              :: necp, ie
+  logical              :: element_has_ecp
+  real(dp), allocatable :: vr(:), ur(:)
+  real(dp), allocatable :: kb(:, :)
+  real(dp)             :: hamiltonian_ecp(basis%nbf, basis%nbf)
+  real(dp), allocatable :: hamiltonian_kb(:, :)
+  !=====
+
+  hamiltonian_ecp(:, :) = 0.0_dp
+
+  n1 = nangular_ecp
+  select case(nangular_ecp)
+  case(6)
+    call ld0006(x1, y1, z1, w1, n1)
+  case(14)
+    call ld0014(x1, y1, z1, w1, n1)
+  case(26)
+    call ld0026(x1, y1, z1, w1, n1)
+  case(38)
+    call ld0038(x1, y1, z1, w1, n1)
+  case(50)
+    call ld0050(x1, y1, z1, w1, n1)
+  case(74)
+    call ld0074(x1, y1, z1, w1, n1)
+  case(86)
+    call ld0086(x1, y1, z1, w1, n1)
+  case(110)
+    call ld0110(x1, y1, z1, w1, n1)
+  case(146)
+    call ld0146(x1, y1, z1, w1, n1)
+  case(170)
+    call ld0170(x1, y1, z1, w1, n1)
+  case(230)
+    call ld0230(x1, y1, z1, w1, n1)
+  case(302)
+    call ld0302(x1, y1, z1, w1, n1)
+  case(434)
+    call ld0434(x1, y1, z1, w1, n1)
+  case default
+    write(stdout, *) 'grid points: ', nangular_ecp
+    call die('setup_nucleus_ecp_quadrature: Lebedev grid is not available')
+  end select
+
+  if( ANY(ecp(:)%ecp_format==ECP_PSP6) .OR. ANY(ecp(:)%ecp_format==ECP_PSP8) ) then
+    if( .NOT. allocated(hamiltonian_kb) ) then
+      allocate(hamiltonian_kb(basis%nbf, basis%nbf))
+      hamiltonian_kb(:, :) = 0.0_dp
+    endif
+  endif
+
+  do icenter=1, natom
+    element_has_ecp = .FALSE.
+    do ie=1, nelement_ecp
+      if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then
+        element_has_ecp = .TRUE.
+        exit
+      endif
+    enddo
+
+    if( .NOT. element_has_ecp ) cycle
+
+    necp = ecp(ie)%necp
+
+
+    select case(ecp(ie)%ecp_format)
+    case(ECP_PSP6, ECP_PSP8)
+      do iradial=1, nradial_ecp
+        xa(iradial)  = ecp(ie)%rad(iradial)
+        if(iradial == 1) then
+          wxa(iradial) = ecp(ie)%rad(iradial+1)-ecp(ie)%rad(iradial)
+        else
+          wxa(iradial) = 0.5_dp * ( ecp(ie)%rad(iradial+1)-ecp(ie)%rad(iradial-1) )
+        endif
+      enddo
+    case default
+      do iradial=1, nradial_ecp
+        xtmp = ( iradial - 0.5_dp ) / REAL(nradial_ecp, dp)
+        xa(iradial)   = -5.0_dp * log( 1.0_dp - xtmp**3)
+        wxa(iradial)  = 3.0_dp * 5.0_dp * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial_ecp, dp)
+      enddo
+    end select
+
+    nproj = 0
+    do iecp=1, necp
+      if( ecp(ie)%lk(iecp) /= -1 ) then   ! -1 encodes a local component
+        nproj = nproj + number_basis_function_am('PURE', ecp(ie)%lk(iecp))
+      endif
+    enddo
+    select case(ecp(ie)%ecp_format)
+    case(ECP_PSP6)
+      allocate(vr(necp), ur(necp))
+      allocate(kb(basis%nbf, nproj))
+      kb(:, :) = 0.0_dp
+    case(ECP_PSP8)
+      allocate(vr(necp))
+      allocate(kb(basis%nbf, nproj))
+      kb(:, :) = 0.0_dp
+    case(ECP_NWCHEM)
+      allocate(int_fixed_r(basis%nbf, nproj))
+    end select
+
+
+    do iradial=1, nradial_ecp
+      if( MODULO(iradial-1, world%nproc) /= world%rank ) cycle
+
+      ! avoid x=0, divergence in the local component and 0 weight anyway
+      if( ABS(xa(iradial)) < 1.0e-10_dp ) cycle
+
+      select case(ecp(ie)%ecp_format)
+      case(ECP_PSP6, ECP_PSP8)
+        vr(:) = ecp(ie)%vpspll(iradial, :)
+        if( ALLOCATED(ur) ) then
+          ur(:) = ecp(ie)%wfll(iradial, :)
+        endif
+        ! remove the Coulomb part for the local part: it is treated in the regular routine setup_nucleus
+        do iecp=1, necp
+          if( ecp(ie)%lk(iecp) == -1 ) then   ! -1 encodes a local component
+            vr(iecp) = vr(iecp) + zvalence(icenter) /  xa(iradial)
+          endif
+        enddo
+      end select
+
+      if( ALLOCATED(int_fixed_r) ) int_fixed_r(:, :) = 0.0_dp
+      do i1=1, nangular_ecp
+        rr(1) = xa(iradial) * x1(i1) + xatom(1, icenter)
+        rr(2) = xa(iradial) * y1(i1) + xatom(2, icenter)
+        rr(3) = xa(iradial) * z1(i1) + xatom(3, icenter)
+        call calculate_basis_functions_r(basis, rr, basis_function_r)
+
+        cos_theta = z1(i1)
+        phi       = ATAN2(y1(i1), x1(i1))
+
+        iproj = 0
+        iproj_TT = 0
+        do iecp=1, necp
+
+          !
+          ! Treat the local potential:
+          !
+          if( ecp(ie)%lk(iecp) == -1 ) then
+            select case(ecp(ie)%ecp_format)
+            case(ECP_NWCHEM)
+              ! <P|1/R|P> contribution
+              call DSYR('L', basis_p%nbf, w1(i1) * 4.0_dp * pi * wxa(iradial) * xa(iradial)**2 * ecp(ie)%dk(iecp) &
+                         * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2), &
+                         basis_function_r(basis_t%nbf+1:), 1, hamiltonian_ecp(basis_t%nbf+1:, basis_t%nbf+1:), basis_t%nbf+1)
+              ! <T|1/R|P> contribution
+              call DGER(basis_t%nbf, basis_p%nbf, w1(i1) * 4.0_dp * pi * wxa(iradial) * xa(iradial)**2 * ecp(ie)%dk(iecp) & 
+                         * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2), &
+                         basis_function_r(:basis_t%nbf), 1, basis_function_r(basis_t%nbf+1:), 1, &
+                         hamiltonian_ecp(:basis_t%nbf, basis_t%nbf+1:), basis_t%nbf)
+            case(ECP_PSP6, ECP_PSP8)
+              ! <P|1/R|P> contribution
+              call DSYR('L', basis_p%nbf, w1(i1) * 4.0_dp * pi * wxa(iradial) * xa(iradial)**2 * vr(iecp), &
+                         basis_function_r(basis_t%nbf+1:), 1, hamiltonian_ecp(basis_t%nbf+1:, basis_t%nbf+1:), basis_t%nbf+1)
+              ! <T|1/R|P> contribution
+              call DGER(basis_t%nbf, basis_p%nbf, w1(i1) * 4.0_dp * pi * wxa(iradial) * xa(iradial)**2 * vr(iecp), &
+                         basis_function_r(:basis_t%nbf), 1, basis_function_r(basis_t%nbf+1:), 1, &
+                         hamiltonian_ecp(:basis_t%nbf, basis_t%nbf+1:), basis_t%nbf)
+            end select
+          else
+            !
+            ! non local case
+            !
+            select case(ecp(ie)%ecp_format)
+            case(ECP_NWCHEM)
+              do mm=-ecp(ie)%lk(iecp), ecp(ie)%lk(iecp)
+                iproj = iproj + 1
+                ! <P|1/R|P> and <T|1/R|P> contribution
+                int_fixed_r(basis_t%nbf+1:, iproj) = int_fixed_r(basis_t%nbf+1:, iproj) + basis_function_r(basis_t%nbf+1:) &
+                                          * real_spherical_harmonics(ecp(ie)%lk(iecp), mm, cos_theta, phi) &
+                                             * w1(i1) * 4.0_dp * pi
+                ! <T|1/R|P> contribution
+                int_fixed_r(:basis_t%nbf, iproj) = int_fixed_r(:basis_t%nbf, iproj) + basis_function_r(:basis_t%nbf) &
+                                          * real_spherical_harmonics(ecp(ie)%lk(iecp), mm, cos_theta, phi) &
+                                             * w1(i1) * 4.0_dp * pi
+              enddo
+            case(ECP_PSP6)
+              do mm=-ecp(ie)%lk(iecp), ecp(ie)%lk(iecp)
+                iproj = iproj + 1
+                ! <P|1/R|P> and <T|1/R|P> contribution
+                kb(basis_t%nbf+1:, iproj) = kb(basis_t%nbf+1:, iproj) + basis_function_r(basis_t%nbf+1:) &
+                                  * real_spherical_harmonics(ecp(ie)%lk(iecp), mm, cos_theta, phi) &
+                                     * w1(i1) * 4.0_dp * pi *  wxa(iradial) * xa(iradial) &
+                                         * vr(iecp) * ur(iecp)
+                ! <T|1/R|P> contribution
+                kb(:basis_t%nbf, iproj) = kb(:basis_t%nbf, iproj) + basis_function_r(:basis_t%nbf) &
+                                  * real_spherical_harmonics(ecp(ie)%lk(iecp), mm, cos_theta, phi) &
+                                     * w1(i1) * 4.0_dp * pi *  wxa(iradial) * xa(iradial) &
+                                         * vr(iecp) * ur(iecp)
+              enddo
+            case(ECP_PSP8)
+              do mm=-ecp(ie)%lk(iecp), ecp(ie)%lk(iecp)
+                iproj = iproj + 1
+                ! <P|1/R|P> and <T|1/R|P> contribution
+                kb(basis_t%nbf+1:, iproj) = kb(basis_t%nbf+1:, iproj) + basis_function_r(basis_t%nbf+1:) &
+                                  * real_spherical_harmonics(ecp(ie)%lk(iecp), mm, cos_theta, phi) &
+                                     * w1(i1) * 4.0_dp * pi *  wxa(iradial) * xa(iradial) &
+                                         * vr(iecp)
+                ! <T|1/R|P> contribution
+                kb(:basis_t%nbf, iproj) = kb(:basis_t%nbf, iproj) + basis_function_r(:basis_t%nbf) &
+                                  * real_spherical_harmonics(ecp(ie)%lk(iecp), mm, cos_theta, phi) &
+                                     * w1(i1) * 4.0_dp * pi *  wxa(iradial) * xa(iradial) &
+                                         * vr(iecp)
+              enddo
+            end select
+          endif
+
+        enddo ! iecp
+      enddo ! (theta, phi) points
+
+      ! non-local ECP contribution
+      if( ecp(ie)%ecp_format == ECP_NWCHEM ) then
+        iproj = 0
+        do iecp=1, necp
+          if( ecp(ie)%lk(iecp) /= -1 ) then
+            do mm=-ecp(ie)%lk(iecp), ecp(ie)%lk(iecp)
+              iproj = iproj + 1
+              ! <P|1/R|P> contribution
+              call DSYR('L', basis_p%nbf, wxa(iradial) * xa(iradial)**2 * ecp(ie)%dk(iecp) &
+                         * EXP( -ecp(ie)%zetak(iecp) *xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2), &
+                         int_fixed_r(basis_t%nbf+1:, iproj), 1, hamiltonian_ecp(basis_t%nbf+1:, basis_t%nbf+1:), basis_p%nbf)
+
+              ! <T|1/R|P> contribution
+              call DGER(basis_t%nbf, basis_p%nbf, wxa(iradial) * xa(iradial)**2 * ecp(ie)%dk(iecp) &
+                         * EXP( -ecp(ie)%zetak(iecp) *xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2), &
+                         int_fixed_r(:basis_t%nbf, iproj), 1, int_fixed_r(basis_t%nbf+1, iproj), 1, &
+                         hamiltonian_ecp(:basis_t%nbf, basis_t%nbf+1:), basis_t%nbf)
+            enddo
+          endif
+        enddo
+      endif
+    enddo  ! iradial
+
+
+    ! non-local numerical grid contribution
+    select case(ecp(ie)%ecp_format)
+    case(ECP_PSP6, ECP_PSP8)
+      call world%sum(kb)
+      iproj = 0
+      do iecp=1, necp
+        if( ecp(ie)%lk(iecp) /= -1 ) then
+          do mm=-ecp(ie)%lk(iecp), ecp(ie)%lk(iecp)
+            iproj = iproj + 1
+            ! <P|1/R|P> contribution
+            call DSYRK('L', 'N', basis_p%nbf, 1, ecp(ie)%ekb(iecp), kb(basis_t%nbf+1:, iproj), basis_p%nbf, &
+                        1.0_dp, hamiltonian_kb(basis_t%nbf+1:, basis_t%nbf+1:), basis_p%nbf)
+            ! <T|1/R|P> contribution
+            call DGEMM('N', 'T', basis_t%nbf, basis_p%nbf, 1, ecp(ie)%ekb(iecp), kb(:basis_t%nbf, iproj), basis_t%nbf, &
+                        kb(basis_t%nbf+1:,iproj), basis_p%nbf, 1.0_dp, hamiltonian_kb(:basis_t%nbf, basis_t%nbf+1:), basis_t%nbf)
+          enddo
+        endif
+      enddo
+    end select
+
+    ! symmetrizing the <P|1/R|P> contribution
+    if( ALLOCATED(hamiltonian_kb) ) then
+      do jbf = basis_t%nbf+1, basis%nbf
+         do ibf = jbf+1, basis%nbf
+            hamiltonian_ecp(jbf, ibf) = hamiltonian_ecp(ibf, jbf)
+            hamiltonian_kb(jbf, ibf)  = hamiltonian_kb(ibf, jbf)
+         enddo
+      enddo
+    else
+      do jbf = basis_t%nbf+1, basis%nbf
+         do ibf = jbf+1, basis%nbf
+            hamiltonian_ecp(jbf, ibf) = hamiltonian_ecp(ibf, jbf)
+         enddo
+      enddo
+    endif
+
+    ! symmetrizing the <T|1/R|P> contribution
+    if( ALLOCATED(hamiltonian_kb) ) then
+      do jbf = basis_t%nbf+1, basis%nbf
+         do ibf = 1, basis_t%nbf
+            hamiltonian_ecp(jbf, ibf) = hamiltonian_ecp(ibf, jbf)
+            hamiltonian_kb(jbf, ibf)  = hamiltonian_kb(ibf, jbf)
+         enddo
+      enddo
+    else
+      do jbf = basis_t%nbf+1, basis%nbf
+         do ibf = 1, basis_t%nbf
+            hamiltonian_ecp(jbf, ibf) = hamiltonian_ecp(ibf, jbf)
+         enddo
+      enddo
+    endif
+
+    if( ALLOCATED(kb) ) deallocate(kb)
+    if( ALLOCATED(int_fixed_r) ) deallocate(int_fixed_r)
+    if( ALLOCATED(ur) ) deallocate(ur)
+    if( ALLOCATED(vr) ) deallocate(vr)
+
+  enddo ! icenter
+
+  call world%sum(hamiltonian_ecp)
+
+  hamiltonian_nucleus(:, :) = hamiltonian_nucleus(:, :) + hamiltonian_ecp(:, :)
+  if( ALLOCATED(hamiltonian_kb) ) then
+    hamiltonian_nucleus(:, :) = hamiltonian_nucleus(:, :) + hamiltonian_kb(:, :)
+    deallocate(hamiltonian_kb)
+  endif
+
+end subroutine recalc_nucleus_ecp_quadrature
+
+!=========================================================================
+! Calculate ( \alpha | V_ecp - Z/r | \beta ) with an analytic formula for GTH pseudos
+!
+subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucleus)
+  implicit none
+  type(basis_set), intent(in) :: basis, basis_t, basis_p
+  real(dp), intent(inout)     :: hamiltonian_nucleus(basis%nbf, basis%nbf)
+  !=====
+  integer              :: ishell, jshell, iglobal, jglobal
+  integer              :: ibf1, ibf2, jbf1, jbf2
+  integer              :: ni, nj, ni_cart, nj_cart, nk_cart, li, lj, il, ibf, jbf, ijpl
+  integer              :: niA, njB, niA_cart, njB_cart, liA, ljB
+  integer              :: icenter
+  real(dp), allocatable :: matrix(:, :)
+  real(C_DOUBLE), allocatable        :: array_cart(:)
+  real(C_DOUBLE), allocatable        :: array_cart_C(:)
+  real(C_DOUBLE), allocatable        :: array_cart_Ctmp(:, :)
+  integer(C_INT)             :: amA, contrdepthA
+  real(C_DOUBLE)             :: A(3)
+  real(C_DOUBLE), allocatable :: alphaA(:)
+  real(C_DOUBLE), allocatable :: cA(:)
+  integer(C_INT)             :: amB, contrdepthB
+  real(C_DOUBLE)             :: B(3)
+  real(C_DOUBLE), allocatable :: alphaB(:)
+  real(C_DOUBLE), allocatable :: cB(:)
+  integer(C_INT)             :: amC, contrdepthC
+  real(C_DOUBLE)             :: C(3)
+  real(C_DOUBLE), allocatable :: alphaC(:)
+  real(C_DOUBLE), allocatable :: cC(:)
+  integer(C_INT) :: info, ipl, jpl
+  integer(C_INT) :: shls(2)
+  real(C_DOUBLE), allocatable :: env_local_erf(:)
+  real(C_DOUBLE), allocatable :: env_local(:)
+  real(dp)             :: alphapp
+  real(dp)             :: hamiltonian_ecp(basis%nbf, basis%nbf)
+  real(dp)             :: hamiltonian_tmp(basis%nbf, basis%nbf)
+  logical              :: element_has_ecp
+  integer, parameter :: LIBCINT_PTR_RINV_ZETA = 7
+  integer :: ie, iloc
+  real(dp), allocatable :: proj_i(:, :, :)
+  real(dp), allocatable :: proj_i_A(:, :, :)
+  real(dp), allocatable :: proj_i_B(:, :, :)
+  !=====
+
+
+#if defined(HAVE_LIBCINT)
+  write(stdout, '(/,a)') ' Setup nucleus-electron part of the Hamiltonian (LIBCINT)'
+#else
+  call die('setup_nucleus_ecp_analytic: GTH pseudo potentials need LIBCINT')
+#endif
+
+  hamiltonian_ecp(:, :) = 0.0_dp
+
+  do icenter=1, natom 
+    ! MPI parallelization over ECP centers
+    if( MODULO(icenter-1, world%nproc) /= world%rank ) cycle
+
+    element_has_ecp = .FALSE.
+    do ie=1, nelement_ecp
+      if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then 
+        element_has_ecp = .TRUE.
+        exit
+      endif
+    enddo
+    if( .NOT. element_has_ecp ) cycle
+
+    C(:) = xatom(:, icenter)
+    hamiltonian_tmp(:, :) = 0.0_dp
+
+!================================================================
+    !! We firstly calculate the <T|1/R|P> contribution
+
+
+    !    
+    ! First, the local part
+    !    
+    allocate(env_local, SOURCE=basis%LIBCINT_env)
+    allocate(env_local_erf, SOURCE=basis%LIBCINT_env)
+    call set_rinv_origin_libcint(xatom(:, icenter), env_local)
+    call set_rinv_origin_libcint(xatom(:, icenter), env_local_erf)
+    alphapp = 1.0_dp / SQRT(2.0_dp) / ecp(ie)%gth_rpploc
+
+    env_local_erf(LIBCINT_PTR_RINV_ZETA+1) =  alphapp**2
+    env_local(LIBCINT_PTR_RINV_ZETA+1) =  0.0_dp
+
+    hamiltonian_nucleus( :, basis_t%nbf+1: ) = 0.0_dp
+    hamiltonian_nucleus( basis_t%nbf+1:, 1:basis_t%nbf ) = 0.0_dp
+
+
+    do jshell=1, basis_p%nshell 
+      lj      = basis_p%shell(jshell)%am
+      nj_cart = number_basis_function_am('CART',lj)
+      nj      = number_basis_function_am(basis_p%gaussian_type, lj)
+      jbf1    = basis_p%shell(jshell)%istart + basis_t%nbf
+      jbf2    = basis_p%shell(jshell)%iend + basis_t%nbf
+
+      ! On cree un indice qui correspond aux numeros des shells du projectile dans la base globale
+      ! On va calculer le erf seulement sur ces indices là en les utilisant dans cint1e_rinv_cart
+      jglobal = basis_t%nshell + jshell 
+
+      if( MODULO(jshell-1, world%nproc) /= world%rank ) cycle
+
+      call set_libint_shell(basis_p%shell(jshell), amB, contrdepthB, B, alphaB, cB)
+
+
+      do ishell=1, basis_t%nshell
+        li      = basis_t%shell(ishell)%am
+        ni_cart = number_basis_function_am('CART',li)
+        ni      = number_basis_function_am(basis_t%gaussian_type, li)
+        ibf1    = basis_t%shell(ishell)%istart
+        ibf2    = basis_t%shell(ishell)%iend
+
+        ! Equivalent de jblobal
+        iglobal = ishell
+
+        call set_libint_shell(basis_t%shell(ishell), amA, contrdepthA, A, alphaA, cA)
+
+        allocate(array_cart(ni_cart*nj_cart))
+        allocate(array_cart_C(ni_cart*nj_cart))
+        array_cart(:) = 0.0_dp
+
+#if defined(HAVE_LIBCINT)
+        shls(1) = iglobal-1 ! C convention starts with 0
+        shls(2) = jglobal-1 ! C convention starts with 0
+
+        ! add erf potential
+        info = cint1e_rinv_cart(array_cart_C, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                basis%LIBCINT_bas, basis%LIBCINT_nbas, env_local_erf)
+        array_cart(:) = array_cart(:) - zvalence(icenter) * array_cart_C(:)
+
+        ! remove full Coulomb potential
+        info = cint1e_rinv_cart(array_cart_C, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                basis%LIBCINT_bas, basis%LIBCINT_nbas, env_local)
+        array_cart(:) = array_cart(:) + zvalence(icenter) * array_cart_C(:)
+
+        deallocate(array_cart_C)
+
+        do iloc=1, ecp(ie)%gth_nloc
+          nk_cart = number_basis_function_am('CART', 2*iloc-2)
+          allocate(array_cart_C(ni_cart*nj_cart*nk_cart))
+          allocate(array_cart_Ctmp(nk_cart, ni_cart*nj_cart))
+          amC = 2*iloc - 2
+          contrdepthC = 1
+          allocate(cC(contrdepthC), alphaC(contrdepthC))
+          cC(1) = ecp(ie)%gth_cipp(iloc) / ecp(ie)%gth_rpploc**amC
+          alphaC(1) = alphapp**2
+
+          call libcint_overlap_3center(amA, contrdepthA, A, alphaA, cA, &
+                             amB, contrdepthB, B, alphaB, cB, &
+                             amC, contrdepthC, C, alphaC, cC, &
+                             array_cart_C)
+
+          array_cart_Ctmp(:, :) = RESHAPE( array_cart_C(:) , [nk_cart, ni_cart*nj_cart])
+          select case(amc)
+          case(0)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(1, :)
+          case(2) ! r**2 = x**2 + y**2 + z**2
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(1, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(4, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(6, :)
+          case(4) ! r**4 = x**4 + y**4 + z**4 + 2 x**2 * y**2 + 2 * x**2 * z**2 + 2 y**2 * z**2
+            array_cart(:) = array_cart(:) + array_cart_Ctmp( 1, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(11, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(15, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp( 4, :) * 2.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp( 6, :) * 2.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(13, :) * 2.0_dp
+          case(6)  ! r**6 = too long to write
+            array_cart(:) = array_cart(:) + array_cart_Ctmp( 1, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(22, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(28, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(13, :) * 6.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp( 4, :) * 3.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp( 6, :) * 3.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(11, :) * 3.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(15, :) * 3.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(24, :) * 3.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(26, :) * 3.0_dp
+          end select
+          deallocate(cC, alphaC)
+          deallocate(array_cart_C)
+          deallocate(array_cart_Ctmp)
+        enddo
+
+#endif
+
+        call transform_libint_to_molgw(basis%gaussian_type, li, lj, array_cart, matrix)
+
+        hamiltonian_tmp(ibf1:ibf2, jbf1:jbf2) = matrix(:, :)
+        hamiltonian_tmp(jbf1:jbf2, ibf1:ibf2) = TRANSPOSE(matrix(:, :))
+        deallocate(array_cart, matrix)
+      enddo ! ishell = jshell,basis_t%nshell
+
+
+
+    enddo !jshell = 1,basis_p%nshell
+
+    deallocate(env_local)
+    deallocate(env_local_erf)
+
+    hamiltonian_ecp(:, :) = hamiltonian_ecp(:, :) + hamiltonian_tmp(:, :)
+
+
+    !
+    ! Second, the non-local part
+    !
+    hamiltonian_tmp(:, :) = 0.0_dp
+
+    allocate(env_local, SOURCE=basis%LIBCINT_env)
+    call set_rinv_origin_libcint(xatom(:, icenter), env_local)
+
+    do il=1, ecp(ie)%gth_nl
+      li      = il -1
+      ni      = number_basis_function_am('PURE',li)
+      ni_cart = number_basis_function_am('CART',li)
+      allocate(proj_i_A(basis_t%nbf, ni, ecp(ie)%gth_npl(il)))
+      allocate(proj_i_B(basis_p%nbf, ni, ecp(ie)%gth_npl(il)))
+
+      do ipl=1, ecp(ie)%gth_npl(il)
+
+        amC = li
+        contrdepthC = 1
+        allocate(cC(contrdepthC), alphaC(contrdepthC))
+        alphaC(1) = 1.0_dp / ( 2.0_dp * ecp(ie)%gth_rl(il)**2 )
+        ! Normalization factor from HGH PRB 58, 3641 (1998)
+        cC(1) = SQRT( 2.0_dp / GAMMA(li+(4.0_dp*ipl-1.0_dp)/2.0_dp) ) / ecp(ie)%gth_rl(il)**(li+(4.0_dp*ipl-1.0_dp)/2.0_dp)
+
+        do jshell=1, basis_p%nshell ! loop for B
+          ljB      = basis_p%shell(jshell)%am
+          njB_cart = number_basis_function_am('CART',ljB)
+          njB      = number_basis_function_am(basis_p%gaussian_type, ljB)
+          jbf1     = basis_p%shell(jshell)%istart + basis_t%nbf
+          jbf2     = basis_p%shell(jshell)%iend + basis_t%nbf
+
+          call set_libint_shell(basis_p%shell(jshell), amB, contrdepthB, B, alphaB, cB)
+ 
+          allocate(array_cart(ni_cart*njB_cart))
+          allocate(array_cart_C(ni_cart*njB_cart))
+
+#if defined(HAVE_LIBCINT)
+          call libcint_gth_projector(amB, contrdepthB, B, alphaB, cB, &
+                                     amC, contrdepthC, C, alphaC, cC, &
+                                     ipl, array_cart_C)
+          array_cart(:) = array_cart_C(:)
+#endif
+
+          call transform_libint_to_molgw_gth_projector(basis_p%gaussian_type, ljB, li, array_cart, matrix) ! j'ai mis basis_p% mais je
+                                                                        ! suis vraiment pas sur, c'est peut être encore juste basis%
+                                                                        ! meme si je pense que c'est le même type donc osef
+
+          proj_i_B(jbf1 - basis_t%nbf:jbf2 - basis_t%nbf, :, ipl) = TRANSPOSE(matrix(:, :)) 
+          deallocate(array_cart, array_cart_C)
+        enddo ! end loop for B
+
+        do ishell=1, basis_t%nshell ! loop for A
+          liA      = basis_t%shell(ishell)%am
+          niA_cart = number_basis_function_am('CART',liA)
+          niA      = number_basis_function_am(basis_t%gaussian_type, liA)
+          ibf1     = basis_t%shell(ishell)%istart
+          ibf2     = basis_t%shell(ishell)%iend
+
+          call set_libint_shell(basis_t%shell(ishell), amA, contrdepthA, A, alphaA, cA)
+
+          allocate(array_cart(niA_cart*ni_cart))
+          allocate(array_cart_C(niA_cart*ni_cart))
+
+#if defined(HAVE_LIBCINT)
+
+          call libcint_gth_projector(amA, contrdepthA, A, alphaA, cA, &
+                                     amC, contrdepthC, C, alphaC, cC, &
+                                     ipl, array_cart_C)
+          array_cart(:) = array_cart_C(:)
+#endif
+  
+          call transform_libint_to_molgw_gth_projector(basis_t%gaussian_type, liA, li, array_cart, matrix)
+
+          proj_i_A(ibf1:ibf2, :, ipl) = TRANSPOSE(matrix(:, :))
+
+          deallocate(array_cart, array_cart_C)
+        enddo ! end loop for A
+        
+  
+       deallocate(array_cart, array_cart_C, matrix)
+
+      deallocate(cC, alphaC)
+
+      enddo ! ipl
+
+
+      do ipl = 1, ecp(ie)%gth_npl(il)
+        call DGEMM('N', 'T', basis_t%nbf, basis_p%nbf, ni, ecp(ie)%gth_hijl(ipl, il), &
+                    proj_i_A(:,:,ipl), basis_t%nbf, proj_i_B(:,:,ipl), basis_p%nbf, &
+                    1.0_dp, hamiltonian_tmp(1:basis_t%nbf, basis_t%nbf+1:basis_t%nbf+basis_p%nbf), basis_t%nbf)
+      enddo
+
+      deallocate(proj_i)
+
+    enddo ! il
+
+    deallocate(env_local)
+
+    ! Symmetrize lower to full
+    do jbf=1, basis_t%nbf
+      do ibf=basis_t%nbf + 1, basis%nbf
+        hamiltonian_tmp(jbf, ibf) = hamiltonian_tmp(ibf, jbf)
+      enddo
+    enddo
+
+    hamiltonian_ecp(:, :) = hamiltonian_ecp(:, :) + hamiltonian_tmp(:, :)
+
+
+!================================================================
+    !! We secondly calculate the <P|1/R|P> contribution
+
+
+    !    
+    ! First, the local part
+    !    
+    C(:) = xatom(:, icenter)
+    hamiltonian_tmp(:, :) = 0.0_dp
+
+
+    allocate(env_local, SOURCE=basis%LIBCINT_env)
+    allocate(env_local_erf, SOURCE=basis%LIBCINT_env)
+    call set_rinv_origin_libcint(xatom(:, icenter), env_local)
+    call set_rinv_origin_libcint(xatom(:, icenter), env_local_erf)
+    alphapp = 1.0_dp / SQRT(2.0_dp) / ecp(ie)%gth_rpploc   ! \alpha_pp in Krack's notations
+    ! LIBCINT needs the square since the input is the Gaussian distribution exponent
+    env_local_erf(LIBCINT_PTR_RINV_ZETA+1) =  alphapp**2
+    env_local(LIBCINT_PTR_RINV_ZETA+1) =  0.0_dp
+
+    do jshell=1, basis_p%nshell
+      lj      = basis_p%shell(jshell)%am
+      nj_cart = number_basis_function_am('CART',lj)
+      nj      = number_basis_function_am(basis_p%gaussian_type, lj)
+      jbf1    = basis_p%shell(jshell)%istart + basis_t%nbf
+      jbf2    = basis_p%shell(jshell)%iend + basis_t%nbf
+
+      jglobal = basis_t%nshell + jshell
+
+      call set_libint_shell(basis_p%shell(jshell), amB, contrdepthB, B, alphaB, cB)
+
+      do ishell=jshell, basis_p%nshell
+        li      = basis_p%shell(ishell)%am
+        ni_cart = number_basis_function_am('CART',li)
+        ni      = number_basis_function_am(basis_p%gaussian_type, li)
+        ibf1    = basis_p%shell(ishell)%istart + basis_t%nbf
+        ibf2    = basis_p%shell(ishell)%iend + basis_t%nbf
+
+        iglobal = basis_t%nshell + ishell
+
+        call set_libint_shell(basis_p%shell(ishell), amA, contrdepthA, A, alphaA, cA)
+
+        allocate(array_cart(ni_cart*nj_cart))
+        allocate(array_cart_C(ni_cart*nj_cart))
+        array_cart(:) = 0.0_dp
+
+
+#if defined(HAVE_LIBCINT)
+        shls(1) = iglobal-1  ! C convention starts with 0
+        shls(2) = jglobal-1  ! C convention starts with 0
+        ! add erf potential
+        info = cint1e_rinv_cart(array_cart_C, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                basis%LIBCINT_bas, basis%LIBCINT_nbas, env_local_erf)
+        array_cart(:) = array_cart(:) - zvalence(icenter) * array_cart_C(:)
+
+        ! remove full Coulomb potential
+        info = cint1e_rinv_cart(array_cart_C, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                basis%LIBCINT_bas, basis%LIBCINT_nbas, env_local)
+        array_cart(:) = array_cart(:) + zvalence(icenter) * array_cart_C(:)
+
+        deallocate(array_cart_C)
+
+        do iloc=1, ecp(ie)%gth_nloc
+          nk_cart = number_basis_function_am('CART', 2*iloc-2)
+          allocate(array_cart_C(ni_cart*nj_cart*nk_cart))
+          allocate(array_cart_Ctmp(nk_cart, ni_cart*nj_cart))
+          amC = 2*iloc - 2
+          contrdepthC = 1
+          allocate(cC(contrdepthC), alphaC(contrdepthC))
+          cC(1) = ecp(ie)%gth_cipp(iloc) / ecp(ie)%gth_rpploc**amC
+          alphaC(1) = alphapp**2
+
+          call libcint_overlap_3center(amA, contrdepthA, A, alphaA, cA, &
+                             amB, contrdepthB, B, alphaB, cB, &
+                             amC, contrdepthC, C, alphaC, cC, &
+                             array_cart_C)
+          array_cart_Ctmp(:, :) = RESHAPE( array_cart_C(:) , [nk_cart, ni_cart*nj_cart])
+          select case(amc)
+          case(0)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(1, :)
+          case(2) ! r**2 = x**2 + y**2 + z**2
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(1, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(4, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(6, :)
+          case(4) ! r**4 = x**4 + y**4 + z**4 + 2 x**2 * y**2 + 2 * x**2 * z**2 + 2 y**2 * z**2
+            array_cart(:) = array_cart(:) + array_cart_Ctmp( 1, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(11, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(15, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp( 4, :) * 2.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp( 6, :) * 2.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(13, :) * 2.0_dp
+          case(6)  ! r**6 = too long to write
+            array_cart(:) = array_cart(:) + array_cart_Ctmp( 1, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(22, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(28, :)
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(13, :) * 6.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp( 4, :) * 3.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp( 6, :) * 3.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(11, :) * 3.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(15, :) * 3.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(24, :) * 3.0_dp
+            array_cart(:) = array_cart(:) + array_cart_Ctmp(26, :) * 3.0_dp
+          end select
+          deallocate(cC, alphaC)
+          deallocate(array_cart_C)
+          deallocate(array_cart_Ctmp)
+        enddo
+
+#endif
+
+
+        call transform_libint_to_molgw(basis%gaussian_type, li, lj, array_cart, matrix)
+
+        hamiltonian_tmp(ibf1:ibf2, jbf1:jbf2) = matrix(:, :)
+        hamiltonian_tmp(jbf1:jbf2, ibf1:ibf2) = TRANSPOSE(matrix(:, :))
+        deallocate(array_cart, matrix)
+      enddo ! ishell
+
+
+
+    enddo !jshell
+
+    deallocate(env_local)
+    deallocate(env_local_erf)
+
+    hamiltonian_ecp(:, :) = hamiltonian_ecp(:, :) + hamiltonian_tmp(:, :)
+
+
+    !
+    ! Second, the non-local part
+    !
+    hamiltonian_tmp(:, :) = 0.0_dp
+
+    allocate(env_local, SOURCE=basis%LIBCINT_env)
+    call set_rinv_origin_libcint(xatom(:, icenter), env_local)
+
+    do il=1, ecp(ie)%gth_nl
+      li      = il -1
+      ni      = number_basis_function_am('PURE',li)
+      ni_cart = number_basis_function_am('CART',li)
+      allocate(proj_i_A(basis_t%nbf, ni, ecp(ie)%gth_npl(il)))
+      allocate(proj_i_B(basis_p%nbf, ni, ecp(ie)%gth_npl(il)))
+
+      do ipl=1, ecp(ie)%gth_npl(il)
+
+        amC = li
+        contrdepthC = 1
+        allocate(cC(contrdepthC), alphaC(contrdepthC))
+        alphaC(1) = 1.0_dp / ( 2.0_dp * ecp(ie)%gth_rl(il)**2 )
+        ! Normalization factor from HGH PRB 58, 3641 (1998)
+        cC(1) = SQRT( 2.0_dp / GAMMA(li+(4.0_dp*ipl-1.0_dp)/2.0_dp) ) / ecp(ie)%gth_rl(il)**(li+(4.0_dp*ipl-1.0_dp)/2.0_dp)
+
+        do jshell=1, basis_p%nshell ! loop for B
+          ljB      = basis_p%shell(jshell)%am
+          njB_cart = number_basis_function_am('CART',ljB)
+          njB      = number_basis_function_am(basis_p%gaussian_type, ljB)
+          jbf1     = basis_p%shell(jshell)%istart + basis_t%nbf
+          jbf2     = basis_p%shell(jshell)%iend + basis_t%nbf
+
+          call set_libint_shell(basis_p%shell(jshell), amB, contrdepthB, B, alphaB, cB)
+
+          allocate(array_cart(ni_cart*njB_cart))
+          allocate(array_cart_C(ni_cart*njB_cart))
+
+#if defined(HAVE_LIBCINT)
+          call libcint_gth_projector(amB, contrdepthB, B, alphaB, cB, &
+                                     amC, contrdepthC, C, alphaC, cC, &
+                                     ipl, array_cart_C)
+          array_cart(:) = array_cart_C(:) 
+#endif
+
+          call transform_libint_to_molgw_gth_projector(basis_p%gaussian_type, ljB, li, array_cart, matrix)
+
+          proj_i_B(jbf1 - basis_t%nbf:jbf2 - basis_t%nbf, :, ipl) = TRANSPOSE(matrix(:, :))
+
+          deallocate(array_cart, array_cart_C)
+        enddo ! end loop for B
+
+        do ishell=1, basis_p%nshell ! loop for A
+          liA      = basis_p%shell(ishell)%am
+          niA_cart = number_basis_function_am('CART',liA)
+          niA      = number_basis_function_am(basis_p%gaussian_type, liA)
+          ibf1     = basis_p%shell(ishell)%istart + basis_t%nbf
+          ibf2     = basis_p%shell(ishell)%iend + basis_t%nbf
+
+          call set_libint_shell(basis_p%shell(ishell), amA, contrdepthA, A, alphaA, cA)
+
+          allocate(array_cart(niA_cart*ni_cart))
+          allocate(array_cart_C(niA_cart*ni_cart))
+
+#if defined(HAVE_LIBCINT)
+
+          call libcint_gth_projector(amA, contrdepthA, A, alphaA, cA, &
+                                     amC, contrdepthC, C, alphaC, cC, &
+                                     ipl, array_cart_C)
+          array_cart(:) = array_cart_C(:)
+#endif
+
+          call transform_libint_to_molgw_gth_projector(basis_t%gaussian_type, liA, li, array_cart, matrix)
+
+          proj_i_A(ibf1:ibf2, :, ipl) = TRANSPOSE(matrix(:, :))
+
+          deallocate(array_cart, array_cart_C)
+        enddo ! end loop for A
+
+
+       deallocate(array_cart, array_cart_C, matrix)
+
+      deallocate(cC, alphaC)
+
+      enddo ! ipl
+      do ipl = 1, ecp(ie)%gth_npl(il)
+        call DGEMM('N', 'T', basis_t%nbf, basis_p%nbf, ni, ecp(ie)%gth_hijl(ipl, il), &
+                    proj_i_A(:,:,ipl), basis_t%nbf, proj_i_B(:,:,ipl), basis_p%nbf, &
+                    1.0_dp, hamiltonian_tmp(1:basis_t%nbf, basis_t%nbf+1:basis_t%nbf+basis_p%nbf), basis_t%nbf)
+      enddo
+
+      deallocate(proj_i)
+
+    enddo ! il
+
+    deallocate(env_local)
+
+    ! Symmetrize lower to full
+    do jbf=1, basis%nbf
+      do ibf=jbf+1, basis%nbf
+        hamiltonian_tmp(jbf, ibf) = hamiltonian_tmp(ibf, jbf)
+      enddo
+    enddo
+
+    hamiltonian_ecp(:, :) = hamiltonian_ecp(:, :) + hamiltonian_tmp(:, :)
+  enddo !center
+
+
+  !
+  ! Reduce operation
+  call world%sum(hamiltonian_ecp)
+
+  call dump_out_matrix(.FALSE., '=== ECP Nucleus potential contribution ===', hamiltonian_ecp)
+
+  hamiltonian_nucleus(:, :) = hamiltonian_nucleus(:, :) + hamiltonian_ecp(:, :)
+
+
+end subroutine recalc_nucleus_ecp_analytic
 
 !=========================================================================
 ! Calculate alpha \sum_I |phi_I> <phi_I|
