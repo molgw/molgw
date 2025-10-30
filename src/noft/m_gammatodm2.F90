@@ -68,13 +68,16 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,Phases,chempot,only_phases)
 !Local variables ------------------------------
 !scalars
  logical::only_phases_=.false.
+ logical::file_exists
+ integer::iunit
  integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,iorb6,iorb7,iorb8
  integer::igamma,igamma1,igamma2
  real(dp)::occ_orb,hole_orb,sqrt_occ_orb,sqrt_hole_orb,sqrthole_orb
  real(dp)::exponential,dexponent,hole_dyn
 !arrays
  real(dp),allocatable,dimension(:)::Docc_gamma0,sqrt_occ,Dsqrt_occ_gamma0,hole
- real(dp),allocatable,dimension(:,:)::Dsqrt_occ_gamma,Dhole_gamma,Docc_gamma,Docc_dyn 
+ real(dp),allocatable,dimension(:,:)::Dsqrt_occ_gamma,Dhole_gamma,Docc_gamma,Docc_dyn
+ character(len=200)::msg  
 !************************************************************************
  if(present(only_phases)) only_phases_=.true.
 !-----------------------------------------------------------------------
@@ -264,6 +267,21 @@ subroutine gamma_to_2rdm(RDMd,GAMMAs,Phases,chempot,only_phases)
     Dsqrt_occ_gamma(iorb,:)=half/dsqrt(RDMd%occ(iorb))
    endif
   enddo
+ endif 
+!------------------------------------------------------------------------
+!   Read occ numbers if the overwrite_occ file is present
+!------------------------------------------------------------------------
+ inquire(file='overwrite_occ', exist=file_exists)
+ if(file_exists) then
+  iunit=981
+  write(msg,'(a)') 'Reading the spinless occupation numbers from the overwrite_occ file'
+  call write_output(msg)
+  open(unit=iunit,file='overwrite_occ',form='formatted',status='old')
+  do iorb=1,RDMd%NBF_occ
+   read(iunit,*) RDMd%occ(iorb)
+   RDMd%occ(iorb)=half*RDMd%occ(iorb)
+  enddo
+  close(iunit)
  endif 
 !-----------------------------------------------------------------------
 !       DM2_J, DM2_K, DM2_L, DDM2_gamma_J, DDM2_gamma_K, DDM2_gamma_L
