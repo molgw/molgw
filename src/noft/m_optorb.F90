@@ -276,7 +276,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
      do iorbp=1,RDMd%NBF_tot ! p
       do iorbq=iorbp,RDMd%NBF_tot ! q
        iterm=iterm+1
-       Energy_2=Energy_2+real(HESSIANd%Gradient_vec_cmplx(iterm))*kappa_mat_cmplx_tmp(iorbp,iorbq)  &
+       Energy_2=Energy_2+real(HESSIANd%Gradient_vec_cmplx(iterm)*kappa_mat_cmplx_tmp(iorbp,iorbq))  &
        &       +half*real(tmp_vec_cmplx(iterm)*kappa_mat_cmplx_tmp(iorbp,iorbq))
       enddo
      enddo
