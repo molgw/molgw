@@ -733,9 +733,11 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
   real(dp), intent(in) :: vloc(..)
   real(dp), intent(out) :: h_ao(..)
   !=====
-  integer :: nx=1
-  integer :: ispin, ibf, jbf, ifft_local
+  integer, parameter :: coding = 3
+  integer  :: ispin, ibf, jbf, ifft_local
   real(dp) :: shift(3)
+  real(dp), allocatable :: tmp1(:, :), tmp2(:, :)
+  integer :: npos, nneg, ipos, ineg
   !=====
 
 
@@ -752,53 +754,55 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
       rank(2)
       h_ao(:, :, :) = 0.0_dp
       do ispin=1, nspin
-        !do jbf=1, basis%nbf
-        !  do ibf=1, basis%nbf
-        !    h_ao(ibf, jbf, ispin) = h_ao(ibf, jbf, ispin) + SUM( bfr(ibf, :) * vloc(:, ispin) * bfr(jbf, :) )
-        !  enddo
-        !enddo
+        select case(coding)
+        case(1)  ! Plain fortran
+          do jbf=1, basis%nbf
+            do ibf=1, basis%nbf
+              h_ao(ibf, jbf, ispin) = h_ao(ibf, jbf, ispin) + SUM( bfr(ibf, :) * vloc(:, ispin) * bfr(jbf, :) )
+            enddo
+          enddo
 
-        do ifft_local=1, nfft_local
-          call DSYR('L', basis%nbf, vloc(ifft_local, ispin), bfr(:, ifft_local), 1, h_ao(:, :, ispin), basis%nbf)
-        enddo
+        case(2) ! Blas level 2
+          do ifft_local=1, nfft_local
+            call DSYR('L', basis%nbf, vloc(ifft_local, ispin), bfr(:, ifft_local), 1, h_ao(:, :, ispin), basis%nbf)
+          enddo
 
-        !block
-        !  real(dp), allocatable :: tmp1(:, :)
-        !  real(dp), allocatable :: tmp2(:, :)
-        !  integer :: npos, nneg, ipos, ineg
-        !  npos = COUNT( vloc(:, ispin) > 0.0_dp )
-        !  nneg = COUNT( vloc(:, ispin) < 0.0_dp )
-        !  allocate(tmp1(basis%nbf, npos))
-        !  allocate(tmp2(basis%nbf, nneg))
-        !  ipos=0
-        !  ineg=0
-        !  call start_clock(timing_tmp9)
-        !  do ifft_local=1, nfft_local
-        !    if( (vloc(ifft_local, ispin) > 0.0_dp) ) then
-        !      ipos = ipos + 1
-        !      tmp1(:, ipos) = bfr(:, ifft_local) * SQRT(vloc(ifft_local, ispin))
-        !    else
-        !      ineg = ineg + 1
-        !      tmp2(:, ineg) = bfr(:, ifft_local) * SQRT(-vloc(ifft_local, ispin))
-        !    endif
-        !  enddo
-        !  call stop_clock(timing_tmp9)
+        case(3) ! Blas level 3
 
-        !  call DSYRK('L', 'N', basis%nbf, npos, 1.0d0, tmp1, basis%nbf, &
-        !             0.0_dp, h_ao(:, :, ispin), basis%nbf)
-        !  call DSYRK('L', 'N', basis%nbf, nneg,-1.0d0, tmp2, basis%nbf, &
-        !             1.0_dp, h_ao(:, :, ispin), basis%nbf)
+          ! Split cases when vloc is positive or negative
+          npos = COUNT( vloc(:, ispin) > 0.0_dp )
+          nneg = COUNT( vloc(:, ispin) < 0.0_dp )
+          allocate(tmp1(basis%nbf, npos))
+          allocate(tmp2(basis%nbf, nneg))
 
+          ipos = 0
+          ineg = 0
+          call start_clock(timing_tmp9)
+          do ifft_local=1, nfft_local
+            if( (vloc(ifft_local, ispin) > 0.0_dp) ) then
+              ipos = ipos + 1
+              tmp1(:, ipos) = bfr(:, ifft_local) * SQRT(vloc(ifft_local, ispin))
+            else
+              ineg = ineg + 1
+              tmp2(:, ineg) = bfr(:, ifft_local) * SQRT(-vloc(ifft_local, ispin))
+            endif
+          enddo
+          call stop_clock(timing_tmp9)
 
-        !  deallocate(tmp1, tmp2)
-        !end block
+          ! Positive vloc
+          call DSYRK('L', 'N', basis%nbf, npos, 1.0d0, tmp1, basis%nbf, &
+                     0.0_dp, h_ao(:, :, ispin), basis%nbf)
+          ! Negative vloc
+          call DSYRK('L', 'N', basis%nbf, nneg,-1.0d0, tmp2, basis%nbf, &
+                     1.0_dp, h_ao(:, :, ispin), basis%nbf)
 
+          deallocate(tmp1, tmp2)
+        end select
 
         call matrix_lower_to_full(h_ao(:, :, ispin))
 
       enddo
       h_ao(:, :, :) = h_ao(:, :, :) * volume / REAL(nfft_global, KIND=dp)
-      call grid%sum(h_ao)
 
     rank(1)
       call die('calculate_hao_periodic: rank mismatch') 
@@ -811,23 +815,57 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
     select rank(vloc)
     rank(1)
       h_ao(:, :) = 0.0_dp
-      !do jbf=1, basis%nbf
-      !  do ibf=1, basis%nbf
-      !    h_ao(ibf, jbf) = h_ao(ibf, jbf) + SUM( bfr(ibf, :) * vloc(:) * bfr(jbf, :) )
-      !  enddo
-      !enddo
-      do ifft_local=1, nfft_local
-        call DSYR('L', basis%nbf, vloc(ifft_local), bfr(:, ifft_local), 1, h_ao(:, :), basis%nbf)
-      enddo
+      select case(coding)
+      case(1) ! Plain fortran
+        do jbf=1, basis%nbf
+          do ibf=1, basis%nbf
+            h_ao(ibf, jbf) = h_ao(ibf, jbf) + SUM( bfr(ibf, :) * vloc(:) * bfr(jbf, :) )
+          enddo
+        enddo
+      case(2) ! BLAS level 2
+        do ifft_local=1, nfft_local
+          call DSYR('L', basis%nbf, vloc(ifft_local), bfr(:, ifft_local), 1, h_ao(:, :), basis%nbf)
+        enddo
+      case(3) ! Blas level 3
+        ! Split cases when vloc is positive or negative
+        npos = COUNT( vloc(:) > 0.0_dp )
+        nneg = COUNT( vloc(:) < 0.0_dp )
+        allocate(tmp1(basis%nbf, npos))
+        allocate(tmp2(basis%nbf, nneg))
+
+        ipos = 0
+        ineg = 0
+        call start_clock(timing_tmp9)
+        do ifft_local=1, nfft_local
+          if( (vloc(ifft_local) > 0.0_dp) ) then
+            ipos = ipos + 1
+            tmp1(:, ipos) = bfr(:, ifft_local) * SQRT(vloc(ifft_local))
+          else
+            ineg = ineg + 1
+            tmp2(:, ineg) = bfr(:, ifft_local) * SQRT(-vloc(ifft_local))
+          endif
+        enddo
+        call stop_clock(timing_tmp9)
+
+        ! Positive vloc
+        call DSYRK('L', 'N', basis%nbf, npos, 1.0d0, tmp1, basis%nbf, &
+                   0.0_dp, h_ao(:, :), basis%nbf)
+        ! Negative vloc
+        call DSYRK('L', 'N', basis%nbf, nneg,-1.0d0, tmp2, basis%nbf, &
+                   1.0_dp, h_ao(:, :), basis%nbf)
+
+        deallocate(tmp1, tmp2)
+      end select
       call matrix_lower_to_full(h_ao(:, :))
 
       h_ao(:, :) = h_ao(:, :) * volume / REAL(nfft_global, KIND=dp)
-      call grid%sum(h_ao)
 
     rank(2)
       call die('calculate_hao_periodic: rank mismatch') 
     end select
   end select
+
+  call grid%sum(h_ao)
 
   call stop_clock(timing_pbc_potential_to_hao)
 
