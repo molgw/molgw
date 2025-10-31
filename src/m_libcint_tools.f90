@@ -686,11 +686,13 @@ end subroutine libcint_3center
 
 
 !=========================================================================
-subroutine libcint_overlap(amA, contrdepthA, A, alphaA, cA, &
+subroutine libcint_overlap(gaussian_type, &
+                           amA, contrdepthA, A, alphaA, cA, &
                            amC, contrdepthC, C, alphaC, cC, &
                            ovlpAC)
   implicit none
 
+  character(len=4), intent(in)  :: gaussian_type
   integer(C_INT), intent(in)    :: amA, contrdepthA
   real(C_DOUBLE), intent(in)    :: A(:)
   real(C_DOUBLE), intent(in)    :: alphaA(:)
@@ -699,14 +701,16 @@ subroutine libcint_overlap(amA, contrdepthA, A, alphaA, cA, &
   real(C_DOUBLE), intent(in)    :: C(:)
   real(C_DOUBLE), intent(in)    :: alphaC(:)
   real(C_DOUBLE), intent(in)    :: cC(:)
-  real(C_DOUBLE), intent(inout)    :: ovlpAC(:)
+  real(C_DOUBLE), intent(inout) :: ovlpAC(:)
   !=====
   real(C_DOUBLE) :: tmp_env(1000)
   integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS, 2)
   integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS, 2)
   integer(C_INT) :: shls(2)
-  integer        :: info, off
+  integer        :: info, off, gt_tag
   !=====
+
+  gt_tag = get_gaussian_type_tag(gaussian_type)
 
   tmp_env(:) = 0.0_dp
 
@@ -761,7 +765,11 @@ subroutine libcint_overlap(amA, contrdepthA, A, alphaA, cA, &
   shls(2) = 1
 
 #if defined(HAVE_LIBCINT)
-  info = cint1e_ovlp_cart(ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+  if( gt_tag == CARTG ) then
+    info = cint1e_ovlp_cart(ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+  else
+    info = cint1e_ovlp_sph (ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+  endif
 #endif
 
 
@@ -1252,7 +1260,7 @@ subroutine transform_libcint_to_molgw_2d(gaussian_type, am1, am2, array_in, matr
       do i2=1, n2
         ii = ii + 1
         matrix_out(i1, i2) = array_in(ii) * cart_to_pure_norm(am1, CARTG)%matrix(i1, i1) &
-                                         * cart_to_pure_norm(am2, CARTG)%matrix(i2, i2)
+                                          * cart_to_pure_norm(am2, CARTG)%matrix(i2, i2)
       enddo
     enddo
   else

@@ -159,9 +159,9 @@ subroutine setup_overlap_mixedbasis(basis1, basis2, s_matrix)
   type(basis_set), intent(in) :: basis1, basis2
   real(dp), intent(out)       :: s_matrix(basis1%nbf, basis2%nbf)
   !=====
-  integer              :: ishell, jshell
-  integer              :: ibf1, ibf2, jbf1, jbf2
-  integer              :: ni, nj, ni_cart, nj_cart, li, lj
+  integer               :: ishell, jshell
+  integer               :: ibf1, ibf2, jbf1, jbf2
+  integer               :: ni, nj, ni_cart, nj_cart, li, lj
   real(dp), allocatable :: matrix(:, :)
 
   real(C_DOUBLE), allocatable :: array_cart(:)
@@ -208,14 +208,15 @@ subroutine setup_overlap_mixedbasis(basis1, basis2, s_matrix)
       call set_libint_shell(basis1%shell(ishell), amA, contrdepthA, A, alphaA, cA)
 
 
-      allocate(array_cart(ni_cart*nj_cart))
+      allocate(array_cart(ni_cart * nj_cart))
 
 #if defined(HAVE_LIBCINT)
-      call libcint_overlap(amA, contrdepthA, A, alphaA, cA, &
+      call libcint_overlap(basis1%gaussian_type,  &
+                           amA, contrdepthA, A, alphaA, cA, &
                            amB, contrdepthB, B, alphaB, cB, &
                            array_cart)
 
-      call transform_libint_to_molgw(basis1%gaussian_type, li, lj, array_cart, matrix)
+      call transform_libcint_to_molgw(basis1%gaussian_type, li, lj, array_cart, matrix)
 
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
       call libint_overlap(amA, contrdepthA, A, alphaA, cA, &
@@ -1526,7 +1527,6 @@ subroutine setup_rxp_ao(basis, rxp_ao)
   type(basis_set), intent(in)         :: basis
   real(dp), allocatable, intent(out)   :: rxp_ao(:, :, :)
   !=====
-  integer              :: gt
   integer              :: ishell, jshell
   integer              :: ibf1, ibf2, jbf1, jbf2
   integer              :: li, lj, ni_cart, nj_cart
@@ -1544,7 +1544,6 @@ subroutine setup_rxp_ao(basis, rxp_ao)
 #else
   call die('setup_rxp_ao: r x p calculations requires LIBCINT')
 #endif
-  gt = get_gaussian_type_tag(basis%gaussian_type)
 
   allocate(rxp_ao(basis%nbf, basis%nbf, 3))
 
@@ -1596,7 +1595,6 @@ subroutine setup_giao_rxp_ao(basis, giao_rxp_ao)
   type(basis_set), intent(in)         :: basis
   real(dp), allocatable, intent(out)   :: giao_rxp_ao(:, :, :)
   !=====
-  integer              :: gt
   integer              :: ishell, jshell
   integer              :: ibf1, ibf2, jbf1, jbf2
   integer              :: li, lj, ni_cart, nj_cart
@@ -1614,7 +1612,6 @@ subroutine setup_giao_rxp_ao(basis, giao_rxp_ao)
 #else
   call die('setup_giao_rxp_ao: r x p calculations requires LIBCINT')
 #endif
-  gt = get_gaussian_type_tag(basis%gaussian_type)
 
   allocate(giao_rxp_ao(basis%nbf, basis%nbf, 3))
 
@@ -1801,7 +1798,6 @@ subroutine setup_nabla_ao(basis, nabla_ao)
   type(basis_set), intent(in)         :: basis
   real(dp), allocatable, intent(out)   :: nabla_ao(:, :, :)
   !=====
-  integer              :: gt
   integer              :: ishell, jshell
   integer              :: ibf1, ibf2, jbf1, jbf2, ibf1_cart, jbf1_cart
   integer              :: li, lj, ni_cart, nj_cart, i_cart, j_cart
@@ -1820,7 +1816,6 @@ subroutine setup_nabla_ao(basis, nabla_ao)
 #else
   call die("setup_nabla_ao: Setup nabla matrix is only available with LIBCINT")
 #endif
-  gt = get_gaussian_type_tag(basis%gaussian_type)
 
   allocate(nabla_ao(basis%nbf, basis%nbf, 3))
 

@@ -227,6 +227,7 @@ subroutine setup_overlap_onecell(basis, shift, s_matrix)
 
   call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
 
+
   do jshell=1, basis%nshell
     lj      = basis%shell(jshell)%am
     nj_cart = number_basis_function_am('CART',lj)
@@ -247,14 +248,16 @@ subroutine setup_overlap_onecell(basis, shift, s_matrix)
 
       call set_libint_shell(basis%shell(ishell), amA, contrdepthA, A, alphaA, cA)
 
-      allocate(array_cart(ni_cart*nj_cart))
+      ! allocate it as if it is cartesian however it can be pure (and then smaller)
+      allocate(array_cart(ni_cart * nj_cart))
 
 #if defined(HAVE_LIBCINT)
-      call libcint_overlap(amA, contrdepthA, A, alphaA, cA, &
+      call libcint_overlap(basis%gaussian_type, &
+                           amA, contrdepthA, A, alphaA, cA, &
                            amB, contrdepthB, B, alphaB, cB, &
                            array_cart)
 
-      call transform_libint_to_molgw(basis%gaussian_type, li, lj, array_cart, matrix)
+      call transform_libcint_to_molgw(basis%gaussian_type, li, lj, array_cart, matrix)
 #endif
 
       deallocate(alphaA, cA)
