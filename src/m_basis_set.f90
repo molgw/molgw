@@ -1928,6 +1928,7 @@ end subroutine basis_function_quadrupole
 
 
 !=========================================================================
+! Calculate < ϕ_α | exp(i 𝐪·𝐫) | ϕ_β >
 subroutine basis_function_gos(bf1, bf2, qvec, gos_bf1bf2)
   implicit none
   type(basis_function), intent(in)  :: bf1, bf2

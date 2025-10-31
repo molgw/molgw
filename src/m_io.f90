@@ -3452,8 +3452,8 @@ subroutine read_gaussian_fchk(read_fchk_in, file_name, basis, p_matrix_out)
 
   endif
 
-  ! Broadcast the density matrix from proc iomaster to all the other procs.
-  call world%bcast(iomaster, p_matrix_out)
+  ! Broadcast the density matrix from proc rank_iomaster to all the other procs.
+  call world%bcast(rank_iomaster, p_matrix_out)
 
 
 end subroutine read_gaussian_fchk
@@ -3672,7 +3672,7 @@ subroutine write_energy_qp(energy_qp)
   !=====
 
   !
-  ! Only the proc iomaster writes down the ENERGY_QP file
+  ! Only the proc rank_iomaster writes down the ENERGY_QP file
   if( .NOT. is_iomaster) return
 
   nstate = SIZE(energy_qp, DIM=1)

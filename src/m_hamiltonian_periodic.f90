@@ -772,8 +772,8 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
           ! Split cases when vloc is positive or negative
           npos = COUNT( vloc(:, ispin) > 0.0_dp )
           nneg = COUNT( vloc(:, ispin) < 0.0_dp )
-          allocate(tmp1(basis%nbf, npos))
-          allocate(tmp2(basis%nbf, nneg))
+          call clean_allocate('TMP1', tmp1, basis%nbf, npos)
+          call clean_allocate('TMP2', tmp2, basis%nbf, nneg)
 
           ipos = 0
           ineg = 0
@@ -796,7 +796,8 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
           call DSYRK('L', 'N', basis%nbf, nneg,-1.0d0, tmp2, basis%nbf, &
                      1.0_dp, h_ao(:, :, ispin), basis%nbf)
 
-          deallocate(tmp1, tmp2)
+          call clean_deallocate('TMP1', tmp1)
+          call clean_deallocate('TMP2', tmp2)
         end select
 
         call matrix_lower_to_full(h_ao(:, :, ispin))
@@ -1833,15 +1834,36 @@ subroutine write_restart_rhogrid()
   implicit none
 
   !=====
-  integer :: rhofile
+  integer :: rhofile, ifft_global, ifft_local, ispin
+  real(dp), allocatable :: rho_tmp(:)
   !=====
 
   write(stdout, *) 'Write real-space grid electronic density on RESTART_RHOGRID file'
+  allocate(rho_tmp(nfft_global))
 
-  open(newunit=rhofile, file='RESTART_RHOGRID', form='unformatted', access='stream', status='replace', action='write')
-  write(rhofile) rhoelecr(:, :)
-  close(rhofile)
+  if( is_iomaster ) &
+    open(newunit=rhofile, file='RESTART_RHOGRID', form='unformatted', access='stream', status='replace', action='write')
 
+  do ispin=1, nspin
+    rho_tmp(:) = 0.0_dp
+
+    ifft_local = 0
+    do ifft_global=1, nfft_global
+      if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
+        ifft_local = ifft_local + 1
+        rho_tmp(ifft_global) = rhoelecr(ifft_local, ispin)
+      endif
+    enddo
+    call grid%sum(rho_tmp)
+
+    if( is_iomaster ) then
+      write(rhofile) rho_tmp(:)
+    endif
+  enddo
+
+  if( is_iomaster ) close(rhofile)
+
+  deallocate(rho_tmp)
 
 end subroutine write_restart_rhogrid
 
@@ -1852,8 +1874,9 @@ function read_restart_rhogrid()
 
   logical :: read_restart_rhogrid
   !=====
-  integer :: rhofile
+  integer :: rhofile, ifft_global, ifft_local, ispin
   logical :: file_exists
+  real(dp), allocatable :: rho_tmp(:)
   !=====
 
   write(stdout, *) 'Read real-space grid electronic density from RESTART_RHOGRID file'
@@ -1863,13 +1886,32 @@ function read_restart_rhogrid()
     read_restart_rhogrid = .FALSE.
   else
 
-    open(newunit=rhofile, file='RESTART_RHOGRID', form='unformatted', access='stream', status='old', action='read')
-    read(rhofile) rhoelecr(:, :)
-    close(rhofile)
+    allocate(rho_tmp(nfft_global))
+    rho_tmp(:) = 0.0_dp
+
+    if( is_iomaster ) &
+      open(newunit=rhofile, file='RESTART_RHOGRID', form='unformatted', access='stream', status='old', action='read')
+
+    do ispin=1, nspin
+      if( is_iomaster ) &
+        read(rhofile) rho_tmp(:)
+
+      call grid%bcast(rank_iomaster, rho_tmp)
+      ifft_local = 0
+      do ifft_global=1, nfft_global
+        if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
+          ifft_local = ifft_local + 1
+          rhoelecr(ifft_local, ispin) = rho_tmp(ifft_global)
+        endif
+      enddo
+    enddo
+
+    if( is_iomaster ) close(rhofile)
 
     write(stdout, *) 'RESTART_RHOGRID file read'
 
     read_restart_rhogrid = .TRUE.
+    deallocate(rho_tmp)
   endif
 
 end function read_restart_rhogrid
