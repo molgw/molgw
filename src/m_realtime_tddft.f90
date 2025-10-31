@@ -251,7 +251,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
   call setup_nucleus(basis, hamiltonian_nucleus, fixed_atom_list)
 
   if( nelement_ecp > 0 ) then
-    call setup_nucleus_ecp(basis, hamiltonian_nucleus)
+    call setup_nucleus_ecp(basis, hamiltonian_nucleus, fixed_atom_list)
   endif
 
   if( write_step / time_step - NINT( write_step / time_step ) > 1.0e-10_dp .OR. write_step < time_step ) then
@@ -2796,7 +2796,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
 !      write(stdout, * ) ncenter_nuclei-nprojectile, natom
 !      call setup_nucleus_ecp(basis, hamiltonian_nucleus, fixed_atom_list)
       call recalc_nucleus_ecp(basis, basis_t, basis_p, hamiltonian_nucleus)
-      
+       
     end if
 
     !
