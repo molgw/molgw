@@ -991,6 +991,13 @@ subroutine read_inputfile_namelist()
   call setup_periodicity_vectors(length_unit, a1, a2, a3)
 
   has_auxil_basis = TRIM(auxil_basis_name(1)) /= '' .OR. TRIM(ecp_auxil_basis_name(1)) /= ''
+
+  ! If using PW auxiliary basis, then set has_auxil_basis to FALSE
+  if( TRIM(auxil_basis_name(1)) == 'PW' .OR. TRIM(auxil_basis_name(1)) == 'pw' &
+     .OR. TRIM(ecp_auxil_basis_name(1)) == 'PW' .OR. TRIM(ecp_auxil_basis_name(1)) == 'pw' ) then
+    has_auxil_basis = .FALSE.
+  endif
+
   has_small_basis = TRIM(small_basis_name(1)) /= '' .OR. TRIM(ecp_small_basis_name(1)) /= ''
 
   ! To avoid SCREENED_COULOMB bug:

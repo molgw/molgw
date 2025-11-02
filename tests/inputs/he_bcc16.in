@@ -3,7 +3,8 @@
 
  init_hamiltonian='core'
  ecp_basis='DZV_cp2k'
- ecp_auxil_basis='STO-3G' ! fake value
+ ecp_auxil_basis='PW'
+
  grid_quality='low'       ! fake value
  fft_fix_density_integral='yes'
 

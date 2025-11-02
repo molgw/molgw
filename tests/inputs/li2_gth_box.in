@@ -3,7 +3,7 @@
 
  init_hamiltonian='core'
  ecp_basis='DZVP_cp2k'
- ecp_auxil_basis='AUTO'
+ ecp_auxil_basis='pw'
  ecp_elements='Li'
  ecp_type='blyp.gth'
 

@@ -2,7 +2,7 @@
  scf='lda'
 
  ecp_basis='DZVP_cp2k'
- auxil_basis='auto'
+ auxil_basis='PW'
 
  ecp_elements='Li F'
  ecp_type='blyp.gth'
