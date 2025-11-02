@@ -5,6 +5,7 @@
  ecp_basis='DZV_cp2k'
  ecp_auxil_basis='STO-3G' ! fake value
  grid_quality='low'       ! fake value
+ fft_fix_density_integral='yes'
 
  ecp_elements='He'
  ecp_type='blyp.gth'
