@@ -118,6 +118,8 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
     inof=103
   case('GU')
     inof=104
+  case('HFB')
+    inof=105
   case('HF')
     inof=0
   case('PCCD')
