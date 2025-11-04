@@ -483,7 +483,9 @@ subroutine setup_hxc_periodic(basis, p_matrix, h_ao, ehartree, exc)
 
   call setup_vxc_periodic(basis, vloc, exc)
 
+  call start_clock(timing_pbc_potential_to_hao)
   call calculate_hao_periodic(basis, vloc, h_ao)
+  call stop_clock(timing_pbc_potential_to_hao)
 
   deallocate(vloc)
 
@@ -755,7 +757,6 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
   !=====
 
 
-  call start_clock(timing_pbc_potential_to_hao)
 
   write(stdout,'(/,1x,a)') 'From local potential to hamiltonian in AO basis'
 
@@ -882,7 +883,6 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
 
   call grid%sum(h_ao)
 
-  call stop_clock(timing_pbc_potential_to_hao)
 
 
 end subroutine calculate_hao_periodic
