@@ -160,7 +160,7 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
   type(basis_set), intent(in) :: basis
   real(dp), intent(out) :: overlap_ao(:, :)
   !=====
-  integer :: i1, i2, i3, ibf
+  integer :: i1, i2, i3, i123, ibf
   real(dp) :: shift(3)
   real(dp), allocatable :: s_matrix(:, :)
   real(dp) :: normalization(basis%nbf)
@@ -168,10 +168,13 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
 
   allocate(s_matrix, MOLD=overlap_ao)
 
+  i123 = 0
   overlap_ao(:, :) = 0.0_dp
   do i3=-nx, nx
     do i2=-nx, nx
       do i1=-nx, nx
+        i123 = i123 + 1
+        if( MODULO(i123 - 1, world%nproc) /= world%rank ) cycle
 
         shift(:) = MATMUL( aprim(:, :), [i1, i2, i3] )
         call setup_overlap_onecell(basis, shift, s_matrix)
@@ -182,6 +185,8 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
   enddo
 
   deallocate(s_matrix)
+
+  call world%sum(overlap_ao)
 
   ! Check normalization
   do ibf=1, basis%nbf
@@ -286,17 +291,20 @@ subroutine setup_kinetic_periodic(basis, kin_ao)
   type(basis_set), intent(in) :: basis
   real(dp), intent(out) :: kin_ao(:, :)
   !=====
-  integer :: i1, i2, i3
+  integer :: i1, i2, i3, i123
   real(dp) :: shift(3)
   real(dp), allocatable :: hkin(:, :)
   !=====
 
   allocate(hkin, MOLD=kin_ao)
 
+  i123 = 0
   kin_ao(:, :) = 0.0_dp
   do i3=-nx, nx
     do i2=-nx, nx
       do i1=-nx, nx
+        i123 = i123 + 1
+        if( MODULO(i123 - 1, world%nproc) /= world%rank ) cycle
 
         shift(:) = MATMUL( aprim(:, :), [i1, i2, i3] )
         call setup_kinetic_onecell(basis, shift, hkin)
@@ -307,6 +315,9 @@ subroutine setup_kinetic_periodic(basis, kin_ao)
   enddo
 
   deallocate(hkin)
+
+  call world%sum(kin_ao)
+
 
 end subroutine setup_kinetic_periodic
 
@@ -339,7 +350,7 @@ subroutine setup_kinetic_onecell(basis, shift, kin_ao)
   integer :: ibf_cart, jbf_cart
   !=====
 
-  call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  call start_clock(MERGE(0, timing_hamiltonian_kin, in_rt_tddft))
 
   do jshell=1, basis%nshell
     lj      = basis%shell(jshell)%am
@@ -385,7 +396,7 @@ subroutine setup_kinetic_onecell(basis, shift, kin_ao)
   enddo
 
 
-  call stop_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  call stop_clock(MERGE(0, timing_hamiltonian_kin, in_rt_tddft))
 
 
 end subroutine setup_kinetic_onecell
@@ -1444,7 +1455,7 @@ subroutine poisson_solver_fft(rhor, vcoulr)
   enddo
 
 #else
-  vcoulr(:) = rhor(:) ! Fake operation to cheat on the unused dummy variable check of the compiler:w
+  vcoulr(:) = rhor(:) ! Fake operation to cheat on the unused dummy variable check of the compiler
   call die('poisson_solver_fft: requires to be compiled FFTs (-DHAVE_FFTW3)')
 #endif
 
