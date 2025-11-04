@@ -34,6 +34,7 @@ module m_hamiltonian_periodic
 #endif
 
   integer, private, parameter :: nx = 1
+  integer, parameter :: fft_batch_size = 1024
 
   integer(C_INT), private :: nfft1
   integer(C_INT), private :: nfft2
@@ -714,22 +715,45 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
   integer :: ispin
   real(dp) :: shift(3)
   real(dp), allocatable :: tmp(:, :)
+  integer :: first, last, current_batch_size, batch_max
   !=====
 
   call start_clock(timing_pbc_density)
 
-  allocate(tmp(basis%nbf, nfft_local))
+  batch_max = MIN(nfft_local, fft_batch_size)
+  write(stdout,'(1x,a,i6)') 'Calculate density on FFT grid with batch size: ', batch_max
+
+  call clean_allocate('P * phi', tmp, basis%nbf, batch_max)
 
   rhor(:, :) = 0.0_dp
+  !
+  ! phi_α(r) * ( P_αβ * phi_β(r) )
   do ispin=1, nspin
-    ! phi_α(r) * ( P_αβ * phi_β(r) )
-    call DGEMM('N', 'N', basis%nbf, nfft_local, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
-               bfr(:, :), basis%nbf, 0.0d0, tmp, basis%nbf)
+    ! Coding without batches
+    !call DGEMM('N', 'N', basis%nbf, nfft_local, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
+    !           bfr(:, :), basis%nbf, 0.0d0, tmp, basis%nbf)
   
-    rhor(:, ispin) = rhor(:, ispin) + SUM( bfr(:, :) * tmp(:, :), DIM=1)
-  enddo
+    !rhor(:, ispin) = rhor(:, ispin) + SUM( bfr(:, :) * tmp(:, :), DIM=1)
 
-  deallocate(tmp)
+
+    first = 1
+    do
+      last = MIN(first + batch_max - 1, nfft_local)
+      current_batch_size = last - first + 1
+
+      call DGEMM('N', 'N', basis%nbf, current_batch_size, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
+              bfr(:, first), basis%nbf, 0.0d0, tmp(:, :), basis%nbf)
+  
+      rhor(first:last, ispin) &
+                 = rhor(first:last, ispin) + SUM( bfr(:, first:last) * tmp(:, 1:current_batch_size), DIM=1)
+      first = last + 1
+      if( first > nfft_local ) exit
+    enddo
+
+
+  enddo ! end of spin loop
+
+  call clean_deallocate('P * phi', tmp)
 
   call stop_clock(timing_pbc_density)
 
@@ -751,7 +775,8 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
   integer  :: ispin, ibf, jbf, ifft_local
   real(dp) :: shift(3)
   real(dp), allocatable :: tmp1(:, :), tmp2(:, :)
-  integer :: npos, nneg, ipos, ineg
+  integer :: npos, nneg, ipos, ineg, nneg_batch, current_batch_size
+  integer :: ifft_local_first_in_batch
   !=====
 
 
@@ -784,32 +809,59 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
 
           ! Split cases when vloc is positive or negative
           npos = COUNT( vloc(:, ispin) > 0.0_dp )
-          nneg = COUNT( vloc(:, ispin) < 0.0_dp )
           call clean_allocate('TMP1', tmp1, basis%nbf, npos)
-          call clean_allocate('TMP2', tmp2, basis%nbf, nneg)
-
           ipos = 0
-          ineg = 0
-          call start_clock(timing_tmp9)
           do ifft_local=1, nfft_local
-            if( (vloc(ifft_local, ispin) > 0.0_dp) ) then
+            if( vloc(ifft_local, ispin) > 0.0_dp ) then
               ipos = ipos + 1
               tmp1(:, ipos) = bfr(:, ifft_local) * SQRT(vloc(ifft_local, ispin))
-            else
-              ineg = ineg + 1
-              tmp2(:, ineg) = bfr(:, ifft_local) * SQRT(-vloc(ifft_local, ispin))
             endif
           enddo
-          call stop_clock(timing_tmp9)
 
           ! Positive vloc
           call DSYRK('L', 'N', basis%nbf, npos, 1.0d0, tmp1, basis%nbf, &
                      0.0_dp, h_ao(:, :, ispin), basis%nbf)
-          ! Negative vloc
-          call DSYRK('L', 'N', basis%nbf, nneg,-1.0d0, tmp2, basis%nbf, &
-                     1.0_dp, h_ao(:, :, ispin), basis%nbf)
 
           call clean_deallocate('TMP1', tmp1)
+
+
+          nneg = COUNT( vloc(:, ispin) < 0.0_dp )
+          nneg_batch = MIN(nneg, fft_batch_size)
+
+          call clean_allocate('TMP2', tmp2, basis%nbf, nneg_batch)
+
+          ineg = 0
+          ifft_local_first_in_batch = 1
+          do while( ifft_local_first_in_batch < nfft_local )
+
+            ineg = 0
+            ifft_local = ifft_local_first_in_batch
+            do
+              ifft_local = ifft_local + 1
+
+              if( ifft_local > nfft_local ) then
+                ifft_local_first_in_batch = ifft_local   ! ifft_local_first_in_batch = nfft_local + 1
+                current_batch_size = ineg - 1
+                exit
+              endif
+
+              if( vloc(ifft_local, ispin) < 0.0_dp ) then
+                ineg = ineg + 1
+                if( ineg > nneg_batch ) then
+                  ifft_local_first_in_batch = ifft_local
+                  current_batch_size = ineg - 1
+                  exit
+                else
+                  tmp2(:, ineg) = bfr(:, ifft_local) * SQRT(-vloc(ifft_local, ispin))
+                endif
+              endif
+            enddo
+
+            ! Negative vloc
+            call DSYRK('L', 'N', basis%nbf, current_batch_size, -1.0d0, tmp2, basis%nbf, &
+                       1.0_dp, h_ao(:, :, ispin), basis%nbf)
+          enddo
+
           call clean_deallocate('TMP2', tmp2)
         end select
 
