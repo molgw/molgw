@@ -723,10 +723,8 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
   rhor(:, :) = 0.0_dp
   do ispin=1, nspin
     ! phi_α(r) * ( P_αβ * phi_β(r) )
-    call start_clock(timing_tmp1)
     call DGEMM('N', 'N', basis%nbf, nfft_local, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
                bfr(:, :), basis%nbf, 0.0d0, tmp, basis%nbf)
-    call stop_clock(timing_tmp1)
   
     rhor(:, ispin) = rhor(:, ispin) + SUM( bfr(:, :) * tmp(:, :), DIM=1)
   enddo
