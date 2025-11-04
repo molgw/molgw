@@ -207,7 +207,7 @@ program molgw
  
     !
     ! If an auxiliary basis is given, then set it up now
-    if( has_auxil_basis ) then
+    if( has_auxil_basis .AND. .NOT. pbc_) then
       write(stdout, '(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
       if( TRIM(capitalize(auxil_basis_name(1))) == 'AUTO' .OR. TRIM(capitalize(auxil_basis_name(1))) &
        &   == 'PAUTO' .OR.  TRIM(capitalize(ecp_auxil_basis_name(1))) == 'AUTO' .OR. &
@@ -221,7 +221,7 @@ program molgw
     endif
 
 #if defined(HAVE_LIBCINT)
-    if( has_auxil_basis) then
+    if( has_auxil_basis .AND. .NOT. pbc_ ) then
       ! basis object will contain the information for the joint (basis, auxil_basis)
       call init_libcint(basis, auxil_basis)
       ! auxil_basis object will contain the information for the sole auxil_basis
@@ -285,32 +285,34 @@ program molgw
     if( memory_evaluation_ ) call evaluate_memory(basis%nbf, auxil_basis%nbf, nstate, occupation)
    
    
-    if( .NOT. has_auxil_basis ) then
-      !
-      ! If no auxiliary basis is given,
-      ! then calculate the required 4-center integrals
-      call calculate_eri(print_eri_, basis, 0.0_dp)
-      !
-      ! for Range-separated hybrids, calculate the long-range ERI
-      if(calc_type%need_exchange_lr) then
-        call calculate_eri(print_eri_, basis, rcut)
-      endif
+    if( .NOT. pbc_ ) then
+      if( .NOT. has_auxil_basis ) then
+        !
+        ! If no auxiliary basis is given,
+        ! then calculate the required 4-center integrals
+        call calculate_eri(print_eri_, basis, 0.0_dp)
+        !
+        ! for Range-separated hybrids, calculate the long-range ERI
+        if(calc_type%need_exchange_lr) then
+          call calculate_eri(print_eri_, basis, rcut)
+        endif
    
-    else
+      else
    
-      ! 2-center and 3-center integrals
-      call calculate_eri_ri(basis, auxil_basis, 0.0_dp)
-   
-   
-      ! If Range-Separated Hybrid are requested
-      ! If is_big_restart, these integrals are NOT needed, I chose code this!
-      if(calc_type%need_exchange_lr ) then
         ! 2-center and 3-center integrals
-        call calculate_eri_ri(basis, auxil_basis, rcut)
+        call calculate_eri_ri(basis, auxil_basis, 0.0_dp)
+   
+   
+        ! If Range-Separated Hybrid are requested
+        ! If is_big_restart, these integrals are NOT needed, I chose code this!
+        if(calc_type%need_exchange_lr ) then
+          ! 2-center and 3-center integrals
+          call calculate_eri_ri(basis, auxil_basis, rcut)
+        endif
+   
+        call reshuffle_distribution_3center()
+   
       endif
-   
-      call reshuffle_distribution_3center()
-   
     endif
     ! ERI integrals have been computed and stored
     !
@@ -598,7 +600,7 @@ program molgw
 
 #if defined(HAVE_LIBCINT)
   call destroy_libcint(basis)
-  if( has_auxil_basis) then
+  if( has_auxil_basis .AND. .NOT. pbc_ ) then
     call destroy_libcint(auxil_basis)
     call init_libcint(basis, auxil_basis)
     call init_libcint(auxil_basis)
@@ -931,7 +933,7 @@ program molgw
   if( has_auxil_basis .AND. calc_type%is_lr_mbpt ) call destroy_eri_3center_lr()
 
   call destroy_basis_set(basis)
-  if(has_auxil_basis) call destroy_basis_set(auxil_basis)
+  if( has_auxil_basis .AND. .NOT. pbc_ ) call destroy_basis_set(auxil_basis)
   call destroy_atoms()
 
 #if defined(HAVE_LIBCINT)

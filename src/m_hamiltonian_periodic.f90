@@ -1617,7 +1617,6 @@ subroutine calculate_basis_functions_periodic(basis)
   !$OMP PARALLEL PRIVATE(li, ni_cart, ibf1, ibf1_cart, ibf2, basis_function_r_cart, dr)
   !$OMP DO
   do ishell=1, basis%nshell
-    call start_clock(timing_tmp4)
     li      = basis%shell(ishell)%am
     ni_cart = number_basis_function_am('CART',li)
     ibf1      = basis%shell(ishell)%istart
@@ -1642,19 +1641,14 @@ subroutine calculate_basis_functions_periodic(basis)
     enddo
 
     allocate(basis_function_r_cart(ni_cart, nfft_local))
-    call stop_clock(timing_tmp4)
 
-    call start_clock(timing_tmp2)
     do ifft=1, nfft_local
       do i_cart=1, ni_cart
         basis_function_r_cart(i_cart, ifft) = eval_basis_function2(basis%bfc(ibf1_cart + i_cart - 1), dr(:, ifft))
       enddo
     enddo
-    call stop_clock(timing_tmp2)
 
-    call start_clock(timing_tmp3)
     bfr(ibf1:ibf2, :) = MATMUL( TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)) , basis_function_r_cart(:, :) )
-    call stop_clock(timing_tmp3)
     deallocate(basis_function_r_cart)
 
   enddo
@@ -1663,7 +1657,6 @@ subroutine calculate_basis_functions_periodic(basis)
 
   deallocate(dr)
 
-  call start_clock(timing_tmp8)
   write(stdout,'(1x,a)') 'Check normalization of the basis functions on the real-space grid'
   norm(:) = SUM( bfr(:, :)**2, DIM=2 ) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(norm)
@@ -1678,7 +1671,6 @@ subroutine calculate_basis_functions_periodic(basis)
     call issue_warning('Some basis functions are not normalized properly. ' // &
                        'Consider increasing the box or use less diffuse basis functions')
   endif
-  call stop_clock(timing_tmp8)
 
   call stop_clock(timing_pbc_eval_bf)
 
@@ -1837,7 +1829,8 @@ subroutine write_restart_rhogrid()
   implicit none
 
   !=====
-  integer :: rhofile, ifft_global, ifft_local, ispin
+  integer :: rhofile, ispin
+  !integer :: ifft_global, ifft_local
   real(dp), allocatable :: rho_tmp(:)
   !=====
 
@@ -1848,16 +1841,16 @@ subroutine write_restart_rhogrid()
     open(newunit=rhofile, file='RESTART_RHOGRID', form='unformatted', access='stream', status='replace', action='write')
 
   do ispin=1, nspin
-    rho_tmp(:) = 0.0_dp
+    rho_tmp(:) = rho_local_to_global(rhoelecr(:, ispin))
 
-    ifft_local = 0
-    do ifft_global=1, nfft_global
-      if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
-        ifft_local = ifft_local + 1
-        rho_tmp(ifft_global) = rhoelecr(ifft_local, ispin)
-      endif
-    enddo
-    call grid%sum(rho_tmp)
+    !ifft_local = 0
+    !do ifft_global=1, nfft_global
+    !  if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
+    !    ifft_local = ifft_local + 1
+    !    rho_tmp(ifft_global) = rhoelecr(ifft_local, ispin)
+    !  endif
+    !enddo
+    !call grid%sum(rho_tmp)
 
     if( is_iomaster ) then
       write(rhofile) rho_tmp(:)
@@ -1918,6 +1911,60 @@ function read_restart_rhogrid()
   endif
 
 end function read_restart_rhogrid
+
+
+!=========================================================================
+function rho_local_to_global(rho_local) RESULT(rho_global)
+  implicit none
+
+  real(dp), intent(in) :: rho_local(:)
+  real(dp), allocatable :: rho_global(:)
+  !=====
+  integer :: ifft_local, ifft_global
+  !=====
+
+  if( ALLOCATED(rho_global) ) deallocate(rho_global)
+
+  allocate(rho_global(nfft_global))
+  rho_global(:) = 0.0_dp
+
+  ifft_local = 0
+  do ifft_global=1, nfft_global
+    if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
+      ifft_local = ifft_local + 1
+      rho_global(ifft_global) = rho_local(ifft_local)
+    endif
+  enddo
+  call grid%sum(rho_global)
+
+
+end function rho_local_to_global
+
+
+!=========================================================================
+function rho_global_to_local(rho_global) RESULT(rho_local)
+  implicit none
+
+  real(dp), intent(inout) :: rho_global(:)
+  real(dp), allocatable :: rho_local(:)
+  !=====
+  integer :: ifft_local, ifft_global
+  !=====
+
+  if( ALLOCATED(rho_local) ) deallocate(rho_local)
+
+  allocate(rho_local(nfft_local))
+
+  call grid%bcast(rank_iomaster, rho_global)
+  ifft_local = 0
+  do ifft_global=1, nfft_global
+    if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
+      ifft_local = ifft_local + 1
+      rho_local(ifft_local) = rho_global(ifft_global)
+    endif
+  enddo
+
+end function rho_global_to_local
 
 
 !=========================================================================
