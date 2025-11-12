@@ -34,18 +34,18 @@ module m_hamiltonian_periodic
 #endif
 
   integer, private, parameter :: nx = 1
-  integer, parameter :: fft_batch_size = 1024
 
   integer(C_INT), private :: nfft1
   integer(C_INT), private :: nfft2
   integer(C_INT), private :: nfft3
   integer, private        :: nfft_global
   integer, private        :: nfft_local
+  integer, private        :: fft_batch_size = 1024
 
   real(dp), allocatable, private :: rgrid(:, :)
   real(dp), allocatable, private :: rhoelecr(:, :)
 
-  complex(C_DOUBLE_COMPLEX), pointer :: rhog_fftw_prev(:, :, :)
+  complex(C_DOUBLE_COMPLEX), pointer :: rhog_fftw_prev(:, :, :) ! only used in kerker_precond that is not finalized
 
   real(dp), allocatable, private :: bfr(:, :)
 
@@ -121,12 +121,21 @@ subroutine set_fft_grid(basis)
     enddo
   enddo
 
+  fft_batch_size = MIN( NINT( 100.0_dp * 1024_dp**2 / ( STORAGE_SIZE(1.0_dp) / 8.0_dp * basis%nbf ) ), nfft_local)
+  write(stdout, '(1x,a,i8)') 'FFT grid batches set to: ', fft_batch_size
+  write(stdout, '(3x,a,f12.3)') 'which corresponds to temporary array of size (Mb):', &
+                                STORAGE_SIZE(1.0_dp) / 8.0_dp * basis%nbf * fft_batch_size / 1024_dp**2
+
   allocate(rhoelecr(nfft_local, nspin))
   rhoelecr(:, :) = 0.0_dp
 
   !
   ! Evaluate and store basis functions on the real-space grid
   call calculate_basis_functions_periodic(basis)
+
+  !
+  ! set fft_batch_size so to avoid temporary arrays larger than 100 Mb
+  ! temp arrays are nbf x fft grid points
 
 
 contains
