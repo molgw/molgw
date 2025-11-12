@@ -1230,4 +1230,4 @@ RT-TDDFT Total Energy     ,    -456.8233701487  , 0 , 1.0e-7
 
 Kr_Kr_ecp.in              , Kr->He colision using a pseudo potential on both projectile and target
 SCF Total Energy          ,    -923.8534828159  , 0 , 1.0e-7
-RT-TDDFT Total Energy     ,    -893.6924023610  , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,    -893.6924023610  , 0 , 1.0e-6

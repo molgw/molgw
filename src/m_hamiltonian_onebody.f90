@@ -2903,20 +2903,22 @@ subroutine recalc_nucleus_ecp_quadrature(basis, basis_t, basis_p, hamiltonian_nu
               ! <P|1/R|P> contribution
               call DSYR('L', basis_p%nbf, w1(i1) * 4.0_dp * pi * wxa(iradial) * xa(iradial)**2 * ecp(ie)%dk(iecp) &
                          * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2), &
-                         basis_function_r(basis_t%nbf+1:), 1, hamiltonian_ecp(basis_t%nbf+1:, basis_t%nbf+1:), basis_t%nbf+1)
+                         basis_function_r(basis_t%nbf+1:basis%nbf), 1, &
+                         hamiltonian_ecp(basis_t%nbf+1:basis%nbf,basis_t%nbf+1:basis%nbf), basis_t%nbf+1)
               ! <T|1/R|P> contribution
               call DGER(basis_t%nbf, basis_p%nbf, w1(i1) * 4.0_dp * pi * wxa(iradial) * xa(iradial)**2 * ecp(ie)%dk(iecp) & 
                          * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2), &
-                         basis_function_r(:basis_t%nbf), 1, basis_function_r(basis_t%nbf+1:), 1, &
-                         hamiltonian_ecp(:basis_t%nbf, basis_t%nbf+1:), basis_t%nbf)
+                         basis_function_r(1:basis_t%nbf), 1, basis_function_r(basis_t%nbf+1:basis%nbf), 1, &
+                         hamiltonian_ecp(1:basis_t%nbf, basis_t%nbf+1:basis%nbf), basis_t%nbf)
             case(ECP_PSP6, ECP_PSP8)
               ! <P|1/R|P> contribution
               call DSYR('L', basis_p%nbf, w1(i1) * 4.0_dp * pi * wxa(iradial) * xa(iradial)**2 * vr(iecp), &
-                         basis_function_r(basis_t%nbf+1:), 1, hamiltonian_ecp(basis_t%nbf+1:, basis_t%nbf+1:), basis_t%nbf+1)
+                         basis_function_r(basis_t%nbf+1:basis%nbf), 1, &
+                         hamiltonian_ecp(basis_t%nbf+1:basis%nbf, basis_t%nbf+1:basis%nbf), basis_t%nbf+1)
               ! <T|1/R|P> contribution
               call DGER(basis_t%nbf, basis_p%nbf, w1(i1) * 4.0_dp * pi * wxa(iradial) * xa(iradial)**2 * vr(iecp), &
-                         basis_function_r(:basis_t%nbf), 1, basis_function_r(basis_t%nbf+1:), 1, &
-                         hamiltonian_ecp(:basis_t%nbf, basis_t%nbf+1:), basis_t%nbf)
+                         basis_function_r(1:basis_t%nbf), 1, basis_function_r(basis_t%nbf+1:basis%nbf), 1, &
+                         hamiltonian_ecp(1:basis_t%nbf, basis_t%nbf+1:basis%nbf), basis_t%nbf)
             end select
           else
             !
@@ -2979,13 +2981,14 @@ subroutine recalc_nucleus_ecp_quadrature(basis, basis_t, basis_p, hamiltonian_nu
               ! <P|1/R|P> contribution
               call DSYR('L', basis_p%nbf, wxa(iradial) * xa(iradial)**2 * ecp(ie)%dk(iecp) &
                          * EXP( -ecp(ie)%zetak(iecp) *xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2), &
-                         int_fixed_r(basis_t%nbf+1:, iproj), 1, hamiltonian_ecp(basis_t%nbf+1:, basis_t%nbf+1:), basis_p%nbf)
+                         int_fixed_r(basis_t%nbf+1:basis%nbf, iproj), 1, &
+                         hamiltonian_ecp(basis_t%nbf+1:basis%nbf,basis_t%nbf+1:basis%nbf), basis_p%nbf)
 
               ! <T|1/R|P> contribution
               call DGER(basis_t%nbf, basis_p%nbf, wxa(iradial) * xa(iradial)**2 * ecp(ie)%dk(iecp) &
                          * EXP( -ecp(ie)%zetak(iecp) *xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2), &
-                         int_fixed_r(:basis_t%nbf, iproj), 1, int_fixed_r(basis_t%nbf+1, iproj), 1, &
-                         hamiltonian_ecp(:basis_t%nbf, basis_t%nbf+1:), basis_t%nbf)
+                         int_fixed_r(1:basis_t%nbf, iproj), 1, int_fixed_r(basis_t%nbf+1, iproj), 1, &
+                         hamiltonian_ecp(1:basis_t%nbf, basis_t%nbf+1:basis%nbf), basis_t%nbf)
             enddo
           endif
         enddo
