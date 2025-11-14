@@ -125,6 +125,7 @@ subroutine set_fft_grid(basis)
   write(stdout, '(1x,a,i8)') 'FFT grid batches set to: ', fft_batch_size
   write(stdout, '(3x,a,f12.3)') 'which corresponds to temporary array of size (Mb):', &
                                 STORAGE_SIZE(1.0_dp) / 8.0_dp * basis%nbf * fft_batch_size / 1024_dp**2
+  write(stdout, '(1x,a,i8)') 'Images of the unit cell considered for evaluations: ', (2 * nx + 1)**3
 
   allocate(rhoelecr(nfft_local, nspin))
   rhoelecr(:, :) = 0.0_dp
@@ -203,10 +204,15 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
     normalization(ibf) = overlap_ao(ibf, ibf)
   enddo
 
-  if( MINVAL(normalization) < 0.999_dp ) then
-    write(stdout, '(1x,a,f12.6)') 'Some basis functions are normalized at: ', MINVAL(normalization)
+  if( MAXVAL(ABS(normalization - 1.0_dp)) > 1.0e-3_dp ) then
+    write(stdout, '(1x,a,f12.6)') 'Some basis functions are normalized at: ', MAXVAL(ABS(normalization - 1.0_dp))
     call issue_warning('Basis functions are not perfectly normalized. Consider increasing the box')
   endif
+
+  !! Renormalize
+  !do ibf=1, basis%nbf
+  !  overlap_ao(:, ibf) = overlap_ao(:, ibf) / SQRT(normalization(:) * normalization(ibf))
+  !enddo
 
 
 end subroutine setup_overlap_periodic
@@ -276,7 +282,6 @@ subroutine setup_overlap_onecell(basis, shift, s_matrix)
 #endif
 
       deallocate(alphaA, cA)
-
 
       s_matrix(ibf1:ibf2, jbf1:jbf2) = matrix(:, :)
       s_matrix(jbf1:jbf2, ibf1:ibf2) = TRANSPOSE(matrix(:, :))
@@ -818,21 +823,22 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
 
           ! Split cases when vloc is positive or negative
           npos = COUNT( vloc(:, ispin) > 0.0_dp )
-          call clean_allocate('TMP1', tmp1, basis%nbf, npos)
-          ipos = 0
-          do ifft_local=1, nfft_local
-            if( vloc(ifft_local, ispin) > 0.0_dp ) then
-              ipos = ipos + 1
-              tmp1(:, ipos) = bfr(:, ifft_local) * SQRT(vloc(ifft_local, ispin))
-            endif
-          enddo
+          if( npos > 0 ) then
+            call clean_allocate('TMP1', tmp1, basis%nbf, npos)
+            ipos = 0
+            do ifft_local=1, nfft_local
+              if( vloc(ifft_local, ispin) > 0.0_dp ) then
+                ipos = ipos + 1
+                tmp1(:, ipos) = bfr(:, ifft_local) * SQRT(vloc(ifft_local, ispin))
+              endif
+            enddo
 
-          ! Positive vloc
-          call DSYRK('L', 'N', basis%nbf, npos, 1.0d0, tmp1, basis%nbf, &
-                     0.0_dp, h_ao(:, :, ispin), basis%nbf)
+            ! Positive vloc
+            call DSYRK('L', 'N', basis%nbf, npos, 1.0d0, tmp1, basis%nbf, &
+                       0.0_dp, h_ao(:, :, ispin), basis%nbf)
 
-          call clean_deallocate('TMP1', tmp1)
-
+            call clean_deallocate('TMP1', tmp1)
+          endif
 
           nneg = COUNT( vloc(:, ispin) < 0.0_dp )
           nneg_batch = MIN(nneg, fft_batch_size)
@@ -1730,6 +1736,7 @@ subroutine calculate_basis_functions_periodic(basis)
   write(stdout,'(1x,a)') 'Check normalization of the basis functions on the real-space grid'
   norm(:) = SUM( bfr(:, :)**2, DIM=2 ) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(norm)
+
   iworse = MINLOC(norm(:), DIM=1)
   write(stdout, '(1x,a,i4,1x,f11.8)')      'Worse normalization is basis function:', iworse, norm(iworse)
   most_diffuse = MINVAL(basis%bff(iworse)%g(:)%alpha)
@@ -1737,7 +1744,7 @@ subroutine calculate_basis_functions_periodic(basis)
                                    basis%bff(iworse)%icenter, basis%bff(iworse)%am, basis%bff(iworse)%ngaussian, &
                                    most_diffuse
 
-  if( ANY( norm(:) < 0.995_dp ) ) then
+  if( ANY( ABS(norm(:) - 1.0_dp) > 1.0e-3_dp ) ) then
     call issue_warning('Some basis functions are not normalized properly. ' // &
                        'Consider increasing the box or use less diffuse basis functions')
   endif
@@ -2035,6 +2042,45 @@ function rho_global_to_local(rho_global) RESULT(rho_local)
   enddo
 
 end function rho_global_to_local
+
+
+!=========================================================================
+subroutine write_cube_file_periodic_wfn(c_matrix)
+  implicit none
+
+  real(dp), intent(in) :: c_matrix(:, :, :)
+  !=====
+  real(dp), allocatable :: phi_global_i(:)
+  real(dp) :: phi_local_i(nfft_global)
+  real(dp) :: dr(3, 3)
+  integer :: ispin, istate
+  character(len=4) :: key4
+  character(len=1) :: key1
+  !=====
+
+  if( .NOT. ALLOCATED(bfr) ) then
+    call die('write_cube_file_wfn: bug')
+  endif
+
+  do ispin=1, nspin
+    do istate=cube_state_min, cube_state_max
+      phi_local_i(:) = MATMUL( c_matrix(:, istate, ispin), bfr(:, :) )
+      phi_global_i = rho_local_to_global(phi_local_i)
+
+      if( is_iomaster ) then
+        write(key4, '(i4.4)') istate
+        write(key1, '(i1)') ispin
+
+        dr(:, 1) = aprim(:, 1) / nfft1
+        dr(:, 2) = aprim(:, 2) / nfft2
+        dr(:, 3) = aprim(:, 3) / nfft3
+        call write_cube_file('wfn_' // key4 // '_' // key1 // '.cube', nfft1, nfft2, nfft3, dr, phi_global_i, comment='phi')
+      endif
+    endif
+
+  enddo
+
+end subroutine write_cube_file_periodic_wfn
 
 
 !=========================================================================

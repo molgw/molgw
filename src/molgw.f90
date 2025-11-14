@@ -653,6 +653,10 @@ program molgw
     call static_quadrupole(basis, occupation, c_matrix)
   endif
 
+  if( pbc_ .AND. cube_state_max - cube_state_min > 0) then
+    call write_cube_file_periodic_wfn(c_matrix)
+  endif
+
   if( print_wfn_ ) then
     call plot_wfn(basis, c_matrix)
     call plot_rho('GKS', basis, occupation, c_matrix)
