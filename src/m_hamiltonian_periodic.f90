@@ -2076,7 +2076,7 @@ subroutine write_cube_file_periodic_wfn(c_matrix)
         dr(:, 3) = aprim(:, 3) / nfft3
         call write_cube_file('wfn_' // key4 // '_' // key1 // '.cube', nfft1, nfft2, nfft3, dr, phi_global_i, comment='phi')
       endif
-    endif
+    enddo
 
   enddo
 
