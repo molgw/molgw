@@ -241,12 +241,12 @@ level100: molgw.o
                         pdbssolver1.o m_selfenergy_evaluation.o real_spherical_harmonics.o m_force.o m_realtime_tddft.o \
                         molgw.o \
                         -o ../molgw \
-                        $(SCALAPACK) $(LAPACK)   \
                         $(LIBXC) $(LIBXC_INCS)  \
                         $(LIBINT) $(LIBINT_INCS) \
                         $(ELPA) $(ELPA_INCS) \
                         $(LIBCINT) \
 			$(HDF5) $(HDF5_INCS) \
+                        $(SCALAPACK) $(LAPACK)   \
                         $(LINKS)
 
 molgw.o: m_definitions.o m_warning.o m_hdf5_tools.o m_timing.o m_memory.o m_inputparam.o m_lbfgs.o \
