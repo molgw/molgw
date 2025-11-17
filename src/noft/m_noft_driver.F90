@@ -33,7 +33,7 @@ module m_noft_driver
 
  implicit none
 
- private :: read_restart,echo_input,occtogamma,build_real_nos
+ private :: read_restart,echo_input,occtogamma
 !!***
 
  public :: run_noft,gram_schmidt
@@ -90,8 +90,8 @@ contains
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,&
 &  iprintints,itolLambda,ndiis,Enof,tolE_in,Vnn,AOverlap_in,occ_inout,mo_ints,ofile_name,NO_COEF,NO_COEF_cmplx,&
-&  lowmemERI,restart,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,Lpower,fcidump,irange_sep,& ! Optional
-&  hessian)                                                                                                            ! Optional
+&  lowmemERI,restart,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,Lpower,fcidump,&   ! Optional
+&  irange_sep,hessian)                                                                                        ! Optional
 !Arguments ------------------------------------
 !scalars
  logical,optional,intent(in)::restart,lowmemERI,fcidump,hessian
@@ -137,14 +137,14 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  logical::ekt,diagLpL,restart_param,keep_occs,keep_orbs,cpx_mos,all_ERI_in,hessian_in
  logical::file_exists,do_xc_dft
  integer::iorb,iter,ifcidump,irs_noft
- integer::iorbp,iorbq,iunit
+ integer::iorbp,iorbq
  real(dp)::Energy,Energy_old,Vee,hONEbody,chempot_val,maxdiff_lambda,Edft_xc
  type(rdm_t),target::RDMd
  type(integ_t),target::INTEGd
  type(elag_t),target::ELAGd
  type(hessian_t),target::HESSIANd
 !arrays
- real(dp),allocatable,dimension(:,:)::DM1,NO_COEF_tmp
+ real(dp),allocatable,dimension(:,:)::DM1,Phases
  real(dp),allocatable,dimension(:,:,:)::DM2_JK
  real(dp),allocatable,dimension(:,:,:,:)::DM2
  character(len=20)::coef_file
@@ -152,8 +152,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  character(len=200)::msg
 !************************************************************************
 
+ allocate(Phases(NBF_occ_in,NBF_occ_in))
  diagLpL=.true.; restart_param=.false.; ifcidump=0; keep_orbs=.false.; keep_occs=.false.; cpx_mos=.false.;
- irs_noft=0; all_ERI_in=.false.; hessian_in=.false.; file_exists=.false.;
+ irs_noft=0; all_ERI_in=.false.; hessian_in=.false.; file_exists=.false.; Phases=one;
     
  ! Initialize output
  call gitversion(sha_git) 
@@ -212,7 +213,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  endif
 
  ! Initialize RDMd, INTEGd, ELAGd, and HESSIANd objects.
- if(INOF_in==101 .or. INOF_in==70) then
+ if(INOF_in==101) then
   if(present(Lpower)) then
    call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
 &  Nbeta_elect_in,Nalpha_elect_in,irs_noft,Lpower=Lpower)
@@ -224,7 +225,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
 & Nbeta_elect_in,Nalpha_elect_in,irs_noft)
  endif
- 
+
  if(present(lowmemERI) .and. (.not.hessian_in .and. imethorb/=1)) then ! The Hessian for Quadratic Convergence method needs all integrals
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft,lowmemERI=lowmemERI)
  else
@@ -273,11 +274,22 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   if(RDMd%INOF<0) then ! pCCD
-   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
+   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs)
   else ! NOFT
-   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
-  &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx,&
-  &  ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx) ! Also iter=iter+1
+   if(RDMd%INOF==70) then ! pCCD phases
+    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs,only_phases=.true.)
+   endif
+   if(RDMd%NBF_occ-(RDMd%Nfrozen+1)<=20 .and. .false.) then ! May print some phases for debug 
+    write(msg,'(a)') 'DM2_L phases taken from pCCD'
+    call write_output(msg)
+    do iorb=RDMd%Nfrozen+1,RDMd%NBF_occ
+     write(msg,'(*(f5.1))') Phases(iorb,RDMd%Nfrozen+1:RDMd%NBF_occ)
+     call write_output(msg)
+    enddo
+   endif
+   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,Phases,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
+   &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx,&
+   &  ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx) ! Also iter=iter+1
   endif
  else
   if(INTEGd%irange_sep/=0) then
@@ -290,10 +302,21 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   endif
   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
   if(RDMd%INOF<0) then ! pCCD
-   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
+   call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs)
   else ! NOFT
-   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
-  &  ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
+   if(RDMd%INOF==70) then ! pCCD phases
+    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs,only_phases=.true.)
+   endif
+   if(RDMd%NBF_occ-(RDMd%Nfrozen+1)<=20 .and. .false.) then ! May print some phases for debug 
+    write(msg,'(a)') 'DM2_L phases taken from pCCD'
+    call write_output(msg)
+    do iorb=RDMd%Nfrozen+1,RDMd%NBF_occ
+     write(msg,'(*(f5.1))') Phases(iorb,RDMd%Nfrozen+1:RDMd%NBF_occ)
+     call write_output(msg)
+    enddo
+   endif
+   call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,Phases,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
+   &  ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
   endif
  endif
  Energy_old=Energy
@@ -331,7 +354,6 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERI_in)
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-   write(*,*) ' '
    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx)
   else
    !iorbp=1;iorbq=2;iorbr=1;iorbs=2;
@@ -339,13 +361,9 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF,hCORE=INTEGd%hCORE, &
    & ERImol=INTEGd%ERImol,all_ERIs=all_ERI_in)
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-   write(*,*) ' '
    call HESSIANd%build_brut(RDMd%NBF_tot,DM1,DM2,hCORE=INTEGd%hCORE,ERImol=INTEGd%ERImol)
   endif
-  write(*,*) ' '
   deallocate(DM1,DM2)
-  write(msg,'(a)') ' '
-  call write_output(msg)
  endif
 
  ! Orb. and occ. optimization
@@ -355,10 +373,10 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(.not.keep_orbs) then
    call ELAGd%clean_diis()
    if(cpx_mos) then
-    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints, &
+    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints,Phases, &
     & NO_COEF_cmplx=NO_COEF_cmplx)
    else   
-    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints, &
+    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints,Phases, &
     & NO_COEF=NO_COEF)
    endif
    if(imethorb==1) then ! For F diag method, print F_pp elements after each global iteration
@@ -374,21 +392,21 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   ! occ. optimization
   if(cpx_mos) then
    if(RDMd%INOF<0) then ! pCCD
-    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
+    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs)
    else ! NOFT
-    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
+    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,Phases,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx, &
    &  ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx, &
    &  ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx) ! Also iter=iter+1
    endif
   else
    if(RDMd%INOF<0) then ! pCCD
-    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter,imethocc,keep_occs)
+    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs)
    else ! NOFT
-    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
+    call opt_occ(iter,imethocc,keep_occs,RDMd,Vnn,Energy,Phases,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J, &
    &  ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr) ! Also iter=iter+1
    endif
   endif
-  call RDMd%print_gammas()
+  if(RDMd%INOF>0) call RDMd%print_gammas()
   if(RDMd%INOF<0) call RDMd%print_tz_amplitudes()
 
   ! Check convergence
@@ -451,22 +469,6 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  if(RDMd%INOF>-1) then
   if(cpx_mos) then
    call s2_calc(RDMd,INTEGd,NO_COEF_cmplx=NO_COEF_cmplx)
-   !allocate(NO_COEF_tmp(RDMd%NBF_tot,RDMd%NBF_tot))
-   !NO_COEF_tmp=zero
-   !! Prepare real NOs
-   !call build_real_nos(RDMd,INTEGd,NO_COEF_tmp,NO_COEF_cmplx)
-   !! Print real NOs
-   !iunit=911
-   !coef_file='NO_COEF_BIN_REAL'
-   !open(unit=iunit,form='unformatted',file=coef_file)
-   !do iorbp=1,RDMd%NBF_tot
-   ! do iorbq=1,RDMd%NBF_tot
-   !  write(iunit) iorbp,iorbq,NO_COEF_tmp(iorbp,iorbq)
-   ! enddo
-   !enddo
-   !write(iunit) 0,0,zero
-   !close(iunit)
-   !deallocate(NO_COEF_tmp)
   else
    call s2_calc(RDMd,INTEGd,NO_COEF=NO_COEF)
   endif
@@ -538,11 +540,11 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  ! Calculate the chem. pot. = d E / d occ if it is not rs-NOFT and pCCD (resets occ in [0:1])
  if(irs_noft==0 .and. RDMd%INOF>-1) then
   if(cpx_mos) then
-   call occ_chempot(RDMd,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx,&
+   call occ_chempot(RDMd,Phases,hCORE_cmplx=INTEGd%hCORE_cmplx,ERI_J_cmplx=INTEGd%ERI_J_cmplx,&
    & ERI_K_cmplx=INTEGd%ERI_K_cmplx,ERI_L_cmplx=INTEGd%ERI_L_cmplx,ERI_Jsr_cmplx=INTEGd%ERI_Jsr_cmplx,&
    & ERI_Lsr_cmplx=INTEGd%ERI_Lsr_cmplx)
   else 
-   call occ_chempot(RDMd,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J,ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,&
+   call occ_chempot(RDMd,Phases,hCORE=INTEGd%hCORE,ERI_J=INTEGd%ERI_J,ERI_K=INTEGd%ERI_K,ERI_L=INTEGd%ERI_L,&
     ERI_Jsr=INTEGd%ERI_Jsr,ERI_Lsr=INTEGd%ERI_Lsr)
   endif
   chempot_val=-ten**(ten)
@@ -555,7 +557,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   enddo
   write(msg,'(a)') ' '
   call write_output(msg)
-  write(msg,'(a,f10.5,a,f10.5,a)') 'Chem. potential ',chempot_val,' (a.u.) ',chempot_val*Ha_eV,' (eV), and per orbital (a.u.)'
+  write(msg,'(a,f10.5,a,e12.5,a)') 'Chem. potential ',chempot_val,' (a.u.) ',chempot_val*Ha_eV,' (eV), and per orbital (a.u.)'
   call write_output(msg)
   do iorb=1,(RDMd%NBF_occ/10)*10,10
    write(msg,'(f12.6,9f11.6)') RDMd%chempot_orb(iorb:iorb+9)
@@ -632,6 +634,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  
  ! Close unit 313 used for output file
  call close_output()
+ deallocate(Phases)
 
 end subroutine run_noft
 !!***
@@ -767,9 +770,7 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   write(msg,'(a)') ' M. Piris, Phys. Rev. Lett., 127, 233001 (2021)'
   call write_output(msg)
  elseif(INOF_in==70) then
-  write(msg,'(a)') ' Using PNOF7_SUP approximation'
-  call write_output(msg)
-  write(msg,'(a,i12)') ' PNOF7_SUP version selected Istat  ',Ista_in
+  write(msg,'(a)') ' Using PNOF7_PHASES approximation'
   call write_output(msg)
  else
   ! Nth
@@ -994,7 +995,7 @@ subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOv
 
  ! Read GAMMAs (indep. parameters used to optimize occs.) from GAMMAS file 
  if(ireadGAMMAS==1) then
-  if(RDMd%INOF>-1) then
+  if(RDMd%INOF>-1 .and. RDMd%INOF/=70) then
    allocate(GAMMAS_in(RDMd%Ngammas))
    open(unit=iunit,form='unformatted',file='GAMMAS',iostat=istat,status='old')
    icount=0
@@ -1020,7 +1021,34 @@ subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOv
    endif
    close(iunit)
    deallocate(GAMMAS_in)
-  else ! pCCD
+  else ! pCCD or PNOF7-PHASES
+   if(RDMd%INOF==70) then
+    allocate(GAMMAS_in(RDMd%Ngammas))
+    open(unit=iunit,form='unformatted',file='GAMMAS',iostat=istat,status='old')
+    icount=0
+    if(istat==0) then
+     do 
+      read(iunit,iostat=istat) intvar,doubvar
+      if(istat/=0) then
+       exit
+      endif
+      if((intvar/=0).and.intvar<=RDMd%Ngammas) then
+       GAMMAs_in(intvar)=doubvar
+       icount=icount+1
+      else
+       exit
+      endif
+     enddo
+    endif
+    if(icount==RDMd%Ngammas) then
+     RDMd%GAMMAs_old(:)=GAMMAS_in(:)
+     RDMd%GAMMAs_nread=.false.
+     write(msg,'(a)') 'GAMMAs (indep. variables) read from checkpoint file'
+     call write_output(msg)
+    endif
+    close(iunit)
+    deallocate(GAMMAS_in)
+   endif
    allocate(TZ_amp(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)))
    open(unit=iunit,form='unformatted',file='TAMP',iostat=istat,status='old')
    icount=0
@@ -1357,110 +1385,6 @@ subroutine gram_schmidt(NBF_tot,AOverlap,NO_COEF,NO_COEF_cmplx)
   deallocate(S_NO_cmplx,NO_COEF_cmplx_new)
  endif
 end subroutine gram_schmidt
-!!***
-
-!!***
-!!****f* DoNOF/build_real_nos
-!! NAME
-!!  build_real_nos 
-!!
-!! FUNCTION
-!!  Build real natural orbitals from the complex ones, occ. numbers, and overlap matrix.
-!!
-!! INPUTS
-!!
-!! OUTPUT
-!!
-!! PARENTS
-!!  
-!! CHILDREN
-!!
-!! SOURCE
-
-subroutine build_real_nos(RDMd,INTEGd,NO_COEF,NO_COEF_cmplx)
-!Arguments ------------------------------------
-!scalars
- type(rdm_t),intent(in)::RDMd
- type(integ_t),intent(in)::INTEGd
-!arrays
- real(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(inout)::NO_COEF
- complex(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::NO_COEF_cmplx
-!Local variables ------------------------------
-!scalars
- integer::iorbp,iorbq
- integer::lwork,info
- real(dp)::pivot
-!arrays
- real(dp),allocatable,dimension(:)::Eigvals,Work
- real(dp),allocatable,dimension(:,:)::Density,Eigvec,S_12,S_m12
- complex(dp),allocatable,dimension(:,:)::Density_cmplx,Tmp_matrix_cmplx
- character(len=200)::msg
-!************************************************************************
-
- ! Prepare real density
- allocate(Density(RDMd%NBF_tot,RDMd%NBF_tot))
- allocate(Density_cmplx(RDMd%NBF_tot,RDMd%NBF_tot),Tmp_matrix_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
- Tmp_matrix_cmplx=complex_zero
- do iorbp=1,RDMd%NBF_occ
-  Tmp_matrix_cmplx(iorbp,iorbp)=RDMd%occ(iorbp)
- enddo
- Density_cmplx=matmul(matmul(NO_COEF_cmplx,Tmp_matrix_cmplx),conjg(transpose(NO_COEF_cmplx)))
- do iorbp=1,RDMd%NBF_tot
-  do iorbq=1,RDMd%NBF_tot
-   Density(iorbp,iorbq)=real(Density_cmplx(iorbp,iorbq))
-  enddo
- enddo
- deallocate(Density_cmplx,Tmp_matrix_cmplx)
-
- ! Prepare S^1/2 and S^-1/2
- allocate(Eigvec(RDMd%NBF_tot,RDMd%NBF_tot),Eigvals(RDMd%NBF_tot),Work(1))
- allocate(S_12(RDMd%NBF_tot,RDMd%NBF_tot))
- allocate(S_m12(RDMd%NBF_tot,RDMd%NBF_tot))
- Eigvec=INTEGd%Overlap
- lwork=-1
- call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,Eigvals,Work,lwork,info)
- lwork=nint(Work(1))
- if(info==0) then
-  deallocate(Work)
-  allocate(Work(lwork))
-  Eigvals=zero
-  call DSYEV('V','L',RDMd%NBF_tot,Eigvec,RDMd%NBF_tot,Eigvals,Work,lwork,info)
- endif
- S_12=zero; S_m12=zero;
- do iorbp=1,RDMd%NBF_tot
-  S_12(iorbp,iorbp)=sqrt(Eigvals(iorbp))
-  S_m12(iorbp,iorbp)=one/sqrt(Eigvals(iorbp))
- enddo 
- S_12=matmul(Eigvec,matmul(S_12,transpose(Eigvec)))
- S_m12=matmul(Eigvec,matmul(S_m12,transpose(Eigvec)))
-
- ! diag[ S^1/2 Density S^1/2 ]
- Density=matmul(S_12,matmul(Density,S_12))
- Eigvals=zero
- call DSYEV('V','L',RDMd%NBF_tot,Density,RDMd%NBF_tot,Eigvals,Work,lwork,info)
- Eigvals(:)=two*Eigvals(:)
- do iorbp=1,RDMd%NBF_tot
-  Eigvec(:,iorbp)=Density(:,RDMd%NBF_tot-(iorbp-1))
-  Density(iorbp,RDMd%NBF_tot)=Eigvals(RDMd%NBF_tot-(iorbp-1))
- enddo
- Eigvals(:)=Density(:,RDMd%NBF_tot)
- write(msg,'(a,f10.5,a)') 'Total occ ',sum(Eigvals(:)),'. From the real density nat. orbs. '
- call write_output(msg)
- do iorbp=1,(RDMd%NBF_tot/10)*10,10
-  write(msg,'(f12.6,9f11.6)') Eigvals(iorbp:iorbp+9)
-  call write_output(msg)
- enddo
- iorbp=(RDMd%NBF_tot/10)*10+1 
- write(msg,'(f12.6,*(f11.6))') Eigvals(iorbp:) 
- call write_output(msg)
-
- ! Build Coefs = S^-1/2 Eigvenvectors
- NO_COEF=matmul(S_m12,Eigvec)
-
- ! Deallocate arrays
- deallocate(Eigvals,Work,S_12,S_m12,Density,Eigvec)
-
-end subroutine build_real_nos
 !!***
 
 end module m_noft_driver

@@ -7,8 +7,8 @@
  nspin=2
  init_hamiltonian='core'
 
- basis='cc-pVDZ'
- auxil_basis='cc-pVDZ-RI'
+ basis='6-31G'
+ auxil_basis='PAUTO'
  gaussian_type='cart'
 
  natom=2
@@ -17,6 +17,7 @@
  noft_npairs=3
  noft_functional='hf'
  noft_dft='yes'
+ noft_dft0='no'
 /
 N   0. 0. 0.
 N   0. 0. 1.

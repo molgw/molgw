@@ -46,24 +46,26 @@ module m_scf
   integer, private              :: iscf
 
   type energy_contributions
-    real(dp) :: nuc_nuc  = 0.0_dp
-    real(dp) :: kinetic  = 0.0_dp
-    real(dp) :: kin_nuc  = 0.0_dp
-    real(dp) :: nucleus  = 0.0_dp
-    real(dp) :: hartree  = 0.0_dp
-    real(dp) :: exx_hyb  = 0.0_dp
-    real(dp) :: exx      = 0.0_dp
-    real(dp) :: xc       = 0.0_dp
-    real(dp) :: mp2      = 0.0_dp
-    real(dp) :: mp3      = 0.0_dp
-    real(dp) :: rpa      = 0.0_dp
-    real(dp) :: bse      = 0.0_dp
-    real(dp) :: gw       = 0.0_dp
-    real(dp) :: total    = 0.0_dp
-    real(dp) :: totalexx = 0.0_dp
-    real(dp) :: excit    = 0.0_dp       ! TDDFT excitation energy
-    real(dp) :: id       = 0.0_dp       ! -iD correction
-    real(dp) :: time     = -1.0_dp      ! time in TDDFT
+    real(dp) :: nuc_nuc    = 0.0_dp
+    real(dp) :: kinetic    = 0.0_dp
+    real(dp) :: kin_nuc    = 0.0_dp
+    real(dp) :: nucleus    = 0.0_dp
+    real(dp) :: hartree    = 0.0_dp
+    real(dp) :: exx_hyb    = 0.0_dp
+    real(dp) :: exx        = 0.0_dp
+    real(dp) :: anomalous  = 0.0_dp
+    real(dp) :: xc         = 0.0_dp
+    real(dp) :: mp2        = 0.0_dp
+    real(dp) :: mp3        = 0.0_dp
+    real(dp) :: rpa        = 0.0_dp
+    real(dp) :: bse        = 0.0_dp
+    real(dp) :: gw         = 0.0_dp
+    real(dp) :: pbe_alpha  = 0.0_dp
+    real(dp) :: total      = 0.0_dp
+    real(dp) :: totalexx   = 0.0_dp
+    real(dp) :: excit      = 0.0_dp       ! TDDFT excitation energy
+    real(dp) :: id         = 0.0_dp       ! -iD correction
+    real(dp) :: time       = -1.0_dp      ! time in TDDFT
     real(dp) :: work_p_nonconserv  = 0.0_dp   ! non-conservative work on the projectile in TDDFT
     real(dp) :: work_p             = 0.0_dp   ! conservative work on the projectile in TDDFT
   end type

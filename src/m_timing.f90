@@ -421,6 +421,7 @@ subroutine output_timing()
   call output_timing_line('Approximate guess Hamiltonian', timing_approx_ham, 1)
   call output_timing_line('Kinetic Hamiltonian', timing_hamiltonian_kin, 1)
   call output_timing_line('Electron-nucleus Hamiltonian', timing_hamiltonian_nuc, 1)
+  call output_timing_line('Effective core potential Hamiltonian', timing_ecp, 1)
   call output_timing_line('ECP Hamiltonian', timing_hamiltonian_ecp, 1)
 
   write(stdout, '(/,a,/)') '                 -------------------------------------'

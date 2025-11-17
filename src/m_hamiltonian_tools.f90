@@ -25,6 +25,10 @@ module m_hamiltonian_tools
     module procedure setup_density_matrix_cmplx
   end interface setup_density_matrix
 
+  interface setup_anomalous_density_matrix
+    module procedure setup_anomalous_density_matrix_real
+  end interface setup_anomalous_density_matrix
+
   interface p_ao_to_mo
     module procedure p_ao_to_mo_real
     module procedure p_ao_to_mo_cmplx
@@ -208,6 +212,60 @@ end subroutine setup_energy_density_matrix
 
 
 !=========================================================================
+subroutine setup_anomalous_density_matrix_real(c_matrix, sqrt_occ_hole, p_annom_matrix)
+  implicit none
+  real(dp), intent(in)  :: c_matrix(:, :, :)
+  real(dp), intent(in)  :: sqrt_occ_hole(:, :)
+  real(dp), intent(out) :: p_annom_matrix(:, :, :)
+  !=====
+  integer :: nbf, nstate, nocc
+  integer :: ispin, ibf, jbf
+  integer :: istate
+  real(dp), allocatable :: c_matrix_sqrtsqrtocchole(:, :)
+  !=====
+
+  call start_clock(timing_density_matrix)
+
+  if(.not.calc_type%is_noft) write(stdout, '(1x,a)') 'Build anomalous density matrix'
+
+  nbf    = SIZE(c_matrix(:, :, :), DIM=1)
+  nstate = SIZE(c_matrix(:, :, :), DIM=2)
+
+  if( ANY( sqrt_occ_hole(:, :) < -1.0e-5_dp ) ) then
+    write(stdout, *) 'Min sqrt(occ  hole):', MINVAL(sqrt_occ_hole)
+    call die('setup_density_matrix: negative occupation number should not happen here.')
+  endif
+  ! Find the number of occupatied states
+  nocc = get_number_occupied_states(sqrt_occ_hole)
+
+  allocate(c_matrix_sqrtsqrtocchole(nbf, nocc))
+
+  p_annom_matrix(:, :, :) = 0.0_dp
+  do ispin=1, nspin
+
+    do istate=1, nocc
+      c_matrix_sqrtsqrtocchole(:, istate) = c_matrix(:, istate, ispin) * SQRT(sqrt_occ_hole(istate,ispin))
+    enddo
+
+    call DSYRK('L', 'N', nbf, nocc, 1.0d0, c_matrix_sqrtsqrtocchole, nbf, 0.0d0, p_annom_matrix(1, 1, ispin), nbf)
+
+    ! Symmetrize
+    do jbf=1, nbf
+      do ibf=jbf+1, nbf
+        p_annom_matrix(jbf, ibf, ispin) = p_annom_matrix(ibf, jbf, ispin)
+      enddo
+    enddo
+  enddo
+
+  deallocate(c_matrix_sqrtsqrtocchole)
+
+  call stop_clock(timing_density_matrix)
+
+
+end subroutine setup_anomalous_density_matrix_real
+
+
+!=========================================================================
 subroutine test_density_matrix(p_matrix, s_matrix)
   implicit none
   real(dp), intent(in)  :: p_matrix(:, :, :)
@@ -242,11 +300,12 @@ end subroutine test_density_matrix
 
 
 !=========================================================================
-subroutine set_occupation(temperature, electrons_in, magnetization, energy, occupation)
+subroutine set_occupation(temperature, electrons_in, magnetization, energy, occupation, chem_pot)
   implicit none
   real(dp), intent(in)  :: electrons_in, magnetization, temperature
   real(dp), intent(in)  :: energy(:, :)
   real(dp), intent(out) :: occupation(:, :)
+  real(dp), optional, intent(out) :: chem_pot
   !=====
   integer              :: nstate
   real(dp)             :: remaining_electrons(nspin)
@@ -324,6 +383,7 @@ subroutine set_occupation(temperature, electrons_in, magnetization, energy, occu
 
     enddo
 
+    write(stdout, '(1x,a,f12.6)') 'Fermi level (Ha): ', mu
     write(stdout, '(1x,a,f12.6)') 'Fermi level (eV): ', mu * Ha_eV
 
   endif
@@ -341,6 +401,8 @@ subroutine set_occupation(temperature, electrons_in, magnetization, energy, occu
   endif
 
   call dump_out_occupation('=== Occupations ===', occupation)
+
+  if(present(chem_pot)) chem_pot=mu
 
 contains
 
@@ -366,7 +428,7 @@ subroutine dump_out_occupation(title, occupation)
   !=====
   integer :: ihomo
   integer :: istate, nstate
-  integer, parameter :: noutput=5
+  integer, parameter :: noutput=10
   !=====
 
   nstate = SIZE(occupation, DIM=1)
@@ -396,16 +458,20 @@ end subroutine dump_out_occupation
 
 
 !=========================================================================
-subroutine dump_out_energy(title, occupation, energy, is_x2c)
+subroutine dump_out_energy(title, occupation, energy, is_x2c, is_ksb)
   implicit none
   character(len=*), intent(in) :: title
   real(dp), intent(in)         :: occupation(:, :), energy(:, :)
   logical, intent(in), optional :: is_x2c
+  logical, intent(in), optional :: is_ksb
   !=====
+  logical            :: is_ksb_
   integer, parameter :: MAXSIZE=300
   integer  :: istate, nocc, nstate
   !=====
 
+  is_ksb_ = .false.
+  if(present(is_ksb)) is_ksb_=is_ksb
   nocc   = get_number_occupied_states(occupation)
   ! in case occupation and energy arrays have different sizes
   nstate = MIN( SIZE(occupation, DIM=1) , SIZE(energy, DIM=1) )
@@ -426,25 +492,45 @@ subroutine dump_out_energy(title, occupation, energy, is_x2c)
       write(stdout, '(a)') '           spin 1       spin 2       spin 1       spin 2'
     endif
   endif
-  do istate=MAX(1, nocc-MAXSIZE/2), MIN(nstate, nocc+MAXSIZE/2)
-    select case(nspin)
-    case(1)
-      write(stdout, '(1x,i5,2(1x,f12.5),4x,f8.4)') istate, energy(istate, 1), energy(istate, 1)*Ha_eV, occupation(istate, 1)
-    case(2)
-      write(stdout, '(1x,i5,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate, energy(istate, 1), energy(istate, 2), &
-                                                          energy(istate, 1)*Ha_eV, energy(istate, 2)*Ha_eV, &
-                                                          occupation(istate, 1), occupation(istate, 2)
-    end select
-    if(istate < nstate) then
-      if( ANY( occupation(istate+1, :) < spin_fact/2.0_dp .AND. occupation(istate, :) > spin_fact/2.0_dp ) ) then
+  if(.NOT. is_ksb_) then
+    do istate=MAX(1, nocc-MAXSIZE/2), MIN(nstate, nocc+MAXSIZE/2)
+      select case(nspin)
+      case(1)
+        write(stdout, '(1x,i5,2(1x,f12.5),4x,f8.4)') istate, energy(istate, 1), energy(istate, 1)*Ha_eV, occupation(istate, 1)
+      case(2)
+        write(stdout, '(1x,i5,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate, energy(istate, 1), energy(istate, 2), &
+                                                            energy(istate, 1)*Ha_eV, energy(istate, 2)*Ha_eV, &
+                                                            occupation(istate, 1), occupation(istate, 2)
+      end select
+      if(istate < nstate) then
+        if( ANY( occupation(istate+1, :) < spin_fact/2.0_dp .AND. occupation(istate, :) > spin_fact/2.0_dp ) ) then
+          if(nspin==1) then
+            write(stdout, '(a)') '  -----------------------------'
+          else
+            write(stdout, '(a)') '  -------------------------------------------------------'
+          endif
+        endif
+      endif
+    enddo
+  else
+    do istate=1,nstate
+      select case(nspin)
+      case(1)
+        write(stdout, '(1x,i5,2(1x,f12.5),4x,f8.4)') istate, energy(istate, 1), energy(istate, 1)*Ha_eV, occupation(istate, 1)
+      case(2)
+        write(stdout, '(1x,i5,2(2(1x,f12.5)),4x,2(f8.4,2x))') istate, energy(istate, 1), energy(istate, 2), &
+                                                            energy(istate, 1)*Ha_eV, energy(istate, 2)*Ha_eV, &
+                                                            occupation(istate, 1), occupation(istate, 2)
+      end select
+      if(istate == nstate/2) then
         if(nspin==1) then
           write(stdout, '(a)') '  -----------------------------'
         else
           write(stdout, '(a)') '  -------------------------------------------------------'
         endif
       endif
-    endif
-  enddo
+    enddo
+  endif
 
   write(stdout, *)
 
@@ -541,11 +627,11 @@ end subroutine output_homolumo
 !
 ! Get the MO diagonal from the hamiltonian-like matrix in AO basis
 !
-subroutine h_ao_to_mo_diag(c_matrix, h_ao, diag_out)
+subroutine h_ao_to_mo_diag(c_matrix, h_ao, diag_mo)
   implicit none
   real(dp), intent(in)  :: c_matrix(:, :, :)
   real(dp), intent(in)  :: h_ao(..)
-  real(dp), intent(out) :: diag_out(:, :)
+  real(dp), intent(out) :: diag_mo(:, :)
   !=====
   integer              :: nbf, nstate, nspin_local
   integer              :: ispin, istate
@@ -577,7 +663,7 @@ subroutine h_ao_to_mo_diag(c_matrix, h_ao, diag_out)
                           0.0d0, vector_tmp, 1)
       end select
       ! C_i**T * (H * C_i)
-      diag_out(istate, ispin) = DOT_PRODUCT( c_matrix(:, istate, ispin) , vector_tmp(:) )
+      diag_mo(istate, ispin) = DOT_PRODUCT( c_matrix(:, istate, ispin) , vector_tmp(:) )
 
     enddo
   enddo
@@ -1553,6 +1639,125 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
 
 end subroutine diagonalize_hamiltonian_scalapack
 
+
+!=========================================================================
+subroutine compute_KSB_dm1_and_trace(nstate,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
+  implicit none
+
+  integer,  intent(in)  :: nstate
+  real(dp), intent(in)  :: chem_pot
+  real(dp), intent(out) :: trace_dm1
+  real(dp), intent(in)  :: H_KSB(:, :, :)
+  real(dp), intent(out) :: energy_QP(:, :)
+  real(dp), intent(out) :: DM1(:, :, :)
+  real(dp), intent(out) :: U_QP(:, :, :)
+  !=====
+  integer               :: ispin,istate
+  !=====
+
+  trace_dm1 = 0.0_dp
+  DM1(:,:,:) = 0.0_dp 
+  do ispin=1,nspin
+    U_QP(:,:,ispin) = H_KSB(:,:,ispin)
+    do istate=1,nstate
+      U_QP(istate       ,istate       ,ispin) = U_QP(istate       ,istate       ,ispin) - chem_pot
+      U_QP(nstate+istate,nstate+istate,ispin) = U_QP(nstate+istate,nstate+istate,ispin) + chem_pot
+    enddo
+    call diagonalize(' ',U_QP(:,:,ispin),energy_QP(:,ispin),U_QP(:,:,ispin))
+    do istate=1,nstate
+      DM1(1:nstate,1:nstate,ispin)=DM1(1:nstate,1:nstate,ispin) &
+       +matmul(U_QP(1:nstate,istate:istate,ispin),transpose(U_QP(1:nstate,istate:istate,ispin)))
+    enddo
+    do istate=1,nstate
+      trace_dm1=trace_dm1+DM1(istate,istate,ispin)
+    enddo
+  enddo
+  trace_dm1=spin_fact*trace_dm1
+
+end subroutine compute_KSB_dm1_and_trace
+
+    
+!=========================================================================
+subroutine adjust_chem_pot_ksb(nstate,nelectrons,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
+  implicit none
+
+  integer,  intent(in)    :: nstate
+  real(dp), intent(in)    :: nelectrons
+  real(dp), intent(inout) :: chem_pot
+  real(dp), intent(out)   :: trace_dm1
+  real(dp), intent(in)    :: H_KSB(:, :, :)
+  real(dp), intent(out)   :: energy_QP(:, :)
+  real(dp), intent(out)   :: DM1(:, :, :)
+  real(dp), intent(out)   :: U_QP(:, :, :)
+  !=====
+  integer                 :: istate
+  integer                 :: isteps
+  real(dp)                :: thrs_closer
+  real(dp)                :: delta_chem_pot
+  real(dp)                :: chem_pot_change
+  real(dp)                :: chem_pot_old
+  real(dp)                :: grad_electrons
+  real(dp)                :: trace_2up
+  real(dp)                :: trace_up
+  real(dp)                :: trace_down
+  real(dp)                :: trace_2down
+  real(dp)                :: trace_old
+  !=====
+
+  isteps = 0
+  delta_chem_pot  = 2.0d-1
+  thrs_closer     = 2.0d-1
+  chem_pot_change = 0.0d0
+  grad_electrons  = 1.0d0
+
+  ! First approach close the value with an error lower than 0.02
+
+  call compute_KSB_dm1_and_trace(nstate,chem_pot,trace_old,H_KSB,U_QP,energy_QP,DM1)
+  do while( abs(trace_old-nelectrons) > thrs_closer .and. isteps <= 100 )
+   isteps = isteps + 1
+   call compute_KSB_dm1_and_trace(nstate,chem_pot,trace_old,H_KSB,U_QP,energy_QP,DM1)
+   call compute_KSB_dm1_and_trace(nstate,chem_pot-delta_chem_pot,trace_down,H_KSB,U_QP,energy_QP,DM1)
+   call compute_KSB_dm1_and_trace(nstate,chem_pot+delta_chem_pot,trace_up,H_KSB,U_QP,energy_QP,DM1)
+   if( abs(trace_up-nelectrons) > abs(trace_old-nelectrons) .and. abs(trace_down-nelectrons) > abs(trace_old-nelectrons) ) then
+     delta_chem_pot = 0.75d0*delta_chem_pot
+     thrs_closer = 0.5d0*thrs_closer
+     if(delta_chem_pot<1.0d-2) exit
+   else
+     if( abs(trace_up-nelectrons) < abs(trace_old-nelectrons) ) then
+      chem_pot=chem_pot+delta_chem_pot
+     else
+      if( abs(trace_down-nelectrons) < abs(trace_old-nelectrons) ) then
+       chem_pot=chem_pot-delta_chem_pot
+      endif
+     endif
+   endif
+  enddo
+  trace_dm1=trace_old
+
+  ! Do  final search
+
+  isteps = 0
+  delta_chem_pot  = 1.0d-3
+  do while( abs(trace_dm1-nelectrons) > 1.0d-6 .and. isteps <= 100 )
+   isteps = isteps + 1
+   chem_pot = chem_pot + chem_pot_change
+   call compute_KSB_dm1_and_trace(nstate,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
+   call compute_KSB_dm1_and_trace(nstate,chem_pot+2.0d0*delta_chem_pot, trace_2up  ,H_KSB,U_QP,energy_QP,DM1)
+   call compute_KSB_dm1_and_trace(nstate,chem_pot+      delta_chem_pot, trace_up   ,H_KSB,U_QP,energy_QP,DM1)
+   call compute_KSB_dm1_and_trace(nstate,chem_pot-      delta_chem_pot, trace_down ,H_KSB,U_QP,energy_QP,DM1)
+   call compute_KSB_dm1_and_trace(nstate,chem_pot-2.0d0*delta_chem_pot, trace_2down,H_KSB,U_QP,energy_QP,DM1)
+!   grad_electrons = (trace_up-trace_down)/(2d0*delta_chem_pot)
+   grad_electrons = (-trace_2up+8.0d0*trace_up-8.0d0*trace_down+trace_2down)/(12.0d0*delta_chem_pot)
+   chem_pot_change = -(trace_dm1-nelectrons)/(grad_electrons+1.0d-10)
+   ! Maximum change is bounded within +/- 0.10
+   chem_pot_change = max( min( chem_pot_change , 0.1d0 / real(isteps) ), -0.1d0 / real(isteps) )
+  enddo
+  call compute_KSB_dm1_and_trace(nstate,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
+
+  write(stdout, '(1x,a,f15.10,a,i5,a)') 'Optimized chemical potential ',chem_pot,' Ha. in', isteps,' iterations.' 
+  write(stdout, '(1x,a,f12.5)')   'Number of electrons ',trace_dm1
+
+end subroutine adjust_chem_pot_ksb
 
 !=========================================================================
 end module m_hamiltonian_tools

@@ -55,9 +55,10 @@ contains
 !!
 !! SOURCE
 
-subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imethod,keep_occs) 
+subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_global,imethod,keep_occs,only_phases) 
 !Arguments ------------------------------------
 !scalars
+ logical,optional,intent(in)::only_phases
  logical,intent(in)::keep_occs
  integer,intent(in)::imethod
  integer,intent(inout)::iter_global
@@ -67,9 +68,10 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
 !arrays
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ)::Phases
 !Local variables ------------------------------
 !scalars
- logical::diagco,converged
+ logical::diagco,converged,only_phases_
  integer,parameter::msave=7
  integer::iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5,ipair
  integer::iflag,Mtosave,Nwork,Nvirtual
@@ -86,6 +88,8 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
  Ecorr_new=zero; Ecorr_old=zero; Ecorr_diff=zero;
  maxdiff_t=zero; maxdiff_z=zero; Ediff=Energy;
  iter_t=0; iter_z=0; converged=.false.; Nvirtual=RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs);
+ sumdiff_t=zero;sumdiff_z=zero; only_phases_=.false.;
+ if(present(only_phases)) only_phases_=only_phases
 
  ! Build diag elements of the Lambda matrix (with HF 1-RDM and 2-RDM) and compute SD energy
  call ELAGd%build_sd_diag(RDMd,INTEGd)
@@ -114,7 +118,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
  endif
 
  ! Check if the current t amplitudes solve the problem
- if(iter_global>-1 .and. .not.keep_occs) then
+ if(iter_global>-1 .and. (.not.keep_occs .and. .not.only_phases_)) then
   converged=.true.       
   allocate(Grad_residue(RDMd%Namplitudes))
   call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
@@ -127,7 +131,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   deallocate(Grad_residue)
  endif
 
- if(.not.keep_occs .and. .not.converged) then
+ if(.not.keep_occs .and. (.not.converged .and. .not.only_phases_)) then
          
   if(imethod/=1) then
 
@@ -208,6 +212,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
     RDMd%t_pccd_old=reshape(diag_tz,(/RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)/))
     call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
     sumdiff_t=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
+    ! Exit if phases are 'fine enough'
     call num_calc_Grad_t_amp(ELAGd,RDMd,INTEGd,y_ij,Grad_residue)
     call LBFGS_INTERN(RDMd%Namplitudes,Mtosave,diag_tz,sumdiff_t,Grad_residue,diagco,diag,info_print,tol6,tol16,Work,iflag)
     if(iflag<=0) exit
@@ -245,7 +250,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
   RDMd%z_pccd_old=RDMd%t_pccd
  endif
 
- if(.not.keep_occs) then
+ if(.not.keep_occs .and. .not.only_phases_) then
 
   ! Build intermediate y_ij = sum_b v_bb^ii t_j^b 
   y_ij=zero 
@@ -335,7 +340,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
    
      ! Exit if converged
      if(maxdiff_z<tol6 .and. sumdiff_z<tol5) exit
-   
+
      ! Exit max iter
      if(iter_z==2000) exit
    
@@ -355,6 +360,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
      RDMd%z_pccd_old=reshape(diag_tz,(/RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)/))
      call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
      sumdiff_z=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
+     ! Exit if phases are 'fine enough'
      call num_calc_Grad_z_amp(ELAGd,RDMd,INTEGd,y_ij,y_ab,Grad_residue)
      call LBFGS_INTERN(RDMd%Namplitudes,Mtosave,diag_tz,sumdiff_z,Grad_residue,diagco,diag,info_print,tol6,tol16,Work,iflag)
      if(iflag<=0) exit
@@ -375,58 +381,70 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,iter_global,imet
  endif
 
  ! Calc. the final Energy using new RDMs
- iter_global=iter_global+1
- if(INTEGd%complex_ints) then
-  call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_dm,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
-  & INTEGd%ERI_L_cmplx,INTEGd%ERI_Jsr_cmplx,INTEGd%ERI_Lsr_cmplx)
+ if(only_phases_) then
+  RDMd%INOF=-1 ! Call pCCD RDM constructors
+  if(INTEGd%complex_ints) then
+   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_dm,Phases,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+   & INTEGd%ERI_L_cmplx,INTEGd%ERI_Jsr_cmplx,INTEGd%ERI_Lsr_cmplx,only_phases=only_phases_)
+  else
+   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_dm,Phases,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,only_phases=only_phases_)
+  endif
+  RDMd%INOF=70 ! Recover call to PNOF7-PHASES
  else
-  call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_dm,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
-  & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr)
- endif
- if(iter_t>0 .and. iter_z>0) then
-  write(msg,'(a,f15.6)') 'Single-Det. Energy |0>        =',Esingle_det
-  call write_output(msg)
-  write(msg,'(a,f15.6)') 'Correlation Energy w.r.t. |0> =',Ecorr_new
-  call write_output(msg)
-  write(msg,'(a,f15.6)') 'Energy from 1-RDM and 2-RDM   =',Energy_dm+Vnn
-  call write_output(msg)
-  Energy=Esingle_det+Ecorr_new
- else
-  write(msg,'(a,f15.6)') 'Energy from 1-RDM and 2-RDM   =',Energy_dm+Vnn
-  call write_output(msg)
-  Energy=Energy_dm
- endif
- write(msg,'(a,f15.6,a,i6,a,i6,a)') 'T-,Z-amp. opt. energy= ',Energy+Vnn,' after ',iter_t,' t-iter. and',&
-  & iter_z,' z-iter.'
- call write_output(msg)
- if(iter_global>0) then
-  Ediff=Energy-Ediff
-  if(imethod/=1) then
-   write(msg,'(a,f15.6)') 'Max. [t_pq^i+1 - t_pq^i]=      ',maxdiff_t
+  iter_global=iter_global+1
+  if(INTEGd%complex_ints) then
+   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy_dm,Phases,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx,INTEGd%ERI_K_cmplx, &
+   & INTEGd%ERI_L_cmplx,INTEGd%ERI_Jsr_cmplx,INTEGd%ERI_Lsr_cmplx)
+  else
+   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy_dm,Phases,INTEGd%hCORE,INTEGd%ERI_J,INTEGd%ERI_K, &
+   & INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr)
+  endif
+  if(iter_t>0 .and. iter_z>0) then
+   write(msg,'(a,f15.6)') 'Single-Det. Energy |0>        =',Esingle_det
    call write_output(msg)
-   write(msg,'(a,f15.6)') 'Max. [z_pq^i+1 - z_pq^i]=      ',maxdiff_z
+   write(msg,'(a,f15.6)') 'Correlation Energy w.r.t. |0> =',Ecorr_new
    call write_output(msg)
-  endif  
-  write(msg,'(a,f15.6)') 'Error t-residues        =      ',sumdiff_t
-  call write_output(msg)
-  write(msg,'(a,f15.6)') 'Error z-residues        =      ',sumdiff_z
-  call write_output(msg)
-  write(msg,'(a,f19.10)') 'Energy difference amp. opt.=',Ediff
-  call write_output(msg)
-  write(msg,'(a)') 'Current occ. numbers '
-  call write_output(msg)
-  do iorb=1,(RDMd%NBF_occ/10)*10,10
-   write(msg,'(f12.6,9f11.6)') two*RDMd%occ(iorb:iorb+9)
+   write(msg,'(a,f15.6)') 'Energy from 1-RDM and 2-RDM   =',Energy_dm+Vnn
    call write_output(msg)
-  enddo
-  iorb=(RDMd%NBF_occ/10)*10+1
-  write(msg,'(f12.6,*(f11.6))') two*RDMd%occ(iorb:)
+   Energy=Esingle_det+Ecorr_new
+  else
+   write(msg,'(a,f15.6)') 'Energy from 1-RDM and 2-RDM   =',Energy_dm+Vnn
+   call write_output(msg)
+   Energy=Energy_dm
+  endif
+  write(msg,'(a,f15.6,a,i6,a,i6,a)') 'T-,Z-amp. opt. energy= ',Energy+Vnn,' after ',iter_t,' t-iter. and',&
+   & iter_z,' z-iter.'
+  call write_output(msg)
+  if(iter_global>0) then
+   Ediff=Energy-Ediff
+   if(imethod/=1) then
+    write(msg,'(a,f15.6)') 'Max. [t_pq^i+1 - t_pq^i]=      ',maxdiff_t
+    call write_output(msg)
+    write(msg,'(a,f15.6)') 'Max. [z_pq^i+1 - z_pq^i]=      ',maxdiff_z
+    call write_output(msg)
+   endif  
+   write(msg,'(a,f15.6)') 'Error t-residues        =      ',sumdiff_t
+   call write_output(msg)
+   write(msg,'(a,f15.6)') 'Error z-residues        =      ',sumdiff_z
+   call write_output(msg)
+   write(msg,'(a,f19.10)') 'Energy difference amp. opt.=',Ediff
+   call write_output(msg)
+   write(msg,'(a)') 'Current occ. numbers '
+   call write_output(msg)
+   do iorb=1,(RDMd%NBF_occ/10)*10,10
+    write(msg,'(f12.6,9f11.6)') two*RDMd%occ(iorb:iorb+9)
+    call write_output(msg)
+   enddo
+   iorb=(RDMd%NBF_occ/10)*10+1
+   write(msg,'(f12.6,*(f11.6))') two*RDMd%occ(iorb:)
+   call write_output(msg)
+  endif
+  write(msg,'(a,i6)') 'Number of global iter. ',iter_global
+  call write_output(msg)
+  write(msg,'(a)') ' '
   call write_output(msg)
  endif
- write(msg,'(a,i6)') 'Number of global iter. ',iter_global
- call write_output(msg)
- write(msg,'(a)') ' '
- call write_output(msg)
 
  deallocate(y_ij,y_ab)
 

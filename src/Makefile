@@ -604,7 +604,7 @@ archive:
             ../docs/ ../config/ ../Makefile  \
             ../tmp/molgw
 	cp -rp  ../src/*.py ../src/*.f90 ../src/*.f  \
-            ../src/*.cpp ../src/*.h  \
+            ../src/*.cpp ../src/*.h  ../src/*.yaml \
             ../src/Makefile \
             ../tmp/molgw/src
 	cp -rp  ../src/noft/*.F90 ../src/noft/*.F  \

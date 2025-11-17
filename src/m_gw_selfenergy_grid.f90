@@ -175,12 +175,12 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
 
 
 #if defined(HAVE_SCALAPACK)
-    call PDGEMM('N', 'N', nauxil_global, nauxil_global,nauxil_global, &
+    call PDGEMM('N', 'N', nauxil_global, nauxil_global, nauxil_global, &
                 1.0_dp, one_m_chi0m1        , 1, 1, wpol%desc_chi,    &
                        chi0                , 1, 1, wpol%desc_chi,    &
                 0.0_dp, wpol%chi(:, :, iomega), 1, 1, wpol%desc_chi)
 #else
-    call DGEMM('N', 'N', nauxil_global, nauxil_global,nauxil_global, &
+    call DGEMM('N', 'N', nauxil_global, nauxil_global, nauxil_global, &
                1.0_dp, one_m_chi0m1, nauxil_global, &
                       chi0        , nauxil_global, &
                0.0_dp, wpol%chi(:, :, iomega), nauxil_global)
@@ -294,7 +294,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
                            eri3_sca            , 1, 1, desc_eri3_final,  &
                     0.0_dp, chi_eri3_sca        , 1, 1, desc_eri3_final)
 #else
-        call DGEMM('N', 'N', nauxil_global, prange,nauxil_global,  &
+        call DGEMM('N', 'N', nauxil_global, prange, nauxil_global,  &
                    1.0_dp, wpol%chi(:, :, iomegap), nauxil_global,    &
                           eri3_sca            , nauxil_global,    &
                    0.0_dp, chi_eri3_sca        , nauxil_global)
@@ -813,11 +813,11 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
               !
               ! Chemist's notation:
               ! ( phi_r phi_m | W( +/- iw') | phi_i phi_a )
-              call DGEMM('N', 'N', nauxil_global, nhomo_G-ncore_G,nauxil_global, &
+              call DGEMM('N', 'N', nauxil_global, nhomo_G-ncore_G, nauxil_global, &
                          1.0_dp, chi_wp(:, :), nauxil_global, &
                                 eri3_i_a, nauxil_global, &
                          0.0_dp, tmp, nauxil_global)
-              call DGEMM('T', 'N', nvirtual_G-ncore_G-1, nhomo_G-ncore_G,nauxil_global, &
+              call DGEMM('T', 'N', nvirtual_G-ncore_G-1, nhomo_G-ncore_G, nauxil_global, &
                          1.0_dp, eri3_r_m(:, :), nauxil_global, &
                                 tmp(:, :), nauxil_global, &
                          0.0_dp, braket1_ri(:, :), nvirtual_G-ncore_G-1)
@@ -825,11 +825,11 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
               !
               ! Chemist's notation:
               ! ( phi_r phi_a | W( iw +/- iw') | phi_i phi_m )
-              call DGEMM('N', 'N', nauxil_global, nhomo_G-ncore_G,nauxil_global, &
+              call DGEMM('N', 'N', nauxil_global, nhomo_G-ncore_G, nauxil_global, &
                          1.0_dp, chi_wwp(:, :), nauxil_global, &
                                 eri3_i_m, nauxil_global, &
                          0.0_dp, tmp, nauxil_global)
-              call DGEMM('T', 'N', nvirtual_G-ncore_G-1, nhomo_G-ncore_G,nauxil_global, &
+              call DGEMM('T', 'N', nvirtual_G-ncore_G-1, nhomo_G-ncore_G, nauxil_global, &
                          1.0_dp, eri3_r_a(:, :), nauxil_global, &
                                 tmp(:, :), nauxil_global, &
                          0.0_dp, braket2_ri(:, :), nvirtual_G-ncore_G-1)
@@ -882,11 +882,11 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
               !
               ! Chemist's notation:
               ! ( phi_r phi_m | W( +/-iw') | phi_i phi_a )
-              call DGEMM('N', 'N', nauxil_global, nvirtual_G-nhomo_G-1,nauxil_global, &
+              call DGEMM('N', 'N', nauxil_global, nvirtual_G-nhomo_G-1, nauxil_global, &
                          1.0_dp, chi_wp(:, :), nauxil_global, &
                                 eri3_a_i(:, :), nauxil_global, &
                          0.0_dp, tmp(:, :), nauxil_global)
-              call DGEMM('T', 'N', nvirtual_G-ncore_G-1, nvirtual_G-nhomo_G-1,nauxil_global, &
+              call DGEMM('T', 'N', nvirtual_G-ncore_G-1, nvirtual_G-nhomo_G-1, nauxil_global, &
                          1.0_dp, eri3_r_m(:, :), nauxil_global, &
                                 tmp(:, :), nauxil_global, &
                          0.0_dp, braket1_ra(:, :), nvirtual_G-ncore_G-1)
@@ -896,11 +896,11 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
               !
               ! Chemist's notation:
               ! ( phi_r phi_i | W( iw +/- iw') | phi_a phi_m )
-              call DGEMM('N', 'N', nauxil_global, nvirtual_G-nhomo_G-1,nauxil_global, &
+              call DGEMM('N', 'N', nauxil_global, nvirtual_G-nhomo_G-1, nauxil_global, &
                          1.0_dp, chi_wwp(:, :), nauxil_global, &
                                 eri3_a_m, nauxil_global, &
                          0.0_dp, tmp, nauxil_global)
-              call DGEMM('T', 'N', nvirtual_G-ncore_G-1, nvirtual_G-nhomo_G-1,nauxil_global, &
+              call DGEMM('T', 'N', nvirtual_G-ncore_G-1, nvirtual_G-nhomo_G-1, nauxil_global, &
                          1.0_dp, eri3_r_i(:, :), nauxil_global, &
                                 tmp(:, :), nauxil_global, &
                          0.0_dp, braket2_ra(:, :), nvirtual_G-ncore_G-1)

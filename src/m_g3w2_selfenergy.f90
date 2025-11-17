@@ -2985,7 +2985,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
   integer              :: nstate, nstate2, nbf
   integer              :: pstate
   integer              :: qstate, qspin
-  real(dp)             :: sign_i, mu
+  real(dp)             :: sign_q, mu
   real(dp)             :: weight
   real(dp), allocatable :: matrix_wing(:, :), matrix_head(:, :), matrix_diag(:)
   real(dp), allocatable :: super_matrix(:, :), eigval(:)
@@ -2993,7 +2993,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
   integer              :: mstate, astate, iastate, cstate, istate, kstate, spole
   integer              :: irecord
   integer              :: fu
-  real(dp)             :: ea, ei, v_paik, v_piak, Omega_s, v_paic, v_piac
+  real(dp)             :: ea, ei, v_paik, v_piak, Omega_s, v_paic, v_piac, v_pcia, v_pkai
   real(dp), allocatable :: w_s(:, :, :), w_s_tilde(:, :, :)
   ! DEBUG flag
   integer :: file_unit
@@ -3012,7 +3012,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     read(file_unit, *) selfenergy_switch
     write(stdout, *) 'manual_psd file read:', selfenergy_switch
     select case(TRIM(selfenergy_switch))
-    case('GW', 'PSD')
+    case('GW', 'PSD','PT2')
     case default
       call die('psd_gw2sosex_selfenergy_upfolding: reading file manual_psd but not able to interpret it')
     end select
@@ -3023,6 +3023,8 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
 
   write(stdout, *)
   select case(TRIM(selfenergy_switch))
+  case('PT2')
+    write(stdout, *) 'Perform a one-shot PT2 calculation with super-matrix formulation'
   case('GW')
     write(stdout, *) 'Perform a one-shot GW calculation with super-matrix formulation'
   case('PSD')
@@ -3068,65 +3070,92 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
   call clean_allocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde, 1, wpol%npole_reso, ncore_G+1, nvirtual_G-1, &
                       nsemin, nsemax)
 
-  w_s_tilde(:, :, :) = 0.0_dp
-  do qspin=1, nspin
-    do pstate=nsemin, nsemax
-      !$OMP PARALLEL DO PRIVATE(ei, ea, v_paik, v_piak, Omega_s)
-      do kstate=ncore_G+1, nhomo_G
+  select case(TRIM(selfenergy_switch))
+  case('PSD')
+    w_s_tilde(:, :, :) = 0.0_dp
+    do qspin=1, nspin
+      do pstate=nsemin, nsemax
+        !$OMP PARALLEL DO PRIVATE(ei, ea, v_paik, v_piak, Omega_s)
+        do kstate=ncore_G+1, nhomo_G
 
-        iastate = 0
-        do istate=ncore_G+1, nhomo_G
-          ei = energy(istate, qspin)
-          do astate=nhomo_G+1, nvirtual_G-1
-            ea = energy(astate, qspin)
-            iastate = iastate + 1
-            if( MODULO( iastate - 1 , poorman%nproc ) /= poorman%rank ) cycle
+          iastate = 0
+          do istate=ncore_G+1, nhomo_G
+            ei = energy(istate, qspin)
+            do astate=nhomo_G+1, nvirtual_G-1
+              ea = energy(astate, qspin)
+              iastate = iastate + 1
+              if( MODULO( iastate - 1 , poorman%nproc ) /= poorman%rank ) cycle
 
-            v_paik = DOT_PRODUCT( eri_3center_mo(:, pstate, astate, qspin), eri_3center_mo(:, istate, kstate, qspin) )
-            v_piak = DOT_PRODUCT( eri_3center_mo(:, pstate, istate, qspin), eri_3center_mo(:, astate, kstate, qspin) )
+              v_paik = DOT_PRODUCT( eri_3center_mo(:, pstate, astate, qspin), eri_3center_mo(:, istate, kstate, qspin) )
+              v_piak = DOT_PRODUCT( eri_3center_mo(:, pstate, istate, qspin), eri_3center_mo(:, astate, kstate, qspin) )
 
-            do spole=1, wpol%npole_reso
-              Omega_s = wpol%pole(spole)
-              w_s_tilde(spole, kstate, pstate) = w_s_tilde(spole, kstate, pstate) &
-                  + w_s(spole, astate, istate) &
-                        * (  v_paik * REAL( 1.0_dp / ( ea - ei + Omega_s - ieta) ) &
-                           + v_piak * REAL( 1.0_dp / ( ea - ei - Omega_s - ieta) ) )
+              do spole=1, wpol%npole_reso
+                Omega_s = wpol%pole(spole)
+                w_s_tilde(spole, kstate, pstate) = w_s_tilde(spole, kstate, pstate) &
+                    + w_s(spole, astate, istate) &
+                          * (  v_paik * REAL( 1.0_dp / ( ea - ei + Omega_s - ieta) ) &
+                             + v_piak * REAL( 1.0_dp / ( ea - ei - Omega_s - ieta) ) )
+              enddo
+
             enddo
-
           enddo
         enddo
-      enddo
-      !$OMP END PARALLEL DO
+        !$OMP END PARALLEL DO
 
-      !$OMP PARALLEL DO PRIVATE(ei, ea, v_paic, v_piac, Omega_s)
-      do cstate=nhomo_G+1, nvirtual_G-1
+        !$OMP PARALLEL DO PRIVATE(ei, ea, v_paic, v_piac, Omega_s)
+        do cstate=nhomo_G+1, nvirtual_G-1
 
-        iastate = 0
-        do istate=ncore_G+1, nhomo_G
-          ei = energy(istate, qspin)
-          do astate=nhomo_G+1, nvirtual_G-1
-            ea = energy(astate, qspin)
-            iastate = iastate + 1
-            if( MODULO( iastate - 1 , poorman%nproc ) /= poorman%rank ) cycle
+          iastate = 0
+          do istate=ncore_G+1, nhomo_G
+            ei = energy(istate, qspin)
+            do astate=nhomo_G+1, nvirtual_G-1
+              ea = energy(astate, qspin)
+              iastate = iastate + 1
+              if( MODULO( iastate - 1 , poorman%nproc ) /= poorman%rank ) cycle
 
-            v_paic = DOT_PRODUCT( eri_3center_mo(:, pstate, astate, qspin), eri_3center_mo(:, istate, cstate, qspin) )
-            v_piac = DOT_PRODUCT( eri_3center_mo(:, pstate, istate, qspin), eri_3center_mo(:, astate, cstate, qspin) )
+              v_paic = DOT_PRODUCT( eri_3center_mo(:, pstate, astate, qspin), eri_3center_mo(:, istate, cstate, qspin) )
+              v_piac = DOT_PRODUCT( eri_3center_mo(:, pstate, istate, qspin), eri_3center_mo(:, astate, cstate, qspin) )
 
-            do spole=1, wpol%npole_reso
-              Omega_s = wpol%pole(spole)
-              w_s_tilde(spole, cstate, pstate) = w_s_tilde(spole, cstate, pstate) &
-                  + w_s(spole, astate, istate) &
-                        * (  v_paic * REAL( 1.0_dp / ( ea - ei - Omega_s - ieta) ) &
-                           + v_piac * REAL( 1.0_dp / ( ea - ei + Omega_s - ieta) ) )
+              do spole=1, wpol%npole_reso
+                Omega_s = wpol%pole(spole)
+                w_s_tilde(spole, cstate, pstate) = w_s_tilde(spole, cstate, pstate) &
+                    + w_s(spole, astate, istate) &
+                          * (  v_paic * REAL( 1.0_dp / ( ea - ei - Omega_s - ieta) ) &
+                             + v_piac * REAL( 1.0_dp / ( ea - ei + Omega_s - ieta) ) )
+              enddo
+
             enddo
-
           enddo
         enddo
-      enddo
-      !$OMP END PARALLEL DO
+        !$OMP END PARALLEL DO
 
+      enddo
     enddo
-  enddo
+
+  case('PT2')
+    do qspin=1, nspin
+      do pstate=nsemin, nsemax
+        do kstate=ncore_G+1, nhomo_G
+          do spole=1, wpol%npole_reso
+            istate = wpol%transition_table(1, spole)
+            astate = wpol%transition_table(2, spole)
+            v_pkai = DOT_PRODUCT( eri_3center_mo(:, pstate, kstate, qspin), eri_3center_mo(:, astate, istate, qspin) )
+            v_piak = DOT_PRODUCT( eri_3center_mo(:, pstate, istate, qspin), eri_3center_mo(:, astate, kstate, qspin) )
+            w_s_tilde(spole, kstate, pstate) =  2.0_dp * v_pkai - v_piak
+          enddo
+        enddo
+        do cstate=nhomo_G+1, nvirtual_G-1
+          do spole=1, wpol%npole_reso
+            istate = wpol%transition_table(1, spole)
+            astate = wpol%transition_table(2, spole)
+            v_pcia = DOT_PRODUCT( eri_3center_mo(:, pstate, cstate, qspin), eri_3center_mo(:, istate, astate, qspin) )
+            v_paic = DOT_PRODUCT( eri_3center_mo(:, pstate, astate, qspin), eri_3center_mo(:, istate, cstate, qspin) )
+            w_s_tilde(spole, cstate, pstate) =  2.0_dp * v_pcia - v_paic
+          enddo
+        enddo
+      enddo
+    enddo
+  end select
 
   call poorman%sum(w_s_tilde)
 
@@ -3176,7 +3205,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
       !
       ! indeces
       pstate = qstate - ncore_G
-      sign_i = MERGE(-1.0_dp, 1.0_dp, occupation(qstate, qspin) / spin_fact > completely_empty )
+      sign_q = MERGE(-1.0_dp, 1.0_dp, occupation(qstate, qspin) / spin_fact > completely_empty )
       irecord = ( pstate - 1 ) * wpol%npole_reso
 
       !
@@ -3185,7 +3214,16 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
 
       !
       ! Diagonal
-      matrix_diag(irecord+1:irecord+wpol%npole_reso) = energy(qstate, qspin) + sign_i * wpol%pole(:)
+      select case(TRIM(selfenergy_switch))
+      case('GW', 'PSD')
+        matrix_diag(irecord+1:irecord+wpol%npole_reso) = energy(qstate, qspin) + sign_q * wpol%pole(:)
+      case('PT2')
+        do spole=1, wpol%npole_reso
+          istate = wpol%transition_table(1, spole)
+          astate = wpol%transition_table(2, spole)
+          matrix_diag(irecord+spole) = energy(qstate, qspin) + sign_q * ( energy(astate,qspin) - energy(istate, qspin) )
+        enddo
+      end select
 
       !
       ! Wing
@@ -3196,8 +3234,9 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
       case('PSD')
         matrix_wing(irecord+1:irecord+wpol%npole_reso, :) = w_s(1:wpol%npole_reso, qstate, ncore_G+1:nvirtual_G-1) &
                                                            + w_s_tilde(1:wpol%npole_reso, qstate, ncore_G+1:nvirtual_G-1)
+      case('PT2')
+        matrix_wing(irecord+1:irecord+wpol%npole_reso, :) =  w_s_tilde(1:wpol%npole_reso, qstate, ncore_G+1:nvirtual_G-1)
       end select
-
 
     enddo ! qstate
   enddo ! qspin

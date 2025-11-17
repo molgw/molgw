@@ -20,9 +20,9 @@ module m_noft
   use m_noft_driver
 
 
-  logical, parameter, private       :: noft_verbose=.FALSE., noft_1_spin=.TRUE.
+  logical, parameter, private     :: noft_verbose=.FALSE., noft_1_spin=.TRUE.
   logical                         :: noft_edft=.FALSE., noft_fcidump_in=.FALSE.
-  integer, private                 :: nstate_noft, nstate_frozen, irs_noft
+  integer, private                :: nstate_noft, nstate_frozen, irs_noft
   real(dp)                        :: ExcDFT, E_t_vext
   real(dp), allocatable, private    :: AhCORE(:, :), T_Vext(:)            ! hCORE matrix (T+Ven) in AO basis
   complex(dp), allocatable, private :: AhCORE_cmplx(:, :)
@@ -47,7 +47,7 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
   !====
   logical                   :: file_exists=.false.
   integer                   :: istate, lwork, info, iao, jao
-  integer                   :: iorb, iorb1, istat, nelectrons, iunit=366
+  integer                   :: iorb, iorb1, istat, nelectrons, iunit=366, irs_noft_tmp
   integer                   :: imethorb, imethocc, nstate_occ, nstate_beta, nstate_alpha, nstate_coupled
   integer                   :: iNOTupdateOCC, iNOTupdateORB, iprintdmn, iprintswdmn, iprintints, ireadOCC, ireadCOEF
   integer                   :: ireadFdiag, ireadGAMMAs, ista, inof
@@ -94,9 +94,8 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
   if(noft_QC_ORB=='yes') imethorb=2
 
   select case(capitalize(noft_functional))
-  case('PNOF7_SUP')
+  case('PNOF7_PHASES')
     inof=70
-    if(abs(noft_Lpower_-0.53_dp)<1e-8) noft_Lpower_=1.0e0
   case('GNOFS')
     inof=8
     ista=3
@@ -306,13 +305,17 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
    
    !
    ! Setup the grids for the quadrature of DFT potential/energy
-   irs_noft=0
+   irs_noft=0; irs_noft_tmp=0;
    if( calc_type%is_dft .and. noft_dft=='yes' ) then
      if( nspin /= 2 ) call die('molgw: RS-NOFT calculations need nspin=2')
      if(noft_rsinter=='yes') then
        irs_noft=1
      else
        irs_noft=2
+     endif
+     if( noft_dft0=='yes' ) then ! Do usual NOFT and add a posteriori the DFT -> (NOFT+DFT)@NOFT
+      irs_noft_tmp = irs_noft
+      irs_noft = 0
      endif
      if( .not.calc_type%need_exchange_lr ) then
        write(msgw, '(a)') 'LR exchange is needed for RS-NOFT.'
@@ -362,22 +365,40 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
    
    endif
    
-   if( irs_noft/=0 ) then ! Compute total Energy for range-sep NOFT switching off the hamiltonian_xc (we only need hCORE=T+Vext).
+   if( irs_noft/=0 .or. irs_noft_tmp/=0) then ! Compute total Energy for range-sep NOFT switching off the hamiltonian_xc (we only need hCORE=T+Vext).
+     if(irs_noft_tmp/=0) then ! So, we restart for (NOFT+DFT)@NOFT to compute ExcDFT but we will not update orbs nor occs.
+       write(ofile_name, '(a)') 'tmp_dft_noft'
+       irs_noft=irs_noft_tmp
+       if(noft_complex=='yes') then
+         call run_noft(inof, ista, basis%nbf, nstate_occ, nstate_frozen, noft_npairs, nstate_coupled, nstate_beta, nstate_alpha, &
+          imethocc, imethorb, noft_nscf, 0, 0, 0, noft_ithresh_lambda, noft_ndiis, Enoft, noft_tolE, Vnn, Aoverlap, occ(:, 1), &
+          mo_ints, ofile_name, NO_COEF_cmplx=NO_COEF_cmplx, lowmemERI=(noft_lowmemERI=='yes'), restart=.true., ireadGAMMAS=1,&
+          ireadOCC=0, ireadCOEF=1, ireadFdiag=1, iNOTupdateOCC=1, iNOTupdateORB=1, Lpower=noft_Lpower_, &
+          fcidump=(noft_fcidump=='yes'), irange_sep=irs_noft)
+       else
+         call run_noft(inof, ista, basis%nbf, nstate_occ, nstate_frozen, noft_npairs, nstate_coupled, nstate_beta, nstate_alpha, &
+          imethocc, imethorb, noft_nscf, 0, 0, 0, noft_ithresh_lambda, noft_ndiis, Enoft, noft_tolE, Vnn, Aoverlap, occ(:, 1), &
+          mo_ints, ofile_name, NO_COEF=NO_COEF, lowmemERI=(noft_lowmemERI=='yes'), restart=.true., ireadGAMMAS=1, ireadOCC=0, &
+          ireadCOEF=1, ireadFdiag=1, iNOTupdateOCC=1, iNOTupdateORB=1, Lpower=noft_Lpower_, fcidump=(noft_fcidump=='yes'), &
+          irange_sep=irs_noft)
+       endif
+       call system("rm tmp_dft_noft")
+     endif
      noft_edft=.true.     ! So, we restart but we will not update orbs nor occs.
      call clean_allocate('T_Vext', T_Vext, basis%nbf, noft_verbose)
      write(ofile_name, '(a)') 'tmp_dft_noft'
      if(noft_complex=='yes') then
        call run_noft(inof, ista, basis%nbf, nstate_occ, nstate_frozen, noft_npairs, nstate_coupled, nstate_beta, nstate_alpha, &
         imethocc, imethorb, noft_nscf, 0, 0, 0, noft_ithresh_lambda, noft_ndiis, Enoft, noft_tolE, Vnn, Aoverlap, occ(:, 1), &
-        mo_ints, ofile_name, NO_COEF_cmplx=NO_COEF_cmplx, lowmemERI=(noft_lowmemERI=='yes'), restart=.true., ireadGAMMAS=1,&
-        ireadOCC=0, ireadCOEF=1, ireadFdiag=1, iNOTupdateOCC=1, iNOTupdateORB=1, Lpower=noft_Lpower_, &
+        mo_ints, ofile_name, NO_COEF_cmplx=NO_COEF_cmplx, lowmemERI=(noft_lowmemERI=='yes'), restart=.true., ireadGAMMAS=1, &
+        ireadOCC=0, ireadCOEF=1, ireadFdiag=1, iNOTupdateOCC=1, iNOTupdateORB=1, Lpower=noft_Lpower_,  &
         fcidump=(noft_fcidump=='yes'), irange_sep=irs_noft)
      else
        call run_noft(inof, ista, basis%nbf, nstate_occ, nstate_frozen, noft_npairs, nstate_coupled, nstate_beta, nstate_alpha, &
         imethocc, imethorb, noft_nscf, 0, 0, 0, noft_ithresh_lambda, noft_ndiis, Enoft, noft_tolE, Vnn, Aoverlap, occ(:, 1), &
         mo_ints, ofile_name, NO_COEF=NO_COEF, lowmemERI=(noft_lowmemERI=='yes'), restart=.true., ireadGAMMAS=1, ireadOCC=0,&
-        ireadCOEF=1, ireadFdiag=1, iNOTupdateOCC=1, iNOTupdateORB=1, Lpower=noft_Lpower_, fcidump=(noft_fcidump=='yes'),&
-        irange_sep=irs_noft)
+        ireadCOEF=1, ireadFdiag=1, iNOTupdateOCC=1, iNOTupdateORB=1, Lpower=noft_Lpower_, &
+        fcidump=(noft_fcidump=='yes'), irange_sep=irs_noft)
      endif
      Enoft=Enoft+ExcDFT
      write(stdout, '(/,a,2x,f19.10)')   ' Nucleus-Nucleus (Ha):', Vnn

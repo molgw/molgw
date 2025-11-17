@@ -259,38 +259,38 @@ SCF Total Energy          , -15.5379349891     , 0 , 1.0e-5
 
 he2_x2c.in                , PBE He2 atom cc-pVDZ relativistic X2C
 Rel Hcore Energy          , -10.4713708712      , 0 , 1.0e-7
-XC Energy                 ,  -2.1190533605      , 0 , 1.0e-5
-SCF Total Energy          ,  -5.7622737480      , 0 , 1.0e-5
+XC Energy                 ,  -2.1190696847      , 0 , 1.0e-5
+SCF Total Energy          ,  -5.7625306723      , 0 , 1.0e-5
 
 he2_x2c_hf.in             , HF He2 atom cc-pVDZ relativistic X2C
 Rel Hcore Energy          , -10.4713708712      , 0 , 1.0e-7
-gKS HOMO energy           , -23.629648          , 0 , 1.0e-4
-gKS HOMO energy           , -23.629648          , 1 , 1.0e-4
-gKS LUMO energy           ,  35.988824          , 0 , 1.0e-4
-gKS LUMO energy           ,  35.988824          , 1 , 1.0e-4
-Exchange Energy           ,  -2.0649481230      , 0 , 1.0e-5
-SCF Total Energy          ,  -5.7024605706      , 0 , 1.0e-5
+gKS HOMO energy           , -23.632001          , 0 , 1.0e-4
+gKS HOMO energy           , -23.632001          , 1 , 1.0e-4
+gKS LUMO energy           ,  35.983240          , 0 , 1.0e-4
+gKS LUMO energy           ,  35.983240          , 1 , 1.0e-4
+Exchange Energy           ,  -2.0649086895      , 0 , 1.0e-5
+SCF Total Energy          ,  -5.7026836978      , 0 , 1.0e-5
 
 he2_x2c_cam_b3lyp.in      , CAM-B3LYP He2 atom cc-pVDZ relativistic X2C
 Rel Hcore Energy          , -10.4713708712      , 0 , 1.0e-7
-gKS HOMO energy           , -18.455382          , 0 , 1.0e-4
-gKS HOMO energy           , -18.455382          , 1 , 1.0e-4
-gKS LUMO energy           ,  30.289423          , 0 , 1.0e-4
-gKS LUMO energy           ,  30.289423          , 1 , 1.0e-4
-Exchange Energy           ,  -0.7085794276      , 0 , 1.0e-5
-XC Energy                 ,  -1.4272998754      , 0 , 1.0e-5
-SCF Total Energy          ,  -5.7806274790      , 0 , 1.0e-5
+gKS HOMO energy           , -18.456549          , 0 , 1.0e-4
+gKS HOMO energy           , -18.456549          , 1 , 1.0e-4
+gKS LUMO energy           ,  30.285552          , 0 , 1.0e-4
+gKS LUMO energy           ,  30.285552          , 1 , 1.0e-4
+Exchange Energy           ,  -0.7085396751      , 0 , 1.0e-5
+XC Energy                 ,  -1.4272352536      , 0 , 1.0e-5
+SCF Total Energy          ,  -5.7805567603      , 0 , 1.0e-5
 
 he2_x2c_rsx_qidh.in       , RSX-QIDH He2 atom cc-pVDZ relativistic X2C
 Rel Hcore Energy          , -10.4713708712      , 0 , 1.0e-7
-gKS HOMO energy           , -22.174242          , 0 , 1.0e-4
-gKS HOMO energy           , -22.174242          , 1 , 1.0e-4
-gKS LUMO energy           ,  34.284689          , 0 , 1.0e-4
-gKS LUMO energy           ,  34.284689          , 1 , 1.0e-4
-Exchange Energy           ,  -1.6046417574      , 0 , 1.0e-5
-XC Energy                 ,  -0.4829186565      , 0 , 1.0e-5
-SCF Total Energy          ,  -5.7313928818      , 0 , 1.0e-5
-MP2 Total Energy          ,  -5.7495327518      , 0 , 1.0e-5
+gKS HOMO energy           , -22.176600          , 0 , 1.0e-4
+gKS HOMO energy           , -22.176600          , 1 , 1.0e-4
+gKS LUMO energy           ,  34.279314          , 0 , 1.0e-4
+gKS LUMO energy           ,  34.279314          , 1 , 1.0e-4
+Exchange Energy           ,  -1.6046100361      , 0 , 1.0e-5
+XC Energy                 ,  -0.4829208853      , 0 , 1.0e-5
+SCF Total Energy          ,  -5.7316204455      , 0 , 1.0e-5
+MP2 Total Energy          ,  -5.7497555559      , 0 , 1.0e-5
 
 he_tdpbe0.in              , TDDFT calculation of He atom with PBE0 without RI, noparallel
 SCF Total Energy          ,   -2.8945155987    , 0 , 1.0e-7
@@ -501,16 +501,22 @@ h2_noft_rsh.in            , RI-NOFT calculation applied to H2 with RI using rang
 NOFT Total Energy         ,     -0.9973489203  , 0 , 1.0e-5
 
 n2_noft.in                , RI-NOFT calculation applied to dissociated N2 with RI
-NOFT Total Energy         ,   -108.7519260379  , 0 , 5.0e-5
+NOFT Total Energy         ,   -108.7663308357  , 0 , 5.0e-5
 
 n2_noft_cpx.in            , RI-NOFT calculation applied to N2 with RI (complex orbs), noparallel 
-NOFT Total Energy         ,   -109.0322064109  , 0 , 5.0e-5
+NOFT Total Energy         ,   -108.9393597626  , 0 , 5.0e-5
 
 n2_noft_rsh.in            , RI-NOFT calculation applied to N2 with RI using range-sep NOFT
-NOFT Total Energy         ,   -109.4196076242  , 0 , 1.0e-5
+NOFT Total Energy         ,   -109.3365081665  , 0 , 1.0e-5
 
-lih_pccd.in               , RI-pCCD calculation applied to dissociated LiH with RI
+lih_pccd.in               , RI-pCCD calculation applied to dissociated LiH
 NOFT Total Energy         ,     -7.9317651039  , 0 , 5.0e-5
+
+lih_bogoliubov.in         , RI-HF-Bogoliubov calculation applied to dissociated LiH
+Anomal   Energy           ,     -0.0929300372  , 0 , 1.0e-5
+Norm Anomalous            ,      1.7474607162  , 0 , 5.0e-5
+Chemical potential        ,     -0.1036959329  , 0 , 5.0e-5
+SCF Total Energy          ,     -7.8497595181  , 0 , 1.0e-5
 
 h2_ci.in                  , Full CI for 2 electrons applied to H2
 SCF Total Energy          ,     -1.1636125481  , 0 , 1.0e-7
@@ -1204,7 +1210,16 @@ kr_ccECP.in               , RPA correlation Kr atom with a ccECP pseudo and basi
 SCF Total Energy          ,  -18.228067580      , 0 , 1.0e-7
 RPA correlation           ,  -0.2186444854      , 0 , 1.0e-7
 
+Si_energy_shift.in        , tests the scf_energy_shift input
+SCF Total Energy          ,  -284.8534330027    , 0 , 1.0e-6
+
 c2h4_lc-wpbe_tddft.in     , LR-TDDFT with long-range only functional
 SCF Total Energy          ,  -78.5180274712     , 0 , 1.0e-7
 Exc. 0001                 ,     8.13898708      , 0 , 1.0e-4
 Exc. 0001                 ,     0.38087818      , 1 , 1.0e-4
+
+ge2h6_plusalpha.in        , PBE+alpha approximation for Ge
+SCF Total Energy          ,   -591.7684606578   , 0 , 1.0e-7
++ alpha correction        ,      0.4192824813   , 0 , 1.0e-7
+gKS HOMO energy           ,     -7.463168       , 0 , 1.0e-4
+gKS LUMO energy           ,     -0.373146       , 0 , 1.0e-4
