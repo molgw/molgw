@@ -6,6 +6,7 @@
 
 ### Overview
 
+- Faster diagonalizations with ELPA for CPU and GPU
 - RESTART from a different basis made safer
 - RESTART from a optmized virtual orbital space
 - Linking with accelerated integral library `qcint`
@@ -17,6 +18,7 @@
 
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
 - Mauricio Rodriguez-Mayorga (LCPQ, CNRS-Toulouse, France)
+- Marc Sarraute (AS+)
 
 ### Changes affecting the usage
 
@@ -26,6 +28,7 @@
 - Import Coulomb integrals and HF eigenvalues in the CC4S formats
 - Possibility to rename the yaml output file with `yaml_output` input variable
 - Possibility to rename the RESTART input file with `restart_input` input variable
+- Modern ELPA
 
 ### Changes affecting the results
 
@@ -36,6 +39,7 @@
 ### Changes affecting the compilation
 
 - Possibility to linking against `qcint` or `libcint` without any change
+- ELPA flags should be set up to benefit from ELPA acceleration (`-DHAVE_ELPA` CPP flag, `ELPA` for libs, `ELPA_INCS` for the fortran module)
 
 ### Changes affecting the developers
 

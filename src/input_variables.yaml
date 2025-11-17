@@ -1131,7 +1131,12 @@ postscf_diago_flavor:
   experimental: 'no'
   default: ' '
   comment: Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculations.
-    Available choices are ' ', 'R', 'D', and 'X'.
+    Current available choices are ' ', 'R', 'D', 'X', 'L', 'G'.
+    ' ' is the regular LAPACK/ScaLAPACK routine.
+    'D' is the divide-and-conquer LAPACK/ScaLAPACK routine.
+    'R' is the "relatively robust" LAPACK/ScaLAPACK routine.
+    'L' is the ELPA 2-stage CPU routine.
+    'G' is the ELPA 1-stage GPU routine.
 
 pt3_a_diagrams:
   family: post
@@ -1706,7 +1711,12 @@ scf_diago_flavor:
   experimental: 'no'
   default: ' '
   comment: Selects the LAPACK/ScaLAPACK diagonalization routines in the SCF cycles.
-    Available choices are ' ', 'R', 'D', and 'X'.
+    Current available choices are ' ', 'R', 'D', 'X', 'L', 'G'.
+    ' ' is the regular LAPACK/ScaLAPACK routine.
+    'D' is the divide-and-conquer LAPACK/ScaLAPACK routine.
+    'R' is the "relatively robust" LAPACK/ScaLAPACK routine.
+    'L' is the ELPA 2-stage CPU routine.
+    'G' is the ELPA 1-stage GPU routine.
 
 scf_energy_shift:
   family: rt_tddft
