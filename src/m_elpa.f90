@@ -76,16 +76,13 @@ contains  !=====================================================================
 
 subroutine elpa_func_allocate(elpa_hdl, gpu, blacs_ctx)
 
- !Arguments ------------------------------------
   integer, intent(in), optional :: gpu, blacs_ctx
   type(elpa_hdl_t), intent(inout) :: elpa_hdl
-
- !Local variables-------------------------------
+  !=====
   integer :: err, l_gpu, l_blacs_ctx
   logical :: debug_mode = .FALSE.
   character(len=10) :: varname
-
- ! *********************************************************************
+  !=====
 
   err = ELPA_OK
   ! if optional parameter is present, use it
@@ -141,7 +138,6 @@ subroutine elpa_func_deallocate(elpa_hdl)
   !=====
   !=====
  
- 
   call elpa_deallocate(elpa_hdl%elpa)
  
   elpa_hdl%matrix_is_set = .FALSE.
@@ -170,46 +166,43 @@ end subroutine elpa_func_deallocate
 !! SOURCE
 
 subroutine elpa_func_error_handler(err_code, err_msg, err_varname)
+  integer, optional :: err_code
+  character(len=*), optional :: err_msg, err_varname
+  !=====
+  integer :: err_code_
+  character(len=500) :: msg
+  character(len=100) :: err_strg
+  !=====
 
-!Arguments ------------------------------------
- integer, optional :: err_code
- character(len=*), optional :: err_msg, err_varname
+  err_code_ = -100
+  if (PRESENT(err_code)) err_code_ = err_code
+  if (err_code_ == ELPA_OK) return
 
-!Local variables-------------------------------
- integer :: err_code_
- character(len=500) :: msg
- character(len=100) :: err_strg
+  err_strg = ''
+  if (err_code_ == ELPA_ERROR) err_strg='ELPA_ERROR'
+  if (err_code_ == ELPA_ERROR_ENTRY_READONLY) err_strg='ELPA_ERROR_ENTRY_READONLY'
+  if (err_code_ == ELPA_ERROR_ENTRY_NOT_FOUND) err_strg='ELPA_ERROR_ENTRY_NOT_FOUND'
+  if (err_code_ == ELPA_ERROR_ENTRY_ALREADY_SET) err_strg='ELPA_ERROR_ENTRY_ALREADY_SET'
+  if (err_code_ == ELPA_ERROR_ENTRY_INVALID_VALUE) err_strg='ELPA_ERROR_ENTRY_INVALID_VALUE'
+  if (err_code_ == ELPA_ERROR_ENTRY_NO_STRING_REPRESENTATION) err_strg='ELPA_ERROR_NO_STRING_REPRESENTATION'
+  if (err_code_ == ELPA_ERROR_SETUP) err_strg='ELPA_ERROR_SETUP'
+  if (err_code_ == ELPA_ERROR_CRITICAL) err_strg='ELPA_ERROR_CRITICAL'
+  if (err_code_ == ELPA_ERROR_API_VERSION) err_strg='ELPA_ERROR_API_VERSION'
+  if (err_code_ == ELPA_ERROR_AUTOTUNE_API_VERSION) err_strg='ELPA_ERROR_AUTOTUNE_API_VERSION'
+  if (err_code_ == ELPA_ERROR_AUTOTUNE_OBJECT_CHANGED) err_strg='ELPA_ERROR_AUTOTUNE_OBJECT_CHANGED'
+  if (err_code_ == ELPA_ERROR_CANNOT_OPEN_FILE) err_strg='ELPA_ERROR_CANNOT_OPEN_FILE'
+  if (err_code_ == ELPA_ERROR_DURING_COMPUTATION) err_strg='ELPA_ERROR_DURING_COMPUTATION'
 
-! *********************************************************************
+  write(msg, '(a)') 'ELPA library error!'
+  if (PRESENT(err_msg)) then
+    if (TRIM(err_msg) /= "") write(msg, '(3a)') TRIM(msg), CHAR(10), TRIM(err_msg)
+  end if
+  if (PRESENT(err_varname)) then
+    if (TRIM(err_varname) /= "") write(msg, '(4a)') TRIM(msg), CHAR(10), 'Variable: ', TRIM(err_varname)
+  end if
+  if (TRIM(err_strg) /= "") write(msg, '(4a)') TRIM(msg), CHAR(10), 'Error code: ', TRIM(err_strg)
 
- err_code_ = -100
- if (PRESENT(err_code)) err_code_ = err_code
- if (err_code_ == ELPA_OK) return
-
- err_strg = ''
- if (err_code_ == ELPA_ERROR) err_strg='ELPA_ERROR'
- if (err_code_ == ELPA_ERROR_ENTRY_READONLY) err_strg='ELPA_ERROR_ENTRY_READONLY'
- if (err_code_ == ELPA_ERROR_ENTRY_NOT_FOUND) err_strg='ELPA_ERROR_ENTRY_NOT_FOUND'
- if (err_code_ == ELPA_ERROR_ENTRY_ALREADY_SET) err_strg='ELPA_ERROR_ENTRY_ALREADY_SET'
- if (err_code_ == ELPA_ERROR_ENTRY_INVALID_VALUE) err_strg='ELPA_ERROR_ENTRY_INVALID_VALUE'
- if (err_code_ == ELPA_ERROR_ENTRY_NO_STRING_REPRESENTATION) err_strg='ELPA_ERROR_NO_STRING_REPRESENTATION'
- if (err_code_ == ELPA_ERROR_SETUP) err_strg='ELPA_ERROR_SETUP'
- if (err_code_ == ELPA_ERROR_CRITICAL) err_strg='ELPA_ERROR_CRITICAL'
- if (err_code_ == ELPA_ERROR_API_VERSION) err_strg='ELPA_ERROR_API_VERSION'
- if (err_code_ == ELPA_ERROR_AUTOTUNE_API_VERSION) err_strg='ELPA_ERROR_AUTOTUNE_API_VERSION'
- if (err_code_ == ELPA_ERROR_AUTOTUNE_OBJECT_CHANGED) err_strg='ELPA_ERROR_AUTOTUNE_OBJECT_CHANGED'
- if (err_code_ == ELPA_ERROR_CANNOT_OPEN_FILE) err_strg='ELPA_ERROR_CANNOT_OPEN_FILE'
- if (err_code_ == ELPA_ERROR_DURING_COMPUTATION) err_strg='ELPA_ERROR_DURING_COMPUTATION'
-
- write(msg, '(a)') 'ELPA library error!'
- if (PRESENT(err_msg)) then
-   if (TRIM(err_msg) /= "") write(msg, '(3a)') TRIM(msg), CHAR(10), TRIM(err_msg)
- end if
- if (PRESENT(err_varname)) then
-   if (TRIM(err_varname) /= "") write(msg, '(4a)') TRIM(msg), CHAR(10), 'Variable: ', TRIM(err_varname)
- end if
- if (TRIM(err_strg) /= "") write(msg, '(4a)') TRIM(msg), CHAR(10), 'Error code: ', TRIM(err_strg)
-   call die(msg)
+  call die(msg)
 
 end subroutine elpa_func_error_handler
 !!***
@@ -235,47 +228,45 @@ end subroutine elpa_func_error_handler
 
 subroutine elpa_func_get_communicators(elpa_hdl, mpi_comm_parent, process_row, process_col)
 
-!Arguments ------------------------------------
- integer, intent(in)  :: mpi_comm_parent, process_row, process_col
- type(elpa_hdl_t), intent(inout) :: elpa_hdl
+  integer, intent(in)  :: mpi_comm_parent, process_row, process_col
+  type(elpa_hdl_t), intent(inout) :: elpa_hdl
+  !=====
+  integer  :: err
+  character(len=20) :: varname
+  character(len=200):: msg
+  !=====
 
-!Local variables-------------------------------
- integer  :: err
- character(len=20) :: varname
- character(len=200):: msg
 
-! *********************************************************************
+  err = ELPA_OK
+  varname = ''
 
- err = ELPA_OK
- varname = ''
+  if (.NOT. elpa_hdl%is_allocated) then
+    call die('ELPA handle not allocated!')
+  end if
 
- if (.NOT. elpa_hdl%is_allocated) then
-   call die('ELPA handle not allocated!')
- end if
+  if (err == ELPA_OK) then
+    varname = 'mpi_comm_parent'
+    call elpa_hdl%elpa%set(TRIM(varname), mpi_comm_parent, err)
+  end if
+  if (err == ELPA_OK) then
+    varname = 'process_row'
+    call elpa_hdl%elpa%set(TRIM(varname), process_row, err)
+  end if
+  if (err==ELPA_OK) then
+    varname = 'process_col'
+    call elpa_hdl%elpa%set(TRIM(varname), process_col, err)
+  end if
+  if (err == ELPA_OK) then
+    err = elpa_hdl%elpa%setup()
+    write(msg, '(3a)') "Error when setting '", varname, "'during ELPA communicators setup"
+    call elpa_func_error_handler(err_code=err, err_msg=msg)
+  endif
 
- if (err == ELPA_OK) then
-   varname = 'mpi_comm_parent'
-   call elpa_hdl%elpa%set(TRIM(varname), mpi_comm_parent, err)
- end if
- if (err == ELPA_OK) then
-   varname = 'process_row'
-   call elpa_hdl%elpa%set(TRIM(varname), process_row, err)
- end if
- if (err==ELPA_OK) then
-   varname = 'process_col'
-   call elpa_hdl%elpa%set(TRIM(varname), process_col, err)
- end if
- if (err == ELPA_OK) then
-   err = elpa_hdl%elpa%setup()
-   write(msg, '(3a)') "Error when setting '", varname, "'during ELPA communicators setup"
-   call elpa_func_error_handler(err_code=err, err_msg=msg)
- endif
+  elpa_hdl%mpi_comm_parent = mpi_comm_parent
+  elpa_hdl%process_row = process_row
+  elpa_hdl%process_col = process_col
 
- elpa_hdl%mpi_comm_parent = mpi_comm_parent
- elpa_hdl%process_row = process_row
- elpa_hdl%process_col = process_col
-
- call elpa_func_error_handler(err_code=err, err_msg='Error in elpa_get_communicators', err_varname=varname)
+  call elpa_func_error_handler(err_code=err, err_msg='Error in elpa_get_communicators', err_varname=varname)
 
 end subroutine elpa_func_get_communicators
 !!***
@@ -304,49 +295,44 @@ end subroutine elpa_func_get_communicators
 
 subroutine elpa_func_set_matrix(elpa_hdl, na, nblk, nev, local_nrows, local_ncols)
 
-!Arguments ------------------------------------
-!scalars
- integer, intent(in) :: na, nblk, nev, local_nrows, local_ncols
- type(elpa_hdl_t), intent(inout) :: elpa_hdl
-!arrays
+  integer, intent(in) :: na, nblk, nev, local_nrows, local_ncols
+  type(elpa_hdl_t), intent(inout) :: elpa_hdl
+  !=====
+  integer :: err
+  character(len=15) :: varname
+  !=====
 
-!Local variables-------------------------------
- integer :: err
- character(len=15) :: varname
+  err = ELPA_OK
+  varname = ''
 
-! *********************************************************************
+  if (.NOT. elpa_hdl%is_allocated) then
+    call die('ELPA handle not allocated!')
+  end if
 
- err = ELPA_OK
- varname = ''
+  if (err == ELPA_OK) then
+    varname = "na"
+    call elpa_hdl%elpa%set(TRIM(varname), na, err)
+  end if
+  if (err == ELPA_OK) then
+    varname = "nblk"
+    call elpa_hdl%elpa%set(TRIM(varname), nblk, err)
+  end if
+  if (err == ELPA_OK) then
+    varname = "nev"
+    call elpa_hdl%elpa%set(TRIM(varname), nev, err)
+  end if
+  if (err == ELPA_OK) then
+    varname = "local_nrows"
+    call elpa_hdl%elpa%set(TRIM(varname), local_nrows, err)
+  end if
+  if (err == ELPA_OK) then
+    varname = "local_ncols"
+    call elpa_hdl%elpa%set(TRIM(varname), local_ncols, err)
+  end if
 
- if (.NOT. elpa_hdl%is_allocated) then
-   call die('ELPA handle not allocated!')
- end if
+  call elpa_func_error_handler(err_code=err, err_msg='Error during matrix initialization', err_varname=varname)
 
- if (err == ELPA_OK) then
-   varname = "na"
-   call elpa_hdl%elpa%set(TRIM(varname), na, err)
- end if
- if (err == ELPA_OK) then
-   varname = "nblk"
-   call elpa_hdl%elpa%set(TRIM(varname), nblk, err)
- end if
- if (err == ELPA_OK) then
-   varname = "nev"
-   call elpa_hdl%elpa%set(TRIM(varname), nev, err)
- end if
- if (err == ELPA_OK) then
-   varname = "local_nrows"
-   call elpa_hdl%elpa%set(TRIM(varname), local_nrows, err)
- end if
- if (err == ELPA_OK) then
-   varname = "local_ncols"
-   call elpa_hdl%elpa%set(TRIM(varname), local_ncols, err)
- end if
-
- call elpa_func_error_handler(err_code=err, err_msg='Error during matrix initialization', err_varname=varname)
-
- elpa_hdl%matrix_is_set = .TRUE.
+  elpa_hdl%matrix_is_set = .TRUE.
 
 end subroutine elpa_func_set_matrix
 !!***
@@ -382,43 +368,38 @@ end subroutine elpa_func_set_matrix
 
 subroutine elpa_func_solve_evp_real(elpa_hdl, aa, qq, ev, nev, use_two_stage)
 
-!Arguments ------------------------------------
-!scalars
- integer, intent(in)  :: nev
- type(elpa_hdl_t), intent(inout) :: elpa_hdl
- logical :: use_two_stage
-!arrays
- real(dp), intent(inout) :: aa(:, :)
- real(dp), intent(out) :: ev(:), qq(:, :)
+  integer, intent(in)  :: nev
+  type(elpa_hdl_t), intent(inout) :: elpa_hdl
+  logical :: use_two_stage
+  real(dp), intent(inout) :: aa(:, :)
+  real(dp), intent(out) :: ev(:), qq(:, :)
+  !=====
+  integer :: err
+  logical  :: success
+  !=====
 
-!Local variables-------------------------------
- integer :: err
- logical  :: success
-
-! *********************************************************************
-
- success = .TRUE.
- err = ELPA_OK
-
- if (.NOT. elpa_hdl%is_allocated) then
-   call die('ELPA handle not allocated!')
- end if
- if (.NOT. elpa_hdl%matrix_is_set) then
-   call die('Matrix not set in ELPA handle!')
- end if
- if(SIZE(aa) /= elpa_hdl%elpa%local_nrows * elpa_hdl%elpa%local_ncols) call die('BUG: matrix A has wrong sizes!')
- if(SIZE(qq) /= elpa_hdl%elpa%local_nrows * elpa_hdl%elpa%local_ncols) call die('BUG: matrix Q has wrong sizes!')
- if(SIZE(ev) /= elpa_hdl%elpa%na) call die('BUG: matrix EV has wrong sizes!')
-
- if(use_two_stage) then
-   if (err == ELPA_OK) call elpa_hdl%elpa%set("solver", ELPA_SOLVER_2STAGE, err)
- else
-   if (err == ELPA_OK) call elpa_hdl%elpa%set("solver", ELPA_SOLVER_1STAGE, err)
- end if
- if (err == ELPA_OK) call elpa_hdl%elpa%eigenvectors(aa, ev, qq, err)
- success = (err == ELPA_OK)
-
- if (.NOT. success) call elpa_func_error_handler(err_msg='Error in solve_evp_real!')
+  success = .TRUE.
+  err = ELPA_OK
+ 
+  if (.NOT. elpa_hdl%is_allocated) then
+    call die('ELPA handle not allocated!')
+  end if
+  if (.NOT. elpa_hdl%matrix_is_set) then
+    call die('Matrix not set in ELPA handle!')
+  end if
+  if(SIZE(aa) /= elpa_hdl%elpa%local_nrows * elpa_hdl%elpa%local_ncols) call die('BUG: matrix A has wrong sizes!')
+  if(SIZE(qq) /= elpa_hdl%elpa%local_nrows * elpa_hdl%elpa%local_ncols) call die('BUG: matrix Q has wrong sizes!')
+  if(SIZE(ev) /= elpa_hdl%elpa%na) call die('BUG: matrix EV has wrong sizes!')
+ 
+  if(use_two_stage) then
+    if (err == ELPA_OK) call elpa_hdl%elpa%set("solver", ELPA_SOLVER_2STAGE, err)
+  else
+    if (err == ELPA_OK) call elpa_hdl%elpa%set("solver", ELPA_SOLVER_1STAGE, err)
+  end if
+  if (err == ELPA_OK) call elpa_hdl%elpa%eigenvectors(aa, ev, qq, err)
+  success = (err == ELPA_OK)
+ 
+  if (.NOT. success) call elpa_func_error_handler(err_msg='Error in solve_evp_real!')
 
 end subroutine elpa_func_solve_evp_real
 !!***
@@ -454,44 +435,39 @@ end subroutine elpa_func_solve_evp_real
 
 subroutine elpa_func_solve_evp_complex(elpa_hdl, aa, qq, ev, nev, use_two_stage)
 
-!Arguments ------------------------------------
-!scalars
- integer, intent(in)  :: nev
- type(elpa_hdl_t), intent(inout) :: elpa_hdl
- logical :: use_two_stage
-!arrays
- complex(dp), intent(inout) :: aa(:, :)
- real(dp), intent(out) :: ev(:)
- complex(dp), intent(out) :: qq(:, :)
+  integer, intent(in)  :: nev
+  type(elpa_hdl_t), intent(inout) :: elpa_hdl
+  logical :: use_two_stage
+  complex(dp), intent(inout) :: aa(:, :)
+  real(dp), intent(out) :: ev(:)
+  complex(dp), intent(out) :: qq(:, :)
+  !=====
+  integer :: err
+  logical  :: success
+  !=====
 
-!Local variables-------------------------------
- integer :: err
- logical  :: success
+  success = .TRUE.
+  err = ELPA_OK
 
-! *********************************************************************
+  if (.NOT. elpa_hdl%is_allocated) then
+    call die('ELPA handle not allocated!')
+  end if
+  if (.NOT. elpa_hdl%matrix_is_set) then
+    call die('Matrix not set in ELPA handle!')
+  end if
+  if(SIZE(aa) /= elpa_hdl%elpa%local_nrows * elpa_hdl%elpa%local_ncols) call die('BUG: matrix A has wrong sizes!')
+  if(SIZE(qq) /= elpa_hdl%elpa%local_nrows * elpa_hdl%elpa%local_ncols) call die('BUG: matrix Q has wrong sizes!')
+  if(SIZE(ev) /= elpa_hdl%elpa%na) call die('BUG: matrix EV has wrong sizes!')
 
- success = .TRUE.
- err = ELPA_OK
+  if(use_two_stage) then
+    if (err == ELPA_OK) call elpa_hdl%elpa%set("solver", ELPA_SOLVER_2STAGE, err)
+  else
+    if (err == ELPA_OK) call elpa_hdl%elpa%set("solver", ELPA_SOLVER_1STAGE, err)
+  end if
+  if (err == ELPA_OK) call elpa_hdl%elpa%eigenvectors(aa, ev, qq, err)
+  success = (err == ELPA_OK)
 
- if (.NOT. elpa_hdl%is_allocated) then
-   call die('ELPA handle not allocated!')
- end if
- if (.NOT. elpa_hdl%matrix_is_set) then
-   call die('Matrix not set in ELPA handle!')
- end if
- if(SIZE(aa) /= elpa_hdl%elpa%local_nrows * elpa_hdl%elpa%local_ncols) call die('BUG: matrix A has wrong sizes!')
- if(SIZE(qq) /= elpa_hdl%elpa%local_nrows * elpa_hdl%elpa%local_ncols) call die('BUG: matrix Q has wrong sizes!')
- if(SIZE(ev) /= elpa_hdl%elpa%na) call die('BUG: matrix EV has wrong sizes!')
-
- if(use_two_stage) then
-   if (err == ELPA_OK) call elpa_hdl%elpa%set("solver", ELPA_SOLVER_2STAGE, err)
- else
-   if (err == ELPA_OK) call elpa_hdl%elpa%set("solver", ELPA_SOLVER_1STAGE, err)
- end if
- if (err == ELPA_OK) call elpa_hdl%elpa%eigenvectors(aa, ev, qq, err)
- success = (err == ELPA_OK)
-
- if (.NOT. success) call elpa_func_error_handler(err_msg='Error in solve_evp_complex!')
+  if (.NOT. success) call elpa_func_error_handler(err_msg='Error in solve_evp_complex!')
 
 end subroutine elpa_func_solve_evp_complex
 !!***
