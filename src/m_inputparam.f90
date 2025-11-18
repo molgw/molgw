@@ -17,7 +17,8 @@ module m_inputparam
   use m_atoms
   use m_elements
   use m_ecp
-  use m_string_tools, only: capitalize, yesno_to_logical, yesno_to_TrueFalse
+  use m_string_tools, only: capitalize, yesno_to_logical, yesno_to_TrueFalse, string_to_substrings, &
+                            string_to_integers
   use m_libxc_tools
 
 #if !defined(NO_LIBXC)
@@ -954,12 +955,12 @@ subroutine read_inputfile_namelist()
     if( gaussian_type/= 'CART' ) then
       call die("X2C calculations require cartesian gaussian_type")
     endif
-    
+
   endif
 
 
 
-#if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0) 
+#if !defined(LIBINT2_DERIV_ONEBODY_ORDER) || (LIBINT2_DERIV_ONEBODY_ORDER == 0) || !defined(LIBINT2_DERIV_ERI_ORDER) || (LIBINT2_DERIV_ERI_ORDER == 0)
 #if !defined(HAVE_LIBCINT)
   if( move_nuclei /= 'no' ) then
     call die('LIBINT does not contain the gradients of the integrals that are needed when move_nuclei is different from no')
@@ -988,7 +989,6 @@ subroutine read_inputfile_namelist()
 
   call setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, ecp_auxil_basis, ecp_small_basis)
 
-  call setup_periodicity_vectors(length_unit, a1, a2, a3)
 
   has_auxil_basis = TRIM(auxil_basis_name(1)) /= '' .OR. TRIM(ecp_auxil_basis_name(1)) /= ''
   has_small_basis = TRIM(small_basis_name(1)) /= '' .OR. TRIM(ecp_small_basis_name(1)) /= ''
@@ -1148,16 +1148,20 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
   character(len=*), intent(in) :: ecp_basis, ecp_small_basis, ecp_auxil_basis
   !=====
   integer              :: natom_read
-  integer              :: element, iatom, ielement_ecp, icenter
-  integer              :: info, info1, info2, xyzfile
+  integer              :: element, iatom, ielement_ecp, icenter, ie, ii
+  integer              :: info, info1, info2, fu
   character(len=12)    :: element_symbol
   real(dp), allocatable :: zatom_read(:), x_read(:, :)
   character(len=140)   :: ctmp1, ctmp2
   character(len=256)   :: line_char
   logical              :: file_exists
-  real(dp)             :: length_factor
+  real(dp)             :: length_factor, scale_factor
+  real(dp)             :: a1_poscar(3), a2_poscar(3), a3_poscar(3)
+  character(len=2), allocatable :: elements_poscar(:), elements_poscar_(:)
+  integer, allocatable :: natoms_poscar(:)
   integer              :: ncenter_basis_max
-  logical, allocatable  :: nucleus_wo_basis(:)
+  logical, allocatable :: nucleus_wo_basis(:)
+  logical              :: cartesian_switch_poscar
   !=====
 
   select case(TRIM(length_unit))
@@ -1168,16 +1172,17 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
   case default
     call die('units for lengths in input file not understood')
   end select
-  if( LEN(TRIM(xyz_file)) > 0 ) then
+
+  if( LEN(TRIM(xyz_file)) > 0 .OR.  LEN(TRIM(poscar_file)) > 0) then
     if( ABS(length_factor - 1.0_dp ) < 1.0e-6_dp  ) then
-      write(stdout, *) 'xyz files are always in Angstrom. However, length_unit was set to bohr'
-      call die('Please set length_unit to Angstrom')
+      write(stdout, *) 'xyz or POSCAR files are always in Angstrom. However, length_unit was set to bohr'
+      call die('setup_nuclei: please set length_unit to Angstrom')
     endif
   endif
 
   !
   ! Read the atom positions if no xyz file is specified
-  if( LEN(TRIM(xyz_file)) == 0 ) then
+  if( LEN_TRIM(xyz_file) == 0 .AND.  LEN_TRIM(poscar_file) == 0) then
 
     if(excit_type%form == EXCIT_PROJECTILE_W_BASIS) then
       ncenter_basis_max = natom + nghost + nprojectile
@@ -1258,21 +1263,75 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
 
   else
     !
-    ! Try to open the xyz file
-    write(stdout, '(a,a)') ' Opening xyz file: ', TRIM(xyz_file)
-    inquire(file=TRIM(xyz_file), exist=file_exists)
-    if( .NOT. file_exists) then
-      write(stdout, *) 'Tried to open the requested xyz file:', TRIM(xyz_file)
-      call die('xyz file not found')
+    ! Try to open the xyz file or POSCAR file
+    if( LEN_TRIM(xyz_file) > 0 ) then
+      !
+      ! xyz file
+      write(stdout, '(a,a)') ' Opening xyz file: ', TRIM(xyz_file)
+      inquire(file=TRIM(xyz_file), exist=file_exists)
+      if( .NOT. file_exists) then
+        write(stdout, *) 'Tried to open the requested xyz file:', TRIM(xyz_file)
+        call die('xyz file not found')
+      endif
+      open(newunit=fu, file=TRIM(xyz_file), status='old')
+      read(fu, *) natom_read
+      read(fu, *) ! second line is a comment
+
+    else
+      !
+      ! POSCAR file
+      write(stdout, '(a,a)') ' Opening POSCAR file: ', TRIM(poscar_file)
+      inquire(file=TRIM(poscar_file), exist=file_exists)
+      if( .NOT. file_exists) then
+        write(stdout, *) 'Tried to open the requested POSCAR file:', TRIM(poscar_file)
+        call die('POSCAR file not found')
+      endif
+      open(newunit=fu, file=TRIM(poscar_file), status='old')
+      read(fu, *) ! first line is a comment
+      read(fu, *) scale_factor
+      read(fu, *) a1_poscar(:)
+      read(fu, *) a2_poscar(:)
+      read(fu, *) a3_poscar(:)
+      a1_poscar(:) = a1_poscar(:) * scale_factor
+      a2_poscar(:) = a2_poscar(:) * scale_factor
+      a3_poscar(:) = a3_poscar(:) * scale_factor
+
+      ! Line with elements
+      read(fu, '(a)') line_char
+      elements_poscar = string_to_substrings(line_char)
+      ! Line with numbers of each specie
+      read(fu, '(a)') line_char
+      natoms_poscar = string_to_integers(line_char)
+      natom_read = SUM(natoms_poscar)
+
+      allocate(elements_poscar_(natom_read))
+      ii = 0
+      do ie=1, SIZE(elements_poscar)
+        do iatom=1, natoms_poscar(ie)
+          ii = ii + 1
+          elements_poscar_(ii) = elements_poscar(ie)
+        enddo
+      enddo
+
+      ! Line with direct or cartesian
+      read(fu, '(a)') line_char
+
+      select case(line_char(1:1))
+      case('d', 'D')
+        cartesian_switch_poscar = .FALSE.
+      case('c', 'C', 'k', 'K')
+        cartesian_switch_poscar = .TRUE.
+      case default
+        call die('setup_nuclei: could not identify direct or cartesian in POSCAR file')
+      end select
+
     endif
-    open(newunit=xyzfile, file=TRIM(xyz_file), status='old')
-    read(xyzfile, *) natom_read
-    if( natom /= 0 .AND. natom+nghost+nprojectile /= natom_read ) then
+
+    if( natom /= 0 .AND. natom + nghost + nprojectile /= natom_read ) then
       call die('the number of atoms in the input file does not correspond to the number of atoms in the xyz file')
     endif
-    read(xyzfile, *)
 
-    !natom_read read from xyz file but not from input file
+    ! natom_read read from xyz file but not from input file
     ncenter_nuclei = natom_read - nghost
     ncenter_basis  = natom_read - nprojectile
     allocate(nucleus_wo_basis(natom_read))
@@ -1295,7 +1354,17 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
 
     allocate(x_read(3, natom_read), zatom_read(natom_read))
     do iatom=1, natom_read
-      read(xyzfile, *) element_symbol, x_read(:, iatom)
+      if( LEN_TRIM(xyz_file) > 0 ) then
+        ! xyz file
+        read(fu, *) element_symbol, x_read(:, iatom)
+      else
+        ! POSCAR file
+        read(fu, *) x_read(:, iatom)
+        element_symbol = elements_poscar_(iatom)
+        if( .NOT. cartesian_switch_poscar ) then
+          x_read(:, iatom) = a1_poscar(:) * x_read(1, iatom) + a2_poscar(:) * x_read(2, iatom) + a3_poscar(:) * x_read(3, iatom)
+        endif
+      endif
       !
       ! First, try to interpret element_symbol as an integer
       read(element_symbol, '(i2)', iostat=info) element
@@ -1306,7 +1375,7 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
       zatom_read(iatom) = element
     enddo
 
-    close(xyzfile)
+    close(fu)
 
 
 
@@ -1336,6 +1405,14 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
   !
   ! At this stage, natom must be set to a positive value
   if( ncenter_basis < 1 ) call die('setup_nuclei: ncenter_basis < 1 which should be happening. Maybe natom is not set?')
+
+  !
+  ! Finally set up the lattice vectors for PBC
+  if( LEN(TRIM(poscar_file)) == 0 ) then
+    call setup_periodicity_vectors(length_unit, a1, a2, a3)
+  else
+    call setup_periodicity_vectors(length_unit, a1_poscar, a2_poscar, a3_poscar)
+  endif
 
 end subroutine setup_nuclei
 

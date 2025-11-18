@@ -2093,6 +2093,15 @@ nspin:
   comment: Sets the number of spin channels. 1 enforces spin-restricted calculations.
     2 means spin-unrestricted.
 
+poscar_file:
+  family: system
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ''
+  comment: Specifies the location of a POSCAR file that contains the atomic positions and the lattice vectors.
+    It can be used as an alternate route to set atomic coordinate when using periodic boundary conditions.
+
 temperature:
   family: system
   datatype: real

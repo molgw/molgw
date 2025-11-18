@@ -1272,4 +1272,10 @@ SCF Total Energy          , -37.2401057472     , 0 , 1.0e-7
 gKS HOMO energy           , -14.907824         , 0 , 1.0e-4
 gKS LUMO energy           ,  14.620295         , 0 , 1.0e-4
 
+he_bcc16_poscar.in        , Solid helium: 16-atom BCC crystal from POSCAR, need_libcint need_fftw3
+Nucleus-Nucleus           ,  -6.3141850776     , 0 , 1.0e-7
+SCF Total Energy          , -37.2401057472     , 0 , 1.0e-7
+gKS HOMO energy           , -14.907824         , 0 , 1.0e-4
+gKS LUMO energy           ,  14.620295         , 0 , 1.0e-4
+
 

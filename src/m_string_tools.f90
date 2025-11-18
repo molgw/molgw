@@ -225,78 +225,145 @@ end function get_number_of_elements
 
 
 !=========================================================================
-subroutine string_to_integers(string_in, iarray)
+function string_to_substrings(string_in) RESULT(array)
   implicit none
 
   character(len=*), intent(in) :: string_in
-  integer, intent(inout)       :: iarray(:)
+  character(len=2), allocatable :: array(:)
   !=====
   character(LEN(string_in)) :: string
-  integer                   :: ilen, inextblank, ii
+  integer                   :: ilen, inextblank, ii, ntoken
   !=====
+
+  if( ALLOCATED(array) ) deallocate(array)
+  ntoken = count_tokens(string_in)
+
+  allocate(array(ntoken))
 
   string = string_in
 
-  ilen = LEN(TRIM(string))
+  ilen = LEN_TRIM(string)
   ii = 0
   do while( ilen > 0 )
     string = ADJUSTL(string)
     inextblank = INDEX(string, ' ')
     ii = ii + 1
-    if( ii > SIZE(iarray) ) exit
-    read(string(1:inextblank-1), *) iarray(ii)
+    array(ii) =  string(1:inextblank-1)
     string = string(inextblank+1:)
-    ilen = LEN(TRIM(string))
+    ilen = LEN_TRIM(string)
   enddo
 
-end subroutine string_to_integers
+end function string_to_substrings
 
 
 !=========================================================================
-subroutine string_to_reals(string_in, rarray)
+function string_to_integers(string_in) RESULT(array)
   implicit none
 
   character(len=*), intent(in) :: string_in
-  real(dp), intent(inout)      :: rarray(:)
+  integer, allocatable :: array(:)
   !=====
   character(LEN(string_in)) :: string
-  integer            :: ilen, inextblank, ii
+  integer                   :: ilen, inextblank, ii, ntoken
   !=====
+
+  if( ALLOCATED(array) ) deallocate(array)
+  ntoken = count_tokens(string_in)
+
+  allocate(array(ntoken))
 
   string = string_in
 
-  ilen = LEN(TRIM(string))
+  ilen = LEN_TRIM(string)
   ii = 0
   do while( ilen > 0 )
     string = ADJUSTL(string)
     inextblank = INDEX(string, ' ')
     ii = ii + 1
-    if( ii > SIZE(rarray) ) exit
-    read(string(1:inextblank-1), *) rarray(ii)
+    read(string(1:inextblank-1), *) array(ii)
     string = string(inextblank+1:)
-    ilen = LEN(TRIM(string))
+    ilen = LEN_TRIM(string)
   enddo
 
-end subroutine string_to_reals
+end function string_to_integers
+
+
+!=========================================================================
+function string_to_reals(string_in) RESULT(array)
+  implicit none
+
+  character(len=*), intent(in) :: string_in
+  real(dp), allocatable :: array(:)
+  !=====
+  character(LEN(string_in)) :: string
+  integer                   :: ilen, inextblank, ii, ntoken
+  !=====
+
+  if( ALLOCATED(array) ) deallocate(array)
+  ntoken = count_tokens(string_in)
+
+  allocate(array(ntoken))
+
+  string = string_in
+
+  ilen = LEN_TRIM(string)
+  ii = 0
+  do while( ilen > 0 )
+    string = ADJUSTL(string)
+    inextblank = INDEX(string, ' ')
+    ii = ii + 1
+    read(string(1:inextblank-1), *) array(ii)
+    string = string(inextblank+1:)
+    ilen = LEN_TRIM(string)
+  enddo
+
+end function string_to_reals
+
+
+!=========================================================================
+function count_tokens(str) result(ntoken)
+  implicit none
+
+  character(len=*), intent(in) :: str
+  integer :: ntoken
+  !=====
+  integer :: ii
+  logical :: in_token
+  !=====
+
+  ntoken = 0
+  in_token = .FALSE.
+
+  do ii = 1, LEN_TRIM(str)
+    if (str(ii:ii) /= ' ') then
+      if (.NOT. in_token) then
+        ntoken = ntoken + 1      ! starting a new token
+        in_token = .TRUE.
+      end if
+    else
+      in_token = .FALSE.
+    end if
+  end do
+end function count_tokens
 
 
 !=========================================================================
 function get_number_of_lines(filename) result(nlines)
   implicit none
 
-  character(len=*), intent(in)  :: filename
+  character(len=*), intent(in) :: filename
   integer                      :: nlines
   !=====
-  character(len=100)           :: cur_string
-  integer   :: file_unit, io
+  character(len=256) :: cur_string
+  integer            :: file_unit, io
   !=====
 
-  nlines=0
+  nlines = 0
   open(newunit=file_unit, file = filename)
   do
-    read(file_unit, '(A)', iostat=io)cur_string
+    read(file_unit, '(a)', iostat=io) cur_string
     if ( io /= 0 ) exit
-    nlines=nlines+1
+    nlines = nlines + 1
   end do
   close(file_unit)
 
