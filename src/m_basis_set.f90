@@ -325,7 +325,7 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
       endif
 
       !
-      ! Include here the normalization part that does not depend on (nx,ny,nz)
+      ! Include here the normalization part that does not depend on (nx, ny, nz)
       basis%shell(ishell)%coeff(:) = basis%bfc(jbf_cart-number_basis_function_am(gaussian_type, am_read)+1)%coeff(:) &
                * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**am_read * alpha(:)**( 0.25_dp * ( 2.0_dp*am_read + 3.0_dp ) )
 
@@ -350,6 +350,7 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
 
 end subroutine init_basis_set
 
+
 !=========================================================================
 subroutine split_basis_set(basis, basis_t, basis_p)
   implicit none
@@ -372,19 +373,19 @@ subroutine split_basis_set(basis, basis_t, basis_p)
   basis_p%gaussian_type = basis%gaussian_type
 
   do ibf = 1, basis%nbf
-    if ( ANY( basis%bff(ibf)%v0 > 1.0e-4 ) ) then       ! == if moving
+    if ( ANY( ABS(basis%bff(ibf)%v0) > 1.0e-4 ) ) then       ! == if moving
       basis_p%nbf = basis_p%nbf + 1
     end if
   end do
 
   do ibf_cart = 1, basis%nbf_cart
-    if ( ANY( basis%bfc(ibf_cart)%v0 > 1.0e-4 ) ) then
+    if ( ANY( ABS(basis%bfc(ibf_cart)%v0) > 1.0e-4 ) ) then
       basis_p%nbf_cart = basis_p%nbf_cart + 1
     end if
   end do
 
   do ishell = 1, basis%nshell
-    if ( ANY( basis%shell(ishell)%v0 > 1.0e-4 ) ) then
+    if ( ANY( ABS(basis%shell(ishell)%v0) > 1.0e-4 ) ) then
       basis_p%nshell = basis_p%nshell + 1
     end if
   end do
@@ -408,7 +409,7 @@ subroutine split_basis_set(basis, basis_t, basis_p)
   ibf_p = 0
   ibf_t = 0
   do ibf = 1, basis%nbf
-    if ( ANY( basis%bff(ibf)%v0 > 1.0e-4 ) ) then
+    if ( ANY( ABS(basis%bff(ibf)%v0) > 1.0e-4 ) ) then
       ibf_p = ibf_p + 1
       basis_p%bff(ibf_p) = basis%bff(ibf)
     else
@@ -420,7 +421,7 @@ subroutine split_basis_set(basis, basis_t, basis_p)
   ibf_cart_p = 0
   ibf_cart_t = 0
   do ibf_cart = 1, basis%nbf_cart
-    if ( ANY( basis%bfc(ibf_cart)%v0 > 1.0e-4 ) ) then
+    if ( ANY( ABS(basis%bfc(ibf_cart)%v0) > 1.0e-4 ) ) then
       ibf_cart_p = ibf_cart_p + 1
       basis_p%bfc(ibf_cart_p) = basis%bfc(ibf_cart)
     else
@@ -432,7 +433,7 @@ subroutine split_basis_set(basis, basis_t, basis_p)
   ishell_p = 0
   ishell_t = 0
   do ishell = 1, basis%nshell
-    if( ANY( basis%shell(ishell)%v0 > 1.0e-4 ) ) then
+    if( ANY( ABS(basis%shell(ishell)%v0) > 1.0e-4 ) ) then
       ishell_p = ishell_p + 1
       basis_p%shell(ishell_p) = basis%shell(ishell)
       basis_p%shell(ishell_p)%istart = basis%shell(ishell)%istart - basis_t%nbf

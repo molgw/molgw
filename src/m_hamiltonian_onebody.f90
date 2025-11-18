@@ -49,12 +49,12 @@ subroutine setup_overlap(basis, s_matrix)
   real(dp), allocatable :: matrix(:, :)
 
   real(C_DOUBLE), allocatable :: array_cart(:)
-  integer(C_INT)             :: amA, contrdepthA
-  real(C_DOUBLE)             :: A(3)
+  integer(C_INT)              :: amA, contrdepthA
+  real(C_DOUBLE)              :: A(3)
   real(C_DOUBLE), allocatable :: alphaA(:)
   real(C_DOUBLE), allocatable :: cA(:)
-  integer(C_INT)             :: amB, contrdepthB
-  real(C_DOUBLE)             :: B(3)
+  integer(C_INT)              :: amB, contrdepthB
+  real(C_DOUBLE)              :: B(3)
   real(C_DOUBLE), allocatable :: alphaB(:)
   real(C_DOUBLE), allocatable :: cB(:)
   !=====
@@ -2677,6 +2677,237 @@ subroutine setup_nucleus_ecp_analytic(basis, hamiltonian_nucleus)
 end subroutine setup_nucleus_ecp_analytic
 
 
+!=========================================================================
+! Calculate alpha \sum_I |phi_I> <phi_I|
+! where phi_I are orthogonalized projectors
+! Warning: Hard-coded for Germanium
+!
+subroutine setup_pbe_plus_alpha(basis, h_pbea)
+  implicit none
+  type(basis_set), intent(in)  :: basis
+  real(dp), intent(out)        :: h_pbea(:, :)
+  !=====
+  integer, parameter           :: Z_Ge = 32, Z_H = 1
+  type(basis_set)              :: proj
+  integer, parameter :: lmax_h  = 0
+  integer, parameter :: lmax_ge = 2
+  integer, parameter :: ng = 3
+  
+  ! STO-3G orbital for H
+  real(dp), parameter :: alpha_h(ng, lmax_h + 1) = &
+   RESHAPE( [0.3425250914e+01, 0.6239137298e+00, 0.1688554040e+00], [ng, lmax_h+1] )
+  real(dp), parameter :: coeff_h(ng, lmax_h + 1) = &
+   RESHAPE( [0.1543289673e+00, 0.5353281423e+00, 0.4446345422e+00], [ng, lmax_h+1])
+  real(dp), parameter :: alpha_ge(ng, lmax_ge + 1) = &
+   RESHAPE( [ 1.80, 1.60, 1.40, 0.12321487, 0.41049002, 1.0, 1.18726471, 4.14752914, 1.0], [ng, lmax_ge + 1] )
+  real(dp), parameter :: coeff_ge(ng, lmax_ge + 1) = &
+   RESHAPE( [58.43768366, -123.83961231, 66.53001345, 0.17327672, 0.23096316, 0.0, 1.60392155, -0.04369226, 0.0], [ng, lmax_ge + 1])
+
+  real(dp), allocatable :: overlap_proj(:, :), matrix_tmp(:, :), overlap_invsqrt(:, :)
+  real(dp), allocatable :: projectors(:, :), projectors_ortho(:, :)
+  real(dp), allocatable :: eigenvalue(:)
+  real(dp), allocatable :: alpha(:, :), coeff(:, :)
+  integer :: jbf, jbf_cart, ishell, icenter, il, iproj
+  logical, parameter :: normalized = .TRUE.
+  logical, parameter :: orthogonalization = .TRUE.
+  integer :: nx, ny, nz, index_in_shell, mm, lmax
+  !=====
+
+  call issue_warning('PBE+alpha is hard-coded for Germanium')
+
+
+  ! Create a fake basis set that contains the projectors
+  if( gaussian_type /= 'PURE' ) then
+    call die('setup_pbe_plus_alpha: gaussian_type must be pure')
+  endif
+
+  proj%nbf           = 0
+  proj%nbf_cart      = 0
+  proj%nshell        = 0
+  proj%gaussian_type = gaussian_type
+
+  !
+  ! Loop over basis centers that are Germanium
+  !
+  do icenter=1, ncenter_basis
+    select case(zbasis(icenter))
+    case(Z_Ge)
+      do il=0, lmax_ge  ! Hard-coded to s, p, d
+        proj%nbf_cart = proj%nbf_cart + number_basis_function_am('CART'            , il)
+        proj%nbf      = proj%nbf      + number_basis_function_am(proj%gaussian_type, il)
+        proj%nshell   = proj%nshell   + 1
+      enddo
+    case(Z_H)
+      ! only 1s for H
+      proj%nbf_cart = proj%nbf_cart + 1
+      proj%nbf      = proj%nbf      + 1
+      proj%nshell   = proj%nshell   + 1
+    end select
+  enddo
+
+  allocate(proj%bfc(proj%nbf_cart))
+  allocate(proj%bff(proj%nbf))
+  allocate(proj%shell(proj%nshell))
+
+  jbf         = 0
+  jbf_cart    = 0
+  ishell      = 0
+  do icenter=1, ncenter_basis
+    select case(zbasis(icenter))
+    case(Z_Ge)
+      lmax = lmax_ge
+      allocate(alpha(ng, lmax + 1), coeff(ng, lmax + 1))
+      alpha(:, :) = alpha_ge(:, :)
+      coeff(:, :) = coeff_ge(:, :)
+    case(Z_H)
+      lmax = lmax_h
+      allocate(alpha(ng, lmax + 1), coeff(ng, lmax + 1))
+      alpha(:, :) = alpha_h(:, :)
+      coeff(:, :) = coeff_h(:, :)
+    end select
+
+    select case(zbasis(icenter))
+    case(Z_Ge, Z_H)
+      do il=0, lmax
+        ishell = ishell + 1
+
+        proj%shell(ishell)%am      = il
+        proj%shell(ishell)%icenter = icenter
+        proj%shell(ishell)%x0(:)   = xbasis(:, icenter)
+        proj%shell(ishell)%v0(:)   = vel_basis(:, icenter)
+        proj%shell(ishell)%ng      = ng
+        allocate(proj%shell(ishell)%alpha(ng))
+        allocate(proj%shell(ishell)%coeff(ng))
+        proj%shell(ishell)%istart      = jbf + 1
+        proj%shell(ishell)%iend        = jbf + number_basis_function_am(gaussian_type, il)
+        proj%shell(ishell)%istart_cart = jbf_cart + 1
+        proj%shell(ishell)%iend_cart   = jbf_cart + number_basis_function_am('CART', il)
+
+        proj%shell(ishell)%alpha(:) = alpha(:, il + 1)
+        proj%shell(ishell)%coeff(:) = coeff(:, il + 1)
+
+
+
+        !
+        ! Basis function setup
+        !
+
+        !
+        ! Ordering of Libint as explained in Kenny et al. J. Comput Chem. 29, 562 (2008).
+        !
+        nx = il
+        ny = 0
+        nz = 0
+        index_in_shell = 0
+        do
+          ! Add the new basis function
+          jbf_cart = jbf_cart + 1
+          index_in_shell = index_in_shell + 1
+          call init_basis_function(normalized, ng, nx, ny, nz, icenter, proj%shell(ishell)%x0, proj%shell(ishell)%v0, &
+                                   proj%shell(ishell)%alpha, proj%shell(ishell)%coeff, ishell, &
+                                   index_in_shell, proj%bfc(jbf_cart))
+          if(proj%gaussian_type == 'CART') then
+            jbf = jbf + 1
+            call init_basis_function(normalized, ng, nx, ny, nz, icenter, proj%shell(ishell)%x0, proj%shell(ishell)%v0,&
+                                     proj%shell(ishell)%alpha, proj%shell(ishell)%coeff, ishell, &
+                                     index_in_shell, proj%bff(jbf))
+          endif
+
+          ! Break the loop when nz is equal to l
+          if( nz == il ) exit
+
+          if( nz < il - nx ) then
+            ny = ny - 1
+            nz = nz + 1
+          else
+            nx = nx - 1
+            ny = il - nx
+            nz = 0
+          endif
+
+        enddo
+
+        index_in_shell = 0
+        if(proj%gaussian_type == 'PURE') then
+          do mm=-il, il
+            jbf = jbf + 1
+            index_in_shell = index_in_shell + 1
+            call init_basis_function_pure(normalized, ng, il, mm, icenter, proj%shell(ishell)%x0, proj%shell(ishell)%v0, &
+                  proj%shell(ishell)%alpha, proj%shell(ishell)%coeff, ishell, &
+                  index_in_shell, proj%bff(jbf))
+          enddo
+        endif
+
+        !
+        ! Include here the normalization part that does not depend on (nx, ny, nz)
+        proj%shell(ishell)%coeff(:) = proj%bfc(jbf_cart-number_basis_function_am(gaussian_type, il)+1)%coeff(:) &
+                 * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**il * proj%shell(ishell)%alpha(:)**( 0.25_dp * ( 2.0_dp*il + 3.0_dp ) )
+
+      enddo
+      deallocate(alpha, coeff)
+    end select
+  enddo
+
+
+  write(stdout, '(1x,a,i4)') 'Number of projectors: ', proj%nbf
+
+  call init_libcint(proj)
+
+  do ishell=1, proj%nshell
+    write(stdout, *) ishell, proj%shell(ishell)%x0(:), proj%shell(ishell)%am
+  enddo
+
+  allocate(overlap_proj(proj%nbf, proj%nbf))
+  call setup_overlap(proj, overlap_proj)
+
+  call dump_out_matrix(.TRUE., 'overlap projectors', overlap_proj, form='f6.3')
+
+  ! Orthogonalize the projectors using the S^{-1/2}
+  ! First calculate S^{-1/2}
+  allocate(eigenvalue(proj%nbf))
+  call diagonalize(scf_diago_flavor, overlap_proj, eigenvalue)
+  allocate(matrix_tmp, MOLD=overlap_proj)
+  allocate(overlap_invsqrt, MOLD=overlap_proj)
+  do iproj=1, proj%nbf
+    matrix_tmp(:, iproj) = overlap_proj(:, iproj) / SQRT(eigenvalue(iproj))
+  enddo
+  call DGEMM('N', 'T', proj%nbf, proj%nbf, proj%nbf, &
+             blas_dp_one, matrix_tmp, proj%nbf, &
+                          overlap_proj, proj%nbf, &
+             blas_dp_zero, overlap_invsqrt, proj%nbf)
+
+  allocate(projectors(basis%nbf, proj%nbf))
+  allocate(projectors_ortho(basis%nbf, proj%nbf))
+  call setup_overlap_mixedbasis(basis, proj, projectors)
+
+  ! Second projectors_ortho = projectors * S^{-1/2}
+  if( orthogonalization ) then
+    call DGEMM('N', 'N', basis%nbf, proj%nbf, proj%nbf, &
+               blas_dp_one, projectors, basis%nbf, &
+                            overlap_invsqrt, proj%nbf, &
+               blas_dp_zero, projectors_ortho, basis%nbf)
+  else
+    projectors_ortho(:, :) = projectors(:, :)
+  endif
+
+  h_pbea(:, :) = 0.0_dp
+  do iproj=1, proj%nbf
+    ! Only s projectors are applied
+    if( proj%bff(iproj)%am == 0 ) then
+      call DSYR('L', basis%nbf, pbe_plus_alpha, projectors_ortho(:, iproj), 1, h_pbea(:, :), basis%nbf)
+    endif
+  enddo
+  call matrix_lower_to_full(h_pbea)
+
+  write(stdout, '(1x,a,f8.4)')     'Maximum element (eV): ', MAXVAL(h_pbea) * Ha_eV
+  write(stdout, '(1x,a,i4,1x,i4)') 'Maximum element location: ', MAXLOC(h_pbea)
+
+  call dump_out_matrix(.TRUE., 'PBE + alpha correction', h_pbea, form='f6.3')
+
+  call destroy_libcint(proj)
+
+
+end subroutine setup_pbe_plus_alpha
 
 
 end module m_hamiltonian_onebody

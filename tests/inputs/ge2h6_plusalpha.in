@@ -1,0 +1,23 @@
+&molgw
+  scf                            = 'pbe'
+  basis ='STO-3G'
+  auxil_basis ='auto'
+ 
+  pbe_plus_alpha = 0.05
+
+  ecp_basis                      = 'cc-pVDZ-PP'
+  ecp_auxil_basis                = 'auto'
+  ecp_elements                   = 'Ge'
+  ecp_type                       = 'PP'
+
+  natom                          = 8
+/
+Ge    0.0000    0.0000    0.0000
+Ge    2.45      0.0000    0.0000
+H    -0.60      1.00      0.00
+H    -0.60     -0.50      0.87
+H    -0.60     -0.50     -0.87
+H     3.05     -1.00      0.00
+H     3.05      0.50      0.87
+H     3.05      0.50     -0.87
+

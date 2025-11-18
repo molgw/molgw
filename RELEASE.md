@@ -11,6 +11,7 @@
 - Linking with accelerated integral library `qcint`
 - Interface with CC4S
 - Now available the HF/DFT Bogoliubov methods for molecular systems
+- Bug fixes
 
 ### Contributors
 
@@ -29,6 +30,8 @@
 ### Changes affecting the results
 
 - Adding an orthogonalization step when reading a RESTART file using a different basis
+- Bug fix for range-separated hybrid in LR-TDDFT when alpha=0, beta /= 0
+- Spectral functions in files `selfenergy_XX_stateYYYY.dat` had incorrect eta sign 
 
 ### Changes affecting the compilation
 
