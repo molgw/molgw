@@ -33,7 +33,7 @@ module m_hamiltonian_periodic
   use m_fftw3
 #endif
 
-  integer, private, parameter :: nx = 1
+  integer, private        :: nx  ! local copy of input variable fft_neighbors
 
   integer(C_INT), private :: nfft1
   integer(C_INT), private :: nfft2
@@ -125,7 +125,9 @@ subroutine set_fft_grid(basis)
   write(stdout, '(1x,a,i8)') 'FFT grid batches set to: ', fft_batch_size
   write(stdout, '(3x,a,f12.3)') 'which corresponds to temporary array of size (Mb):', &
                                 STORAGE_SIZE(1.0_dp) / 8.0_dp * basis%nbf * fft_batch_size / 1024_dp**2
+  nx = fft_neighbors
   write(stdout, '(1x,a,i8)') 'Images of the unit cell considered for evaluations: ', (2 * nx + 1)**3
+
 
   allocate(rhoelecr(nfft_local, nspin))
   rhoelecr(:, :) = 0.0_dp
@@ -452,7 +454,7 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
   ! Analytic for GTH pseudos only
   call prepare_nuclei_density_analytic_periodic(rhonuclr, nuc_selfenergy)
 
-  call poisson_solver_fft(rhonuclr, vnuclgrid) 
+  call poisson_solver_fft(rhonuclr, vnuclgrid)
 
   enucnuc = 0.5_dp * SUM( rhonuclr(:) * vnuclgrid(:) ) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(enucnuc)
@@ -565,9 +567,9 @@ subroutine setup_hartree_periodic(basis, p_matrix, vloc, ehartree, h_ao)
   endif
 
   ! Kerker is not working properly
-  !call kerker_precond(rhoelecr(:, 1)) 
+  !call kerker_precond(rhoelecr(:, 1))
 
-  
+
   !
   ! Get the electrostatic potential of the electrons (Hartree)
   !
@@ -586,7 +588,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, vloc, ehartree, h_ao)
     write(stdout, '(1x,a,f10.6)') 'Renormalize it with factor: ', electrons / rhor_integral
     rhoelecr(:, :) = rhoelecr(:, :) * electrons / rhor_integral
   endif
-  call poisson_solver_fft(rhoelecr(:, 1), vhartreegrid) 
+  call poisson_solver_fft(rhoelecr(:, 1), vhartreegrid)
 
   ehartree = 0.5_dp * SUM( SUM(rhoelecr(:, :), DIM=2) * vhartreegrid ) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(ehartree)
@@ -684,12 +686,12 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
       call xc_lda_exc_vxc(dft_xc_local(ixc)%func, INT(nfft_local, KIND=C_INT), rhor(1, 1), excgrid(1), vrho(1, 1))
     case default
       call die('setup_vxc_periodic: only LDA is implemented right now')
-    end select  
+    end select
 
     vxcgrid(:, :) = vxcgrid(:, :) + dft_xc_local(ixc)%coeff * TRANSPOSE(vrho(:, :))
     exc_xc = exc_xc + dft_xc_local(ixc)%coeff * SUM(SUM(rhor(:, :), DIM=1) * excgrid(:)) * volume / REAL(nfft_global, dp)
 
-  enddo 
+  enddo
 
   call grid%sum(exc_xc)
 
@@ -746,7 +748,7 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
     ! Coding without batches
     !call DGEMM('N', 'N', basis%nbf, nfft_local, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
     !           bfr(:, :), basis%nbf, 0.0d0, tmp, basis%nbf)
-  
+
     !rhor(:, ispin) = rhor(:, ispin) + SUM( bfr(:, :) * tmp(:, :), DIM=1)
 
 
@@ -757,7 +759,7 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
 
       call DGEMM('N', 'N', basis%nbf, current_batch_size, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
               bfr(:, first), basis%nbf, 0.0d0, tmp(:, :), basis%nbf)
-  
+
       rhor(first:last, ispin) &
                  = rhor(first:last, ispin) + SUM( bfr(:, first:last) * tmp(:, 1:current_batch_size), DIM=1)
       first = last + 1
@@ -886,7 +888,7 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
       h_ao(:, :, :) = h_ao(:, :, :) * volume / REAL(nfft_global, KIND=dp)
 
     rank(1)
-      call die('calculate_hao_periodic: rank mismatch') 
+      call die('calculate_hao_periodic: rank mismatch')
     end select
 
   !
@@ -942,7 +944,7 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
       h_ao(:, :) = h_ao(:, :) * volume / REAL(nfft_global, KIND=dp)
 
     rank(2)
-      call die('calculate_hao_periodic: rank mismatch') 
+      call die('calculate_hao_periodic: rank mismatch')
     end select
   end select
 
@@ -1018,7 +1020,7 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
   call calculate_selfenergy(rradfinal, rhofinal, zval, selfenergy)
   write(stdout,'(1x,a,f12.8)') 'Integrated nucleus charge (after renormalization): ', zval
   write(stdout,'(1x,a,f12.8)') 'Selfenergy per atom (Ha): ', selfenergy
-  
+
   selfenergy = selfenergy * ncenter_nuclei
   write(stdout,'(1x,a,f12.8)') 'Selfenergy (Ha): ', selfenergy
 
@@ -1073,14 +1075,14 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
   !$OMP END DO
   !$OMP END PARALLEL
 
- 
+
   zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(zval)
   write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell: ', zval
   write(stdout, '(1x,a,f12.6)') '     whereas it should be: ', SUM(zvalence(:))
 
   factor = SUM(zvalence(:)) / zval
- 
+
   ! If the deviation from expected charge is larger than 5%, then stop and ask for a finer fft_delta_x
   if( ABS( factor - 1.0_dp ) > 0.05_dp ) then
     call die('prepare_nuclei_density_periodic: wrong nucleus total charge. ' // &
@@ -1100,14 +1102,14 @@ contains
   subroutine read_potential_data(filename, nrad, r, phi)
     implicit none
     character(len=*), intent(in) :: filename
-  
+
     !=====
     integer, intent(out) :: nrad
     real(dp), allocatable, intent(out) :: r(:), phi(:)
     integer :: iostat, irad
     integer :: file_unit
     !=====
-    
+
     ! Count lines
     open(newunit=file_unit, file=filename, status='old', action='read')
     nrad = 0
@@ -1117,24 +1119,24 @@ contains
         nrad = nrad + 1
     enddo
     rewind(file_unit)
-    
+
     ! Allocate and read
     allocate(r(nrad), phi(nrad))
     do irad = 1, nrad
         read(file_unit, *) r(irad), phi(irad)
     enddo
     close(file_unit)
-      
+
   end subroutine read_potential_data
-  
+
   subroutine calc_derivative(r, phi, dphi_dr)
     real(dp), intent(in) :: r(:), phi(:)
     real(dp), intent(out) :: dphi_dr(:)
     real(dp) :: h1, h2, a, b, c
     integer :: i, n
-  
+
     n = SIZE(r)
-    
+
     ! First derivative using non-uniform grid formulas
     ! Forward difference for first point
     h1 = r(2) - r(1)
@@ -1143,7 +1145,7 @@ contains
     b = (h1 + h2) / (h1 * h2)
     c = -h1 / (h2 * (h1 + h2))
     dphi_dr(1) = a*phi(1) + b*phi(2) + c*phi(3)
-    
+
     ! Central difference for interior points
     do i = 2, n-1
         h1 = r(i) - r(i-1)
@@ -1153,7 +1155,7 @@ contains
         c = h1 / (h2 * (h1 + h2))
         dphi_dr(i) = a*phi(i-1) + b*phi(i) + c*phi(i+1)
     enddo
-    
+
     ! Backward difference for last point
     h1 = r(n-1) - r(n-2)
     h2 = r(n) - r(n-1)
@@ -1161,14 +1163,14 @@ contains
     b = -(h1 + h2) / (h1 * h2)
     c = (2.0_dp*h2 + h1) / (h2 * (h1 + h2))
     dphi_dr(n) = a*phi(n-2) + b*phi(n-1) + c*phi(n)
-  
+
   end subroutine calc_derivative
-  
+
   function calculate_total_charge(r, rho) result(total_charge)
     real(dp), intent(in) :: r(:), rho(:)
     real(dp) :: total_charge
     integer :: irad, nrad
-  
+
     nrad = SIZE(rho)
     ! Integrate 4πr²ρ(r) dr using trapezoidal rule
     total_charge = 0.0_dp
@@ -1178,7 +1180,7 @@ contains
                * ( r(irad)**2 * rho(irad) + r(irad + 1)**2 * rho(irad + 1) )
     enddo
   end function calculate_total_charge
-  
+
   subroutine calculate_selfenergy(r, rho, total_charge, selfenergy)
     real(dp), intent(in) :: r(:), rho(:)
     real(dp) :: total_charge, selfenergy
@@ -1187,11 +1189,11 @@ contains
     real(dp), allocatable :: Q(:), S(:), phi(:)
     real(dp) :: dr1
     !=====
-  
+
     nrad = SIZE(rho)
-  
+
     allocate(Q(nrad), S(nrad), phi(nrad))
-    
+
     !------------------------------------------------------------
     ! 1. Compute cumulative charge Q(r)
     !    Q(i) = 4π ∫0^r(i) r'^2 ρ(r') dr'   (trapezoidal, nonuniform)
@@ -1202,7 +1204,7 @@ contains
        Q(irad) = Q(irad-1) + 0.5_dp * 4.0_dp*pi * (r(irad)**2*rho(irad) + r(irad-1)**2*rho(irad-1)) * dr1
     end do
     total_charge = Q(nrad)
-    
+
     !------------------------------------------------------------
     ! 2. Compute reverse cumulative S(r)
     !    S(i) = 4π ∫_r(i)^∞ r' ρ(r') dr'
@@ -1212,13 +1214,13 @@ contains
        dr1 = r(irad+1) - r(irad)
        S(irad) = S(irad+1) + 0.5_dp * 4.0_dp * pi * ( r(irad) * rho(irad) + r(irad+1) * rho(irad+1) ) * dr1
     end do
-    
+
     !------------------------------------------------------------
     ! 3. Potential φ(r) = Q(r)/r + S(r)
     !------------------------------------------------------------
     phi(1) = S(1)
     phi(2:nrad) = Q(2:nrad) / r(2:nrad) + S(2:nrad)
-    
+
     !------------------------------------------------------------
     ! 4. Energy integral: U = 1/2 * ∫ 4π r^2 ρ(r) φ(r) dr
     !------------------------------------------------------------
@@ -1229,7 +1231,7 @@ contains
                       + 0.5_dp * 4.0_dp * pi * (  r(irad)**2   * rho(irad)   * phi(irad) &
                                                 + r(irad-1)**2 * rho(irad-1) * phi(irad-1) ) * dr1 * 0.5_dp
     end do
-    
+
     deallocate(Q, S, phi)
 
   end subroutine calculate_selfenergy
@@ -1275,7 +1277,7 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
         exit
       endif
     enddo
- 
+
     if( ecp(ie)%ecp_format /= ECP_GTH ) call die('prepare_nuclei_density_analytic_periodic: only for GTH pseudos')
 
 
@@ -1324,7 +1326,7 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
     selfenergy = selfenergy + selfenergy_nucleus
 
   enddo ! icenter
- 
+
   zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(zval)
 
@@ -1358,13 +1360,13 @@ pure function gth_potnucl(rr) result(potr)
   !=====
   real(dp) ::  xx
   !=====
- 
+
   xx = (alphapp * rr)**2
   potr = zeff * ERF(alphapp * rr) / rr &
          + EXP(-xx) * (                     ci(1) &
                        + (2.0_dp * xx)    * ci(2) &
                        + (2.0_dp * xx)**2 * ci(3) &
-                       + (2.0_dp * xx)**3 * ci(4) )  
+                       + (2.0_dp * xx)**3 * ci(4) )
 
 end function gth_potnucl
 
@@ -1376,7 +1378,7 @@ pure function gth_rhonucl(rr) result(rhor)
   !=====
   real(dp) ::  xx
   !=====
- 
+
   xx = (alphapp * rr)**2
   rhor = EXP( - xx )  &
            * ( &
@@ -1401,7 +1403,7 @@ pure function selfenergy_quadrature() result(integral)
   !=====
 
   stepr = 10.0_dp * rloc / REAL(nrad, KIND=dp)
-  
+
   rr = -stepr / 2.0_dp
   stepr = 0.01_dp
   integral = 0.0_dp
@@ -1419,7 +1421,7 @@ end subroutine prepare_nuclei_density_analytic_periodic
 
 
 !=========================================================================
-! Poisson solver on a FFT grid 
+! Poisson solver on a FFT grid
 ! input:  ρ(r)
 ! output: vcoul(r)
 !
@@ -1527,7 +1529,7 @@ subroutine poisson_solver_fft(rhor, vcoulr)
 
 contains
 
-pure function vcoulg(ig1, ig2, ig3) 
+pure function vcoulg(ig1, ig2, ig3)
   implicit none
   integer, intent(in) :: ig1, ig2, ig3
   real(dp) :: vcoulg
@@ -1535,7 +1537,7 @@ pure function vcoulg(ig1, ig2, ig3)
   integer  :: ig1m, ig2m, ig3m
   real(dp) :: g2
   !=====
-  
+
   ig1m = MERGE( ig1 - 1, ig1 - 1 - nfft1, ig1 <= nfft1/2)
   ig2m = MERGE( ig2 - 1, ig2 - 1 - nfft2, ig2 <= nfft2/2)
   ig3m = MERGE( ig3 - 1, ig3 - 1 - nfft3, ig3 <= nfft3/2)
@@ -1646,7 +1648,7 @@ subroutine kerker_precond(rhor)
 
 contains
 
-pure function kerker(ig1, ig2, ig3) 
+pure function kerker(ig1, ig2, ig3)
   implicit none
   integer, intent(in) :: ig1, ig2, ig3
   real(dp) :: kerker
@@ -1654,7 +1656,7 @@ pure function kerker(ig1, ig2, ig3)
   integer  :: ig1m, ig2m, ig3m
   real(dp) :: g2
   !=====
-  
+
   ig1m = MERGE( ig1 - 1, ig1 - 1 - nfft1, ig1 <= nfft1/2)
   ig2m = MERGE( ig2 - 1, ig2 - 1 - nfft2, ig2 <= nfft2/2)
   ig3m = MERGE( ig3 - 1, ig3 - 1 - nfft3, ig3 <= nfft3/2)
@@ -1710,7 +1712,7 @@ subroutine calculate_basis_functions_periodic(basis)
       dr(:, ifft) = dr(:, ifft) - NINT(dr(:, ifft))
     enddo
     ! transform back to cartesian coordinates
-    dr(:, :) = MATMUL( aprim, dr) 
+    dr(:, :) = MATMUL( aprim, dr)
     ! transform balck to absolute position
     do concurrent(ifft=1:nfft_local)
       dr(:, ifft) = dr(:, ifft) + basis%shell(ishell)%x0(:)
@@ -1842,10 +1844,10 @@ subroutine setup_nucleus_gth_nonlocal_periodic(basis, h_ecp)
           do i3=-nx, nx
             do i2=-nx, nx
               do i1=-nx, nx
-    
+
                 B_shifted(:) = B(:) + MATMUL( aprim(:, :), [i1, i2, i3] )
-    
-    
+
+
 #if defined(HAVE_LIBCINT)
                 call libcint_gth_projector(amB, contrdepthB, B_shifted, alphaB, cB, &
                                            amC, contrdepthC, C, alphaC, cC, &

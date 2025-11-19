@@ -204,6 +204,16 @@ fft_fix_density_integral:
   default: 'no'
   comment: Renormalize the density at each SCF cycle to integrate to the expected nuclei and electron count.
 
+fft_neighbors:
+  family: general
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Number of neighbors of the unit cell that are considered.
+           `fft_neighbors=1` implies considering first neighboring cells, which yields 3**3=27 unit cells to calculate.
+           `fft_neighbors=2` yields 5**3=125 unit cells.
+
 fft_read_density:
   family: general
   datatype: yes/no
