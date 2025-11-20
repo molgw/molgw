@@ -514,6 +514,9 @@ subroutine setup_periodicity_vectors(length_unit, a1, a2, a3)
 
     volume = determinant_3x3_matrix(aprim)
     ! Calculate the reciprocal lattice vectors
+    if( volume < 0.0_dp ) then
+      call die('setup_periodicity_vectors: periodic vectors are in indirect order. Swap two of them to recover direct order.')
+    endif
     aprim_inv(:, :) = inverse_3x3_matrix(aprim)
     bprim(:, :) = 2.0_dp * pi * TRANSPOSE(aprim_inv)
     recip_volume = determinant_3x3_matrix(bprim)

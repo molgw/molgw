@@ -34,6 +34,7 @@ module m_hamiltonian_periodic
 #endif
 
   integer, private        :: nx  ! local copy of input variable fft_neighbors
+  integer, private        :: nx_overlap
 
   integer(C_INT), private :: nfft1
   integer(C_INT), private :: nfft2
@@ -126,6 +127,7 @@ subroutine set_fft_grid(basis)
   write(stdout, '(3x,a,f12.3)') 'which corresponds to temporary array of size (Mb):', &
                                 STORAGE_SIZE(1.0_dp) / 8.0_dp * basis%nbf * fft_batch_size / 1024_dp**2
   nx = fft_neighbors
+  nx_overlap = nx !+ 1
   write(stdout, '(1x,a,i8)') 'Images of the unit cell considered for evaluations: ', (2 * nx + 1)**3
 
 
@@ -183,9 +185,9 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
 
   i123 = 0
   overlap_ao(:, :) = 0.0_dp
-  do i3=-nx, nx
-    do i2=-nx, nx
-      do i1=-nx, nx
+  do i3=-nx_overlap, nx_overlap
+    do i2=-nx_overlap, nx_overlap
+      do i1=-nx_overlap, nx_overlap
         i123 = i123 + 1
         if( MODULO(i123 - 1, world%nproc) /= world%rank ) cycle
 
@@ -206,12 +208,13 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
     normalization(ibf) = overlap_ao(ibf, ibf)
   enddo
 
-  if( MAXVAL(ABS(normalization - 1.0_dp)) > 1.0e-3_dp ) then
+  if( MAXVAL(ABS(normalization - 1.0_dp)) > 1.0e-4_dp ) then
     write(stdout, '(1x,a,f12.6)') 'Some basis functions are normalized at: ', MAXVAL(ABS(normalization - 1.0_dp))
     call issue_warning('Basis functions are not perfectly normalized. Consider increasing the box')
   endif
 
   !! Renormalize
+  !call issue_warning("FBFB renormalize overlap")
   !do ibf=1, basis%nbf
   !  overlap_ao(:, ibf) = overlap_ao(:, ibf) / SQRT(normalization(:) * normalization(ibf))
   !enddo
