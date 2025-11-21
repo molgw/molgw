@@ -740,7 +740,7 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
   call start_clock(timing_pbc_density)
 
   batch_max = MIN(nfft_local, fft_batch_size)
-  write(stdout,'(1x,a,i6)') 'Calculate density on FFT grid with batch size: ', batch_max
+  write(stdout,'(1x,a,i9)') 'Calculate density on FFT grid with batch size: ', batch_max
 
   call clean_allocate('P * phi', tmp, basis%nbf, batch_max)
 
