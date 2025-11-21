@@ -146,7 +146,6 @@ program molgw
   call hdf_init() 
 #endif
 
-
  
   !
   ! Nucleus motion loop
@@ -230,6 +229,14 @@ program molgw
       call init_libcint(basis)
     endif
 #endif
+
+    !
+    ! PBC sets up the FFT and nx cell replication here
+    !  also precalculate the basis functions on the FFT grid and store them
+    if( pbc_ ) then
+      call set_fft_grid(basis)
+    endif
+
 
     !
     ! Calculate overlap matrix S so to obtain "nstate" as soon as possible
@@ -345,10 +352,6 @@ program molgw
     ! When a BIG RESTART file is provided, assume it contains converged SCF information
     scf_has_converged = is_big_restart
    
-    ! PBC set up the FFT here
-    if( pbc_ ) then
-      call set_fft_grid(basis)
-    endif
    
     !
     ! Calculate the parts of the hamiltonian that does not change along
