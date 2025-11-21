@@ -34,7 +34,6 @@ module m_hamiltonian_periodic
 #endif
 
   integer, private        :: nx  ! local copy of input variable fft_neighbors
-  integer, private        :: nx_overlap
 
   integer(C_INT), private :: nfft1
   integer(C_INT), private :: nfft2
@@ -49,6 +48,7 @@ module m_hamiltonian_periodic
   complex(C_DOUBLE_COMPLEX), pointer :: rhog_fftw_prev(:, :, :) ! only used in kerker_precond that is not finalized
 
   real(dp), allocatable, private :: bfr(:, :)
+  real(dp), allocatable, private :: normalization_pbc(:)
 
 
 contains
@@ -77,10 +77,10 @@ subroutine set_fft_grid(basis)
   do ibf=1, basis%nbf
     maximum_extension = MAX(maximum_extension, basis%bff(ibf)%radius)
   enddo
-  if( maximum_extension > minimal_image_distance * 0.30_dp) then
-    call issue_warning('Basis set too diffuse compared to box dimension')
+  if( maximum_extension > minimal_image_distance * (1 + fft_neighbors) * 0.30_dp) then
+    call issue_warning('Basis set too diffuse compared to box dimensions. Consider increasing the replication fft_neighbors')
     write(stdout, '(1x,a,f8.2)') 'Basis extension    (bohr): ', maximum_extension
-    write(stdout, '(1x,a,f8.2)') 'Box image distance (bohr): ', minimal_image_distance
+    write(stdout, '(1x,a,f8.2)') 'Box image distance (bohr): ', minimal_image_distance * (1 + fft_neighbors)
   endif
 
   ! Direction 1
@@ -127,7 +127,6 @@ subroutine set_fft_grid(basis)
   write(stdout, '(3x,a,f12.3)') 'which corresponds to temporary array of size (Mb):', &
                                 STORAGE_SIZE(1.0_dp) / 8.0_dp * basis%nbf * fft_batch_size / 1024_dp**2
   nx = fft_neighbors
-  nx_overlap = nx !+ 1
   write(stdout, '(1x,a,i8)') 'Images of the unit cell considered for evaluations: ', (2 * nx + 1)**3
 
 
@@ -185,9 +184,9 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
 
   i123 = 0
   overlap_ao(:, :) = 0.0_dp
-  do i3=-nx_overlap, nx_overlap
-    do i2=-nx_overlap, nx_overlap
-      do i1=-nx_overlap, nx_overlap
+  do i3=-nx, nx
+    do i2=-nx, nx
+      do i1=-nx, nx
         i123 = i123 + 1
         if( MODULO(i123 - 1, world%nproc) /= world%rank ) cycle
 
@@ -203,21 +202,22 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
 
   call world%sum(overlap_ao)
 
+  ! Renormalize FBFB
+  write(stdout, *) 'FBFB  renormalize ?'
+  do ibf=1, basis%nbf
+    overlap_ao(:, ibf) = overlap_ao(:, ibf) / SQRT(normalization_pbc(:) * normalization_pbc(ibf))
+  enddo
+
   ! Check normalization
   do ibf=1, basis%nbf
     normalization(ibf) = overlap_ao(ibf, ibf)
   enddo
 
   if( MAXVAL(ABS(normalization - 1.0_dp)) > 1.0e-4_dp ) then
-    write(stdout, '(1x,a,f12.6)') 'Some basis functions are normalized at: ', MAXVAL(ABS(normalization - 1.0_dp))
-    call issue_warning('Basis functions are not perfectly normalized. Consider increasing the box')
+    write(stdout, '(1x,a,f12.6)') 'Some basis functions are normalized at: ', MINVAL(normalization)
+    write(stdout, '(1x,a,f12.6)') 'Some basis functions are normalized at: ', MAXVAL(normalization)
+    call issue_warning('Basis functions are not perfectly normalized. Consider increasing fft_neighbors')
   endif
-
-  !! Renormalize
-  !call issue_warning("FBFB renormalize overlap")
-  !do ibf=1, basis%nbf
-  !  overlap_ao(:, ibf) = overlap_ao(:, ibf) / SQRT(normalization(:) * normalization(ibf))
-  !enddo
 
 
 end subroutine setup_overlap_periodic
@@ -311,7 +311,7 @@ subroutine setup_kinetic_periodic(basis, kin_ao)
   type(basis_set), intent(in) :: basis
   real(dp), intent(out) :: kin_ao(:, :)
   !=====
-  integer :: i1, i2, i3, i123
+  integer :: i1, i2, i3, i123, ibf
   real(dp) :: shift(3)
   real(dp), allocatable :: hkin(:, :)
   !=====
@@ -337,6 +337,12 @@ subroutine setup_kinetic_periodic(basis, kin_ao)
   deallocate(hkin)
 
   call world%sum(kin_ao)
+
+  ! Renormalize FBFB
+  write(stdout, *) 'FBFB kinetic energy renormalize ?'
+  do concurrent(ibf=1:basis%nbf)
+    kin_ao(:, ibf) = kin_ao(:, ibf) / SQRT(normalization_pbc(:) * normalization_pbc(ibf))
+  enddo
 
 
 end subroutine setup_kinetic_periodic
@@ -434,6 +440,7 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
   real(dp) :: rhonuclr(nfft_local)
   real(dp) :: vnuclgrid(nfft_local)
   real(dp), allocatable :: h_nl(:, :)
+  integer :: ibf
   !=====
 
 #if !defined(HAVE_FFTW3)
@@ -468,6 +475,12 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
 
   allocate(h_nl, MOLD=h_ao)
   call setup_nucleus_gth_nonlocal_periodic(basis, h_nl)
+
+  ! Renormalize FBFB
+  write(stdout, *) 'FBFB renormalize non-local ?'
+  do ibf=1, basis%nbf
+    h_nl(:, ibf) = h_nl(:, ibf) / SQRT(normalization_pbc(:) * normalization_pbc(ibf))
+  enddo
 
   h_ao(:, :) = h_ao(:, :) + h_nl(:, :)
 
@@ -1682,16 +1695,20 @@ subroutine calculate_basis_functions_periodic(basis)
   integer               :: ifft
   integer               :: ishell, ibf1, ibf2, ibf1_cart, ibf
   integer               :: ni_cart, li, i_cart, iworse
-  real(dp), allocatable :: basis_function_r_cart(:, :), dr(:, :)
-  real(dp)              :: norm(basis%nbf), most_diffuse
+  integer               :: i1, i2, i3
+  real(dp), allocatable :: basis_function_r_cart(:, :), dr(:, :), dr_shifted(:, :)
+  real(dp)              :: most_diffuse
   !=====
 
   call start_clock(timing_pbc_eval_bf)
   write(stdout,'(/,1x,a)') 'Evaluate and store basis functions on real-space grid'
 
   call clean_allocate('PBC basis functions on grid', bfr, basis%nbf, nfft_local)
+  allocate(normalization_pbc(basis%nbf))
+  bfr(:, :) = 0.0_dp
 
   allocate(dr(3, nfft_local))
+  allocate(dr_shifted(3, nfft_local))
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -1715,44 +1732,70 @@ subroutine calculate_basis_functions_periodic(basis)
       dr(:, ifft) = dr(:, ifft) - NINT(dr(:, ifft))
     enddo
     ! transform back to cartesian coordinates
-    dr(:, :) = MATMUL( aprim, dr)
-    ! transform balck to absolute position
-    do concurrent(ifft=1:nfft_local)
-      dr(:, ifft) = dr(:, ifft) + basis%shell(ishell)%x0(:)
-    enddo
 
-    allocate(basis_function_r_cart(ni_cart, nfft_local))
+    do i3=-nx, nx
+      do i2=-nx, nx
+        do i1=-nx, nx
 
-    do ifft=1, nfft_local
-      do i_cart=1, ni_cart
-        basis_function_r_cart(i_cart, ifft) = eval_basis_function2(basis%bfc(ibf1_cart + i_cart - 1), dr(:, ifft))
+          do concurrent(ifft=1:nfft_local)
+            dr_shifted(:, ifft) = dr(:, ifft) + [i1, i2, i3]
+          enddo
+
+          dr_shifted(:, :) = MATMUL( aprim, dr_shifted)
+
+          ! transform back to absolute position
+          do concurrent(ifft=1:nfft_local)
+            dr_shifted(:, ifft) = dr_shifted(:, ifft) + basis%shell(ishell)%x0(:)
+          enddo
+
+          allocate(basis_function_r_cart(ni_cart, nfft_local))
+
+          do ifft=1, nfft_local
+            do i_cart=1, ni_cart
+              basis_function_r_cart(i_cart, ifft) = eval_basis_function2(basis%bfc(ibf1_cart + i_cart - 1), dr_shifted(:, ifft))
+            enddo
+          enddo
+
+          bfr(ibf1:ibf2, :) = bfr(ibf1:ibf2, :) + MATMUL( TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)) , basis_function_r_cart(:, :) )
+          deallocate(basis_function_r_cart)
+
+        enddo
       enddo
     enddo
-
-    bfr(ibf1:ibf2, :) = MATMUL( TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)) , basis_function_r_cart(:, :) )
-    deallocate(basis_function_r_cart)
 
   enddo
   !$OMP END DO
   !$OMP END PARALLEL
 
-  deallocate(dr)
+  deallocate(dr, dr_shifted)
 
   write(stdout,'(1x,a)') 'Check normalization of the basis functions on the real-space grid'
-  norm(:) = SUM( bfr(:, :)**2, DIM=2 ) * volume / REAL(nfft_global, KIND=dp)
-  call grid%sum(norm)
+  normalization_pbc(:) = SUM( bfr(:, :)**2, DIM=2 ) * volume / REAL(nfft_global, KIND=dp)
+  call grid%sum(normalization_pbc)
 
-  iworse = MINLOC(norm(:), DIM=1)
-  write(stdout, '(1x,a,i4,1x,f11.8)')      'Worse normalization is basis function:', iworse, norm(iworse)
-  most_diffuse = MINVAL(basis%bff(iworse)%g(:)%alpha)
-  write(stdout, '(1x,a,i4,1x,i4,1x,i4,1x,f12.4)') 'Function characteristics (center, angular momentum, primitives, alpha): ', &
-                                   basis%bff(iworse)%icenter, basis%bff(iworse)%am, basis%bff(iworse)%ngaussian, &
-                                   most_diffuse
+  !FBFB
+  write(stdout, *) 'FBFB normalization from real-space grid'
+  do ibf=1, basis%nbf
+    write(stdout, *) ibf, normalization_pbc(ibf)
+    !FBFB renormalize
+    bfr(ibf, :) = bfr(ibf, :) / SQRT(normalization_pbc(ibf))
+  enddo
 
-  if( ANY( ABS(norm(:) - 1.0_dp) > 1.0e-3_dp ) ) then
-    call issue_warning('Some basis functions are not normalized properly. ' // &
-                       'Consider increasing the box or use less diffuse basis functions')
-  endif
+
+  !TODO FBFB remove this
+  !iworse = MINLOC(norm(:), DIM=1)
+  !write(stdout, '(1x,a,i4,1x,f11.8)')      'Worse normalization is basis function:', iworse, norm(iworse)
+  !most_diffuse = MINVAL(basis%bff(iworse)%g(:)%alpha)
+  !write(stdout, '(1x,a,i4,1x,i4,1x,i4,1x,f12.4)') 'Function characteristics (center, angular momentum, primitives, alpha): ', &
+  !                                 basis%bff(iworse)%icenter, basis%bff(iworse)%am, basis%bff(iworse)%ngaussian, &
+  !                                 most_diffuse
+
+  !if( ANY( ABS(norm(:) - 1.0_dp) > 1.0e-3_dp ) ) then
+  !  call issue_warning('Some basis functions are not normalized properly. ' // &
+  !                     'Consider increasing the box or use less diffuse basis functions')
+  !endif
+
+
 
   call stop_clock(timing_pbc_eval_bf)
 
@@ -2098,6 +2141,7 @@ subroutine destroy_fft_grid()
   deallocate(rgrid)
   deallocate(rhoelecr)
   call clean_deallocate('PBC basis functions on grid', bfr)
+  deallocate(normalization_pbc)
 
 end subroutine destroy_fft_grid
 
