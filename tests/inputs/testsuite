@@ -1275,10 +1275,10 @@ SCF Total Energy          , -5.6636285654      , 0 , 1.0e-7
 gKS HOMO energy           ,  -15.170383        , 0 , 1.0e-4
 
 he2_chain_gth_bcc_box.in  , Two-helium chain in a periodic box, need_libcint need_fftw3
-SCF Total Energy          , -5.6635937905      , 0 , 1.0e-7
+SCF Total Energy          , -5.6635911088      , 0 , 1.0e-7
 Nucleus-Nucleus           ,  -0.7965664252     , 0 , 1.0e-7
-Kinetic Energy            ,   5.4198503754     , 0 , 1.0e-7
-gKS HOMO energy           ,  -15.073765        , 0 , 1.0e-4
+Kinetic Energy            ,   5.4198504198     , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.070116        , 0 , 1.0e-4
 
 he4_chain_gth_bcc_box.in  , Four-helium chain in a periodic box, need_libcint need_fftw3
 SCF Total Energy          , -11.3272009156     , 0 , 1.0e-7
@@ -1287,21 +1287,21 @@ Kinetic Energy            ,  10.8396099943     , 0 , 1.0e-7
 gKS HOMO energy           ,  -15.070255        , 0 , 1.0e-4
 
 he4_square_gth_bcc_box.in , Four-helium square in a periodic box, need_libcint need_fftw3
-SCF Total Energy          , -11.3271243506     , 0 , 1.0e-7
+SCF Total Energy          , -11.3271135560     , 0 , 1.0e-7
 Nucleus-Nucleus           ,  -2.1557057390     , 0 , 1.0e-7
-Kinetic Energy            ,  10.8398923151     , 0 , 1.0e-7
-gKS HOMO energy           ,  -14.894688        , 0 , 1.0e-4
+Kinetic Energy            ,  10.8398920507     , 0 , 1.0e-7
+gKS HOMO energy           ,  -14.888080        , 0 , 1.0e-4
 
 he8_lattice_gth_bcc_box.in, Eight-helium lattice in a periodic box, need_libcint need_fftw3
-SCF Total Energy          , -22.6542685699     , 0 , 1.0e-7
+SCF Total Energy          , -22.6542155364     , 0 , 1.0e-7
 Nucleus-Nucleus           ,  -7.7039928095     , 0 , 1.0e-7
-Kinetic Energy            ,  21.6805174008     , 0 , 1.0e-7
-gKS HOMO energy           ,  -14.462821        , 0 , 1.0e-4
+Kinetic Energy            ,  21.6805153971     , 0 , 1.0e-7
+gKS HOMO energy           ,  -14.446911        , 0 , 1.0e-4
 
 he16_lattice_gth_sc_box.in, Sixteen-helium lattice in a periodic box, need_libcint need_fftw3
-SCF Total Energy          , -45.3071615655     , 0 , 1.0e-7
+SCF Total Energy          , -45.3071605850     , 0 , 1.0e-7
 Nucleus-Nucleus           , -15.4064033273     , 0 , 1.0e-7
-Kinetic Energy            ,  43.3596250465     , 0 , 1.0e-7
-Nucleus Energy            , -75.2053879253     , 0 , 1.0e-7
-gKS HOMO energy           ,  -14.446783        , 0 , 1.0e-4
+Kinetic Energy            ,  43.3596224486     , 0 , 1.0e-7
+Nucleus Energy            , -75.2053835552     , 0 , 1.0e-7
+gKS HOMO energy           ,  -14.447436        , 0 , 1.0e-4
 

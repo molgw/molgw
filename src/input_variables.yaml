@@ -222,6 +222,14 @@ fft_read_density:
   default: 'no'
   comment: Read the electronic density obtained from a previous calculation on the same FFT grid.
 
+fft_renormalize:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: Renormalize the basis functions to unity. Basis functions may deviate from 1 in small cells.
+
 gaussian_type:
   family: general
   datatype: characters

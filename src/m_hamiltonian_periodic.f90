@@ -202,11 +202,8 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
 
   call world%sum(overlap_ao)
 
-  ! Renormalize FBFB
-  write(stdout, *) 'FBFB  renormalize ?'
-  do ibf=1, basis%nbf
-    overlap_ao(:, ibf) = overlap_ao(:, ibf) / SQRT(normalization_pbc(:) * normalization_pbc(ibf))
-  enddo
+  ! Has to renormalize basis functions
+  call renormalize_pbc(overlap_ao)
 
   ! Check normalization
   do ibf=1, basis%nbf
@@ -338,11 +335,8 @@ subroutine setup_kinetic_periodic(basis, kin_ao)
 
   call world%sum(kin_ao)
 
-  ! Renormalize FBFB
-  write(stdout, *) 'FBFB kinetic energy renormalize ?'
-  do concurrent(ibf=1:basis%nbf)
-    kin_ao(:, ibf) = kin_ao(:, ibf) / SQRT(normalization_pbc(:) * normalization_pbc(ibf))
-  enddo
+  ! Has to renormalize because of PBC
+  call renormalize_pbc(kin_ao)
 
 
 end subroutine setup_kinetic_periodic
@@ -439,7 +433,7 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
   real(dp) :: nuc_selfenergy
   real(dp) :: rhonuclr(nfft_local)
   real(dp) :: vnuclgrid(nfft_local)
-  real(dp), allocatable :: h_nl(:, :)
+  real(dp), allocatable :: h_nonloc_ao(:, :)
   integer :: ibf
   !=====
 
@@ -473,20 +467,17 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
 
   call calculate_hao_periodic(basis, vnuclgrid, h_ao)
 
-  allocate(h_nl, MOLD=h_ao)
-  call setup_nucleus_gth_nonlocal_periodic(basis, h_nl)
+  allocate(h_nonloc_ao, MOLD=h_ao)
+  call setup_nucleus_gth_nonlocal_periodic(basis, h_nonloc_ao)
 
-  ! Renormalize FBFB
-  write(stdout, *) 'FBFB renormalize non-local ?'
-  do ibf=1, basis%nbf
-    h_nl(:, ibf) = h_nl(:, ibf) / SQRT(normalization_pbc(:) * normalization_pbc(ibf))
-  enddo
+  ! Has to renormalize because of PBC
+  call renormalize_pbc(h_nonloc_ao)
 
-  h_ao(:, :) = h_ao(:, :) + h_nl(:, :)
+  h_ao(:, :) = h_ao(:, :) + h_nonloc_ao(:, :)
 
 
-  call dump_out_matrix(.FALSE., '=== Nuclei contribution (FFTW) ===', h_nl)
-  deallocate(h_nl)
+  call dump_out_matrix(.FALSE., '=== Nuclei contribution (FFTW) ===', h_nonloc_ao)
+  deallocate(h_nonloc_ao)
 
   if( in_rt_tddft ) then
     call stop_clock(timing_tddft_hamiltonian_nuc)
@@ -597,13 +588,13 @@ subroutine setup_hartree_periodic(basis, p_matrix, vloc, ehartree, h_ao)
   !call write_cube_file('rhoelecr.cube', nfft1, nfft2, nfft3, dr, rhoelecr(:, 1), comment='test')
 
 
-  if( fft_fix_density_integral_ ) then
-    rhor_integral = SUM(rhoelecr) * volume / REAL(nfft_global, KIND=dp)
-    call grid%sum(rhor_integral)
-    write(stdout, '(1x,a,f14.6,a,f14.6)') 'Electron density integral: ', rhor_integral, ' whereas it should be ', electrons
-    write(stdout, '(1x,a,f10.6)') 'Renormalize it with factor: ', electrons / rhor_integral
-    rhoelecr(:, :) = rhoelecr(:, :) * electrons / rhor_integral
-  endif
+  !if( fft_fix_density_integral_ ) then
+  !  rhor_integral = SUM(rhoelecr) * volume / REAL(nfft_global, KIND=dp)
+  !  call grid%sum(rhor_integral)
+  !  write(stdout, '(1x,a,f14.6,a,f14.6)') 'Electron density integral: ', rhor_integral, ' whereas it should be ', electrons
+  !  write(stdout, '(1x,a,f10.6)') 'Renormalize it with factor: ', electrons / rhor_integral
+  !  rhoelecr(:, :) = rhoelecr(:, :) * electrons / rhor_integral
+  !endif
   call poisson_solver_fft(rhoelecr(:, 1), vhartreegrid)
 
   ehartree = 0.5_dp * SUM( SUM(rhoelecr(:, :), DIM=2) * vhartreegrid ) * volume / REAL(nfft_global, KIND=dp)
@@ -1105,12 +1096,12 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
              'FFT grid is certainly too coarse. Try to decrease fft_delta_x.')
   endif
 
-  if( fft_fix_density_integral_ ) then
-    rhonuclr(:) = rhonuclr(:) * factor
-    zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
-    call grid%sum(zval)
-    write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell (after renormalization): ', zval
-  endif
+  !if( fft_fix_density_integral_ ) then
+  !  rhonuclr(:) = rhonuclr(:) * factor
+  !  zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
+  !  call grid%sum(zval)
+  !  write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell (after renormalization): ', zval
+  !endif
 
 
 contains
@@ -1694,10 +1685,9 @@ subroutine calculate_basis_functions_periodic(basis)
   integer               :: gt
   integer               :: ifft
   integer               :: ishell, ibf1, ibf2, ibf1_cart, ibf
-  integer               :: ni_cart, li, i_cart, iworse
+  integer               :: ni_cart, li, i_cart
   integer               :: i1, i2, i3
   real(dp), allocatable :: basis_function_r_cart(:, :), dr(:, :), dr_shifted(:, :)
-  real(dp)              :: most_diffuse
   !=====
 
   call start_clock(timing_pbc_eval_bf)
@@ -1773,27 +1763,17 @@ subroutine calculate_basis_functions_periodic(basis)
   normalization_pbc(:) = SUM( bfr(:, :)**2, DIM=2 ) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(normalization_pbc)
 
-  !FBFB
-  write(stdout, *) 'FBFB normalization from real-space grid'
+  if( .NOT. fft_renormalize_) then
+    write(stdout, *) 'Keep basis function not normalized'
+    write(stdout, *) 'Be aware that the lowest  norm is:', MINVAL(normalization_pbc(:))
+    write(stdout, *) 'Be aware that the largest norm is:', MAXVAL(normalization_pbc(:))
+    ! Set normalization_pbc to 1 so that does not do anything
+    normalization_pbc(:) = 1.0_dp
+  endif
+
   do ibf=1, basis%nbf
-    write(stdout, *) ibf, normalization_pbc(ibf)
-    !FBFB renormalize
     bfr(ibf, :) = bfr(ibf, :) / SQRT(normalization_pbc(ibf))
   enddo
-
-
-  !TODO FBFB remove this
-  !iworse = MINLOC(norm(:), DIM=1)
-  !write(stdout, '(1x,a,i4,1x,f11.8)')      'Worse normalization is basis function:', iworse, norm(iworse)
-  !most_diffuse = MINVAL(basis%bff(iworse)%g(:)%alpha)
-  !write(stdout, '(1x,a,i4,1x,i4,1x,i4,1x,f12.4)') 'Function characteristics (center, angular momentum, primitives, alpha): ', &
-  !                                 basis%bff(iworse)%icenter, basis%bff(iworse)%am, basis%bff(iworse)%ngaussian, &
-  !                                 most_diffuse
-
-  !if( ANY( ABS(norm(:) - 1.0_dp) > 1.0e-3_dp ) ) then
-  !  call issue_warning('Some basis functions are not normalized properly. ' // &
-  !                     'Consider increasing the box or use less diffuse basis functions')
-  !endif
 
 
 
@@ -2090,6 +2070,24 @@ function rho_global_to_local(rho_global) RESULT(rho_local)
   enddo
 
 end function rho_global_to_local
+
+
+!=========================================================================
+! PBC induce violation of the normalization of the basis functions
+! Renormalize here
+subroutine renormalize_pbc(matrix_ao)
+  implicit none
+
+  real(dp), intent(inout) :: matrix_ao(:, :)
+  !=====
+  integer :: jbf
+  !=====
+
+  do concurrent(jbf=1:SIZE(matrix_ao, DIM=2))
+    matrix_ao(:, jbf) = matrix_ao(:, jbf) / SQRT(normalization_pbc(:) * normalization_pbc(jbf))
+  enddo
+
+end subroutine renormalize_pbc
 
 
 !=========================================================================
