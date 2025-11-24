@@ -1305,3 +1305,8 @@ Kinetic Energy            ,  43.3596224486     , 0 , 1.0e-7
 Nucleus Energy            , -75.2053835552     , 0 , 1.0e-7
 gKS HOMO energy           ,  -14.447436        , 0 , 1.0e-4
 
+diamond_gth_08.in         , 8-atom cell of diamond, need_libcint need_fftw3
+Nucleus-Nucleus           , -51.1779066085     , 0 , 1.0e-7
+SCF Total Energy          , -44.6230418840     , 0 , 1.0e-7
+gKS HOMO energy           ,   13.724214        , 0 , 1.0e-4
+
