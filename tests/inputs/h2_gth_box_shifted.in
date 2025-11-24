@@ -2,18 +2,18 @@
  scf='lda'
 
  init_hamiltonian='core'
- ecp_basis='QZV3P_cp2k'
+ ecp_basis='TZV2P_cp2k'
  ecp_auxil_basis='pw'
  ecp_elements='H'
  ecp_type='blyp.gth'
 
- a1=  6., 0., 0.       ! angstrom
- a2=  0., 6., 0.       ! angstrom
- a3=  0., 0., 6.       ! angstrom
- fft_delta_x = 0.12    ! bohr
+ a1=  5., 0., 0.       ! angstrom
+ a2=  0., 5., 0.       ! angstrom
+ a3=  0., 0., 5.       ! angstrom
+ fft_delta_x = 0.15    ! bohr
 
  natom=2
 /
-H          0.000000    3.650000    0.000
-H          0.000000    4.350000    0.000
+H          0.000000    2.650000    0.000
+H          0.000000    3.350000    0.000
 
