@@ -184,15 +184,15 @@ subroutine scf_loop(is_restart, &
     !
     ! DFT XC potential is added here
     ! hamiltonian_xc is used as a temporary matrix
-    if( calc_type%is_dft ) then
-      if( .NOT. pbc_ ) then
+    if( .NOT. pbc_ ) then
+      if( calc_type%is_dft ) then
         call dft_exc_vxc_batch(BATCH_SIZE, basis, occupation, c_matrix, hamiltonian_xc, en_gks%xc)
-      else
-        !
-        ! With PBC, hamiltonian_xc is actually H+XC hamiltonian
-        !
-        call setup_hxc_periodic(basis, p_matrix, hamiltonian_xc, en_gks%hartree, en_gks%xc)
       endif
+    else
+      !
+      ! With PBC, hamiltonian_xc is actually H+XC hamiltonian
+      !
+      call setup_hxc_periodic(basis, p_matrix, hamiltonian_xc, en_gks%hartree, en_gks%xc)
     endif
 
     !

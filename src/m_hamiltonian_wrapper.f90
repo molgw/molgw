@@ -120,30 +120,37 @@ subroutine calculate_exchange_real(basis, p_matrix, hexx, ex, occupation, c_matr
   real(dp)             :: eexx
   !=====
 
+  if( pbc_ ) then
+    if( .NOT. PRESENT(occupation) ) call die('calculate_exchange_real: not coded')
+    if( .NOT. PRESENT(c_matrix) ) call die('calculate_exchange_real: not coded')
+    call setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, eexx, hexx)
 
-  if( .NOT. has_auxil_basis ) then
-    if( incore_ ) then
-      call setup_exchange(p_matrix, hexx, eexx)
-    else
-      call issue_warning('no out-of-core exchange implemented yet')
-      hexx(:, :, :) = 0.0_dp
-      eexx = 0.0_dp
-    endif
   else
-    if( PRESENT(occupation) .AND. PRESENT(c_matrix) ) then
-      if( .NOT. eri3_genuine_ ) then
-        call setup_exchange_ri(occupation, c_matrix, p_matrix, hexx, eexx)
+
+    if( .NOT. has_auxil_basis ) then
+      if( incore_ ) then
+        call setup_exchange(p_matrix, hexx, eexx)
       else
-        call setup_exchange_genuine_ri(occupation, c_matrix, p_matrix, hexx, eexx)
+        call issue_warning('no out-of-core exchange implemented yet')
+        hexx(:, :, :) = 0.0_dp
+        eexx = 0.0_dp
       endif
     else
-      !
-      ! c_matrix is not provided, then calculate it from the square-root of P
-      call get_c_matrix_from_p_matrix(p_matrix, c_matrix_tmp, occupation_tmp)
-      call setup_exchange_ri(occupation_tmp, c_matrix_tmp, p_matrix, hexx, eexx)
-      deallocate(c_matrix_tmp)
-      deallocate(occupation_tmp)
+      if( PRESENT(occupation) .AND. PRESENT(c_matrix) ) then
+        if( .NOT. eri3_genuine_ ) then
+          call setup_exchange_ri(occupation, c_matrix, p_matrix, hexx, eexx)
+        else
+          call setup_exchange_genuine_ri(occupation, c_matrix, p_matrix, hexx, eexx)
+        endif
+      else
+        !
+        ! c_matrix is not provided, then calculate it from the square-root of P
+        call get_c_matrix_from_p_matrix(p_matrix, c_matrix_tmp, occupation_tmp)
+        call setup_exchange_ri(occupation_tmp, c_matrix_tmp, p_matrix, hexx, eexx)
+        deallocate(c_matrix_tmp)
+        deallocate(occupation_tmp)
 
+      endif
     endif
   endif
 
@@ -366,9 +373,9 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
   if(calc_type%need_exchange_lr) then
     allocate(hamiltonian_spin_cmplx(basis%nbf, basis%nbf, nspin))
     hamiltonian_spin_cmplx(:, :, :) = 0.0_dp
-  
+
     call setup_exchange_longrange_ri_cmplx(occupation, c_matrix_cmplx, p_matrix_cmplx, hamiltonian_spin_cmplx, en_inout%exx_hyb)
-  
+
     hamiltonian_hxc_cmplx(:, :, :) = hamiltonian_hxc_cmplx(:, :, :) + hamiltonian_spin_cmplx(:, :, :) * beta_hybrid
     deallocate(hamiltonian_spin_cmplx)
   else
@@ -467,7 +474,7 @@ subroutine calculate_hamiltonian_xc_x2c(basis,                  &
   if( calc_type%is_dft ) then
     allocate(hamiltonian_spin_real(basis%nbf, basis%nbf, nspin))
     call dft_exc_vxc_batch(BATCH_SIZE, basis, occupation, c_matrix_cmplx, hamiltonian_spin_real, en_inout%xc)
-    
+
     hamiltonian_hxc_cmplx(:, :, :) = hamiltonian_spin_real(:, :, :)
     deallocate(hamiltonian_spin_real)
   endif

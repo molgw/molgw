@@ -1342,43 +1342,61 @@ subroutine print_basis_function(bf)
 end subroutine print_basis_function
 
 
-!!=========================================================================
-!pure function eval_basis_function_shell(shell, rr) RESULT(shellr)
-!  implicit none
-!  type(shell_type), intent(in) :: shell
-!  real(dp), intent(in)         :: rr(:, :)     ! 3 x nr
-!  real(dp)                     :: shellr(:, :) ! nbf_in_shell x nr
-!  !=====
-!  integer                      :: nr, ig, il, nbf_cart
-!  real(dp), allocatable        :: dr(:, :), dr2(:)
-!  !=====
-!
-!  nr = SIZE(rr, DIM=2)
-!  allocate(dr(3, nr))
-!  allocate(dr2(nr))
-!
-!  shellr(:, :) = 0.0_dp
-!
-!  il = shell%am
-!  nbf_cart = SIZE(shellr, DIM=1)
-!
-!  do concurrent(ir=1:nr)
-!    dr(:, ir) = rr(:, ir) - shell%x0(:)
-!  enddo
-!  dr2(:) = SUM( dr(:, :)**2, DIM=1 )
-!
-!  do concurrent(ir=1:nr)
-!    do ig=1, shell%ng
-!      shellr(:, ir) = shellr(:, ir) &
-!              + dr(1, ir)**ga%nx * dr(2, ir)**ga%ny * dr(3, ir)**ga%nz
-!                 * EXP( - shell%alpha(ig) * dr2(ir) ) * ga%norm_factor * shell%coeff(ig)
-!    enddo
-!  enddo
-!
-!
-!
-!
-!end function eval_basis_function_shell
+!=========================================================================
+! NOT TESTED
+! normalization is not correct for sure
+pure function eval_basis_function_pure_shell(shell, rr) RESULT(shellr)
+  implicit none
+
+  type(shell_type), intent(in) :: shell
+  real(dp), intent(in)         :: rr(:, :)     ! 3 x nr
+  real(dp), allocatable        :: shellr(:, :) ! nbf_in_shell x nr
+  !=====
+  integer                      :: nr, ig, ir
+  real(dp), allocatable        :: dr(:, :), dr2(:), gaussian_part(:)
+  real(dp), parameter :: factor = 1.0_dp / SQRT(4.0_dp * pi)
+  !=====
+
+  nr = SIZE(rr, DIM=2)
+  allocate(dr(3, nr))
+  allocate(dr2(nr), gaussian_part(nr))
+
+  allocate(shellr(2*shell%am+1, nr))
+
+  do concurrent(ir=1:nr)
+    dr(:, ir) = rr(:, ir) - shell%x0(:)
+  enddo
+  dr2(:) = SUM( dr(:, :)**2, DIM=1 )
+
+  
+  gaussian_part(:) = 0.0_dp
+  do ig=1, shell%ng
+    gaussian_part(:) = gaussian_part(:) + EXP( - shell%alpha(ig) * dr2(ir) ) * shell%coeff(ig)
+  enddo
+
+  select case(shell%am)
+  case(0)
+    shellr(1, :) = factor * gaussian_part(:)
+
+  case(1)
+    shellr(1, :) = factor * dr(1, :) * gaussian_part(:)
+    shellr(2, :) = factor * dr(2, :) * gaussian_part(:)
+    shellr(3, :) = factor * dr(3, :) * gaussian_part(:)
+
+  case(2)
+    shellr(1, :) = SQRT(5.0_dp/4.0_dp) * factor * (3.0_dp * dr(3, :)**2 - dr2(:)) * gaussian_part(:)
+    shellr(2, :) = SQRT(15.0_dp) * factor * dr(1, :) * dr(2, :) * gaussian_part(:)
+    shellr(3, :) = SQRT(15.0_dp) * factor * dr(2, :) * dr(3, :) * gaussian_part(:)
+    shellr(4, :) = SQRT(15.0_dp) * factor * dr(3, :) * dr(1, :) * gaussian_part(:)
+    shellr(5, :) = SQRT(15.0_dp/4.0_dp) * factor * (dr(1, :)**2 - dr(2, :)**2) * gaussian_part(:)
+    
+  case default
+    ! not coded
+    shellr(:, :) = 0.0_dp
+  end select
+
+
+end function eval_basis_function_pure_shell
 
 
 !=========================================================================

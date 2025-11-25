@@ -34,6 +34,8 @@ module m_hamiltonian_periodic
 #endif
 
   integer, private        :: nx  ! local copy of input variable fft_neighbors
+  integer, private        :: coulomb_type  ! 0 -> 1/r
+                                           ! 1 -> 1/r * ϴ(Rc-r) ! spherical cutoff
 
   integer(C_INT), private :: nfft1
   integer(C_INT), private :: nfft2
@@ -505,7 +507,9 @@ subroutine setup_hxc_periodic(basis, p_matrix, h_ao, ehartree, exc)
 
   call setup_hartree_periodic(basis, p_matrix, vloc, ehartree)
 
-  call setup_vxc_periodic(basis, vloc, exc)
+  if( calc_type%is_dft ) then
+    call setup_vxc_periodic(basis, vloc, exc)
+  endif
 
   call start_clock(timing_pbc_potential_to_hao)
   call calculate_hao_periodic(basis, vloc, h_ao)
@@ -662,11 +666,15 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
     call copy_libxc_info(dft_xc, dft_xc_local)
   endif
 
+  if( dft_xc_local(1)%nxc == 0 ) then
+    write(stdout, *) 'No DFT xc to calculate'
+    return
+  endif
+
   allocate(vxcgrid(nfft_local, nspin))
   exc_xc = 0.0_dp
   vxcgrid(:, :) = 0.0_dp
 
-  if( dft_xc_local(1)%nxc == 0 ) return
 
   timing_xxdft_xc    = timing_dft_xc
   timing_xxdft_libxc = timing_dft_libxc
@@ -781,6 +789,136 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
   call stop_clock(timing_pbc_density)
 
 end subroutine calculate_density_periodic
+
+
+!=========================================================================
+subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_ao)
+  implicit none
+
+  type(basis_set), intent(in) :: basis
+  real(dp), intent(in)  :: p_matrix(:, :, :)
+  real(dp), intent(in) ::  c_matrix(:, :, :)
+  real(dp), intent(in)  :: occupation(:, :)
+  real(dp), intent(out) :: ex
+  real(dp), intent(out) :: h_ao(:, :, :)
+  !=====
+  integer :: ibf, ifft, ispin, nocc, istate, naux
+  integer :: ig1, ig2, ig3
+  real(dp), allocatable :: phi_mo_local(:), phiphir(:), phiphir_global(:)
+  real(dp), allocatable :: phiphig(:, :)
+  type(C_PTR) :: plan
+  type(C_PTR) :: pr, pg
+  real(C_DOUBLE), pointer            :: phiphir_fftw(:, :, :)
+  complex(C_DOUBLE_COMPLEX), pointer :: phiphig_fftw(:, :, :)
+  !=====
+
+  call start_clock(timing_exchange)
+
+  write(stdout, '(/,1x,a)') 'Calculate Exchange term with PBC'
+
+  if( .NOT. ALLOCATED(bfr) ) then
+    call die('setup_exchange_periodic: basis function on FFT grid should be available at this stage')
+  endif
+
+  nocc = get_number_occupied_states(occupation)
+  write(stdout, *) 'FBFB nocc:', nocc
+
+  call clean_allocate('phi_MO(r)', phi_mo_local, nfft_local)
+
+  allocate(phiphir(nfft_local))
+  naux = 2 * (nfft1 / 2 + 1) * nfft2 * nfft3
+  allocate(phiphig(naux, basis%nbf))
+  write(stdout, *) 'FBFB naux, nfft:', naux, nfft_global
+
+  ! Allocate arrays with FFTW functions
+  pr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
+  call C_F_POINTER(pr, phiphir_fftw, [nfft1, nfft2, nfft3])
+  pg = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
+  call C_F_POINTER(pg, phiphig_fftw, [(nfft1/2+1), nfft2, nfft3])
+
+  h_ao(:, :, :) = 0.0_dp
+
+  do ispin=1, nspin
+
+    !TODO use batches, DGEMM
+    do istate=1, nocc
+      phi_mo_local(:) = MATMUL( c_matrix(:, istate, ispin), bfr(:, :) )
+      !write(*,*) 'FBFB HACK'
+      !phi_mo_local(:) = bfr(istate, :)
+
+      do ibf=1, basis%nbf
+        phiphir(:) = phi_mo_local(:) * bfr(ibf, : )
+        phiphir_global = rho_local_to_global(phiphir)
+        write(*,*) 'FBFB real space norm', istate, ibf, SUM(phiphir_global) * volume / REAL(nfft_global, KIND=dp)
+
+        phiphir_fftw(:, :, :) = RESHAPE(phiphir_global(:), [nfft1, nfft2, nfft3] )
+        plan = fftw_plan_dft_r2c_3d(nfft3, nfft2, nfft1, phiphir_fftw, phiphig_fftw, FFTW_ESTIMATE)
+        call fftw_execute_dft_r2c(plan, phiphir_fftw, phiphig_fftw)
+        call fftw_destroy_plan(plan)
+        phiphig_fftw(:, :, :) = phiphig_fftw(:, :, :) * volume / REAL(nfft_global, KIND=dp)
+        write(stdout, *) 'FBFB G=0', istate, ibf, phiphig_fftw(1, 1, 1)
+
+        do ig3=1, nfft3
+          do ig2=1, nfft2
+            do ig1=1, nfft1/2+1
+              phiphig_fftw(ig1, ig2, ig3) = SQRT(vcoulg(ig1, ig2, ig3) / volume) * phiphig_fftw(ig1, ig2, ig3)
+            enddo
+          enddo
+        enddo
+        write(*,*) 'FBFB manual1:', -SUM(2.0d0*ABS(phiphig_fftw(:, :, :))**2) + ABS(phiphig_fftw(1, 1, 1))**2
+
+        !phiphig(:naux/2, ibf) = RESHAPE(phiphig_fftw(:, :, :)%re, [naux/2] )
+        !phiphig(naux/2+1:, ibf) = RESHAPE(phiphig_fftw(:, :, :)%im, [naux/2] )
+        phiphig(:, ibf) = TRANSFER(phiphig_fftw, [1.0_dp, 1.0_dp])
+        phiphig(2:, ibf) = phiphig(2:, ibf) * SQRT(2.0_dp)
+        write(*,*) phiphig(1:4, ibf)
+      enddo
+
+      call DSYRK('L', 'T', basis%nbf, naux, -occupation(istate, ispin) / spin_fact, phiphig, naux, &
+                 1.0_dp, h_ao(:, :, ispin), basis%nbf)
+      write(*,*) 'FBFB manual2:', -SUM(phiphig(:, 1)**2)
+
+    enddo
+    call matrix_lower_to_full(h_ao(:, :, ispin))
+  enddo
+
+  deallocate(phiphir)
+  call clean_deallocate('phi_MO(r)', phi_mo_local)
+
+  call dump_out_matrix(.TRUE., '=== Exact exchange (FFTW) ===', h_ao)
+
+  ex = 0.5_dp * SUM( p_matrix(:, :, :) * h_ao(:, :, :) )
+
+  call stop_clock(timing_exchange)
+
+
+contains
+
+function vcoulg(ig1, ig2, ig3)
+  implicit none
+  integer, intent(in) :: ig1, ig2, ig3
+  real(dp) :: vcoulg
+  !=====
+  integer  :: ig1m, ig2m, ig3m
+  real(dp) :: g2
+  real(dp), parameter :: rcut = 12.0_dp
+  !=====
+
+  if( ig1 * ig2 * ig3 > 1 ) then
+    ig1m = MERGE( ig1 - 1, ig1 - 1 - nfft1, ig1 <= nfft1/2)
+    ig2m = MERGE( ig2 - 1, ig2 - 1 - nfft2, ig2 <= nfft2/2)
+    ig3m = MERGE( ig3 - 1, ig3 - 1 - nfft3, ig3 <= nfft3/2)
+    g2 = SUM( MATMUL(bprim(:, :) , [ig1m, ig2m ,ig3m])**2 )
+
+    vcoulg = 4.0_dp * pi / g2  * ( 1.0_dp -  COS( SQRT(g2) * rcut ) )
+  else
+    vcoulg = 2.0_dp * pi * rcut**2 
+  endif
+
+end function vcoulg
+
+
+end subroutine setup_exchange_periodic
 
 
 !=========================================================================
@@ -1488,17 +1626,13 @@ subroutine poisson_solver_fft(rhor, vcoulr)
                                 rhog_fftw(1, 1, 1)%re * volume
 
 
-  pvg = fftw_alloc_complex(int( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
+  pvg = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
   call C_F_POINTER(pvg, vg_fftw, [(nfft1/2+1), nfft2, nfft3])
 
   do ig3=1, nfft3
     do ig2=1, nfft2
       do ig1=1, nfft1/2+1
-        if( ig1 * ig2 * ig3 > 1 ) then
-          vg_fftw(ig1, ig2, ig3) = vcoulg(ig1, ig2, ig3) * rhog_fftw(ig1, ig2, ig3)
-        else
-          vg_fftw(ig1, ig2, ig3) = 0.0_dp
-        endif
+        vg_fftw(ig1, ig2, ig3) = vcoulg(ig1, ig2, ig3) * rhog_fftw(ig1, ig2, ig3)
       enddo
     enddo
   enddo
@@ -1543,14 +1677,19 @@ pure function vcoulg(ig1, ig2, ig3)
   !=====
   integer  :: ig1m, ig2m, ig3m
   real(dp) :: g2
+  real(dp), parameter :: rcut = 6.0_dp
   !=====
 
-  ig1m = MERGE( ig1 - 1, ig1 - 1 - nfft1, ig1 <= nfft1/2)
-  ig2m = MERGE( ig2 - 1, ig2 - 1 - nfft2, ig2 <= nfft2/2)
-  ig3m = MERGE( ig3 - 1, ig3 - 1 - nfft3, ig3 <= nfft3/2)
-  g2 = SUM( MATMUL(bprim(:, :) , [ig1m, ig2m ,ig3m])**2 )
+  if( ig1 * ig2 * ig3 > 1 ) then
+    ig1m = MERGE( ig1 - 1, ig1 - 1 - nfft1, ig1 <= nfft1/2)
+    ig2m = MERGE( ig2 - 1, ig2 - 1 - nfft2, ig2 <= nfft2/2)
+    ig3m = MERGE( ig3 - 1, ig3 - 1 - nfft3, ig3 <= nfft3/2)
+    g2 = SUM( MATMUL(bprim(:, :) , [ig1m, ig2m ,ig3m])**2 )
 
-  vcoulg = 4.0_dp * pi / g2  !* (1.0 -  COS( SQRT(g2) * 37.0 ))
+    vcoulg = 4.0_dp * pi / g2  * ( 1.0 -  COS(SQRT(g2) * rcut) )
+  else
+    vcoulg = 2.0_dp * pi * rcut**2 ! 0.0_dp
+  endif
 
 end function vcoulg
 
@@ -1774,7 +1913,6 @@ subroutine calculate_basis_functions_periodic(basis)
   do ibf=1, basis%nbf
     bfr(ibf, :) = bfr(ibf, :) / SQRT(normalization_pbc(ibf))
   enddo
-
 
 
   call stop_clock(timing_pbc_eval_bf)
