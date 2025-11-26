@@ -2487,17 +2487,17 @@ subroutine setup_nucleus_ecp_analytic(basis, hamiltonian_nucleus, atom_list)
     enddo
     if( .NOT. element_has_ecp ) cycle
 
-    C(:) = xatom(:, icenter)  ! coodinates of the atomic center
-    hamiltonian_tmp(:, :) = 0.0_dp ! accumulates the local + non_local contribution for a given center
+    C(:) = xatom(:, icenter) 
+    hamiltonian_tmp(:, :) = 0.0_dp 
 
     !
     ! First, the local part
     !
-    allocate(env_local, SOURCE=basis%LIBCINT_env) ! copie des environement LIBCINT dans env_local
+    allocate(env_local, SOURCE=basis%LIBCINT_env)
     allocate(env_local_erf, SOURCE=basis%LIBCINT_env)
-    call set_rinv_origin_libcint(xatom(:, icenter), env_local) ! place les origines des integrales 1/r en C
+    call set_rinv_origin_libcint(xatom(:, icenter), env_local)
     call set_rinv_origin_libcint(xatom(:, icenter), env_local_erf)
-    alphapp = 1.0_dp / SQRT(2.0_dp) / ecp(ie)%gth_rpploc   ! \alpha_pp in Krack's notations
+    alphapp = 1.0_dp / SQRT(2.0_dp) / ecp(ie)%gth_rpploc  
     ! LIBCINT needs the square since the input is the Gaussian distribution exponent
     env_local_erf(LIBCINT_PTR_RINV_ZETA+1) =  alphapp**2
     env_local(LIBCINT_PTR_RINV_ZETA+1) =  0.0_dp
@@ -3161,8 +3161,6 @@ subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucl
       jbf1    = basis_p%shell(jshell)%istart + basis_t%nbf
       jbf2    = basis_p%shell(jshell)%iend + basis_t%nbf
 
-      ! On cree un indice qui correspond aux numeros des shells du projectile dans la base globale
-      ! On va calculer le erf seulement sur ces indices là en les utilisant dans cint1e_rinv_cart
       jglobal = basis_t%nshell + jshell 
 
       if( MODULO(jshell-1, world%nproc) /= world%rank ) cycle
@@ -3311,9 +3309,7 @@ subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucl
           array_cart(:) = array_cart_C(:)
 #endif
 
-          call transform_libint_to_molgw_gth_projector(basis_p%gaussian_type, ljB, li, array_cart, matrix) ! j'ai mis basis_p% mais je
-                                                                        ! suis vraiment pas sur, c'est peut être encore juste basis%
-                                                                        ! meme si je pense que c'est le même type donc osef
+          call transform_libint_to_molgw_gth_projector(basis_p%gaussian_type, ljB, li, array_cart, matrix)
 
           proj_i_B(jbf1 - basis_t%nbf:jbf2 - basis_t%nbf, :, ipl) = TRANSPOSE(matrix(:, :)) 
           deallocate(array_cart, array_cart_C)
@@ -3391,7 +3387,7 @@ subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucl
     allocate(env_local_erf, SOURCE=basis%LIBCINT_env)
     call set_rinv_origin_libcint(xatom(:, icenter), env_local)
     call set_rinv_origin_libcint(xatom(:, icenter), env_local_erf)
-    alphapp = 1.0_dp / SQRT(2.0_dp) / ecp(ie)%gth_rpploc   ! \alpha_pp in Krack's notations
+    alphapp = 1.0_dp / SQRT(2.0_dp) / ecp(ie)%gth_rpploc 
     ! LIBCINT needs the square since the input is the Gaussian distribution exponent
     env_local_erf(LIBCINT_PTR_RINV_ZETA+1) =  alphapp**2
     env_local(LIBCINT_PTR_RINV_ZETA+1) =  0.0_dp
