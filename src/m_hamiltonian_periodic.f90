@@ -819,9 +819,11 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   real(dp), intent(out) :: ex
   real(dp), intent(out) :: h_ao(:, :, :)
   !=====
-  integer :: ibf, ifft, ispin, nocc, istate, naux
-  integer :: ig1, ig2, ig3
-  real(dp), allocatable :: phi_mo_local(:), phiphir(:), phiphir_global(:)
+  integer :: ng_local_mpi(grid%nproc)
+  integer :: irank
+  integer :: ibf, ispin, nocc, istate, ng_global, ng_local
+  integer :: ig1, ig2, ig3, ig_local, ig_global
+  real(dp), allocatable :: phi_i(:), phiphir(:), phiphir_global(:), phiphig_global(:)
   real(dp), allocatable :: phiphig(:, :)
   type(C_PTR) :: plan
   type(C_PTR) :: pr, pg
@@ -839,11 +841,20 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
 
   nocc = get_number_occupied_states(occupation)
 
-  call clean_allocate('phi_MO(r)', phi_mo_local, nfft_local)
+  allocate(phi_i(nfft_local))
 
   allocate(phiphir(nfft_local))
-  naux = 2 * (nfft1 / 2 + 1) * nfft2 * nfft3
-  allocate(phiphig(naux, basis%nbf))
+  ! Number of G vectors is not exactly nfft_global because of r2c transform
+  ng_global = 2 * (nfft1 / 2 + 1) * nfft2 * nfft3
+  ng_local_mpi(:) = 0
+  do ig_global=1, ng_global
+    irank = MODULO(ig_global - 1, grid%nproc)
+    ng_local_mpi(irank + 1) = ng_local_mpi(irank + 1) + 1
+  enddo
+  ng_local = ng_local_mpi(grid%rank + 1)
+
+  call clean_allocate('Temporary phiphi(G)', phiphig, ng_local, basis%nbf)
+  allocate(phiphig_global(ng_global))
 
   ! Allocate arrays with FFTW functions
   pr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
@@ -855,20 +866,24 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
 
   do ispin=1, nspin
 
-    !TODO use batches, DGEMM
     do istate=1, nocc
-      phi_mo_local(:) = MATMUL( c_matrix(:, istate, ispin), bfr(:, :) )
+      !TODO use DGEMM?
+      phi_i(:) = MATMUL( c_matrix(:, istate, ispin), bfr(:, :) )
 
       do ibf=1, basis%nbf
-        phiphir(:) = phi_mo_local(:) * bfr(ibf, : )
+        phiphir(:) = phi_i(:) * bfr(ibf, : )
         phiphir_global = rho_local_to_global(phiphir)
 
         phiphir_fftw(:, :, :) = RESHAPE(phiphir_global(:), [nfft1, nfft2, nfft3] )
+
+        ! Perform FFT phi_i(r) * phi_α(r) -> M_{iα}(G)
         plan = fftw_plan_dft_r2c_3d(nfft3, nfft2, nfft1, phiphir_fftw, phiphig_fftw, FFTW_ESTIMATE)
         call fftw_execute_dft_r2c(plan, phiphir_fftw, phiphig_fftw)
         call fftw_destroy_plan(plan)
+
         phiphig_fftw(:, :, :) = phiphig_fftw(:, :, :) * volume / REAL(nfft_global, KIND=dp)
 
+        ! M_{iα}(G) * √v(G) → M_{iα}(G)
         select case(coulomb_type_exchange)
         case(0)
           do ig3=1, nfft3
@@ -892,18 +907,34 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
         !   due to real to complex (r2c) FFT transform that only gives G_1 >=0
         phiphig_fftw(2:, :, :) = SQRT(2.0_dp) * phiphig_fftw(2:, :, :)
 
-        phiphig(:, ibf) = TRANSFER(phiphig_fftw, [1.0_dp, 1.0_dp])
+        ! Cast the complex FFT into a real array (G index will be summed over then the order does not matter)
+        phiphig_global(:) = TRANSFER(phiphig_fftw, [1.0_dp, 1.0_dp])
+
+        ! Distribute the global phiphig_global to local copies
+        ig_local = 0
+        do ig_global=1, ng_global
+          if( MODULO(ig_global - 1, grid%nproc) == grid%rank ) then
+            ig_local = ig_local + 1
+            phiphig(ig_local, ibf) = phiphig_global(ig_global)
+          endif
+        enddo
+
       enddo
 
-      call DSYRK('L', 'T', basis%nbf, naux, -occupation(istate, ispin) / spin_fact, phiphig, naux, &
+      ! Σ_x = - sum_i sum_G f_i/spin_fact M_{iα}(G) M_{iα}(G)
+      call DSYRK('L', 'T', basis%nbf, ng_local, -occupation(istate, ispin) / spin_fact, phiphig, ng_local, &
                  1.0_dp, h_ao(:, :, ispin), basis%nbf)
 
     enddo
     call matrix_lower_to_full(h_ao(:, :, ispin))
   enddo
 
+  call clean_deallocate('Temporary phiphi(G)', phiphig)
+
   deallocate(phiphir)
-  call clean_deallocate('phi_MO(r)', phi_mo_local)
+  deallocate(phi_i)
+
+  call grid%sum(h_ao)
 
   call dump_out_matrix(.FALSE., '=== Exact exchange (FFTW) ===', h_ao)
 
@@ -2119,7 +2150,7 @@ end function rho_global_to_local
 
 
 !=========================================================================
-! PBC induce violation of the normalization of the basis functions
+! PBC may induce violation of the normalization of the basis functions
 ! Renormalize here
 subroutine renormalize_pbc(matrix_ao)
   implicit none
