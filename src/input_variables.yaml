@@ -188,6 +188,35 @@ even_tempered_n_list:
            The maximum angular momentum is determined from the number of integers in the string.
            Only meaningful when basis='even_tempered'.
 
+fft_coulomb_exchange:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'spherical'
+  comment: Selects the Coulomb interaction treatment in the exchange when using PBC.
+           So far, only 'bare' and 'spherical' (for spherical cutoff) exist.
+           Check out `fft_coulomb_cutoff` for the sphere radius.
+
+fft_coulomb_hartree:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'bare'
+  comment: Selects the Coulomb interaction treatment in electrostatics (Hartree, nucleus-nucleus, nucleus-electron), when using PBC.
+           So far, only 'bare' and 'spherical' (for spherical cutoff) exist.
+           Check out `fft_coulomb_cutoff` for the sphere radius.
+
+fft_coulomb_cutoff:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Sets the radius of the spherical cutoff of the Coulomb interaction with PBC.
+           Default value triggers Spencer-Alavi recipe. Rc= (3/(4 pi) V)**(1/3)
+
 fft_delta_x:
   family: general
   datatype: real

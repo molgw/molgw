@@ -1310,3 +1310,9 @@ Nucleus-Nucleus           , -51.1779066085     , 0 , 1.0e-7
 SCF Total Energy          , -44.6230418840     , 0 , 1.0e-7
 gKS HOMO energy           ,   13.724214        , 0 , 1.0e-4
 
+he_gth_box_hf.in          , He atom within HF with PBC, need_libcint need_fftw3
+Nucleus-Nucleus           ,  -0.4568908243     , 0 , 1.0e-7
+SCF Total Energy          ,  -2.8179084628     , 0 , 1.0e-7
+gKS HOMO energy           ,  -24.891108        , 0 , 1.0e-4
+
+

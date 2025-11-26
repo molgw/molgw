@@ -33,9 +33,11 @@ module m_hamiltonian_periodic
   use m_fftw3
 #endif
 
-  integer, private        :: nx  ! local copy of input variable fft_neighbors
-  integer, private        :: coulomb_type  ! 0 -> 1/r
-                                           ! 1 -> 1/r * ϴ(Rc-r) ! spherical cutoff
+  integer, private :: nx                ! local copy of input variable fft_neighbors
+  integer, private :: coulomb_type_hartree  = 0  ! 0 -> 1/r
+                                                 ! 1 -> 1/r * ϴ(Rc-r) ! spherical cutoff
+  integer, private :: coulomb_type_exchange = 0  ! 0 -> 1/r
+                                                 ! 1 -> 1/r * ϴ(Rc-r) ! spherical cutoff
 
   integer(C_INT), private :: nfft1
   integer(C_INT), private :: nfft2
@@ -52,6 +54,7 @@ module m_hamiltonian_periodic
   real(dp), allocatable, private :: bfr(:, :)
   real(dp), allocatable, private :: normalization_pbc(:)
 
+  real(dp), private :: fft_rcut
 
 contains
 
@@ -124,6 +127,9 @@ subroutine set_fft_grid(basis)
     enddo
   enddo
 
+  !
+  ! set fft_batch_size so to avoid temporary arrays larger than 100 Mb
+  ! temp arrays are nbf x fft grid points
   fft_batch_size = MIN( NINT( 100.0_dp * 1024_dp**2 / ( STORAGE_SIZE(1.0_dp) / 8.0_dp * basis%nbf ) ), nfft_local)
   write(stdout, '(1x,a,i8)') 'FFT grid batches set to: ', fft_batch_size
   write(stdout, '(3x,a,f12.3)') 'which corresponds to temporary array of size (Mb):', &
@@ -139,10 +145,21 @@ subroutine set_fft_grid(basis)
   ! Evaluate and store basis functions on the real-space grid
   call calculate_basis_functions_periodic(basis)
 
-  !
-  ! set fft_batch_size so to avoid temporary arrays larger than 100 Mb
-  ! temp arrays are nbf x fft grid points
+  coulomb_type_hartree  = MERGE(1, 0, TRIM(capitalize(fft_coulomb_hartree))  == 'SPHERICAL')
+  coulomb_type_exchange = MERGE(1, 0, TRIM(capitalize(fft_coulomb_exchange)) == 'SPHERICAL')
 
+  write(stdout, '(1x,a,a)') 'Coulomb Hartree  method: ', TRIM(capitalize(fft_coulomb_hartree))
+  write(stdout, '(1x,a,a)') 'Coulomb Exchange method: ', TRIM(capitalize(fft_coulomb_exchange))
+  if( coulomb_type_hartree + coulomb_type_exchange > 0 ) then
+    if( fft_rcut < 1.0e-8_dp ) then
+      ! Spencer-Alavi recipe
+      fft_rcut = ( 3.0_dp / (4.0_dp * pi) * volume )**(1.0_dp/3.0_dp)
+    else
+      fft_rcut = fft_coulomb_cutoff
+    endif
+    write(stdout, '(1x,a,f12.4)') 'Spherical cutoff (bohr): ', fft_rcut
+  endif
+  write(stdout, *)
 
 contains
   ! Find smallest fft_grid greater than fftx
@@ -821,14 +838,12 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   endif
 
   nocc = get_number_occupied_states(occupation)
-  write(stdout, *) 'FBFB nocc:', nocc
 
   call clean_allocate('phi_MO(r)', phi_mo_local, nfft_local)
 
   allocate(phiphir(nfft_local))
   naux = 2 * (nfft1 / 2 + 1) * nfft2 * nfft3
   allocate(phiphig(naux, basis%nbf))
-  write(stdout, *) 'FBFB naux, nfft:', naux, nfft_global
 
   ! Allocate arrays with FFTW functions
   pr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
@@ -843,40 +858,45 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
     !TODO use batches, DGEMM
     do istate=1, nocc
       phi_mo_local(:) = MATMUL( c_matrix(:, istate, ispin), bfr(:, :) )
-      !write(*,*) 'FBFB HACK'
-      !phi_mo_local(:) = bfr(istate, :)
 
       do ibf=1, basis%nbf
         phiphir(:) = phi_mo_local(:) * bfr(ibf, : )
         phiphir_global = rho_local_to_global(phiphir)
-        write(*,*) 'FBFB real space norm', istate, ibf, SUM(phiphir_global) * volume / REAL(nfft_global, KIND=dp)
 
         phiphir_fftw(:, :, :) = RESHAPE(phiphir_global(:), [nfft1, nfft2, nfft3] )
         plan = fftw_plan_dft_r2c_3d(nfft3, nfft2, nfft1, phiphir_fftw, phiphig_fftw, FFTW_ESTIMATE)
         call fftw_execute_dft_r2c(plan, phiphir_fftw, phiphig_fftw)
         call fftw_destroy_plan(plan)
         phiphig_fftw(:, :, :) = phiphig_fftw(:, :, :) * volume / REAL(nfft_global, KIND=dp)
-        write(stdout, *) 'FBFB G=0', istate, ibf, phiphig_fftw(1, 1, 1)
 
-        do ig3=1, nfft3
-          do ig2=1, nfft2
-            do ig1=1, nfft1/2+1
-              phiphig_fftw(ig1, ig2, ig3) = SQRT(vcoulg(ig1, ig2, ig3) / volume) * phiphig_fftw(ig1, ig2, ig3)
+        select case(coulomb_type_exchange)
+        case(0)
+          do ig3=1, nfft3
+            do ig2=1, nfft2
+              do ig1=1, nfft1/2+1
+                phiphig_fftw(ig1, ig2, ig3) = SQRT(vcoulg(ig1, ig2, ig3) / volume) * phiphig_fftw(ig1, ig2, ig3)
+              enddo
             enddo
           enddo
-        enddo
-        write(*,*) 'FBFB manual1:', -SUM(2.0d0*ABS(phiphig_fftw(:, :, :))**2) + ABS(phiphig_fftw(1, 1, 1))**2
+        case(1)
+          do ig3=1, nfft3
+            do ig2=1, nfft2
+              do ig1=1, nfft1/2+1
+                phiphig_fftw(ig1, ig2, ig3) = SQRT(vcoulg_cutoff(ig1, ig2, ig3) / volume) * phiphig_fftw(ig1, ig2, ig3)
+              enddo
+            enddo
+          enddo
+        end select
 
-        !phiphig(:naux/2, ibf) = RESHAPE(phiphig_fftw(:, :, :)%re, [naux/2] )
-        !phiphig(naux/2+1:, ibf) = RESHAPE(phiphig_fftw(:, :, :)%im, [naux/2] )
+        ! When G_1 /= 0, all the terms should be accounted with double weight,
+        !   due to real to complex (r2c) FFT transform that only gives G_1 >=0
+        phiphig_fftw(2:, :, :) = SQRT(2.0_dp) * phiphig_fftw(2:, :, :)
+
         phiphig(:, ibf) = TRANSFER(phiphig_fftw, [1.0_dp, 1.0_dp])
-        phiphig(2:, ibf) = phiphig(2:, ibf) * SQRT(2.0_dp)
-        write(*,*) phiphig(1:4, ibf)
       enddo
 
       call DSYRK('L', 'T', basis%nbf, naux, -occupation(istate, ispin) / spin_fact, phiphig, naux, &
                  1.0_dp, h_ao(:, :, ispin), basis%nbf)
-      write(*,*) 'FBFB manual2:', -SUM(phiphig(:, 1)**2)
 
     enddo
     call matrix_lower_to_full(h_ao(:, :, ispin))
@@ -885,40 +905,62 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   deallocate(phiphir)
   call clean_deallocate('phi_MO(r)', phi_mo_local)
 
-  call dump_out_matrix(.TRUE., '=== Exact exchange (FFTW) ===', h_ao)
+  call dump_out_matrix(.FALSE., '=== Exact exchange (FFTW) ===', h_ao)
 
   ex = 0.5_dp * SUM( p_matrix(:, :, :) * h_ao(:, :, :) )
 
   call stop_clock(timing_exchange)
 
 
-contains
+end subroutine setup_exchange_periodic
 
-function vcoulg(ig1, ig2, ig3)
+
+!=========================================================================
+pure function vcoulg_cutoff(ig1, ig2, ig3) result(vcoulg)
   implicit none
   integer, intent(in) :: ig1, ig2, ig3
   real(dp) :: vcoulg
   !=====
   integer  :: ig1m, ig2m, ig3m
   real(dp) :: g2
-  real(dp), parameter :: rcut = 12.0_dp
   !=====
 
   if( ig1 * ig2 * ig3 > 1 ) then
     ig1m = MERGE( ig1 - 1, ig1 - 1 - nfft1, ig1 <= nfft1/2)
     ig2m = MERGE( ig2 - 1, ig2 - 1 - nfft2, ig2 <= nfft2/2)
     ig3m = MERGE( ig3 - 1, ig3 - 1 - nfft3, ig3 <= nfft3/2)
-    g2 = SUM( MATMUL(bprim(:, :) , [ig1m, ig2m ,ig3m])**2 )
+    g2 = SUM( MATMUL(bprim(:, :), [ig1m, ig2m ,ig3m])**2 )
 
-    vcoulg = 4.0_dp * pi / g2  * ( 1.0_dp -  COS( SQRT(g2) * rcut ) )
+    vcoulg = 4.0_dp * pi / g2  * ( 1.0_dp - COS( SQRT(g2) * fft_rcut ) )
   else
-    vcoulg = 2.0_dp * pi * rcut**2 
+    vcoulg = 2.0_dp * pi * fft_rcut**2
+  endif
+
+end function vcoulg_cutoff
+
+
+!=========================================================================
+pure function vcoulg(ig1, ig2, ig3)
+  implicit none
+  integer, intent(in) :: ig1, ig2, ig3
+  real(dp) :: vcoulg
+  !=====
+  integer  :: ig1m, ig2m, ig3m
+  real(dp) :: g2
+  !=====
+
+  if( ig1 * ig2 * ig3 > 1 ) then
+    ig1m = MERGE( ig1 - 1, ig1 - 1 - nfft1, ig1 <= nfft1/2)
+    ig2m = MERGE( ig2 - 1, ig2 - 1 - nfft2, ig2 <= nfft2/2)
+    ig3m = MERGE( ig3 - 1, ig3 - 1 - nfft3, ig3 <= nfft3/2)
+    g2 = SUM( MATMUL(bprim(:, :), [ig1m, ig2m ,ig3m])**2 )
+
+    vcoulg = 4.0_dp * pi / g2
+  else
+    vcoulg = 0.0_dp
   endif
 
 end function vcoulg
-
-
-end subroutine setup_exchange_periodic
 
 
 !=========================================================================
@@ -1629,13 +1671,24 @@ subroutine poisson_solver_fft(rhor, vcoulr)
   pvg = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
   call C_F_POINTER(pvg, vg_fftw, [(nfft1/2+1), nfft2, nfft3])
 
-  do ig3=1, nfft3
-    do ig2=1, nfft2
-      do ig1=1, nfft1/2+1
-        vg_fftw(ig1, ig2, ig3) = vcoulg(ig1, ig2, ig3) * rhog_fftw(ig1, ig2, ig3)
+  select case(coulomb_type_hartree)
+  case(0)
+    do ig3=1, nfft3
+      do ig2=1, nfft2
+        do ig1=1, nfft1/2+1
+          vg_fftw(ig1, ig2, ig3) = vcoulg(ig1, ig2, ig3) * rhog_fftw(ig1, ig2, ig3)
+        enddo
       enddo
     enddo
-  enddo
+  case(1)
+    do ig3=1, nfft3
+      do ig2=1, nfft2
+        do ig1=1, nfft1/2+1
+          vg_fftw(ig1, ig2, ig3) = vcoulg_cutoff(ig1, ig2, ig3) * rhog_fftw(ig1, ig2, ig3)
+        enddo
+      enddo
+    enddo
+  end select
 
   pvr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
   call C_F_POINTER(pvr, vr_fftw, [nfft1, nfft2, nfft3])
@@ -1644,12 +1697,10 @@ subroutine poisson_solver_fft(rhor, vcoulr)
   call fftw_execute_dft_c2r(plan, vg_fftw, vr_fftw)
   call fftw_destroy_plan(plan)
 
-
   !
   ! Keep the potential on the local section of the grid only
   ifft_local = 0
   ifft_global = 0
-  rhor_fftw(:, :, :) = 0.0_dp
   do i3=1, nfft3
     do i2=1, nfft2
       do i1=1, nfft1
@@ -1662,157 +1713,14 @@ subroutine poisson_solver_fft(rhor, vcoulr)
     enddo
   enddo
 
+
 #else
   vcoulr(:) = rhor(:) ! Fake operation to cheat on the unused dummy variable check of the compiler
   call die('poisson_solver_fft: requires to be compiled FFTs (-DHAVE_FFTW3)')
 #endif
 
 
-contains
-
-pure function vcoulg(ig1, ig2, ig3)
-  implicit none
-  integer, intent(in) :: ig1, ig2, ig3
-  real(dp) :: vcoulg
-  !=====
-  integer  :: ig1m, ig2m, ig3m
-  real(dp) :: g2
-  real(dp), parameter :: rcut = 6.0_dp
-  !=====
-
-  if( ig1 * ig2 * ig3 > 1 ) then
-    ig1m = MERGE( ig1 - 1, ig1 - 1 - nfft1, ig1 <= nfft1/2)
-    ig2m = MERGE( ig2 - 1, ig2 - 1 - nfft2, ig2 <= nfft2/2)
-    ig3m = MERGE( ig3 - 1, ig3 - 1 - nfft3, ig3 <= nfft3/2)
-    g2 = SUM( MATMUL(bprim(:, :) , [ig1m, ig2m ,ig3m])**2 )
-
-    vcoulg = 4.0_dp * pi / g2  * ( 1.0 -  COS(SQRT(g2) * rcut) )
-  else
-    vcoulg = 2.0_dp * pi * rcut**2 ! 0.0_dp
-  endif
-
-end function vcoulg
-
 end subroutine poisson_solver_fft
-
-
-subroutine kerker_precond(rhor)
-  implicit none
-
-  real(dp), intent(inout)  :: rhor(:)
-  !=====
-  real(dp), parameter :: q0sq = 10.00_dp
-#if defined(HAVE_FFTW3)
-  type(C_PTR) :: plan
-  type(C_PTR) :: pr, pg, pvr, pvg, pg2
-  real(C_DOUBLE), pointer            :: rhor_fftw(:, :, :), vr_fftw(:, :, :)
-  complex(C_DOUBLE_COMPLEX), pointer :: rhog_fftw(:, :, :), vg_fftw(:, :, :)
-  integer :: ig1, ig2, ig3, i1, i2, i3, ifft_local, ifft_global
-  !=====
-
-  write(stdout, '(/,1x,a,es12.4)') 'Kerker preconditionning with q0**2: ', q0sq
-  ! Allocate arrays with FFTW functions
-  pr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
-  call C_F_POINTER(pr, rhor_fftw, [nfft1, nfft2, nfft3])
-  pg = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
-  call C_F_POINTER(pg, rhog_fftw, [(nfft1/2+1), nfft2, nfft3])
-
-  !
-  ! Gather the densities from the different MPI tasks
-  ifft_local = 0
-  ifft_global = 0
-  rhor_fftw(:, :, :) = 0.0_dp
-  do i3=1, nfft3
-    do i2=1, nfft2
-      do i1=1, nfft1
-        ifft_global = ifft_global + 1
-        if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
-          ifft_local = ifft_local + 1
-          rhor_fftw(i1, i2, i3) = rhor(ifft_local)
-        endif
-      enddo
-    enddo
-  enddo
-  call grid%sum(rhor_fftw)
-
-  !
-  ! Watch the reversed ordering nfft3, nfft2, nfft1
-  plan = fftw_plan_dft_r2c_3d(nfft3, nfft2, nfft1, rhor_fftw, rhog_fftw, FFTW_ESTIMATE)
-  call fftw_execute_dft_r2c(plan, rhor_fftw, rhog_fftw)
-  call fftw_destroy_plan(plan)
-
-  rhog_fftw(:, :, :) = rhog_fftw(:, :, :) / REAL(nfft_global, KIND=dp)
-
-  if( .NOT. ASSOCIATED(rhog_fftw_prev) ) then
-    pg2 = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
-    call C_F_POINTER(pg2, rhog_fftw_prev, [(nfft1/2+1), nfft2, nfft3])
-    rhog_fftw_prev(:, :, :) = rhog_fftw(:, :, :)
-    return
-  else
-
-    do ig3=1, nfft3
-      do ig2=1, nfft2
-        do ig1=1, nfft1/2+1
-          rhog_fftw(ig1, ig2, ig3) = kerker(ig1, ig2, ig3) * ( rhog_fftw(ig1, ig2, ig3) - rhog_fftw_prev(ig1, ig2, ig3) ) &
-                                    + rhog_fftw_prev(ig1, ig2, ig3)
-        enddo
-      enddo
-    enddo
-    rhog_fftw_prev(:, :, :) = rhog_fftw(:, :, :)
-
-  endif
-
-  pvr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
-  call C_F_POINTER(pvr, vr_fftw, [nfft1, nfft2, nfft3])
-
-  plan = fftw_plan_dft_c2r_3d(nfft3, nfft2, nfft1, rhog_fftw, vr_fftw, FFTW_ESTIMATE)
-  call fftw_execute_dft_c2r(plan, rhog_fftw, vr_fftw)
-  call fftw_destroy_plan(plan)
-
-
-  !
-  ! Keep the potential on the local section of the grid only
-  ifft_local = 0
-  ifft_global = 0
-  rhor_fftw(:, :, :) = 0.0_dp
-  do i3=1, nfft3
-    do i2=1, nfft2
-      do i1=1, nfft1
-        ifft_global = ifft_global + 1
-        if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
-          ifft_local = ifft_local + 1
-          rhor(ifft_local) = vr_fftw(i1, i2, i3)
-        endif
-      enddo
-    enddo
-  enddo
-
-#else
-  call die('kerker_precond: requires to be compiled FFTs (-DHAVE_FFTW3)')
-#endif
-
-
-contains
-
-pure function kerker(ig1, ig2, ig3)
-  implicit none
-  integer, intent(in) :: ig1, ig2, ig3
-  real(dp) :: kerker
-  !=====
-  integer  :: ig1m, ig2m, ig3m
-  real(dp) :: g2
-  !=====
-
-  ig1m = MERGE( ig1 - 1, ig1 - 1 - nfft1, ig1 <= nfft1/2)
-  ig2m = MERGE( ig2 - 1, ig2 - 1 - nfft2, ig2 <= nfft2/2)
-  ig3m = MERGE( ig3 - 1, ig3 - 1 - nfft3, ig3 <= nfft3/2)
-  g2 = SUM( MATMUL(bprim(:, :) , [ig1m, ig2m ,ig3m])**2 )
-
-  kerker = g2 / ( g2 + q0sq )
-
-end function kerker
-
-end subroutine kerker_precond
 
 
 !=========================================================================
