@@ -1317,4 +1317,12 @@ Exchange Energy           ,  -1.0253242172     , 0 , 1.0e-7
 SCF Total Energy          ,  -2.8179084628     , 0 , 1.0e-7
 gKS HOMO energy           ,  -24.891108        , 0 , 1.0e-4
 
+diamond_gth_08_hf.in      , 8-atom cell of diamond within HF, need_libcint need_fftw3
+Nucleus-Nucleus           , -51.1102279515     , 0 , 1.0e-7
+Hartree Energy            ,   4.3523671507     , 0 , 1.0e-7
+Exchange Energy           , -13.1822569359     , 0 , 1.0e-7
+SCF Total Energy          , -43.5733353282     , 0 , 1.0e-7
+gKS HOMO energy           ,    9.610570        , 0 , 1.0e-4
+gKS LUMO energy           ,   24.796982        , 0 , 1.0e-4
+
 

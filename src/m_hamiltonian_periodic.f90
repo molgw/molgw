@@ -52,6 +52,7 @@ module m_hamiltonian_periodic
   complex(C_DOUBLE_COMPLEX), pointer :: rhog_fftw_prev(:, :, :) ! only used in kerker_precond that is not finalized
 
   real(dp), allocatable, private :: bfr(:, :)
+  real(dp), allocatable, private :: bfrt(:, :)   ! Transpose of bfr
   real(dp), allocatable, private :: normalization_pbc(:)
 
   real(dp), private :: fft_rcut
@@ -62,14 +63,16 @@ contains
 !=========================================================================
 ! Set FFT grid points so to accommodate variations at Δx scale in real space
 !
-subroutine set_fft_grid(basis)
+subroutine set_fft_grid(basis, allocate_bfr_transpose)
   implicit none
 
   type(basis_set), intent(in) :: basis
+  logical, intent(in)         :: allocate_bfr_transpose
   !=====
   integer :: nfftx
-  integer :: fft_grids(23) = [ 16, 24, 32, 48, 60, 64, 72, 80, 90, 96, 108, 120, 128, 144, &
-                              160, 180, 192, 256, 288, 384, 512, 768, 1024]
+  integer :: fft_grids(26) = [ 12, 16, 20, 24, 32, 36, 48, 60, 64, 72, 80, 90, 96, &
+                               108, 120, 128, 144, &
+                               160, 180, 192, 256, 288, 384, 512, 768, 1024]
   integer :: i1, i2, i3, ifft_global, ifft_local
   integer :: ibf
   real(dp) :: maximum_extension
@@ -144,6 +147,10 @@ subroutine set_fft_grid(basis)
   !
   ! Evaluate and store basis functions on the real-space grid
   call calculate_basis_functions_periodic(basis)
+  if( allocate_bfr_transpose ) then
+    call clean_allocate('PBC basis functions on grid (tranpose)', bfrt, nfft_local, basis%nbf)
+    bfrt(:, :) = TRANSPOSE(bfr(:, :))
+  endif
 
   coulomb_type_hartree  = MERGE(1, 0, TRIM(capitalize(fft_coulomb_hartree))  == 'SPHERICAL')
   coulomb_type_exchange = MERGE(1, 0, TRIM(capitalize(fft_coulomb_exchange)) == 'SPHERICAL')
@@ -789,7 +796,10 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
       last = MIN(first + batch_max - 1, nfft_local)
       current_batch_size = last - first + 1
 
-      call DGEMM('N', 'N', basis%nbf, current_batch_size, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
+      !call DGEMM('N', 'N', basis%nbf, current_batch_size, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
+      !        bfr(:, first), basis%nbf, 0.0d0, tmp(:, :), basis%nbf)
+      ! Use symmetry of p_matrix
+      call DSYMM('L', 'L', basis%nbf, current_batch_size, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
               bfr(:, first), basis%nbf, 0.0d0, tmp(:, :), basis%nbf)
 
       rhor(first:last, ispin) &
@@ -825,6 +835,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   integer :: ig1, ig2, ig3, ig_local, ig_global
   real(dp), allocatable :: phi_i(:), phiphir(:), phiphir_global(:), phiphig_global(:)
   real(dp), allocatable :: phiphig(:, :)
+  real(dp), allocatable :: vg_sqrt(:, :, :)
   type(C_PTR) :: plan
   type(C_PTR) :: pr, pg
   real(C_DOUBLE), pointer            :: phiphir_fftw(:, :, :)
@@ -835,7 +846,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
 
   write(stdout, '(/,1x,a)') 'Calculate Exchange term with PBC'
 
-  if( .NOT. ALLOCATED(bfr) ) then
+  if( .NOT. ALLOCATED(bfr) .AND. .NOT. ALLOCATED(bfrt) ) then
     call die('setup_exchange_periodic: basis function on FFT grid should be available at this stage')
   endif
 
@@ -853,6 +864,20 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   enddo
   ng_local = ng_local_mpi(grid%rank + 1)
 
+  allocate(vg_sqrt(nfft1 / 2 + 1, nfft2, nfft3))
+  do ig3=1, nfft3
+    do ig2=1, nfft2
+      do ig1=1, nfft1/2+1
+        select case(coulomb_type_exchange)
+        case(0)
+          vg_sqrt(ig1, ig2, ig3) = SQRT(vcoulg(ig1, ig2, ig3))
+        case(1)
+          vg_sqrt(ig1, ig2, ig3) = SQRT(vcoulg_cutoff(ig1, ig2, ig3))
+        end select
+      enddo
+    enddo
+  enddo
+
   call clean_allocate('Temporary phiphi(G)', phiphig, ng_local, basis%nbf)
   allocate(phiphig_global(ng_global))
 
@@ -867,49 +892,59 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   do ispin=1, nspin
 
     do istate=1, nocc
+      call start_clock(timing_tmp0)
       !TODO use DGEMM?
+      call start_clock(timing_tmp1)
       phi_i(:) = MATMUL( c_matrix(:, istate, ispin), bfr(:, :) )
+      call stop_clock(timing_tmp1)
 
       do ibf=1, basis%nbf
-        phiphir(:) = phi_i(:) * bfr(ibf, : )
+        call start_clock(timing_tmp2)
+        if( ALLOCATED(bfrt) ) then
+          ! faster but doubles the memory consumption
+          phiphir(:) = phi_i(:) * bfrt(:, ibf)
+        else
+          phiphir(:) = phi_i(:) * bfr(ibf, :)
+        endif
+        call stop_clock(timing_tmp2)
+        call start_clock(timing_tmp3)
         phiphir_global = rho_local_to_global(phiphir)
+        call stop_clock(timing_tmp3)
 
+        !timing: this is super fast
         phiphir_fftw(:, :, :) = RESHAPE(phiphir_global(:), [nfft1, nfft2, nfft3] )
 
+        call start_clock(timing_tmp4)
         ! Perform FFT phi_i(r) * phi_α(r) -> M_{iα}(G)
         plan = fftw_plan_dft_r2c_3d(nfft3, nfft2, nfft1, phiphir_fftw, phiphig_fftw, FFTW_ESTIMATE)
         call fftw_execute_dft_r2c(plan, phiphir_fftw, phiphig_fftw)
         call fftw_destroy_plan(plan)
+        call stop_clock(timing_tmp4)
 
+        call start_clock(timing_tmp5)
         phiphig_fftw(:, :, :) = phiphig_fftw(:, :, :) * volume / REAL(nfft_global, KIND=dp)
 
         ! M_{iα}(G) * √v(G) → M_{iα}(G)
-        select case(coulomb_type_exchange)
-        case(0)
-          do ig3=1, nfft3
-            do ig2=1, nfft2
-              do ig1=1, nfft1/2+1
-                phiphig_fftw(ig1, ig2, ig3) = SQRT(vcoulg(ig1, ig2, ig3) / volume) * phiphig_fftw(ig1, ig2, ig3)
-              enddo
+        do ig3=1, nfft3
+          do ig2=1, nfft2
+            do ig1=1, nfft1/2+1
+              phiphig_fftw(ig1, ig2, ig3) = vg_sqrt(ig1, ig2, ig3) * phiphig_fftw(ig1, ig2, ig3)
             enddo
           enddo
-        case(1)
-          do ig3=1, nfft3
-            do ig2=1, nfft2
-              do ig1=1, nfft1/2+1
-                phiphig_fftw(ig1, ig2, ig3) = SQRT(vcoulg_cutoff(ig1, ig2, ig3) / volume) * phiphig_fftw(ig1, ig2, ig3)
-              enddo
-            enddo
-          enddo
-        end select
+        enddo
+        call stop_clock(timing_tmp5)
+        call start_clock(timing_tmp6)
 
         ! When G_1 /= 0, all the terms should be accounted with double weight,
         !   due to real to complex (r2c) FFT transform that only gives G_1 >=0
-        phiphig_fftw(2:, :, :) = SQRT(2.0_dp) * phiphig_fftw(2:, :, :)
+        phiphig_fftw(1, :, :)  = SQRT(1.0_dp / volume) * phiphig_fftw(1, :, :)
+        phiphig_fftw(2:, :, :) = SQRT(2.0_dp / volume) * phiphig_fftw(2:, :, :)
 
         ! Cast the complex FFT into a real array (G index will be summed over then the order does not matter)
         phiphig_global(:) = TRANSFER(phiphig_fftw, [1.0_dp, 1.0_dp])
+        call stop_clock(timing_tmp6)
 
+        call start_clock(timing_tmp7)
         ! Distribute the global phiphig_global to local copies
         ig_local = 0
         do ig_global=1, ng_global
@@ -918,12 +953,17 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
             phiphig(ig_local, ibf) = phiphig_global(ig_global)
           endif
         enddo
+        call stop_clock(timing_tmp7)
 
       enddo
 
+      call start_clock(timing_tmp8)
       ! Σ_x = - sum_i sum_G f_i/spin_fact M_{iα}(G) M_{iα}(G)
+      ! NOTE: ordering with 'T' is faster than 'N'
       call DSYRK('L', 'T', basis%nbf, ng_local, -occupation(istate, ispin) / spin_fact, phiphig, ng_local, &
                  1.0_dp, h_ao(:, :, ispin), basis%nbf)
+      call stop_clock(timing_tmp8)
+      call stop_clock(timing_tmp0)
 
     enddo
     call matrix_lower_to_full(h_ao(:, :, ispin))
@@ -933,6 +973,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
 
   deallocate(phiphir)
   deallocate(phi_i)
+  deallocate(vg_sqrt)
 
   call grid%sum(h_ao)
 
@@ -1136,7 +1177,6 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
 
         ipos = 0
         ineg = 0
-        call start_clock(timing_tmp9)
         do ifft_local=1, nfft_local
           if( (vloc(ifft_local) > 0.0_dp) ) then
             ipos = ipos + 1
@@ -1146,7 +1186,6 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
             tmp2(:, ineg) = bfr(:, ifft_local) * SQRT(-vloc(ifft_local))
           endif
         enddo
-        call stop_clock(timing_tmp9)
 
         ! Positive vloc
         call DSYRK('L', 'N', basis%nbf, npos, 1.0d0, tmp1, basis%nbf, &
@@ -2025,15 +2064,6 @@ subroutine write_restart_rhogrid()
   do ispin=1, nspin
     rho_tmp(:) = rho_local_to_global(rhoelecr(:, ispin))
 
-    !ifft_local = 0
-    !do ifft_global=1, nfft_global
-    !  if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
-    !    ifft_local = ifft_local + 1
-    !    rho_tmp(ifft_global) = rhoelecr(ifft_local, ispin)
-    !  endif
-    !enddo
-    !call grid%sum(rho_tmp)
-
     if( is_iomaster ) then
       write(rhofile) rho_tmp(:)
     endif
@@ -2216,6 +2246,9 @@ subroutine destroy_fft_grid()
   deallocate(rgrid)
   deallocate(rhoelecr)
   call clean_deallocate('PBC basis functions on grid', bfr)
+  if( ALLOCATED(bfrt) ) then
+    call clean_deallocate('PBC basis functions on grid (transpose)', bfrt)
+  endif
   deallocate(normalization_pbc)
 
 end subroutine destroy_fft_grid
