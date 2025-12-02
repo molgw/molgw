@@ -187,12 +187,12 @@ level000: m_definitions.o libint_onebody.o libint_onebody_grad.o libint_twobody.
           lebedev_quadrature.o pdbssolver1.o boys_function.o m_nofoutput.o
 
 level005: m_warning.o real_spherical_harmonics.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o m_scalapack_interface.o \
-          m_fftw3.o 
+          m_fftw3.o
 
 level008: m_mpi_tools.o m_elag.o
 
 level010: m_elements.o m_timing.o m_hdf5_tools.o m_memory.o m_fftw3.o \
-          m_string_tools.o m_numerical_tools.o m_linear_algebra.o  \
+          m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_solid_harmonics.o \
 	  m_mpi.o m_lbfgs.o m_cart_to_pure.o m_libxc_tools.o m_hessian.o m_gammatodm2.o
 
 level015: m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o m_diagf.o m_e_grad_occ.o m_e_grad_occ_cpx.o  
@@ -235,7 +235,7 @@ level100: molgw.o
         lebedev_quadrature.o pdbssolver1.o boys_function.o \
         m_warning.o real_spherical_harmonics.o m_lbfgs.o \
         m_mpi_tools.o m_libxc_tools.o \
-        m_elements.o m_timing.o m_memory.o m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_mpi.o m_cart_to_pure.o \
+        m_elements.o m_timing.o m_memory.o m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_mpi.o m_cart_to_pure.o m_solid_harmonics.o \
         m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o m_block_diago.o \
         m_basis_set.o \
         m_inputparam.o \
@@ -251,7 +251,7 @@ level100: molgw.o
         m_force.o m_realtime_tddft.o\
         molgw.o
 	$(LINKER) \
-                        m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_cart_to_pure.o \
+                        m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_cart_to_pure.o m_solid_harmonics.o \
                         m_mpi.o m_mpi_tools.o m_hdf5_tools.o m_fftw3.o m_scalapack_interface.o \
                         m_libxc_tools.o m_scalapack.o m_timing.o m_memory.o m_inputparam.o \
                         m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_scf.o m_selfenergy_tools.o m_atoms.o m_ecp.o \
@@ -372,7 +372,7 @@ m_hamiltonian_twobodies.o: m_definitions.o m_mpi.o m_scalapack.o m_warning.o m_t
 	$(FC_W_OPTS) -c m_hamiltonian_twobodies.f90 $(LIBXC_INCS)
 
 m_hamiltonian_periodic.o: m_definitions.o m_mpi.o m_scalapack.o m_warning.o m_timing.o m_memory.o m_cart_to_pure.o m_libxc_tools.o m_fftw3.o \
-	         m_inputparam.o m_eri_calculate.o m_basis_set.o m_dft_grid.o m_density_tools.o m_io.o m_hamiltonian_tools.o \
+	         m_inputparam.o m_eri_calculate.o m_basis_set.o m_dft_grid.o m_density_tools.o m_io.o m_hamiltonian_tools.o m_solid_harmonics.o \
                  m_hamiltonian_periodic.f90
 	$(FC_W_OPTS) -c m_hamiltonian_periodic.f90 $(LIBXC_INCS)
 
@@ -601,6 +601,9 @@ m_elements.o: m_definitions.o m_warning.o m_elements.f90
 
 m_cart_to_pure.o: m_definitions.o m_warning.o m_cart_to_pure.f90
 	$(FC_W_OPTS) -c m_cart_to_pure.f90 $(LIBXC_INCS)
+
+m_solid_harmonics.o: m_definitions.o m_warning.o m_solid_harmonics.f90
+	$(FC_W_OPTS) -c m_solid_harmonics.f90 $(LIBXC_INCS)
 
 m_warning.o: m_definitions.o m_warning.f90
 	$(FC_W_OPTS) -c m_warning.f90 $(LIBXC_INCS)

@@ -18,6 +18,7 @@ module m_hamiltonian_periodic
   use m_warning
   use m_memory
   use m_cart_to_pure
+  use m_solid_harmonics
   use m_inputparam
   use m_basis_set
   use m_libint_tools
@@ -1850,21 +1851,40 @@ subroutine calculate_basis_functions_periodic(basis)
 
           dr_shifted(:, :) = MATMUL( aprim, dr_shifted)
 
-          ! transform back to absolute position
-          do concurrent(ifft=1:nfft_local)
-            dr_shifted(:, ifft) = dr_shifted(:, ifft) + basis%shell(ishell)%x0(:)
-          enddo
-
-          allocate(basis_function_r_cart(ni_cart, nfft_local))
-
-          do ifft=1, nfft_local
-            do i_cart=1, ni_cart
-              basis_function_r_cart(i_cart, ifft) = eval_basis_function2(basis%bfc(ibf1_cart + i_cart - 1), dr_shifted(:, ifft))
+          select case(li)
+          case(0)
+            do concurrent(ifft=1:nfft_local)
+              bfr(ibf1:ibf2, ifft) = bfr(ibf1:ibf2, ifft) &
+                 + eval_l0(dr_shifted(:, ifft), basis%shell(ishell)%alpha, basis%shell(ishell)%coeff)
             enddo
-          enddo
-
-          bfr(ibf1:ibf2, :) = bfr(ibf1:ibf2, :) + MATMUL( TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)) , basis_function_r_cart(:, :) )
-          deallocate(basis_function_r_cart)
+          case(1)
+            do concurrent(ifft=1:nfft_local)
+              bfr(ibf1:ibf2, ifft) = bfr(ibf1:ibf2, ifft) &
+                 + eval_l1(dr_shifted(:, ifft), basis%shell(ishell)%alpha, basis%shell(ishell)%coeff)
+            enddo
+          case(2)
+            do concurrent(ifft=1:nfft_local)
+              bfr(ibf1:ibf2, ifft) = bfr(ibf1:ibf2, ifft) &
+                 + eval_l2(dr_shifted(:, ifft), basis%shell(ishell)%alpha, basis%shell(ishell)%coeff)
+            enddo
+          case(3)
+            do concurrent(ifft=1:nfft_local)
+              bfr(ibf1:ibf2, ifft) = bfr(ibf1:ibf2, ifft) &
+                 + eval_l3(dr_shifted(:, ifft), basis%shell(ishell)%alpha, basis%shell(ishell)%coeff)
+            enddo
+          case(4)
+            do concurrent(ifft=1:nfft_local)
+              bfr(ibf1:ibf2, ifft) = bfr(ibf1:ibf2, ifft) &
+                 + eval_l4(dr_shifted(:, ifft), basis%shell(ishell)%alpha, basis%shell(ishell)%coeff)
+            enddo
+          case(5)
+            do concurrent(ifft=1:nfft_local)
+              bfr(ibf1:ibf2, ifft) = bfr(ibf1:ibf2, ifft) &
+                 + eval_l5(dr_shifted(:, ifft), basis%shell(ishell)%alpha, basis%shell(ishell)%coeff)
+            enddo
+          case default
+            call die('angular momentum l > 5 not implemented')
+          end select
 
         enddo
       enddo
