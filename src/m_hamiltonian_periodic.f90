@@ -271,9 +271,6 @@ subroutine setup_overlap_onecell(basis, shift, s_matrix)
   real(C_DOUBLE), allocatable :: alphaB(:)
   real(C_DOUBLE), allocatable :: cB(:)
   !=====
-  integer :: i_cart, j_cart, ij
-  integer :: ibf_cart, jbf_cart
-  !=====
 
   call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
 
@@ -392,9 +389,6 @@ subroutine setup_kinetic_onecell(basis, shift, kin_ao)
   real(C_DOUBLE)             :: B(3)
   real(C_DOUBLE), allocatable :: alphaB(:)
   real(C_DOUBLE), allocatable :: cB(:)
-  !=====
-  integer :: i_cart, j_cart, ij
-  integer :: ibf_cart, jbf_cart
   !=====
 
   call start_clock(MERGE(0, timing_hamiltonian_kin, in_rt_tddft))
@@ -1802,10 +1796,10 @@ subroutine calculate_basis_functions_periodic(basis)
   !=====
   integer               :: gt
   integer               :: ifft
-  integer               :: ishell, ibf1, ibf2, ibf1_cart, ibf
-  integer               :: ni_cart, li, i_cart
+  integer               :: ishell, ibf1, ibf2, ibf
+  integer               :: li
   integer               :: i1, i2, i3
-  real(dp), allocatable :: basis_function_r_cart(:, :), dr(:, :), dr_shifted(:, :)
+  real(dp), allocatable :: dr(:, :), dr_shifted(:, :)
   !=====
 
   call start_clock(timing_pbc_eval_bf)
@@ -1819,14 +1813,15 @@ subroutine calculate_basis_functions_periodic(basis)
   allocate(dr_shifted(3, nfft_local))
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
+  if( gt /= PUREG) then
+    call die('calculate_basis_functions_periodic: only pure solid harmonics implemented')
+  endif
 
-  !$OMP PARALLEL PRIVATE(li, ni_cart, ibf1, ibf1_cart, ibf2, basis_function_r_cart, dr)
+  !$OMP PARALLEL PRIVATE(li, ibf1, ibf2, dr, dr_shifted)
   !$OMP DO
   do ishell=1, basis%nshell
     li      = basis%shell(ishell)%am
-    ni_cart = number_basis_function_am('CART',li)
     ibf1      = basis%shell(ishell)%istart
-    ibf1_cart = basis%shell(ishell)%istart_cart
     ibf2      = basis%shell(ishell)%iend
 
     ! relative position to the shell center
@@ -1848,6 +1843,7 @@ subroutine calculate_basis_functions_periodic(basis)
           do concurrent(ifft=1:nfft_local)
             dr_shifted(:, ifft) = dr(:, ifft) + [i1, i2, i3]
           enddo
+
 
           dr_shifted(:, :) = MATMUL( aprim, dr_shifted)
 

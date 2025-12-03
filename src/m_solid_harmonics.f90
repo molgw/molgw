@@ -42,9 +42,9 @@ contains
       expo = expo + exp(-alpha(i) * r2) * c(i)
     enddo
 
-    shell(1) = x * expo
-    shell(2) = y * expo
-    shell(3) = z * expo
+    shell(1) = y * expo
+    shell(2) = z * expo
+    shell(3) = x * expo
 
   end function eval_l1
 

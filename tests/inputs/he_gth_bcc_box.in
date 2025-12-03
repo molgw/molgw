@@ -7,6 +7,8 @@
  ecp_elements='He'
  ecp_type='hf.gth'
 
+ npulay_hist=3
+
  a1= -5., 5., 5.
  a2=  5.,-5., 5.
  a3=  5., 5.,-5.
