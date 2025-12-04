@@ -74,7 +74,7 @@ program molgw
   type(lbfgs_state)          :: lbfgs_plan
   type(energy_contributions) :: en_gks, en_mbpt, en_noft
   integer                 :: restart_type
-  integer                 :: nstate, nocc
+  integer                 :: nstate, nocc, ng_global
   integer                 :: istep, istring
   logical                 :: is_restart, is_big_restart, is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
@@ -642,9 +642,15 @@ program molgw
     call selfenergy_set_state_range(nstate, occupation)
     call write_cc4s_eigenenergies(occupation(ncore_G+1:nvirtual_G-1,:), &
                                   energy(ncore_G+1:nvirtual_G-1,:), cc4s_output)
-    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
-    call write_cc4s_coulombvertex(eri_3center_mo, cc4s_output)
-    call destroy_eri_3center_mo()
+    if( .NOT. pbc_ ) then
+      call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+      call write_cc4s_coulombvertex(nauxil_global, eri_3center_mo, cc4s_output)
+      call destroy_eri_3center_mo()
+    else
+      call calculate_coulombvertex_periodic(c_matrix)
+      call write_cc4s_coulombvertex(nauxil_global_periodic, eri_3center_mo_periodic, cc4s_output)
+      call destroy_eri_3center_mo_periodic()
+    endif
   endif
 
   if( print_multipole_ ) then

@@ -3,7 +3,7 @@
 ! Authors: Fabien Bruneval
 !
 ! This module contains
-!   routines to calculate the hamiltonian terms when PBC are used
+!   routines to calculate the hamiltonian parts when PBC are used
 !
 !=========================================================================
 #include "molgw.h"
@@ -34,6 +34,7 @@ module m_hamiltonian_periodic
 #if defined(HAVE_FFTW3)
   use m_fftw3
 #endif
+  implicit none
 
   integer, private :: nx                ! local copy of input variable fft_neighbors
   integer, private :: coulomb_type_hartree  = 0  ! 0 -> 1/r
@@ -59,6 +60,9 @@ module m_hamiltonian_periodic
 
   real(dp), private :: fft_rcut
 
+  integer, protected               :: nauxil_global_periodic
+  real(dp), allocatable, protected :: eri_3center_mo_periodic(:, :, :, :)
+
 contains
 
 
@@ -66,7 +70,6 @@ contains
 ! Set FFT grid points so to accommodate variations at Δx scale in real space
 !
 subroutine set_fft_grid(basis, allocate_bfr_transpose)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   logical, intent(in)         :: allocate_bfr_transpose
@@ -173,7 +176,6 @@ subroutine set_fft_grid(basis, allocate_bfr_transpose)
 contains
   ! Find smallest fft_grid greater than fftx
   function next_in_grid(nfftx)
-    implicit none
 
     integer, intent(in) :: nfftx
     integer :: next_in_grid
@@ -197,7 +199,6 @@ end subroutine set_fft_grid
 
 !=========================================================================
 subroutine setup_overlap_periodic(basis, overlap_ao)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out) :: overlap_ao(:, :)
@@ -252,7 +253,6 @@ end subroutine setup_overlap_periodic
 ! Calculate ( \alpha | \beta ) with | beta) that may be shifted in the neighboring cell
 !
 subroutine setup_overlap_onecell(basis, shift, s_matrix)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: shift(3)
   real(dp), intent(out)       :: s_matrix(:, :)
@@ -328,7 +328,6 @@ end subroutine setup_overlap_onecell
 
 !=========================================================================
 subroutine setup_kinetic_periodic(basis, kin_ao)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out) :: kin_ao(:, :)
@@ -371,7 +370,7 @@ end subroutine setup_kinetic_periodic
 ! Calculate ( \alpha | p^2/2 |\beta ) with | beta) that may be shifted in the neighboring cell
 !
 subroutine setup_kinetic_onecell(basis, shift, kin_ao)
-  implicit none
+
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: shift(3)
   real(dp), intent(out)       :: kin_ao(:, :)
@@ -446,7 +445,6 @@ end subroutine setup_kinetic_onecell
 
 !=========================================================================
 subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out) :: h_ao(:, :)
@@ -513,7 +511,7 @@ end subroutine setup_nucleus_periodic
 
 !=========================================================================
 subroutine setup_hxc_periodic(basis, p_matrix, h_ao, ehartree, exc)
-  implicit none
+
   type(basis_set), intent(in) :: basis
   class(*), intent(in)  :: p_matrix(:, :, :)
   real(dp), intent(out) :: h_ao(:, :, :)
@@ -542,7 +540,6 @@ end subroutine setup_hxc_periodic
 
 !=========================================================================
 subroutine setup_hartree_periodic(basis, p_matrix, vloc, ehartree, h_ao)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   class(*), intent(in)  :: p_matrix(:, :, :)
@@ -646,7 +643,6 @@ end subroutine setup_hartree_periodic
 
 !=========================================================================
 subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(inout)     :: vloc(:, :)
@@ -757,7 +753,6 @@ end subroutine setup_vxc_periodic
 
 !=========================================================================
 subroutine calculate_density_periodic(basis, p_matrix, rhor)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)  :: p_matrix(:, :, :)
@@ -816,7 +811,6 @@ end subroutine calculate_density_periodic
 
 !=========================================================================
 subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_ao)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)  :: p_matrix(:, :, :)
@@ -984,8 +978,141 @@ end subroutine setup_exchange_periodic
 
 
 !=========================================================================
+subroutine calculate_coulombvertex_periodic(c_matrix)
+
+  real(dp), intent(in) ::  c_matrix(:, :, :)
+  !=====
+  integer :: ng_local_mpi(grid%nproc)
+  integer :: irank
+  integer :: ispin, istate, ng_local, jstate, nstate, nbf
+  integer :: ig1, ig2, ig3, ig_local, ig_global
+  real(dp), allocatable :: phi_i(:), phi_j(:), phiphir(:), phiphir_global(:), phiphig_global(:)
+  real(dp), allocatable :: vg_sqrt(:, :, :)
+  type(C_PTR) :: plan
+  type(C_PTR) :: pr, pg
+  real(C_DOUBLE), pointer            :: phiphir_fftw(:, :, :)
+  complex(C_DOUBLE_COMPLEX), pointer :: phiphig_fftw(:, :, :)
+  !=====
+
+  !call start_clock(timing_exchange)
+
+  write(stdout, '(/,1x,a)') 'Calculate Coulomb vertices with PBC'
+  nbf    = SIZE(c_matrix, DIM=1)
+  nstate = SIZE(c_matrix, DIM=2)
+
+  if( .NOT. ALLOCATED(bfr) .AND. .NOT. ALLOCATED(bfrt) ) then
+    call die('calculate_coulombvertex_periodic: basis function on FFT grid should be available at this stage')
+  endif
+
+  allocate(phi_i(nfft_local))
+  allocate(phi_j(nfft_local))
+
+  allocate(phiphir(nfft_local))
+  ! Number of G vectors is not exactly nfft_global because of r2c transform
+  nauxil_global_periodic = 2 * (nfft1 / 2 + 1) * nfft2 * nfft3
+  ng_local_mpi(:) = 0
+  do ig_global=1, nauxil_global_periodic
+    irank = MODULO(ig_global - 1, grid%nproc)
+    ng_local_mpi(irank + 1) = ng_local_mpi(irank + 1) + 1
+  enddo
+  ng_local = ng_local_mpi(grid%rank + 1)
+
+  allocate(vg_sqrt(nfft1 / 2 + 1, nfft2, nfft3))
+  do ig3=1, nfft3
+    do ig2=1, nfft2
+      do ig1=1, nfft1/2+1
+        select case(coulomb_type_exchange)
+        case(0)
+          vg_sqrt(ig1, ig2, ig3) = SQRT(vcoulg(ig1, ig2, ig3))
+        case(1)
+          vg_sqrt(ig1, ig2, ig3) = SQRT(vcoulg_cutoff(ig1, ig2, ig3))
+        end select
+      enddo
+    enddo
+  enddo
+
+  call clean_allocate('3-center integrals in PW auxiliary basis', eri_3center_mo_periodic, ng_local, nstate, nstate, nspin)
+  allocate(phiphig_global(nauxil_global_periodic))
+
+  ! Allocate arrays with FFTW functions
+  pr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
+  call C_F_POINTER(pr, phiphir_fftw, [nfft1, nfft2, nfft3])
+  pg = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
+  call C_F_POINTER(pg, phiphig_fftw, [(nfft1/2+1), nfft2, nfft3])
+
+
+  do ispin=1, nspin
+
+    do istate=1, nstate
+      !TODO use DGEMM?
+      phi_i(:) = MATMUL( c_matrix(:, istate, ispin), bfr(:, :) )
+
+      do jstate=1, nstate
+        phi_j(:) = MATMUL( c_matrix(:, jstate, ispin), bfr(:, :) )
+
+        phiphir(:) = phi_i(:) * phi_j(:)
+        phiphir_global = rho_local_to_global(phiphir)
+
+        phiphir_fftw(:, :, :) = RESHAPE(phiphir_global(:), [nfft1, nfft2, nfft3] )
+
+        ! Perform FFT phi_i(r) * phi_j(r) -> M_{ij}(G)
+        plan = fftw_plan_dft_r2c_3d(nfft3, nfft2, nfft1, phiphir_fftw, phiphig_fftw, FFTW_ESTIMATE)
+        call fftw_execute_dft_r2c(plan, phiphir_fftw, phiphig_fftw)
+        call fftw_destroy_plan(plan)
+
+        phiphig_fftw(:, :, :) = phiphig_fftw(:, :, :) * volume / REAL(nfft_global, KIND=dp)
+
+        ! M_{iα}(G) * √v(G) → M_{iα}(G)
+        do ig3=1, nfft3
+          do ig2=1, nfft2
+            do ig1=1, nfft1/2+1
+              phiphig_fftw(ig1, ig2, ig3) = vg_sqrt(ig1, ig2, ig3) * phiphig_fftw(ig1, ig2, ig3)
+            enddo
+          enddo
+        enddo
+
+        ! When G_1 /= 0, all the terms should be accounted with double weight,
+        !   due to real to complex (r2c) FFT transform that only gives G_1 >=0
+        phiphig_fftw(1, :, :)  = SQRT(1.0_dp / volume) * phiphig_fftw(1, :, :)
+        phiphig_fftw(2:, :, :) = SQRT(2.0_dp / volume) * phiphig_fftw(2:, :, :)
+
+        ! Cast the complex FFT into a real array (G index will be summed over then the order does not matter)
+        phiphig_global(:) = TRANSFER(phiphig_fftw, [1.0_dp, 1.0_dp])
+
+
+        if( istate == 1 .AND. jstate == 1 ) then
+          write(stdout, *) 'test integral (11|11) (Ha): ', DOT_PRODUCT(phiphig_global(:), phiphig_global(:))
+        endif
+
+        ! Distribute the global phiphig_global to local copies
+        ig_local = 0
+        do ig_global=1, nauxil_global_periodic
+          if( MODULO(ig_global - 1, grid%nproc) == grid%rank ) then
+            ig_local = ig_local + 1
+            eri_3center_mo_periodic(ig_local, istate, jstate, ispin) = phiphig_global(ig_global)
+          endif
+        enddo
+
+      enddo
+
+    enddo
+  enddo
+
+
+  deallocate(phiphir)
+  deallocate(phi_i)
+  deallocate(vg_sqrt)
+
+
+  !call stop_clock(timing_exchange)
+
+
+end subroutine calculate_coulombvertex_periodic
+
+
+!=========================================================================
 pure function vcoulg_cutoff(ig1, ig2, ig3) result(vcoulg)
-  implicit none
+
   integer, intent(in) :: ig1, ig2, ig3
   real(dp) :: vcoulg
   !=====
@@ -1009,7 +1136,7 @@ end function vcoulg_cutoff
 
 !=========================================================================
 pure function vcoulg(ig1, ig2, ig3)
-  implicit none
+
   integer, intent(in) :: ig1, ig2, ig3
   real(dp) :: vcoulg
   !=====
@@ -1032,11 +1159,28 @@ end function vcoulg
 
 
 !=========================================================================
+pure function gnorm(ig1, ig2, ig3)
+
+  integer, intent(in) :: ig1, ig2, ig3
+  real(dp) :: gnorm
+  !=====
+  integer  :: ig1m, ig2m, ig3m
+  !=====
+
+  ig1m = MERGE( ig1 - 1, ig1 - 1 - nfft1, ig1 <= nfft1/2)
+  ig2m = MERGE( ig2 - 1, ig2 - 1 - nfft2, ig2 <= nfft2/2)
+  ig3m = MERGE( ig3 - 1, ig3 - 1 - nfft3, ig3 <= nfft3/2)
+
+  gnorm = SQRT( SUM( MATMUL(bprim(:, :), [ig1m, ig2m ,ig3m])**2 ) )
+
+end function gnorm
+
+
+!=========================================================================
 ! From vloc(r) to H_αβ
 ! works with or without spin index
 !
 subroutine calculate_hao_periodic(basis, vloc, h_ao)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in) :: vloc(..)
@@ -1215,7 +1359,6 @@ end subroutine calculate_hao_periodic
 ! Convention: nuclei have a negative charge (since electrons have positive one)
 !
 subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
-  implicit none
 
   real(dp), intent(out) :: rhonuclr(:)
   real(dp), intent(out) :: selfenergy
@@ -1353,9 +1496,8 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
 contains
 
   subroutine read_potential_data(filename, nrad, r, phi)
-    implicit none
-    character(len=*), intent(in) :: filename
 
+    character(len=*), intent(in) :: filename
     !=====
     integer, intent(out) :: nrad
     real(dp), allocatable, intent(out) :: r(:), phi(:)
@@ -1500,7 +1642,6 @@ end subroutine prepare_nuclei_density_periodic
 ! Convention: nuclei have a negative charge (since electrons have positive one)
 !
 subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
-  implicit none
 
   real(dp), intent(out) :: rhonuclr(:)
   real(dp), intent(out) :: selfenergy
@@ -1606,7 +1747,6 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
 contains
 
 pure function gth_potnucl(rr) result(potr)
-  implicit none
 
   real(dp), intent(in) :: rr
   real(dp)             :: potr
@@ -1624,7 +1764,6 @@ pure function gth_potnucl(rr) result(potr)
 end function gth_potnucl
 
 pure function gth_rhonucl(rr) result(rhor)
-  implicit none
 
   real(dp), intent(in) :: rr
   real(dp)             :: rhor
@@ -1646,7 +1785,6 @@ end function gth_rhonucl
 
 
 pure function selfenergy_quadrature() result(integral)
-  implicit none
 
   real(dp) :: integral
   !=====
@@ -1682,7 +1820,6 @@ end subroutine prepare_nuclei_density_analytic_periodic
 ! Communications are needed and FFTs do not scalable with MPI tasks
 !
 subroutine poisson_solver_fft(rhor, vcoulr)
-  implicit none
 
   real(dp), intent(in)  :: rhor(:)
   real(dp), intent(out) :: vcoulr(:)
@@ -1791,7 +1928,6 @@ end subroutine poisson_solver_fft
 
 !=========================================================================
 subroutine calculate_basis_functions_periodic(basis)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   !=====
@@ -1919,7 +2055,6 @@ end subroutine calculate_basis_functions_periodic
 ! Non-local part of the GTH pseudopotentials
 ! Add it to the input h_ecp
 subroutine setup_nucleus_gth_nonlocal_periodic(basis, h_ecp)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: h_ecp(:, :)
@@ -2064,7 +2199,6 @@ end subroutine setup_nucleus_gth_nonlocal_periodic
 
 !=========================================================================
 subroutine write_restart_rhogrid()
-  implicit none
 
   !=====
   integer :: rhofile, ispin
@@ -2095,7 +2229,6 @@ end subroutine write_restart_rhogrid
 
 !=========================================================================
 function read_restart_rhogrid()
-  implicit none
 
   logical :: read_restart_rhogrid
   !=====
@@ -2144,7 +2277,6 @@ end function read_restart_rhogrid
 
 !=========================================================================
 function rho_local_to_global(rho_local) RESULT(rho_global)
-  implicit none
 
   real(dp), intent(in) :: rho_local(:)
   real(dp), allocatable :: rho_global(:)
@@ -2172,7 +2304,6 @@ end function rho_local_to_global
 
 !=========================================================================
 function rho_global_to_local(rho_global) RESULT(rho_local)
-  implicit none
 
   real(dp), intent(inout) :: rho_global(:)
   real(dp), allocatable :: rho_local(:)
@@ -2200,7 +2331,6 @@ end function rho_global_to_local
 ! PBC may induce violation of the normalization of the basis functions
 ! Renormalize here
 subroutine renormalize_pbc(matrix_ao)
-  implicit none
 
   real(dp), intent(inout) :: matrix_ao(:, :)
   !=====
@@ -2216,7 +2346,6 @@ end subroutine renormalize_pbc
 
 !=========================================================================
 subroutine write_cube_file_periodic_wfn(c_matrix)
-  implicit none
 
   real(dp), intent(in) :: c_matrix(:, :, :)
   !=====
@@ -2254,9 +2383,16 @@ end subroutine write_cube_file_periodic_wfn
 
 
 !=========================================================================
-subroutine destroy_fft_grid()
-  implicit none
+subroutine destroy_eri_3center_mo_periodic()
+  !=====
+  !=====
 
+  call clean_deallocate('3-center integrals in PW auxiliary basis', eri_3center_mo_periodic)
+end subroutine
+
+
+!=========================================================================
+subroutine destroy_fft_grid()
   !=====
   !=====
 

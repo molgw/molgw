@@ -1272,7 +1272,7 @@ subroutine read_cc4s_coulombvertex(rootname)
   do istate=1, nstate
     do jstate=1, nstate
       read(unitcv) coulomb_vertex_ij(:)
-      eri_3center_mo(1:naux, istate, jstate, 1)      = coulomb_vertex_ij(:)%re
+      eri_3center_mo(1:naux, istate, jstate, 1)        = coulomb_vertex_ij(:)%re
       eri_3center_mo(naux+1:2*naux, istate, jstate, 1) = coulomb_vertex_ij(:)%im
     enddo
   enddo
@@ -1350,9 +1350,10 @@ end subroutine read_cc4s_coulombvertex
 
 
 !=========================================================================
-subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
+subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, rootname)
   implicit none
 
+  integer, intent(in) :: nauxil_in
   real(dp), intent(in) :: eri_3center_updated(:, :, :, :)
   character(len=*), intent(in), optional :: rootname
   !=====
@@ -1393,10 +1394,10 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
   ! complex_length in bytes whereas STORAGE_SIZE is in bits
   complex_length = STORAGE_SIZE(coulomb_vertex_ij(1)) / 8
 
-  if( MOD(nauxil_global, 2) == 0 ) then ! even
-    naux = nauxil_global / 2
+  if( MOD(nauxil_in, 2) == 0 ) then ! even
+    naux = nauxil_in / 2
   else ! odd
-    naux = (nauxil_global + 1) / 2
+    naux = (nauxil_in + 1) / 2
   endif
 
   allocate(coulomb_vertex_ij(naux))
@@ -1426,12 +1427,12 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
 
 #if !defined(HAVE_MPI)
   write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with plain fortran'
-  write(stdout, '(1x,a,i6,a,i4,a,i4)') 'Dimensions written:', naux, ' x ', nstate, ' x ', nstate
+  write(stdout, '(1x,a,i8,a,i4,a,i4)') 'Dimensions written: ', naux, ' x ', nstate, ' x ', nstate
   open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.elements', form='unformatted', access='stream', &
        status='unknown', action='write')
   do istate=LBOUND(eri_3center_updated, DIM=2), UBOUND(eri_3center_updated, DIM=2)
     do jstate=LBOUND(eri_3center_updated, DIM=3), UBOUND(eri_3center_updated, DIM=3)
-      if( MOD(nauxil_global, 2) == 0 ) then ! even
+      if( MOD(nauxil_in, 2) == 0 ) then ! even
         coulomb_vertex_ij(:) = CMPLX( eri_3center_updated(1:naux, istate, jstate, 1), &
                                       eri_3center_updated(naux+1:2*naux, istate, jstate, 1) )
       else ! odd
@@ -1447,10 +1448,10 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
 
 #else
 
-  ! Create a SCALAPACK matrix (nauxil_global, nstate**2) that is distributed on column index only
-  mtmp = NUMROC(nauxil_global, block_row, iprow_cd, first_row, nprow_cd)
+  ! Create a SCALAPACK matrix (nauxil_in, nstate**2) that is distributed on column index only
+  mtmp = NUMROC(nauxil_in, block_row, iprow_cd, first_row, nprow_cd)
   ntmp = NUMROC(nstate2      , block_col, ipcol_cd, first_col, npcol_cd)
-  call DESCINIT(desc_tmp, nauxil_global, nstate2, block_row, block_col, first_row, first_col, cntxt_cd, MAX(1, mtmp), info)
+  call DESCINIT(desc_tmp, nauxil_in, nstate2, block_row, block_col, first_row, first_col, cntxt_cd, MAX(1, mtmp), info)
 
   call clean_allocate('Writing 3-center MO integrals', eri_3center_tmp, 1, mtmp, 1, ntmp)
 
@@ -1461,14 +1462,14 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
                      nprow_eri3_mo, ' x ', npcol_eri3_mo, ')   to   (', &
                      nprow_cd, ' x ', npcol_cd, ')'
 
-  call DESCINIT(desc_updated, nauxil_global, nstate2, MB_eri3_mo, NB_eri3_mo, first_row, first_col, cntxt_eri3_mo, &
+  call DESCINIT(desc_updated, nauxil_in, nstate2, MB_eri3_mo, NB_eri3_mo, first_row, first_col, cntxt_eri3_mo, &
                 MAX(1, nauxil_local), info)
-  call PDGEMR2D(nauxil_global, nstate2, eri_3center_updated, 1, 1, desc_updated, &
+  call PDGEMR2D(nauxil_in, nstate2, eri_3center_updated, 1, 1, desc_updated, &
                                       eri_3center_tmp, 1, 1, desc_tmp, cntxt_eri3_mo)
 
   write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with MPI-IO'
   write(stdout, '(5x,a,i4,a,i4)') 'using a processor grid:', nprow_cd, ' x ', npcol_cd
-  write(stdout, '(1x,a,i6,a,i4,a,i4)') 'Dimensions written:', naux, ' x ', nstate, ' x ', nstate
+  write(stdout, '(1x,a,i8,a,i4,a,i4)') 'Dimensions written: ', naux, ' x ', nstate, ' x ', nstate
 
   disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(naux, KIND=MPI_OFFSET_KIND)
 
@@ -1488,7 +1489,7 @@ subroutine write_cc4s_coulombvertex(eri_3center_updated, rootname)
       if( ipcol_cd /= INDXG2P(ijstate_global, block_col, 0, first_col, npcol_cd) ) cycle
       ijstate_local = INDXG2L(ijstate_global, block_col, 0, first_col, npcol_cd)
 
-      if( MOD(nauxil_global, 2) == 0 ) then ! even
+      if( MOD(nauxil_in, 2) == 0 ) then ! even
         coulomb_vertex_ij(:) = CMPLX( eri_3center_tmp(1:naux, ijstate_local), eri_3center_tmp(naux+1:2*naux, ijstate_local) )
       else ! odd
         coulomb_vertex_ij(1:naux-1) = CMPLX( eri_3center_tmp(1:naux-1, ijstate_local), &

@@ -254,7 +254,7 @@ module m_libcint_tools
     !  import :: C_INT,C_DOUBLE,C_PTR
     !  integer(C_INT),value  :: natm,nbas
     !  real(C_DOUBLE),intent(in) :: env(*)
-    !  integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
+    !  integer(C_INT),intent(in) :: shls(*), atm(*), bas(*)
     !  real(C_DOUBLE),intent(out) :: array_cart(*)
     !  type(C_PTR) :: opt(*)
     !end function cint2e_cart
@@ -1247,8 +1247,8 @@ subroutine transform_libcint_to_molgw_2d(gaussian_type, am1, am2, array_in, matr
   !=====
 
   gt_tag = get_gaussian_type_tag(gaussian_type)
-  n1c = number_basis_function_am('CART',am1)
-  n2c = number_basis_function_am('CART',am2)
+  n1c = number_basis_function_am('CART', am1)
+  n2c = number_basis_function_am('CART', am2)
   n1  = number_basis_function_am(gaussian_type, am1)
   n2  = number_basis_function_am(gaussian_type, am2)
 
@@ -1309,9 +1309,9 @@ subroutine transform_libcint_to_molgw_3d(gaussian_type_left, am1, gaussian_type_
 
   gt_tagl = get_gaussian_type_tag(gaussian_type_left)
   gt_tagr = get_gaussian_type_tag(gaussian_type_right)
-  n1c = number_basis_function_am('CART',am1)
-  n2c = number_basis_function_am('CART',am2)
-  n3c = number_basis_function_am('CART',am3)
+  n1c = number_basis_function_am('CART', am1)
+  n2c = number_basis_function_am('CART', am2)
+  n3c = number_basis_function_am('CART', am3)
   n1  = number_basis_function_am(gaussian_type_left, am1)
   n2  = number_basis_function_am(gaussian_type_right, am2)
   n3  = number_basis_function_am(gaussian_type_right, am3)

@@ -599,13 +599,13 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
       write(stdout, '(/,1x,a)') 'Transform the integrals from AO to filtered MO'
       call calculate_eri_3center_mo_no(c_matrix_no_mo, eri_3center_no)
 
-      call write_cc4s_coulombvertex(eri_3center_no, cc4s_output)
+      call write_cc4s_coulombvertex(nauxil_global, eri_3center_no, cc4s_output)
 
       call clean_deallocate('3-center NO integrals', eri_3center_no, verbose=.TRUE.)
     else
       write(stdout, '(/,1x,a)') 'Transform the integrals from AO to filtered MO'
       call calculate_eri_3center_mo(c_matrix_nvo, 1, nstate_filtered, 1, nstate_filtered)
-      call write_cc4s_coulombvertex(eri_3center_mo, cc4s_output)
+      call write_cc4s_coulombvertex(nauxil_global, eri_3center_mo, cc4s_output)
       call destroy_eri_3center_mo()
     endif
   endif
