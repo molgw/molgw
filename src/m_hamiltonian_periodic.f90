@@ -3,6 +3,7 @@
 ! Authors: Fabien Bruneval
 !
 ! This module contains
+!   routines to calculate the hamiltonian terms when PBC are used
 !
 !=========================================================================
 #include "molgw.h"
