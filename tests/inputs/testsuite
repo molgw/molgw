@@ -1175,7 +1175,7 @@ SCF Total Energy          ,  -2.8615142286      , 0 , 1.0e-7
 Testing integral (11|11)  ,   1.02581670E+00    , 0 , 1.0e-7
 MP2 correlation           ,  -0.0354780027      , 0 , 1.0e-7
 
-he_hf_cc4s_input.in      , HF+MP2 helium atom with output of Cc4s files, restart
+he_hf_cc4s_input.in      , HF+MP2 helium atom from input Cc4s files, restart
 HF Total Energy           ,  -2.8615142286      , 0 , 1.0e-7
 Testing integral (11|11)  ,   1.02581670E+00    , 0 , 1.0e-7
 MP2 correlation           ,  -0.0354780027      , 0 , 1.0e-7
@@ -1325,4 +1325,12 @@ SCF Total Energy          , -43.5733353282     , 0 , 1.0e-7
 gKS HOMO energy           ,    9.610570        , 0 , 1.0e-4
 gKS LUMO energy           ,   24.796982        , 0 , 1.0e-4
 
+he_hf_cc4s_box_output.in  , HF helium atom with output of Cc4s files
+SCF Total Energy          ,  -2.8618499703      , 0 , 1.0e-7
+Testing integral (11|11)  ,   1.02301683E+00    , 0 , 1.0e-7
+
+he_hf_cc4s_box_input.in   , HF+MP2 helium atom from input Cc4s files, restart
+HF Total Energy           ,  -2.8625597646      , 0 , 1.0e-7
+Testing integral (11|11)  ,   1.02301683E+00    , 0 , 1.0e-7
+MP2 correlation           ,  -0.0330692355      , 0 , 1.0e-7
 
