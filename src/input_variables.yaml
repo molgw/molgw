@@ -225,6 +225,14 @@ fft_delta_x:
   default: 0.15
   comment: Maximum spacing between grid points in the real space FFT grid. Default is 0.15 bohr.
 
+fft_ecut_postscf:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 99999.
+  comment: cutoff energy for the plane-waves used as auxiliary basis for postscf calculation/export.
+
 fft_fix_density_integral:
   family: general
   datatype: yes/no

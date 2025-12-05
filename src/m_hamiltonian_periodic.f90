@@ -41,6 +41,7 @@ module m_hamiltonian_periodic
                                                  ! 1 -> 1/r * ϴ(Rc-r) ! spherical cutoff
   integer, private :: coulomb_type_exchange = 0  ! 0 -> 1/r
                                                  ! 1 -> 1/r * ϴ(Rc-r) ! spherical cutoff
+  real(dp), private :: fft_rcut
 
   integer(C_INT), private :: nfft1
   integer(C_INT), private :: nfft2
@@ -58,7 +59,6 @@ module m_hamiltonian_periodic
   real(dp), allocatable, private :: bfrt(:, :)   ! Transpose of bfr
   real(dp), allocatable, private :: normalization_pbc(:)
 
-  real(dp), private :: fft_rcut
 
   integer, protected               :: nauxil_global_periodic
   real(dp), allocatable, protected :: eri_3center_mo_periodic(:, :, :, :)
@@ -959,6 +959,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
     call matrix_lower_to_full(h_ao(:, :, ispin))
   enddo
 
+  deallocate(phiphig_global)
   call clean_deallocate('Temporary phiphi(G)', phiphig)
 
   deallocate(phiphir)
@@ -984,14 +985,15 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
   !=====
   integer :: ng_local_mpi(grid%nproc)
   integer :: irank
-  integer :: ispin, istate, ng_local, jstate, nstate, nbf
+  integer :: ispin, istate, ng_local, jstate, nstate, nbf, ng_global
   integer :: ig1, ig2, ig3, ig_local, ig_global
-  real(dp), allocatable :: phi_i(:), phi_j(:), phiphir(:), phiphir_global(:), phiphig_global(:)
+  real(dp), allocatable :: phi_i(:), phi_j(:), phiphir(:), phiphir_global(:)
   real(dp), allocatable :: vg_sqrt(:, :, :)
   type(C_PTR) :: plan
   type(C_PTR) :: pr, pg
   real(C_DOUBLE), pointer            :: phiphir_fftw(:, :, :)
   complex(C_DOUBLE_COMPLEX), pointer :: phiphig_fftw(:, :, :)
+  real(dp) :: rtmp
   !=====
 
   !call start_clock(timing_exchange)
@@ -1008,14 +1010,33 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
   allocate(phi_j(nfft_local))
 
   allocate(phiphir(nfft_local))
-  ! Number of G vectors is not exactly nfft_global because of r2c transform
-  nauxil_global_periodic = 2 * (nfft1 / 2 + 1) * nfft2 * nfft3
+
+  !
+  ! Distribute G among MPI tasks.
+  !
   ng_local_mpi(:) = 0
-  do ig_global=1, nauxil_global_periodic
-    irank = MODULO(ig_global - 1, grid%nproc)
-    ng_local_mpi(irank + 1) = ng_local_mpi(irank + 1) + 1
+  ig_global = 0
+  do ig3=1, nfft3
+    do ig2=1, nfft2
+      do ig1=1, nfft1/2+1
+        ! Apply a cutoff selection here
+        if( gkin(ig1, ig2, ig3) < fft_ecut_postscf ) then
+          ig_global = ig_global + 1
+          irank = MODULO(ig_global - 1, grid%nproc)
+          ng_local_mpi(irank + 1) = ng_local_mpi(irank + 1) + 1
+        endif
+      enddo
+    enddo
   enddo
+  ! ng_local: number of G vectors for the current MPI rank
+  ! ng_global: total number of G vectors
   ng_local = ng_local_mpi(grid%rank + 1)
+  ng_global = SUM(ng_local_mpi(:))
+  ! Leading factor 2 comes from real part and imaginary part
+  nauxil_global_periodic = 2 * ng_global
+  write(stdout,'(1x,a,f12.2)') 'Using cutoff energy (Ha): ', fft_ecut_postscf
+  write(stdout,'(1x,a,i9,a,i9)') 'which contains ', ng_global, ' plane-waves out of ', (nfft1/2+1) * nfft2 * nfft3
+  write(stdout,'(1x,a,i9,a)') 'which induces  ', nauxil_global_periodic, ' real auxiliary basis functions'
 
   allocate(vg_sqrt(nfft1 / 2 + 1, nfft2, nfft3))
   do ig3=1, nfft3
@@ -1031,8 +1052,8 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
     enddo
   enddo
 
-  call clean_allocate('3-center integrals in PW auxiliary basis', eri_3center_mo_periodic, ng_local, nstate, nstate, nspin)
-  allocate(phiphig_global(nauxil_global_periodic))
+  ! 2 * ng_local: because each G brings 1 complex number, so 2 real components.
+  call clean_allocate('3-center integrals in PW auxiliary basis', eri_3center_mo_periodic, 2 * ng_local, nstate, nstate, nspin)
 
   ! Allocate arrays with FFTW functions
   pr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
@@ -1076,27 +1097,37 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
         phiphig_fftw(1, :, :)  = SQRT(1.0_dp / volume) * phiphig_fftw(1, :, :)
         phiphig_fftw(2:, :, :) = SQRT(2.0_dp / volume) * phiphig_fftw(2:, :, :)
 
-        ! Cast the complex FFT into a real array (G index will be summed over then the order does not matter)
-        phiphig_global(:) = TRANSFER(phiphig_fftw, [1.0_dp, 1.0_dp])
-
-
-        if( istate == 1 .AND. jstate == 1 ) then
-          write(stdout, *) 'test integral (11|11) (Ha): ', DOT_PRODUCT(phiphig_global(:), phiphig_global(:))
-        endif
-
-        ! Distribute the global phiphig_global to local copies
+        !
+        ! Distribute phiphig_fftw among MPI tasks.
+        !
+        ig_global = 0
         ig_local = 0
-        do ig_global=1, nauxil_global_periodic
-          if( MODULO(ig_global - 1, grid%nproc) == grid%rank ) then
-            ig_local = ig_local + 1
-            eri_3center_mo_periodic(ig_local, istate, jstate, ispin) = phiphig_global(ig_global)
-          endif
+        do ig3=1, nfft3
+          do ig2=1, nfft2
+            do ig1=1, nfft1/2+1
+              ! Apply a cutoff selection here
+              if( gkin(ig1, ig2, ig3) < fft_ecut_postscf ) then
+                ig_global = ig_global + 1
+                irank = MODULO(ig_global - 1, grid%nproc)
+                if( irank == grid%rank ) then
+                  ig_local = ig_local + 1
+                  eri_3center_mo_periodic(ig_local:ig_local+1, istate, jstate, ispin) = &
+                      TRANSFER(phiphig_fftw(ig1, ig2, ig3), [1.0_dp, 1.0_dp])
+                  ig_local = ig_local + 1
+                endif
+              endif
+            enddo
+          enddo
         enddo
 
       enddo
 
     enddo
   enddo
+
+  rtmp = DOT_PRODUCT(eri_3center_mo_periodic(:, 1, 1, 1), eri_3center_mo_periodic(:, 1, 1, 1) )
+  call grid%sum(rtmp)
+  write(stdout, *) 'Testing integral (11|11) (Ha): ', rtmp
 
 
   deallocate(phiphir)
@@ -1159,10 +1190,12 @@ end function vcoulg
 
 
 !=========================================================================
-pure function gnorm(ig1, ig2, ig3)
+! gkin: kinetic energy associated to G
+! gkin = ½|G|²
+pure function gkin(ig1, ig2, ig3)
 
   integer, intent(in) :: ig1, ig2, ig3
-  real(dp) :: gnorm
+  real(dp) :: gkin
   !=====
   integer  :: ig1m, ig2m, ig3m
   !=====
@@ -1171,9 +1204,9 @@ pure function gnorm(ig1, ig2, ig3)
   ig2m = MERGE( ig2 - 1, ig2 - 1 - nfft2, ig2 <= nfft2/2)
   ig3m = MERGE( ig3 - 1, ig3 - 1 - nfft3, ig3 <= nfft3/2)
 
-  gnorm = SQRT( SUM( MATMUL(bprim(:, :), [ig1m, ig2m ,ig3m])**2 ) )
+  gkin = 0.5_dp * SUM( MATMUL(bprim(:, :), [ig1m, ig2m ,ig3m])**2 )
 
-end function gnorm
+end function gkin
 
 
 !=========================================================================
