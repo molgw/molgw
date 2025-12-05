@@ -162,10 +162,57 @@ module m_scalapack
   end interface
 
 #if defined(HAVE_SCALAPACK)
-  integer, external  :: NUMROC, INDXL2G, INDXG2L, INDXG2P
-  real(dp), external :: PDLATRA, PDLAMCH, PDLANGE
+  interface
+    integer function NUMROC(n, nb, iproc, isrcproc, nproc)
+      integer, intent(in) :: n         ! global number of rows/cols
+      integer, intent(in) :: nb        ! blocking factor (block size)
+      integer, intent(in) :: iproc     ! process coordinate (owner)
+      integer, intent(in) :: isrcproc  ! source process coordinate
+      integer, intent(in) :: nproc     ! total number of processes
+    end function NUMROC
+    integer function INDXL2G(indxloc, nb, iproc, isrcproc, nproc)
+      integer, intent(in) :: indxloc   ! local index
+      integer, intent(in) :: nb        ! blocking factor
+      integer, intent(in) :: iproc     ! process coordinate (owner)
+      integer, intent(in) :: isrcproc  ! source process coordinate
+      integer, intent(in) :: nproc     ! total number of processes
+    end function INDXL2G
+    integer function INDXG2L(indglob, nb, iproc, isrcproc, nproc)
+      implicit none
+      integer, intent(in) :: indglob   ! global index (1-based)
+      integer, intent(in) :: nb        ! blocking factor
+      integer, intent(in) :: iproc     ! local dummy (kept for API compatibility)
+      integer, intent(in) :: isrcproc  ! source process coordinate
+      integer, intent(in) :: nproc     ! total number of processes
+    end function INDXG2L
+    integer function INDXG2P(indxglob, nb, iproc, isrcproc, nproc)
+      integer, intent(in) :: indxglob  ! global index
+      integer, intent(in) :: nb        ! blocking factor
+      integer, intent(in) :: iproc     ! (not used internally by indxg2p but part of interface)
+      integer, intent(in) :: isrcproc  ! source process coordinate
+      integer, intent(in) :: nproc     ! total number of processes
+    end function INDXG2P
+    double precision function PDLANGE(norm, m, n, a, ia, ja, desca, work)
+      character, intent(in) :: norm
+      integer, intent(in) :: m, n
+      integer, intent(in) :: ia, ja
+      integer, intent(in) :: desca(*)
+      double precision, intent(in) :: a(*)
+      double precision, intent(inout) :: work(*)
+    end function PDLANGE
+    double precision function PDLATRA(m, a, ia, ja, desca)
+      integer, intent(in) :: m
+      integer, intent(in) :: ia, ja
+      integer, intent(in) :: desca(*)
+      double precision, intent(in) :: a(*)
+    end function PDLATRA
+    double precision function PDLAMCH(ictxt, cmach)
+      implicit none
+      integer, intent(in) :: ictxt
+      character, intent(in) :: cmach
+    end function PDLAMCH
+  end interface
 #endif
-
 
 contains
 

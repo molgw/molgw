@@ -51,6 +51,12 @@ module m_linear_algebra
     module procedure matrix_lower_to_full_cdp
   end interface
 
+  interface
+    double precision function DLAMCH(cmach)
+      implicit none
+      character, intent(in) :: cmach
+    end function DLAMCH
+  end interface
 
 contains
 
@@ -329,7 +335,6 @@ subroutine diagonalize_dp(flavor, matrix, eigval, eigvec)
   integer, allocatable  :: isuppz(:)
   real(dp), allocatable :: matrix_tmp(:, :)
   real(dp)             :: ABSTOL
-  real(dp), external    :: DLAMCH
   integer              :: neig
   real(sp), allocatable :: work_sp(:)
   real(sp), allocatable :: eigval_sp(:)
@@ -499,7 +504,6 @@ subroutine diagonalize_inplace_dp(flavor, matrix, eigval)
   integer, allocatable :: isuppz(:)
   real(dp), allocatable    :: eigvec(:, :)
   real(dp)                :: ABSTOL
-  real(dp), external       :: DLAMCH
   integer                 :: neig
   !=====
 
@@ -512,7 +516,7 @@ subroutine diagonalize_inplace_dp(flavor, matrix, eigval)
   case('r','R')
     allocate(iwork(1))
     allocate(eigvec(nmat, nmat))
-    ABSTOL=DLAMCH('S')
+    ABSTOL = DLAMCH('S')
     allocate(isuppz(2*nmat))
     call DSYEVR('V', 'A', 'L', nmat, matrix, nmat, 0.d0, 0.d0, 1, 1, ABSTOL, neig, eigval, eigvec, nmat, &
                 isuppz, work, lwork, iwork, liwork, info)
@@ -604,7 +608,6 @@ subroutine diagonalize_cdp(flavor, matrix, eigval, eigvec)
   integer, allocatable     :: isuppz(:)
   complex(dp), allocatable :: matrix_tmp(:, :)
   real(dp)                :: ABSTOL
-  real(dp), external       :: DLAMCH
   integer                 :: neig
   !=====
 
@@ -686,7 +689,6 @@ subroutine diagonalize_inplace_cdp(flavor, matrix, eigval)
   integer, allocatable     :: isuppz(:)
   complex(dp), allocatable :: eigvec(:, :)
   real(dp)                :: ABSTOL
-  real(dp), external       :: DLAMCH
   integer                 :: neig
   !=====
 
@@ -697,24 +699,24 @@ subroutine diagonalize_inplace_cdp(flavor, matrix, eigval)
   allocate(rwork(1))
 
   select case(flavor)
-  case('r','R')
+  case('r', 'R')
     allocate(iwork(1))
     allocate(eigvec(nmat, nmat))
     allocate(isuppz(2*nmat))
-    ABSTOL=DLAMCH('S')
-    call ZHEEVR('V', 'A', 'L', nmat, matrix, nmat, 0.d0, 0.d0, 1, 1, ABSTOL, neig,eigval,eigvec,nmat,isuppz, &
+    ABSTOL = DLAMCH('S')
+    call ZHEEVR('V', 'A', 'L', nmat, matrix, nmat, 0.d0, 0.d0, 1, 1, ABSTOL, neig, eigval, eigvec, nmat, isuppz, &
                 work, lwork, rwork, lrwork, iwork, liwork, info)
     liwork = iwork(1)
     deallocate(iwork)
     lrwork = NINT(rwork(1))
-  case('d','D')
+  case('d', 'D')
     allocate(iwork(1))
-    call ZHEEVD('V', 'L', nmat, matrix, nmat, eigval, work, lwork, rwork, lrwork,iwork,liwork,info)
+    call ZHEEVD('V', 'L', nmat, matrix, nmat, eigval, work, lwork, rwork, lrwork, iwork, liwork, info)
     liwork = iwork(1)
     deallocate(iwork)
     lrwork = NINT(rwork(1))
   case default
-    call ZHEEV('V', 'L', nmat, matrix, nmat, eigval, work,lwork,rwork,info)
+    call ZHEEV('V', 'L', nmat, matrix, nmat, eigval, work, lwork, rwork, info)
     lrwork = 3 * nmat - 2
   end select
 
@@ -730,17 +732,17 @@ subroutine diagonalize_inplace_cdp(flavor, matrix, eigval)
   select case(flavor)
   case('r','R')
     allocate(iwork(1))
-    call ZHEEVR('V', 'A', 'L', nmat, matrix, nmat, 0.d0, 0.d0, 1, 1, ABSTOL, neig,eigval,eigvec,nmat,isuppz, &
+    call ZHEEVR('V', 'A', 'L', nmat, matrix, nmat, 0.d0, 0.d0, 1, 1, ABSTOL, neig, eigval, eigvec, nmat, isuppz, &
                 work, lwork, rwork, lrwork, iwork, liwork, info)
     matrix(:, :) = eigvec(:, :)
     deallocate(eigvec)
     deallocate(iwork, isuppz)
   case('d','D')
     allocate(iwork(liwork))
-    call ZHEEVD('V', 'L', nmat, matrix, nmat, eigval, work, lwork, rwork, lrwork,iwork,liwork,info)
+    call ZHEEVD('V', 'L', nmat, matrix, nmat, eigval, work, lwork, rwork, lrwork, iwork, liwork, info)
     deallocate(iwork)
   case default
-    call ZHEEV('V', 'L', nmat, matrix, nmat, eigval, work,lwork,rwork,info)
+    call ZHEEV('V', 'L', nmat, matrix, nmat, eigval, work, lwork, rwork, info)
   end select
 
   deallocate(work)
