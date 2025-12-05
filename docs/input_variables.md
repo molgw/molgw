@@ -672,7 +672,7 @@ Calculates absorption spectrum in the real-time dynamics
 
 **Type:** characters
 
-**Default:** molgw_
+**Default:** molgw
 
 **Description:**
 
@@ -688,7 +688,7 @@ Specifies the rootname for the Cc4s files to be read.
 
 **Type:** characters
 
-**Default:** molgw_
+**Default:** molgw
 
 **Description:**
 

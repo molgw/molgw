@@ -298,8 +298,8 @@
  mpi_poorman = 'False'
  scalapack_block_min = 100000
  basis_path = ''
- cc4s_input = 'molgw_'
- cc4s_output = 'molgw_'
+ cc4s_input = 'molgw'
+ cc4s_output = 'molgw'
  cube_nx = 30
  cube_ny = 30
  cube_nz = 30

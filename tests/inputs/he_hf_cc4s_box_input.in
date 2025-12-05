@@ -15,7 +15,7 @@
  fft_delta_x = 0.18   ! bohr
 
  nscf=0
- cc4s_input = 'molgw_hf_GTH-TZ_'
+ cc4s_input = 'molgw_hf_GTH-TZ'
  init_hamiltonian='CC4S_FILES'
 
  natom = 1

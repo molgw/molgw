@@ -491,7 +491,7 @@ cc4s_input:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: 'molgw_'
+  default: 'molgw'
   comment: Specifies the rootname for the Cc4s files to be read.
 
 cc4s_output:
@@ -499,7 +499,7 @@ cc4s_output:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: 'molgw_'
+  default: 'molgw'
   comment: Specifies the rootname for the Cc4s files to be written.
 
 cube_nx:

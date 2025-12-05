@@ -1211,7 +1211,7 @@ subroutine read_cc4s_coulombvertex(rootname)
 
   character(len=*), intent(in), optional :: rootname
   !=====
-  character(len=128) :: rootname_ = 'molgw_'
+  character(len=128) :: rootname_ = 'molgw'
   integer :: nstate, istate, jstate, naux
   integer :: unitcv
   complex(dp), allocatable :: coulomb_vertex_ij(:)
@@ -1237,21 +1237,21 @@ subroutine read_cc4s_coulombvertex(rootname)
   if( nspin > 1 ) call die("read_cc4s_coulombvertex: spin polarized not implemented yet")
   
   call start_clock(timing_read_coulombvertex)
-  write(stdout, '(1x,a)') 'Reading ' // TRIM(rootname_) // 'CoulombVertex.yaml and ' &
-                          // TRIM(rootname_) // 'CoulombVertex.elements'
+  write(stdout, '(1x,a)') 'Reading ' // TRIM(rootname_) // '_CoulombVertex.yaml and ' &
+                          // TRIM(rootname_) // '_CoulombVertex.elements'
 
   ! Keep 3-center ERI in memory forever
   eri_3center_mo_stay_in_memory = .TRUE.
 
   !
   ! Ensure CoulombVertex.yaml has been created with half grid
-  call yaml_search_keyword(TRIM(rootname_) // 'CoulombVertex.yaml', 'halfGrid', yaml_integers)
+  call yaml_search_keyword(TRIM(rootname_) // '_CoulombVertex.yaml', 'halfGrid', yaml_integers)
   if( yaml_integers(1) /= 1 ) then
     call die('read_cc4s_coulombvertex: only works for half grid (i.e. real wavefunctions)')
   endif
   deallocate(yaml_integers)
 
-  call yaml_search_keyword(TRIM(rootname_) // 'CoulombVertex.yaml', 'length', yaml_integers)
+  call yaml_search_keyword(TRIM(rootname_) // '_CoulombVertex.yaml', 'length', yaml_integers)
   naux   = yaml_integers(1)
   nstate = yaml_integers(2)
   write(stdout, '(1x,a,i6,a,i4,a,i4)') 'Dimensions read:', naux, ' x ', nstate, ' x ', nstate
@@ -1266,8 +1266,8 @@ subroutine read_cc4s_coulombvertex(rootname)
   call clean_allocate('3-center MO integrals', eri_3center_mo, 1, nauxil_local, 1, nstate, 1, nstate, 1, 1)
 
 #if !defined(HAVE_MPI)
-  write(stdout, '(/,1x,a)') 'Reading file ' // TRIM(rootname_) // 'CoulombVertex.elements with plain fortran'
-  open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.elements', form='unformatted', &
+  write(stdout, '(/,1x,a)') 'Reading file ' // TRIM(rootname_) // '_CoulombVertex.elements with plain fortran'
+  open(newunit=unitcv, file=TRIM(rootname_) // '_CoulombVertex.elements', form='unformatted', &
        access='stream', status='old', action='read')
   do istate=1, nstate
     do jstate=1, nstate
@@ -1290,14 +1290,14 @@ subroutine read_cc4s_coulombvertex(rootname)
   call clean_allocate('Reading 3-center MO integrals', eri_3center_tmp, 1, mtmp, 1, ntmp)
 
 
-  write(stdout, '(/,1x,a)') 'Reading file ' // TRIM(rootname_) // 'CoulombVertex.elements with MPI-IO'
+  write(stdout, '(/,1x,a)') 'Reading file ' // TRIM(rootname_) // '_CoulombVertex.elements with MPI-IO'
   write(stdout, '(5x,a,i4,a,i4)') 'using a processor grid:', nprow_cd, ' x ', npcol_cd
 
   ! complex_length in bytes whereas STORAGE_SIZE is in bits
   complex_length = STORAGE_SIZE(coulomb_vertex_ij(1)) / 8
   disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(naux, KIND=MPI_OFFSET_KIND)
 
-  call MPI_FILE_OPEN(MPI_COMM_WORLD, TRIM(rootname_) // 'CoulombVertex.elements', &
+  call MPI_FILE_OPEN(MPI_COMM_WORLD, TRIM(rootname_) // '_CoulombVertex.elements', &
                      MPI_MODE_RDONLY, &
                      MPI_INFO_NULL, unitcv, ierr)
 
@@ -1357,7 +1357,7 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, rootname)
   real(dp), intent(in) :: eri_3center_updated(:, :, :, :)
   character(len=*), intent(in), optional :: rootname
   !=====
-  character(len=128) :: rootname_ = 'molgw_'
+  character(len=128) :: rootname_ = 'molgw'
   integer :: nstate, istate, jstate, naux
   integer :: unitcv
   complex(dp), allocatable :: coulomb_vertex_ij(:)
@@ -1382,8 +1382,8 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, rootname)
   endif
   
   call start_clock(timing_read_coulombvertex)
-  write(stdout, '(1x,a)') 'Writing ' // TRIM(rootname_) // 'CoulombVertex.yaml and ' &
-                          // TRIM(rootname_) // 'CoulombVertex.elements'
+  write(stdout, '(1x,a)') 'Writing ' // TRIM(rootname_) // '_CoulombVertex.yaml and ' &
+                          // TRIM(rootname_) // '_CoulombVertex.elements'
 
   first_index = LBOUND(eri_3center_updated, DIM=2)
   rtmp = DOT_PRODUCT(eri_3center_updated(:, first_index, first_index, 1), eri_3center_updated(:, first_index, first_index, 1))
@@ -1405,7 +1405,7 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, rootname)
   nstate2 = nstate**2
 
   ! Write meta data in a yaml file
-  open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.yaml', form='formatted', status='unknown', action='write')
+  open(newunit=unitcv, file=TRIM(rootname_) // '_CoulombVertex.yaml', form='formatted', status='unknown', action='write')
   write(unitcv, '(a)')    'version: 100'
   write(unitcv, '(a)')    'type: Tensor'
   write(unitcv, '(a)')    'scalarType: Complex64'
@@ -1426,9 +1426,9 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, rootname)
   write(stdout, *) 'File size (bytes):', INT(complex_length, KIND=8) * INT(naux, KIND=8) * INT(nstate2, KIND = 8)
 
 #if !defined(HAVE_MPI)
-  write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with plain fortran'
+  write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // '_CoulombVertex.elements with plain fortran'
   write(stdout, '(1x,a,i8,a,i4,a,i4)') 'Dimensions written: ', naux, ' x ', nstate, ' x ', nstate
-  open(newunit=unitcv, file=TRIM(rootname_) // 'CoulombVertex.elements', form='unformatted', access='stream', &
+  open(newunit=unitcv, file=TRIM(rootname_) // '_CoulombVertex.elements', form='unformatted', access='stream', &
        status='unknown', action='write')
   do istate=LBOUND(eri_3center_updated, DIM=2), UBOUND(eri_3center_updated, DIM=2)
     do jstate=LBOUND(eri_3center_updated, DIM=3), UBOUND(eri_3center_updated, DIM=3)
@@ -1467,13 +1467,13 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, rootname)
   call PDGEMR2D(nauxil_in, nstate2, eri_3center_updated, 1, 1, desc_updated, &
                                       eri_3center_tmp, 1, 1, desc_tmp, cntxt_eri3_mo)
 
-  write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // 'CoulombVertex.elements with MPI-IO'
+  write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // '_CoulombVertex.elements with MPI-IO'
   write(stdout, '(5x,a,i4,a,i4)') 'using a processor grid:', nprow_cd, ' x ', npcol_cd
   write(stdout, '(1x,a,i8,a,i4,a,i4)') 'Dimensions written: ', naux, ' x ', nstate, ' x ', nstate
 
   disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(naux, KIND=MPI_OFFSET_KIND)
 
-  call MPI_FILE_OPEN(MPI_COMM_WORLD, TRIM(rootname_) // 'CoulombVertex.elements', &
+  call MPI_FILE_OPEN(MPI_COMM_WORLD, TRIM(rootname_) // '_CoulombVertex.elements', &
                      MPI_MODE_WRONLY + MPI_MODE_CREATE, &
                      MPI_INFO_NULL, unitcv, ierr)
 

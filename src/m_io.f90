@@ -4083,7 +4083,7 @@ subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, 
   real(dp), allocatable, intent(inout) :: hamiltonian_fock(:, :, :)
   character(len=*), intent(in), optional :: rootname
   !=====
-  character(len=128) :: rootname_ = 'molgw_'
+  character(len=128) :: rootname_ = 'molgw'
   integer, allocatable :: yaml_integers(:)
   real(dp), allocatable :: yaml_reals(:)
   real(dp) :: efermi
@@ -4095,16 +4095,16 @@ subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, 
   endif
 
   if( nspin > 1 ) call die('read_cc4s_eigenenergies: only spin restricted implemented')
-  write(stdout, '(/,1x,a)') 'Reading ' // TRIM(rootname_) // 'EigenEnergies.yaml and ' &
-                            // TRIM(rootname_) // 'Eigenenergies.elements'
+  write(stdout, '(/,1x,a)') 'Reading ' // TRIM(rootname_) // '_EigenEnergies.yaml and ' &
+                            // TRIM(rootname_) // '_Eigenenergies.elements'
 
   nstate_old = nstate
 
-  call yaml_search_keyword(TRIM(rootname_) // 'EigenEnergies.yaml', 'fermiEnergy', yaml_reals)
+  call yaml_search_keyword(TRIM(rootname_) // '_EigenEnergies.yaml', 'fermiEnergy', yaml_reals)
   efermi = yaml_reals(1)
   write(stdout, '(1x,a,f12.5)') 'Fermi energy from file (eV): ', efermi * Ha_eV
 
-  call yaml_search_keyword(TRIM(rootname_) // 'EigenEnergies.yaml', 'length', yaml_integers)
+  call yaml_search_keyword(TRIM(rootname_) // '_EigenEnergies.yaml', 'length', yaml_integers)
   nstate = yaml_integers(1)
   basis%nbf = nstate
 
@@ -4128,7 +4128,7 @@ subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, 
   allocate(energy(nstate, nspin))
   allocate(occupation(nstate, nspin))
 
-  open(newunit=ifile, file=TRIM(rootname_) // 'EigenEnergies.elements', status='old', action='read')
+  open(newunit=ifile, file=TRIM(rootname_) // '_EigenEnergies.elements', status='old', action='read')
   hamiltonian_fock(:, :, :) = 0.0_dp
   do istate=1, nstate
     read(ifile, *) energy(istate, 1)
@@ -4157,7 +4157,7 @@ subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
   integer :: unit_file
   integer :: nstate, istate, nocc
   real(dp) :: efermi
-  character(len=128) :: rootname_ = 'molgw_'
+  character(len=128) :: rootname_ = 'molgw'
   !=====
 
   if( nspin > 1 ) call die('write_cc4s_eigenenergies: only spin restricted implemented')
@@ -4168,7 +4168,7 @@ subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
 
   nstate = MIN(SIZE(occupation, DIM=1), SIZE(energy, DIM=1))
 
-  open(newunit=unit_file, file=TRIM(rootname_) // 'EigenEnergies.elements', action='write', form='formatted')
+  open(newunit=unit_file, file=TRIM(rootname_) // '_EigenEnergies.elements', action='write', form='formatted')
   do istate=1, nstate
     write(unit_file, '(1x,es16.8)') energy(istate, 1)
   enddo
@@ -4177,7 +4177,7 @@ subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
   nocc = get_number_occupied_states(occupation)
   efermi = 0.5_dp * ( energy(nocc, 1) + energy(nocc+1, 1) ) 
 
-  open(newunit=unit_file, file=TRIM(rootname_) // 'EigenEnergies.yaml', action='write', form='formatted')
+  open(newunit=unit_file, file=TRIM(rootname_) // '_EigenEnergies.yaml', action='write', form='formatted')
   write(unit_file, '(a)')    'version: 100'
   write(unit_file, '(a)')    'type: Tensor'
   write(unit_file, '(a)')    'scalarType: Real64'

@@ -15,7 +15,7 @@
  fft_delta_x = 0.18   ! bohr
 
  print_cc4s_files = 'yes'
- cc4s_output = 'molgw_hf_GTH-TZ_'
+ cc4s_output = 'molgw_hf_GTH-TZ'
  fft_ecut_postscf = 60.0
 
  init_hamiltonian='core'
