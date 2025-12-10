@@ -648,7 +648,7 @@ program molgw
       call destroy_eri_3center_mo()
     else
       call calculate_coulombvertex_periodic(c_matrix)
-      call write_cc4s_coulombvertex(desc_eri3_mo_periodic(1), eri_3center_mo_periodic, desc=desc_eri3_mo_periodic, &
+      call write_cc4s_coulombvertex(desc_eri3_mo_periodic(M_), eri_3center_mo_periodic, desc=desc_eri3_mo_periodic, &
                                     rootname=cc4s_output)
       call destroy_eri_3center_mo_periodic()
     endif
