@@ -233,14 +233,6 @@ fft_ecut_postscf:
   default: 99999.
   comment: cutoff energy for the plane-waves used as auxiliary basis for postscf calculation/export.
 
-fft_fix_density_integral:
-  family: general
-  datatype: yes/no
-  mandatory: 'no'
-  experimental: 'no'
-  default: 'no'
-  comment: Renormalize the density at each SCF cycle to integrate to the expected nuclei and electron count.
-
 fft_neighbors:
   family: general
   datatype: integer

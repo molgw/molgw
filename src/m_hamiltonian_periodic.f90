@@ -603,20 +603,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, vloc, ehartree, h_ao)
   ! Get the electrostatic potential of the electrons (Hartree)
   !
 
-  !DEBUG
-  !dr(:, 1) = aprim(:, 1) / nfft1
-  !dr(:, 2) = aprim(:, 2) / nfft2
-  !dr(:, 3) = aprim(:, 3) / nfft3
-  !call write_cube_file('rhoelecr.cube', nfft1, nfft2, nfft3, dr, rhoelecr(:, 1), comment='test')
 
-
-  !if( fft_fix_density_integral_ ) then
-  !  rhor_integral = SUM(rhoelecr) * volume / REAL(nfft_global, KIND=dp)
-  !  call grid%sum(rhor_integral)
-  !  write(stdout, '(1x,a,f14.6,a,f14.6)') 'Electron density integral: ', rhor_integral, ' whereas it should be ', electrons
-  !  write(stdout, '(1x,a,f10.6)') 'Renormalize it with factor: ', electrons / rhor_integral
-  !  rhoelecr(:, :) = rhoelecr(:, :) * electrons / rhor_integral
-  !endif
   call poisson_solver_fft(rhoelecr(:, 1), vhartreegrid)
 
   ehartree = 0.5_dp * SUM( SUM(rhoelecr(:, :), DIM=2) * vhartreegrid ) * volume / REAL(nfft_global, KIND=dp)
@@ -1518,13 +1505,6 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
     call die('prepare_nuclei_density_periodic: wrong nucleus total charge. ' // &
              'FFT grid is certainly too coarse. Try to decrease fft_delta_x.')
   endif
-
-  !if( fft_fix_density_integral_ ) then
-  !  rhonuclr(:) = rhonuclr(:) * factor
-  !  zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
-  !  call grid%sum(zval)
-  !  write(stdout, '(1x,a,f12.6)') 'Nuclei charge in the cell (after renormalization): ', zval
-  !endif
 
 
 contains
