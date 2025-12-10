@@ -62,6 +62,7 @@ module m_hamiltonian_periodic
 
   integer, protected               :: nauxil_global_periodic
   real(dp), allocatable, protected :: eri_3center_mo_periodic(:, :, :, :)
+  integer, protected               :: desc_eri3_mo_periodic(9)
 
 contains
 
@@ -915,13 +916,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
         phiphig_fftw(:, :, :) = phiphig_fftw(:, :, :) * volume / REAL(nfft_global, KIND=dp)
 
         ! M_{iα}(G) * √v(G) → M_{iα}(G)
-        do ig3=1, nfft3
-          do ig2=1, nfft2
-            do ig1=1, nfft1/2+1
-              phiphig_fftw(ig1, ig2, ig3) = vg_sqrt(ig1, ig2, ig3) * phiphig_fftw(ig1, ig2, ig3)
-            enddo
-          enddo
-        enddo
+        phiphig_fftw(:, :, :) = vg_sqrt(:, :, :) * phiphig_fftw(:, :, :)
         call stop_clock(timing_tmp5)
         call start_clock(timing_tmp6)
 
@@ -986,7 +981,7 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
   integer :: ng_local_mpi(grid%nproc)
   integer :: irank
   integer :: ispin, istate, ng_local, jstate, nstate, nbf, ng_global
-  integer :: ig1, ig2, ig3, ig_local, ig_global
+  integer :: ig1, ig2, ig3, ig_local, ig_global, info
   real(dp), allocatable :: phi_i(:), phi_j(:), phiphir(:), phiphir_global(:)
   real(dp), allocatable :: vg_sqrt(:, :, :)
   type(C_PTR) :: plan
@@ -1035,7 +1030,7 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
   ! Leading factor 2 comes from real part and imaginary part
   nauxil_global_periodic = 2 * ng_global
   write(stdout,'(1x,a,f12.2)') 'Using cutoff energy (Ha): ', fft_ecut_postscf
-  write(stdout,'(1x,a,i9,a,i9)') 'which contains ', ng_global, ' plane-waves out of ', (nfft1/2+1) * nfft2 * nfft3
+  write(stdout,'(1x,a,i9,a,i9)') 'which retains ', ng_global, ' plane-waves out of ', (nfft1/2+1) * nfft2 * nfft3
   write(stdout,'(1x,a,i9,a)') 'which induces  ', nauxil_global_periodic, ' real auxiliary basis functions'
 
   allocate(vg_sqrt(nfft1 / 2 + 1, nfft2, nfft3))
@@ -1054,6 +1049,11 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
 
   ! 2 * ng_local: because each G brings 1 complex number, so 2 real components.
   call clean_allocate('3-center integrals in PW auxiliary basis', eri_3center_mo_periodic, 2 * ng_local, nstate, nstate, nspin)
+  ! MB has to be 2 since data come by two (real part and then imaginary part)
+  ! NB does not matter since there is no distribution on columns
+  call DESCINIT(desc_eri3_mo_periodic, nauxil_global_periodic, nstate**2, 2, 1, first_row, first_col, cntxt_eri3_mo, &
+                MAX(1, 2 * ng_local), info)
+
 
   ! Allocate arrays with FFTW functions
   pr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
@@ -1279,7 +1279,6 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
 
           call clean_allocate('TMP2', tmp2, basis%nbf, nneg_batch)
 
-          ineg = 0
           ifft_local_first_in_batch = 1
           do while( ifft_local_first_in_batch < nfft_local )
 
@@ -1307,8 +1306,10 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
             enddo
 
             ! Negative vloc
-            call DSYRK('L', 'N', basis%nbf, current_batch_size, -1.0d0, tmp2, basis%nbf, &
-                       1.0_dp, h_ao(:, :, ispin), basis%nbf)
+            if( current_batch_size > 0 ) then
+              call DSYRK('L', 'N', basis%nbf, current_batch_size, -1.0d0, tmp2, basis%nbf, &
+                         1.0_dp, h_ao(:, :, ispin), basis%nbf)
+            endif
           enddo
 
           call clean_deallocate('TMP2', tmp2)

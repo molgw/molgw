@@ -641,14 +641,15 @@ program molgw
     ! Call selfenergy_set_state_range to set up ncore_G and nvirtual_G
     call selfenergy_set_state_range(nstate, occupation)
     call write_cc4s_eigenenergies(occupation(ncore_G+1:nvirtual_G-1,:), &
-                                  energy(ncore_G+1:nvirtual_G-1,:), cc4s_output)
+                                  energy(ncore_G+1:nvirtual_G-1,:), rootname=cc4s_output)
     if( .NOT. pbc_ ) then
       call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
-      call write_cc4s_coulombvertex(nauxil_global, eri_3center_mo, cc4s_output)
+      call write_cc4s_coulombvertex(nauxil_global, eri_3center_mo, rootname=cc4s_output)
       call destroy_eri_3center_mo()
     else
       call calculate_coulombvertex_periodic(c_matrix)
-      call write_cc4s_coulombvertex(nauxil_global_periodic, eri_3center_mo_periodic, cc4s_output)
+      call write_cc4s_coulombvertex(desc_eri3_mo_periodic(1), eri_3center_mo_periodic, desc=desc_eri3_mo_periodic, &
+                                    rootname=cc4s_output)
       call destroy_eri_3center_mo_periodic()
     endif
   endif

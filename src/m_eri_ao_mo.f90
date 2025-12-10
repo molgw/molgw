@@ -1350,14 +1350,16 @@ end subroutine read_cc4s_coulombvertex
 
 
 !=========================================================================
-subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, rootname)
+subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootname)
   implicit none
 
   integer, intent(in) :: nauxil_in
   real(dp), intent(in) :: eri_3center_updated(:, :, :, :)
+  integer, intent(in), optional :: desc(:)
   character(len=*), intent(in), optional :: rootname
   !=====
   character(len=128) :: rootname_ = 'molgw'
+  integer :: naux_local
   integer :: nstate, istate, jstate, naux
   integer :: unitcv
   complex(dp), allocatable :: coulomb_vertex_ij(:)
@@ -1381,7 +1383,7 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, rootname)
     rootname_ = rootname
   endif
   
-  call start_clock(timing_read_coulombvertex)
+  call start_clock(timing_write_coulombvertex)
   write(stdout, '(1x,a)') 'Writing ' // TRIM(rootname_) // '_CoulombVertex.yaml and ' &
                           // TRIM(rootname_) // '_CoulombVertex.elements'
 
@@ -1401,6 +1403,7 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, rootname)
   endif
 
   allocate(coulomb_vertex_ij(naux))
+  naux_local = SIZE(eri_3center_updated, DIM=1)
   nstate = SIZE(eri_3center_updated, DIM=2)
   nstate2 = nstate**2
 
@@ -1450,7 +1453,7 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, rootname)
 
   ! Create a SCALAPACK matrix (nauxil_in, nstate**2) that is distributed on column index only
   mtmp = NUMROC(nauxil_in, block_row, iprow_cd, first_row, nprow_cd)
-  ntmp = NUMROC(nstate2      , block_col, ipcol_cd, first_col, npcol_cd)
+  ntmp = NUMROC(nstate2  , block_col, ipcol_cd, first_col, npcol_cd)
   call DESCINIT(desc_tmp, nauxil_in, nstate2, block_row, block_col, first_row, first_col, cntxt_cd, MAX(1, mtmp), info)
 
   call clean_allocate('Writing 3-center MO integrals', eri_3center_tmp, 1, mtmp, 1, ntmp)
@@ -1462,10 +1465,15 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, rootname)
                      nprow_eri3_mo, ' x ', npcol_eri3_mo, ')   to   (', &
                      nprow_cd, ' x ', npcol_cd, ')'
 
-  call DESCINIT(desc_updated, nauxil_in, nstate2, MB_eri3_mo, NB_eri3_mo, first_row, first_col, cntxt_eri3_mo, &
-                MAX(1, nauxil_local), info)
+  if( PRESENT(desc) ) then
+    desc_updated(:) = desc(:)
+  else
+    call DESCINIT(desc_updated, nauxil_in, nstate2, MB_eri3_mo, NB_eri3_mo, first_row, first_col, cntxt_eri3_mo, &
+                  MAX(1, naux_local), info)
+  endif
+
   call PDGEMR2D(nauxil_in, nstate2, eri_3center_updated, 1, 1, desc_updated, &
-                                      eri_3center_tmp, 1, 1, desc_tmp, cntxt_eri3_mo)
+                                    eri_3center_tmp, 1, 1, desc_tmp, cntxt_eri3_mo)
 
   write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // '_CoulombVertex.elements with MPI-IO'
   write(stdout, '(5x,a,i4,a,i4)') 'using a processor grid:', nprow_cd, ' x ', npcol_cd
@@ -1510,7 +1518,7 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, rootname)
   call MPI_FILE_CLOSE(unitcv, ierr)
 #endif
 
-  call stop_clock(timing_read_coulombvertex)
+  call stop_clock(timing_write_coulombvertex)
 
 end subroutine write_cc4s_coulombvertex
 
