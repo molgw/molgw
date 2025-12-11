@@ -17,6 +17,7 @@
 
 - Fabien Bruneval (SRMP, CEA, Université Paris-Saclay, France)
 - Mauricio Rodriguez-Mayorga (LCPQ, CNRS-Toulouse, France)
+- Guillaume Piris (SRMP, CEA, Université Paris-Saclay, France)
 
 ### Changes affecting the usage
 
