@@ -1,0 +1,24 @@
+&molgw
+  scf                            = 'lda'
+  ecp_basis                      = 'cc-pVDZ-PP'
+  ecp_auxil_basis                = 'cc-pVDZ-PP-RI'
+  natom                          = 1
+  charge = 0
+  postscf                        = 'real_time'
+  eri3_genuine                   = 'yes'
+  time_step                      = 0.1
+  time_sim                       = 1.0
+  tddft_predictor_corrector      = 'MB_PC1'
+  tddft_propagator               = 'CN'
+  length_unit                    = 'bohr'
+  excit_name                     = 'ION'
+  vel_projectile                 = 0.0 0.0 1.5
+  write_step                     = 0.1
+
+tddft_wfn_t0='STATIONARY'
+
+ecp_type='PP'
+ecp_elements=' Kr '
+/
+Kr       0.0     0.0    0.0
+Kr       0.0     0.8   -2.5 

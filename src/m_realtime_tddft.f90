@@ -251,7 +251,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
   call setup_nucleus(basis, hamiltonian_nucleus, fixed_atom_list)
 
   if( nelement_ecp > 0 ) then
-    call setup_nucleus_ecp(basis, hamiltonian_nucleus)
+    call setup_nucleus_ecp(basis, hamiltonian_nucleus, fixed_atom_list)
   endif
 
   if( write_step / time_step - NINT( write_step / time_step ) > 1.0e-10_dp .OR. write_step < time_step ) then
@@ -2789,6 +2789,14 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
       !  fixed_atom_list(iatom) = iatom
       !enddo
       !call setup_nucleus(basis, hamiltonian_nucleus, fixed_atom_list)
+!      do iatom=1, ncenter_nuclei-nprojectile
+!        fixed_atom_list(iatom) = iatom
+!      enddo
+!      write(stdout, * ) 'test'
+!      write(stdout, * ) ncenter_nuclei-nprojectile, natom
+!      call setup_nucleus_ecp(basis, hamiltonian_nucleus, fixed_atom_list)
+      call recalc_nucleus_ecp(basis, basis_t, basis_p, hamiltonian_nucleus)
+       
     end if
 
     !
@@ -2796,6 +2804,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
     projectile_list(1) = ncenter_nuclei
     allocate(hamiltonian_projectile(basis%nbf, basis%nbf))
     call setup_nucleus(basis, hamiltonian_projectile, projectile_list)
+    call setup_nucleus_ecp(basis, hamiltonian_projectile, projectile_list)
 
     do ispin=1, nspin
       hamiltonian_cmplx(:, :, ispin) = hamiltonian_cmplx(:, :, ispin) + hamiltonian_projectile(:, :)
