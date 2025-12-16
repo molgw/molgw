@@ -52,6 +52,8 @@ module m_scalapack
   integer, protected :: nproc_sca = 1
   integer, protected :: iproc_sca = 0
 
+  ! SCALAPACK grid for master only
+  integer, protected :: cntxt_master
 
   ! SCALAPACK grid: auxiliary basis distribution in AO basis ( alpha beta | P ): 1 x auxil%nproc
   integer, protected :: cntxt_eri3_ao
@@ -2702,6 +2704,10 @@ subroutine init_scalapack_other(nbf, eri3_nprow, eri3_npcol)
   call BLACS_GRIDMAP(cntxt_eri3_ao, usermap, 1          , 1, auxil%nproc)
   call BLACS_GRIDMAP(cntxt_eri3_mo, usermap, auxil%nproc, auxil%nproc, 1)
   deallocate(usermap)
+
+  ! Create a SCALAPACK context for the master only
+  call BLACS_GET( -1, 0, cntxt_master)
+  call BLACS_GRIDMAP(cntxt_master, [0], 1, 1, 1)
 
   call BLACS_GRIDINFO(cntxt_eri3_ao, nprow_eri3_ao, npcol_eri3_ao, iprow_eri3_ao, ipcol_eri3_ao)
   call poorman%max(nprow_eri3_ao)
