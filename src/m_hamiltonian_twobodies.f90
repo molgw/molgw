@@ -1737,17 +1737,17 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
 
       select case(dft_xc_local(ixc)%family)
       case(XC_FAMILY_LDA)
-        call xc_lda_exc_vxc(dft_xc_local(ixc)%func, nr, rhor_batch(1, 1), exc_batch(1), vrho_batch(1, 1))
+        call xc_lda_exc_vxc(dft_xc_local(ixc)%func, nr, rhor_batch, exc_batch, vrho_batch)
 
       case(XC_FAMILY_GGA, XC_FAMILY_HYB_GGA)
-        call xc_gga_exc_vxc(dft_xc_local(ixc)%func, nr, rhor_batch(1, 1), sigma_batch(1, 1), exc_batch(1), &
-                           vrho_batch(1, 1), vsigma_batch(1, 1))
+        call xc_gga_exc_vxc(dft_xc_local(ixc)%func, nr, rhor_batch, sigma_batch, exc_batch, &
+                           vrho_batch, vsigma_batch)
 
         ! Remove too small densities to stabilize the computation
         ! especially useful for Becke88
         do ir=1, nr
           if( ALL( rhor_batch(:, ir) < TOL_RHO ) ) then
-            exc_batch(ir)      = 0.0_dp
+            exc_batch(ir)       = 0.0_dp
             vrho_batch(:, ir)   = 0.0_dp
             vsigma_batch(:, ir) = 0.0_dp
           endif

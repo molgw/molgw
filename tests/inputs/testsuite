@@ -1334,3 +1334,7 @@ HF Total Energy           ,  -2.8625597646      , 0 , 1.0e-7
 Testing integral (11|11)  ,   1.02301683E+00    , 0 , 1.0e-7
 MP2 correlation           ,  -0.0330692355      , 0 , 1.0e-7
 
+he_gth_box_pbe.in         , PBE helium atom in a box
+SCF Total Energy          ,  -2.8922518757      , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.516261         , 0 , 1.0e-4
+

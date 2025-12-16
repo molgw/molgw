@@ -1,0 +1,23 @@
+&molgw
+ scf='PBE'
+
+ init_hamiltonian='core'
+ ecp_basis='GTH-cc-pVTZ'
+ ecp_elements='He'
+ ecp_type='hf.gth'
+
+ ecp_auxil_basis='pw'
+ a1=  4., 0., 0.      ! angstrom
+ a2=  0., 4., 0.      ! angstrom
+ a3=  0., 0., 4.      ! angstrom
+ fft_delta_x = 0.18   ! bohr
+
+
+ npulay_hist=2
+
+ natom=1
+/
+He         2.000    2.000   2.000
+
+
+

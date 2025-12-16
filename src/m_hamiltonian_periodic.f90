@@ -643,20 +643,20 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
   integer              :: nstate
   integer              :: ispin
   integer              :: ixc
-  integer              :: igrid_start, igrid_end
+  integer              :: ifft_local
   integer              :: timing_xxdft_xc, timing_xxdft_densities, timing_xxdft_libxc, timing_xxdft_vxc
   !real(dp), allocatable :: tmp_batch(:, :)
   !real(dp), allocatable :: bf_gradx_batch(:, :)
   !real(dp), allocatable :: bf_grady_batch(:, :)
   !real(dp), allocatable :: bf_gradz_batch(:, :)
   !real(dp), allocatable :: dedd_r_batch(:, :)
-  !real(dp), allocatable :: grad_rhor_batch(:, :, :)
   !real(dp), allocatable :: dedgd_r_batch(:, :, :)
+  real(dp), allocatable :: gradrhor(:, :, :), divergence(:, :)
   real(C_DOUBLE), allocatable :: rhor(:, :)
-  !real(C_DOUBLE), allocatable :: sigma_batch(:, :)
+  real(C_DOUBLE), allocatable :: sigma(:, :)
   real(C_DOUBLE), allocatable :: vrho(:, :)
   real(C_DOUBLE), allocatable :: excgrid(:)
-  !real(C_DOUBLE), allocatable :: vsigma_batch(:, :)
+  real(C_DOUBLE), allocatable :: vsigma(:, :)
   real(dp), allocatable :: vxcgrid(:, :)
   real(dp) :: vxc_avg
   !=====
@@ -687,28 +687,82 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
   call start_clock(timing_xxdft_xc)
   write(stdout, '(/,1x,a)') 'Calculate DFT XC periodic potential'
 
-  call start_clock(timing_xxdft_libxc)
 
   allocate(rhor(nspin, nfft_local))
-  allocate(vrho(nspin, nfft_local))
-  allocate(excgrid(nfft_local))
-
   ! Need to transpose rho to adapt to libxc convention
   ! nspin x nfft_local
   rhor(:, :) = TRANSPOSE(rhoelecr(:, :))
 
+  allocate(vrho(nspin, nfft_local))
+  allocate(excgrid(nfft_local))
+
+  ! Additional quantities for GGA's (and hybrids)
+  if( ANY(dft_xc_local(:)%family == XC_FAMILY_GGA) .OR. ANY(dft_xc_local(:)%family == XC_FAMILY_HYB_GGA ) ) then
+    allocate(gradrhor(nspin, nfft_local, 3))
+    call evaluate_gradrho_periodic(rhor, gradrhor)
+
+    allocate(sigma(2 * nspin + 1, nfft_local))
+    !
+    ! σ(𝐫) = ∣∇n(𝐫)∣²
+    !
+    sigma(1, :) = SUM(gradrhor(1, :, :)**2, DIM=2)
+    if( nspin == 2 ) then
+      sigma(2, :) = SUM(gradrhor(1, :, :) * gradrhor(2, :, :), DIM=2)
+      sigma(3, :) = SUM(gradrhor(2, :, :)**2, DIM=2)
+    endif
+
+    allocate(vsigma(2 * nspin + 1, nfft_local))
+
+  endif
+
+
+  call start_clock(timing_xxdft_libxc)
   do ixc=1, dft_xc_local(1)%nxc
     if( ABS(dft_xc_local(ixc)%coeff) < 1.0e-6_dp ) cycle
 
     select case(dft_xc_local(ixc)%family)
     case(XC_FAMILY_LDA)
-      call xc_lda_exc_vxc(dft_xc_local(ixc)%func, INT(nfft_local, KIND=C_INT), rhor(1, 1), excgrid(1), vrho(1, 1))
+      call xc_lda_exc_vxc(dft_xc_local(ixc)%func, INT(nfft_local, KIND=C_INT), rhor, excgrid, vrho)
+
+      vxcgrid(:, :) = vxcgrid(:, :) + dft_xc_local(ixc)%coeff * TRANSPOSE(vrho(:, :))
+
+    case(XC_FAMILY_GGA, XC_FAMILY_HYB_GGA)
+
+      ! This does not work and I don't understand why
+      !call xc_gga_exc_vxc(dft_xc_local(ixc)%func, INT(nfft_local, KIND=C_INT),&
+      !    rhor, sigma, excgrid, vrho, vsigma)
+
+      do ifft_local=1, nfft_local
+        call xc_gga_exc_vxc(dft_xc_local(ixc)%func, 1_C_INT, &
+            rhor(1, ifft_local), sigma(1, ifft_local), excgrid(ifft_local), vrho(1, ifft_local), vsigma(1, ifft_local))
+      enddo
+
+      ! Remove too small densities to stabilize the computation
+      ! especially useful for Becke88
+      do ifft_local=1, nfft_local
+        if( ALL( rhor(:, ifft_local) < TOL_RHO ) ) then
+          excgrid(ifft_local)   = 0.0_dp
+          vrho(:, ifft_local)   = 0.0_dp
+          vsigma(:, ifft_local) = 0.0_dp
+        endif
+      enddo
+
+      ! Evaluation of
+      ! vxcgrad(r) = −∇ ⋅ (2 vσ(r) ∇n(r))
+      ! in reciprocal space
+      allocate(divergence(nspin, nfft_local))
+      call evaluate_divergence_periodic(gradrhor, vsigma, divergence)
+
+
+      vxcgrid(:, :) = vxcgrid(:, :) + dft_xc_local(ixc)%coeff * ( TRANSPOSE(vrho(:, :)) - TRANSPOSE(divergence(:, :)) )
+      deallocate(divergence)
+
     case default
-      call die('setup_vxc_periodic: only LDA is implemented right now')
+      call die('setup_vxc_periodic: only LDA or GGA is implemented right now')
     end select
 
-    vxcgrid(:, :) = vxcgrid(:, :) + dft_xc_local(ixc)%coeff * TRANSPOSE(vrho(:, :))
-    exc_xc = exc_xc + dft_xc_local(ixc)%coeff * SUM(SUM(rhor(:, :), DIM=1) * excgrid(:)) * volume / REAL(nfft_global, dp)
+
+    exc_xc = exc_xc + dft_xc_local(ixc)%coeff * SUM( SUM(rhor(:, :), DIM=1 ) * excgrid(:)) * volume / REAL(nfft_global, dp)
 
   enddo
 
@@ -722,7 +776,7 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
 
   vxc_avg = SUM(vxcgrid(:, :)) / REAL(nspin * nfft_global, dp)
   call grid%sum(vxc_avg)
-  write(stdout, '(1x,a,f12.5)') 'Average vxc (eV): ', vxc_avg * Ha_eV
+  write(stdout, '(1x,a,f12.5)') 'Average Vxc (eV): ', vxc_avg * Ha_eV
 
   !
   ! Add XC potential to the total local potential
@@ -740,8 +794,208 @@ end subroutine setup_vxc_periodic
 
 
 !=========================================================================
-subroutine calculate_density_periodic(basis, p_matrix, rhor)
+subroutine evaluate_gradrho_periodic(rhor, gradrhor)
+  real(dp), intent(in) :: rhor(:, :)         ! nspin x nfft_local
+  real(dp), intent(out) :: gradrhor(:, :, :) ! nspin x nfft_local x 3
+  !=====
+#if defined(HAVE_FFTW3)
+  type(C_PTR) :: plan
+  type(C_PTR) :: pr, pg, psr, psg
+  real(C_DOUBLE), pointer            :: rhor_fftw(:, :, :), gradr_fftw(:, :, :)
+  complex(C_DOUBLE_COMPLEX), pointer :: rhog_fftw(:, :, :), gradg_fftw(:, :, :)
+  integer :: ig1, ig2, ig3, i1, i2, i3, ifft_local, ifft_global, ispin, idir
+  !=====
 
+  ! Allocate arrays with FFTW functions
+  pr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
+  call C_F_POINTER(pr, rhor_fftw, [nfft1, nfft2, nfft3])
+  pg = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
+  call C_F_POINTER(pg, rhog_fftw, [(nfft1/2+1), nfft2, nfft3])
+
+  do ispin=1, nspin
+    !
+    ! Gather the densities from the different MPI tasks
+    ifft_local = 0
+    ifft_global = 0
+    rhor_fftw(:, :, :) = 0.0_dp
+    do i3=1, nfft3
+      do i2=1, nfft2
+        do i1=1, nfft1
+          ifft_global = ifft_global + 1
+          if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
+            ifft_local = ifft_local + 1
+            rhor_fftw(i1, i2, i3) = rhor(ispin, ifft_local)
+          endif
+        enddo
+      enddo
+    enddo
+    call grid%sum(rhor_fftw)
+
+    !
+    ! Watch the reversed ordering nfft3, nfft2, nfft1
+    plan = fftw_plan_dft_r2c_3d(nfft3, nfft2, nfft1, rhor_fftw, rhog_fftw, FFTW_ESTIMATE)
+    call fftw_execute_dft_r2c(plan, rhor_fftw, rhog_fftw)
+    call fftw_destroy_plan(plan)
+
+    rhog_fftw(:, :, :) = rhog_fftw(:, :, :) / REAL(nfft_global, KIND=dp)
+
+    write(stdout, '(1x,a,f12.6)') 'Charge of the distribution (real space):       ', &
+                                  SUM(rhor_fftw) * volume / REAL(nfft_global, KIND=dp)
+    write(stdout, '(1x,a,f12.6)') 'Charge of the distribution (reciprocal space): ', &
+                                  rhog_fftw(1, 1, 1)%re * volume
+
+
+    psg = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
+    call C_F_POINTER(psg, gradg_fftw, [(nfft1/2+1), nfft2, nfft3])
+
+    do idir=1, 3
+
+      do ig3=1, nfft3
+        do ig2=1, nfft2
+          do ig1=1, nfft1/2+1
+            gradg_fftw(ig1, ig2, ig3) = im * gvec(idir, ig1, ig2, ig3) * rhog_fftw(ig1, ig2, ig3)
+          enddo
+        enddo
+      enddo
+
+      psr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
+      call C_F_POINTER(psr, gradr_fftw, [nfft1, nfft2, nfft3])
+
+      plan = fftw_plan_dft_c2r_3d(nfft3, nfft2, nfft1, gradg_fftw, gradr_fftw, FFTW_ESTIMATE)
+      call fftw_execute_dft_c2r(plan, gradg_fftw, gradr_fftw)
+      call fftw_destroy_plan(plan)
+
+      !
+      ! Keep the potential on the local section of the grid only
+      ifft_local = 0
+      ifft_global = 0
+      do i3=1, nfft3
+        do i2=1, nfft2
+          do i1=1, nfft1
+            ifft_global = ifft_global + 1
+            if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
+              ifft_local = ifft_local + 1
+              gradrhor(ispin, ifft_local, idir) = gradr_fftw(i1, i2, i3)
+            endif
+          enddo
+        enddo
+      enddo
+
+
+    enddo ! loop over cartesian axes
+
+  enddo ! spin loop
+
+
+#else
+  gradrhor(:, :, :) = 0.0_dp ! Fake operation to cheat on the unused dummy variable check of the compiler
+  call die('evaluate_gradrho_periodic: requires to be compiled with FFTs (-DHAVE_FFTW3)')
+#endif
+
+end subroutine evaluate_gradrho_periodic
+
+
+!=========================================================================
+subroutine evaluate_divergence_periodic(gradrhor, sigmar, divergence)
+  real(dp), intent(in)  :: gradrhor(:, :, :) ! nspin x nfft_local x 3
+  real(dp), intent(in)  :: sigmar(:, :)      ! nspin x nfft_local
+  real(dp), intent(out) :: divergence(:, :)  ! nspin x nfft_local
+  !=====
+#if defined(HAVE_FFTW3)
+  type(C_PTR) :: plan
+  type(C_PTR) :: pr, pg, psr, psg
+  real(C_DOUBLE), pointer            :: fieldr_fftw(:, :, :), divr_fftw(:, :, :)
+  complex(C_DOUBLE_COMPLEX), pointer :: fieldg_fftw(:, :, :), divg_fftw(:, :, :)
+  integer :: ig1, ig2, ig3, i1, i2, i3, ifft_local, ifft_global, ispin, idir
+  !=====
+
+  divergence(:, :) = 0.0_dp
+
+  ! Allocate arrays with FFTW functions
+  pr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
+  call C_F_POINTER(pr, fieldr_fftw, [nfft1, nfft2, nfft3])
+  pg = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
+  call C_F_POINTER(pg, fieldg_fftw, [(nfft1/2+1), nfft2, nfft3])
+
+  do ispin=1, nspin
+    do idir=1, 3
+
+      !
+      ! Gather the fields from the different MPI tasks
+      ifft_local = 0
+      ifft_global = 0
+      fieldr_fftw(:, :, :) = 0.0_dp
+      do i3=1, nfft3
+        do i2=1, nfft2
+          do i1=1, nfft1
+            ifft_global = ifft_global + 1
+            if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
+              ifft_local = ifft_local + 1
+              fieldr_fftw(i1, i2, i3) = 2.0_dp * gradrhor(ispin, ifft_local, idir) * sigmar(ispin, ifft_local)
+            endif
+          enddo
+        enddo
+      enddo
+      call grid%sum(fieldr_fftw)
+
+      !
+      ! Watch the reversed ordering nfft3, nfft2, nfft1
+      plan = fftw_plan_dft_r2c_3d(nfft3, nfft2, nfft1, fieldr_fftw, fieldg_fftw, FFTW_ESTIMATE)
+      call fftw_execute_dft_r2c(plan, fieldr_fftw, fieldg_fftw)
+      call fftw_destroy_plan(plan)
+
+      fieldg_fftw(:, :, :) = fieldg_fftw(:, :, :) / REAL(nfft_global, KIND=dp)
+
+
+      psg = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
+      call C_F_POINTER(psg, divg_fftw, [(nfft1/2+1), nfft2, nfft3])
+
+
+      do ig3=1, nfft3
+        do ig2=1, nfft2
+          do ig1=1, nfft1/2+1
+            divg_fftw(ig1, ig2, ig3) = im * gvec(idir, ig1, ig2, ig3) * fieldg_fftw(ig1, ig2, ig3)
+          enddo
+        enddo
+      enddo
+
+      psr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
+      call C_F_POINTER(psr, divr_fftw, [nfft1, nfft2, nfft3])
+
+      plan = fftw_plan_dft_c2r_3d(nfft3, nfft2, nfft1, divg_fftw, divr_fftw, FFTW_ESTIMATE)
+      call fftw_execute_dft_c2r(plan, divg_fftw, divr_fftw)
+      call fftw_destroy_plan(plan)
+
+      !
+      ! Keep the potential on the local section of the grid only
+      ifft_local = 0
+      ifft_global = 0
+      do i3=1, nfft3
+        do i2=1, nfft2
+          do i1=1, nfft1
+            ifft_global = ifft_global + 1
+            if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
+              ifft_local = ifft_local + 1
+              divergence(ispin, ifft_local) = divergence(ispin, ifft_local) + divr_fftw(i1, i2, i3)
+            endif
+          enddo
+        enddo
+      enddo
+
+    enddo
+
+  enddo ! spin loop
+
+#else
+  divergence(:, :) = 0.0_dp ! Fake operation to cheat on the unused dummy variable check of the compiler
+  call die('evaluate_divergence_periodic: requires to be compiled with FFTs (-DHAVE_FFTW3)')
+#endif
+
+end subroutine evaluate_divergence_periodic
+
+
+!=========================================================================
+subroutine calculate_density_periodic(basis, p_matrix, rhor)
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)  :: p_matrix(:, :, :)
   real(dp), intent(out) :: rhor(:, :)
@@ -1194,6 +1448,25 @@ pure function gkin(ig1, ig2, ig3)
   gkin = 0.5_dp * SUM( MATMUL(bprim(:, :), [ig1m, ig2m ,ig3m])**2 )
 
 end function gkin
+
+
+!=========================================================================
+! gvec: G vector along cartesian direction idir
+pure function gvec(idir, ig1, ig2, ig3)
+
+  integer, intent(in) :: idir, ig1, ig2, ig3
+  real(dp) :: gvec
+  !=====
+  integer  :: ig1m, ig2m, ig3m
+  !=====
+
+  ig1m = MERGE( ig1 - 1, ig1 - 1 - nfft1, ig1 <= nfft1/2)
+  ig2m = MERGE( ig2 - 1, ig2 - 1 - nfft2, ig2 <= nfft2/2)
+  ig3m = MERGE( ig3 - 1, ig3 - 1 - nfft3, ig3 <= nfft3/2)
+
+  gvec = DOT_PRODUCT(bprim(idir, :), [ig1m, ig2m ,ig3m])
+
+end function gvec
 
 
 !=========================================================================
@@ -1933,7 +2206,7 @@ subroutine poisson_solver_fft(rhor, vcoulr)
 
 #else
   vcoulr(:) = rhor(:) ! Fake operation to cheat on the unused dummy variable check of the compiler
-  call die('poisson_solver_fft: requires to be compiled FFTs (-DHAVE_FFTW3)')
+  call die('poisson_solver_fft: requires to be compiled with FFTs (-DHAVE_FFTW3)')
 #endif
 
 
