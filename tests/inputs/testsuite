@@ -1335,11 +1335,11 @@ Testing integral (11|11)  ,   1.02301683E+00    , 0 , 1.0e-7
 MP2 correlation           ,  -0.0330692355      , 0 , 1.0e-7
 
 he_gth_box_pbe.in         , PBE helium atom in a box, need_libcint need_fftw3
-SCF Total Energy          ,  -2.8986760155      , 0 , 1.0e-7
-gKS HOMO energy           ,  -15.710318         , 0 , 1.0e-4
+SCF Total Energy          ,  -2.8922518757      , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.516261         , 0 , 1.0e-4
 
 diamond_gth_08_pbe.in     , 8-atom cell of diamond within PBE, need_libcint need_fftw3
-SCF Total Energy          , -44.9023590906     , 0 , 1.0e-7
-gKS HOMO energy           ,   13.890522        , 0 , 1.0e-4
-gKS LUMO energy           ,   18.516975        , 0 , 1.0e-4
+SCF Total Energy          , -44.9101913413     , 0 , 1.0e-7
+gKS HOMO energy           ,   13.880276        , 0 , 1.0e-4
+gKS LUMO energy           ,   18.497151        , 0 , 1.0e-4
 

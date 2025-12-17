@@ -645,12 +645,6 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
   integer              :: ixc
   integer              :: ifft_local
   integer              :: timing_xxdft_xc, timing_xxdft_densities, timing_xxdft_libxc, timing_xxdft_vxc
-  !real(dp), allocatable :: tmp_batch(:, :)
-  !real(dp), allocatable :: bf_gradx_batch(:, :)
-  !real(dp), allocatable :: bf_grady_batch(:, :)
-  !real(dp), allocatable :: bf_gradz_batch(:, :)
-  !real(dp), allocatable :: dedd_r_batch(:, :)
-  !real(dp), allocatable :: dedgd_r_batch(:, :, :)
   real(dp), allocatable :: gradrhor(:, :, :), divergence(:, :)
   real(C_DOUBLE), allocatable :: rhor(:, :)
   real(C_DOUBLE), allocatable :: sigma(:, :)
@@ -853,11 +847,7 @@ subroutine evaluate_gradrho_periodic(rhor, gradrhor)
       do ig3=1, nfft3
         do ig2=1, nfft2
           do ig1=1, nfft1/2+1
-            if( gkin(ig1, ig2, ig3) < fft_ecut ) then
-              gradg_fftw(ig1, ig2, ig3) = im * gvec(idir, ig1, ig2, ig3) * rhog_fftw(ig1, ig2, ig3)
-            else
-              gradg_fftw(ig1, ig2, ig3) = 0.0_dp
-            endif
+            gradg_fftw(ig1, ig2, ig3) = im * gvec(idir, ig1, ig2, ig3) * rhog_fftw(ig1, ig2, ig3)
           enddo
         enddo
       enddo
@@ -958,11 +948,7 @@ subroutine evaluate_divergence_periodic(gradrhor, sigmar, divergence)
       do ig3=1, nfft3
         do ig2=1, nfft2
           do ig1=1, nfft1/2+1
-            if( gkin(ig1, ig2, ig3) < fft_ecut ) then
-              divg_fftw(ig1, ig2, ig3) = im * gvec(idir, ig1, ig2, ig3) * fieldg_fftw(ig1, ig2, ig3)
-            else
-              divg_fftw(ig1, ig2, ig3) = 0.0_dp
-            endif
+            divg_fftw(ig1, ig2, ig3) = im * gvec(idir, ig1, ig2, ig3) * fieldg_fftw(ig1, ig2, ig3)
           enddo
         enddo
       enddo
