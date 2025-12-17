@@ -1,0 +1,23 @@
+&molgw
+ scf='PBE'
+ min_overlap=1.0e-4
+
+ init_hamiltonian='core'
+ ecp_basis='GTH-cc-pVDZ'
+
+ ecp_auxil_basis='PW'
+ grid_quality='low'
+
+ ecp_elements='C'
+ ecp_type='pbe.gth'
+
+ fft_delta_x = 0.30
+ fft_neighbors= 2
+
+
+ fft_read_density='no'
+ npulay_hist=3
+ tolscf=1.0e-5
+
+ poscar_file='../data_for_tests/POSCAR_diamond08'
+/

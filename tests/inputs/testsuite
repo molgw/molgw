@@ -1325,16 +1325,21 @@ SCF Total Energy          , -43.5733353282     , 0 , 1.0e-7
 gKS HOMO energy           ,    9.610570        , 0 , 1.0e-4
 gKS LUMO energy           ,   24.796982        , 0 , 1.0e-4
 
-he_hf_cc4s_box_output.in  , HF helium atom with output of Cc4s files
+he_hf_cc4s_box_output.in  , HF helium atom with output of Cc4s files, need_libcint need_fftw3
 SCF Total Energy          ,  -2.8618499703      , 0 , 1.0e-7
 Testing integral (11|11)  ,   1.02301683E+00    , 0 , 1.0e-7
 
-he_hf_cc4s_box_input.in   , HF+MP2 helium atom from input Cc4s files, restart
+he_hf_cc4s_box_input.in   , HF+MP2 helium atom from input Cc4s files, need_libcint need_fftw3 restart
 HF Total Energy           ,  -2.8625597646      , 0 , 1.0e-7
 Testing integral (11|11)  ,   1.02301683E+00    , 0 , 1.0e-7
 MP2 correlation           ,  -0.0330692355      , 0 , 1.0e-7
 
-he_gth_box_pbe.in         , PBE helium atom in a box
+he_gth_box_pbe.in         , PBE helium atom in a box, need_libcint need_fftw3
 SCF Total Energy          ,  -2.8922518757      , 0 , 1.0e-7
 gKS HOMO energy           ,  -15.516261         , 0 , 1.0e-4
+
+diamond_gth_08_pbe.in     , 8-atom cell of diamond within PBE, need_libcint need_fftw3
+SCF Total Energy          , -44.9101907773     , 0 , 1.0e-7
+gKS HOMO energy           ,   13.881473        , 0 , 1.0e-4
+gKS LUMO energy           ,   18.497312        , 0 , 1.0e-4
 

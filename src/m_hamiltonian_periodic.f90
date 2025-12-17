@@ -85,7 +85,7 @@ subroutine set_fft_grid(basis, allocate_bfr_transpose)
   !=====
 
   write(stdout,'(/,1x,a)')    'Setting up the FFT grid'
-  write(stdout,'(1x,a,f8.4)') 'spacing fft_delta_x: ', fft_delta_x
+  write(stdout,'(1x,a,f8.2)') 'Cutoff energy for densities (Ha): ', fft_ecut
 
   maximum_extension = 0.0_dp
   do ibf=1, basis%nbf
@@ -98,15 +98,15 @@ subroutine set_fft_grid(basis, allocate_bfr_transpose)
   endif
 
   ! Direction 1
-  nfftx = CEILING( NORM2(aprim(:, 1)) / fft_delta_x )
+  nfftx = CEILING( NORM2(aprim(:, 1)) * SQRT(2.0_dp * fft_ecut) / pi ) * 2
   nfft1 = next_in_grid(nfftx)
 
   ! Direction 2
-  nfftx = CEILING( NORM2(aprim(:, 2)) / fft_delta_x )
+  nfftx = CEILING( NORM2(aprim(:, 2)) * SQRT(2.0_dp * fft_ecut) / pi ) * 2
   nfft2 = next_in_grid(nfftx)
 
   ! Direction 3
-  nfftx = CEILING( NORM2(aprim(:, 3)) / fft_delta_x )
+  nfftx = CEILING( NORM2(aprim(:, 3)) * SQRT(2.0_dp * fft_ecut) / pi ) * 2
   nfft3 = next_in_grid(nfftx)
 
   nfft_global = nfft1 * nfft2 * nfft3
@@ -853,7 +853,11 @@ subroutine evaluate_gradrho_periodic(rhor, gradrhor)
       do ig3=1, nfft3
         do ig2=1, nfft2
           do ig1=1, nfft1/2+1
-            gradg_fftw(ig1, ig2, ig3) = im * gvec(idir, ig1, ig2, ig3) * rhog_fftw(ig1, ig2, ig3)
+            if( gkin(ig1, ig2, ig3) < fft_ecut ) then
+              gradg_fftw(ig1, ig2, ig3) = im * gvec(idir, ig1, ig2, ig3) * rhog_fftw(ig1, ig2, ig3)
+            else
+              gradg_fftw(ig1, ig2, ig3) = 0.0_dp
+            endif
           enddo
         enddo
       enddo
@@ -954,7 +958,11 @@ subroutine evaluate_divergence_periodic(gradrhor, sigmar, divergence)
       do ig3=1, nfft3
         do ig2=1, nfft2
           do ig1=1, nfft1/2+1
-            divg_fftw(ig1, ig2, ig3) = im * gvec(idir, ig1, ig2, ig3) * fieldg_fftw(ig1, ig2, ig3)
+            if( gkin(ig1, ig2, ig3) < fft_ecut ) then
+              divg_fftw(ig1, ig2, ig3) = im * gvec(idir, ig1, ig2, ig3) * fieldg_fftw(ig1, ig2, ig3)
+            else
+              divg_fftw(ig1, ig2, ig3) = 0.0_dp
+            endif
           enddo
         enddo
       enddo
@@ -1773,10 +1781,10 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
 
   factor = SUM(zvalence(:)) / zval
 
-  ! If the deviation from expected charge is larger than 5%, then stop and ask for a finer fft_delta_x
+  ! If the deviation from expected charge is larger than 5%, then stop and ask for a finer FFT grid
   if( ABS( factor - 1.0_dp ) > 0.05_dp ) then
     call die('prepare_nuclei_density_periodic: wrong nucleus total charge. ' // &
-             'FFT grid is certainly too coarse. Try to decrease fft_delta_x.')
+             'FFT grid is certainly too coarse. Try to increase fft_ecut.')
   endif
 
 
@@ -2016,10 +2024,10 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
 
   factor = SUM(zvalence(:)) / zval
 
-  ! If the deviation from expected charge is larger than 1%, then stop and ask for a finer fft_delta_x
+  ! If the deviation from expected charge is larger than 1%, then stop and ask for a finer FFT grid
   if( ABS( factor - 1.0_dp ) > 0.01_dp ) then
     call die('prepare_nuclei_density_periodic: wrong nucleus total charge. ' // &
-             'FFT grid is certainly too coarse. Try to decrease fft_delta_x.')
+             'FFT grid is certainly too coarse. Try to increase fft_ecut.')
   endif
 
   rhonuclr(:) = rhonuclr(:) * factor
