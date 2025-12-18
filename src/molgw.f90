@@ -234,7 +234,7 @@ program molgw
     ! PBC sets up the FFT and nx cell replication here
     !  also precalculate the basis functions on the FFT grid and store them
     if( pbc_ ) then
-      call set_fft_grid(basis, calc_type%need_exchange)
+      call set_fft_grid(basis)
     endif
 
 

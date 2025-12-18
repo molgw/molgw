@@ -55,10 +55,10 @@ module m_hamiltonian_periodic
 
   complex(C_DOUBLE_COMPLEX), pointer :: rhog_fftw_prev(:, :, :) ! only used in kerker_precond that is not finalized
 
-  real(dp), allocatable, private :: bfr(:, :)
-  real(dp), allocatable, private :: bfrt(:, :)   ! Transpose of bfr
+  ! Storage of real space basis functions on the FFT grid
+  integer, private :: desc_bfr(NDEL)
+  real(dp), allocatable, private :: bfr(:, :)    ! nbf x nfft_local
   real(dp), allocatable, private :: normalization_pbc(:)
-
 
   integer, protected               :: nauxil_global_periodic
   real(dp), allocatable, protected :: eri_3center_mo_periodic(:, :, :, :)
@@ -70,17 +70,16 @@ contains
 !=========================================================================
 ! Set FFT grid points so to accommodate variations at Δx scale in real space
 !
-subroutine set_fft_grid(basis, allocate_bfr_transpose)
+subroutine set_fft_grid(basis)
 
   type(basis_set), intent(in) :: basis
-  logical, intent(in)         :: allocate_bfr_transpose
   !=====
   integer :: nfftx
   integer :: fft_grids(26) = [ 12, 16, 20, 24, 32, 36, 48, 60, 64, 72, 80, 90, 96, &
                                108, 120, 128, 144, &
                                160, 180, 192, 256, 288, 384, 512, 768, 1024]
   integer :: i1, i2, i3, ifft_global, ifft_local
-  integer :: ibf
+  integer :: ibf, info
   real(dp) :: maximum_extension
   !=====
 
@@ -152,11 +151,10 @@ subroutine set_fft_grid(basis, allocate_bfr_transpose)
 
   !
   ! Evaluate and store basis functions on the real-space grid
+  !   bfr(basis%nbf, nfft_local) is set here
+  !   bfr is column-distributed
   call calculate_basis_functions_periodic(basis)
-  if( allocate_bfr_transpose ) then
-    call clean_allocate('PBC basis functions on grid (tranpose)', bfrt, nfft_local, basis%nbf)
-    bfrt(:, :) = TRANSPOSE(bfr(:, :))
-  endif
+  call DESCINIT(desc_bfr, basis%nbf, nfft_global, 1, 1, first_row, first_col, cntxt_cd, basis%nbf, info)
 
   coulomb_type_hartree  = MERGE(1, 0, TRIM(capitalize(fft_coulomb_hartree))  == 'SPHERICAL')
   coulomb_type_exchange = MERGE(1, 0, TRIM(capitalize(fft_coulomb_exchange)) == 'SPHERICAL')
@@ -880,6 +878,10 @@ subroutine evaluate_gradrho_periodic(rhor, gradrhor)
 
   enddo ! spin loop
 
+  call fftw_free(pr)
+  call fftw_free(pg)
+  call fftw_free(psr)
+  call fftw_free(psg)
 
 #else
   gradrhor(:, :, :) = 0.0_dp ! Fake operation to cheat on the unused dummy variable check of the compiler
@@ -980,6 +982,11 @@ subroutine evaluate_divergence_periodic(gradrhor, sigmar, divergence)
 
   enddo ! spin loop
 
+  call fftw_free(pr)
+  call fftw_free(pg)
+  call fftw_free(psr)
+  call fftw_free(psg)
+
 #else
   divergence(:, :) = 0.0_dp ! Fake operation to cheat on the unused dummy variable check of the compiler
   call die('evaluate_divergence_periodic: requires to be compiled with FFTs (-DHAVE_FFTW3)')
@@ -1009,7 +1016,7 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
 
   rhor(:, :) = 0.0_dp
   !
-  ! phi_α(r) * ( P_αβ * phi_β(r) )
+  ! ∑_αβ phi_α(r) * ( P_αβ * phi_β(r) )
   do ispin=1, nspin
     ! Coding without batches
     !call DGEMM('N', 'N', basis%nbf, nfft_local, basis%nbf, 1.0d0, p_matrix(:, :, ispin), basis%nbf, &
@@ -1056,23 +1063,27 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   real(dp), intent(out) :: h_ao(:, :, :)
   !=====
   integer :: ng_local_mpi(grid%nproc)
-  integer :: irank
+  integer :: irank, info
   integer :: ibf, ispin, nocc, istate, ng_global, ng_local
   integer :: ig1, ig2, ig3, ig_local, ig_global
-  real(dp), allocatable :: phi_i(:), phiphir(:), phiphir_global(:), phiphig_global(:)
-  real(dp), allocatable :: phiphig(:, :)
+  integer :: nbf_local, ibf_local
+  real(dp), allocatable :: phiphir_global(:)
+  real(dp), allocatable :: phi_i(:), phi_i_global(:)
+  real(dp), allocatable :: phiphig(:, :), phiphig1(:, :)
   real(dp), allocatable :: vg_sqrt(:, :, :)
   type(C_PTR) :: plan
   type(C_PTR) :: pr, pg
   real(C_DOUBLE), pointer            :: phiphir_fftw(:, :, :)
   complex(C_DOUBLE_COMPLEX), pointer :: phiphig_fftw(:, :, :)
+  real(dp), allocatable :: bfrt(:, :) 
+  integer :: desct(NDEL), desc1(NDEL), desc2(NDEL)
   !=====
 
   call start_clock(timing_exchange)
 
   write(stdout, '(/,1x,a)') 'Calculate Exchange term with PBC'
 
-  if( .NOT. ALLOCATED(bfr) .AND. .NOT. ALLOCATED(bfrt) ) then
+  if( .NOT. ALLOCATED(bfr) ) then
     call die('setup_exchange_periodic: basis function on FFT grid should be available at this stage')
   endif
 
@@ -1080,7 +1091,6 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
 
   allocate(phi_i(nfft_local))
 
-  allocate(phiphir(nfft_local))
   ! Number of G vectors is not exactly nfft_global because of r2c transform
   ng_global = 2 * (nfft1 / 2 + 1) * nfft2 * nfft3
   ng_local_mpi(:) = 0
@@ -1104,8 +1114,13 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
     enddo
   enddo
 
+  ! Transpose bfr -> bfrt
+  call transpose_bfr(bfrt, desct)
+  nbf_local = SIZE(bfrt, DIM=2)
+
   call clean_allocate('Temporary phiphi(G)', phiphig, ng_local, basis%nbf)
-  allocate(phiphig_global(ng_global))
+  call clean_allocate('Temporary phiphi1(G)', phiphig1, ng_global, nbf_local)
+  allocate(phiphir_global(nfft_global))
 
   ! Allocate arrays with FFTW functions
   pr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
@@ -1118,26 +1133,26 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   do ispin=1, nspin
 
     do istate=1, nocc
+      write(stdout, '(1x,a,i6,a,i6)') 'Loop over occupied states: ', istate, ' / ', nocc
       call start_clock(timing_tmp0)
       !TODO use DGEMM?
       call start_clock(timing_tmp1)
       phi_i(:) = MATMUL( c_matrix(:, istate, ispin), bfr(:, :) )
       call stop_clock(timing_tmp1)
 
-      do ibf=1, basis%nbf
-        call start_clock(timing_tmp2)
-        if( ALLOCATED(bfrt) ) then
-          ! faster but doubles the memory consumption
-          phiphir(:) = phi_i(:) * bfrt(:, ibf)
-        else
-          phiphir(:) = phi_i(:) * bfr(ibf, :)
-        endif
-        call stop_clock(timing_tmp2)
-        call start_clock(timing_tmp3)
-        phiphir_global = rho_local_to_global(phiphir)
-        call stop_clock(timing_tmp3)
+      !
+      ! Communication here
+      call start_clock(timing_tmp2)
+      phi_i_global = rho_local_to_global(phi_i)
+      call stop_clock(timing_tmp2)
 
-        !timing: this is super fast
+      ! Parallelization over basis functions
+      ! Loop over local basis index
+      do ibf_local=1, nbf_local
+        ibf = INDXL2G(ibf_local, 1, ipcol_cd, first_col, npcol_cd)
+
+        phiphir_global(:) = phi_i_global(:) * bfrt(:, ibf_local)
+
         phiphir_fftw(:, :, :) = RESHAPE(phiphir_global(:), [nfft1, nfft2, nfft3] )
 
         call start_clock(timing_tmp4)
@@ -1147,13 +1162,10 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
         call fftw_destroy_plan(plan)
         call stop_clock(timing_tmp4)
 
-        call start_clock(timing_tmp5)
         phiphig_fftw(:, :, :) = phiphig_fftw(:, :, :) * volume / REAL(nfft_global, KIND=dp)
 
         ! M_{iα}(G) * √v(G) → M_{iα}(G)
         phiphig_fftw(:, :, :) = vg_sqrt(:, :, :) * phiphig_fftw(:, :, :)
-        call stop_clock(timing_tmp5)
-        call start_clock(timing_tmp6)
 
         ! When G_1 /= 0, all the terms should be accounted with double weight,
         !   due to real to complex (r2c) FFT transform that only gives G_1 >=0
@@ -1161,38 +1173,40 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
         phiphig_fftw(2:, :, :) = SQRT(2.0_dp / volume) * phiphig_fftw(2:, :, :)
 
         ! Cast the complex FFT into a real array (G index will be summed over then the order does not matter)
-        phiphig_global(:) = TRANSFER(phiphig_fftw, [1.0_dp, 1.0_dp])
-        call stop_clock(timing_tmp6)
+        phiphig1(:, ibf_local) = TRANSFER(phiphig_fftw, [1.0_dp, 1.0_dp])
 
-        call start_clock(timing_tmp7)
-        ! Distribute the global phiphig_global to local copies
-        ig_local = 0
-        do ig_global=1, ng_global
-          if( MODULO(ig_global - 1, grid%nproc) == grid%rank ) then
-            ig_local = ig_local + 1
-            phiphig(ig_local, ibf) = phiphig_global(ig_global)
-          endif
-        enddo
-        call stop_clock(timing_tmp7)
-
-      enddo
+      enddo ! loop over ibf_local
 
       call start_clock(timing_tmp8)
-      ! Σ_x = - sum_i sum_G f_i/spin_fact M_{iα}(G) M_{iα}(G)
+
+      call DESCINIT(desc1, ng_global, basis%nbf, 1, 1, first_row, first_col, cntxt_cd, ng_global, info)
+      call DESCINIT(desc2, ng_global, basis%nbf, 1, 1, first_row, first_col, cntxt_rd, MAX(1, ng_local), info)
+
+      !
+      ! Communication here
+      !
+      call PDGEMR2D(ng_global, basis%nbf, phiphig1, 1, 1, desc1, phiphig, 1, 1, desc2, cntxt_cd)
+      call stop_clock(timing_tmp8)
+
+      call start_clock(timing_tmp9)
+
+      ! Σ_x = - ∑_i f_i/spin_fact ∑_G M_{iα}(G) M_{iα}(G)
       ! NOTE: ordering with 'T' is faster than 'N'
       call DSYRK('L', 'T', basis%nbf, ng_local, -occupation(istate, ispin) / spin_fact, phiphig, ng_local, &
                  1.0_dp, h_ao(:, :, ispin), basis%nbf)
-      call stop_clock(timing_tmp8)
+      call stop_clock(timing_tmp9)
       call stop_clock(timing_tmp0)
 
     enddo
     call matrix_lower_to_full(h_ao(:, :, ispin))
   enddo
 
-  deallocate(phiphig_global)
   call clean_deallocate('Temporary phiphi(G)', phiphig)
+  call clean_deallocate('Temporary phiphi(G)', phiphig1)
 
-  deallocate(phiphir)
+  call fftw_free(pr)
+  call fftw_free(pg)
+
   deallocate(phi_i)
   deallocate(vg_sqrt)
 
@@ -1206,6 +1220,40 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
 
 
 end subroutine setup_exchange_periodic
+
+
+!=========================================================================
+! Transpose bfr -> bfrt
+! always distributed on the 2nd index (columns)
+!
+subroutine transpose_bfr(bfrt, desct)
+  real(dp), allocatable, intent(inout) :: bfrt(:, :)
+  integer, intent(out) :: desct(NDEL)
+  !=====
+  integer :: nbf, mtlocal, ntlocal, info
+  !=====
+
+  nbf = desc_bfr(M_)
+
+  mtlocal = NUMROC(nfft_global, 1, iprow_cd, 0, nprow_cd)
+  ntlocal = NUMROC(nbf, 1, ipcol_cd, 0, npcol_cd)
+  if( ALLOCATED(bfrt) ) then
+    if( mtlocal /= SIZE(bfrt, DIM=1) ) call die("transpose_bfr: incorrect dimension 1")
+    if( ntlocal /= SIZE(bfrt, DIM=2) ) call die("transpose_bfr: incorrect dimension 2")
+  else
+    allocate(bfrt(mtlocal, ntlocal))
+  endif
+
+  call DESCINIT(desct, nfft_global, nbf, 1, 1, first_row, first_col, cntxt_cd, MAX(1, mtlocal), info)
+
+  if( npcol_cd > 1 ) then
+    call PDTRAN(nfft_global, nbf, 1.0d0, bfr, 1, 1, desc_bfr, &
+                0.0d0, bfrt, 1, 1, desct)
+  else
+    bfrt(:, :) = TRANSPOSE(bfr(:, :))
+  endif
+
+end subroutine transpose_bfr
 
 
 !=========================================================================
@@ -1232,7 +1280,7 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
   nbf    = SIZE(c_matrix, DIM=1)
   nstate = SIZE(c_matrix, DIM=2)
 
-  if( .NOT. ALLOCATED(bfr) .AND. .NOT. ALLOCATED(bfrt) ) then
+  if( .NOT. ALLOCATED(bfr) ) then
     call die('calculate_coulombvertex_periodic: basis function on FFT grid should be available at this stage')
   endif
 
@@ -1368,6 +1416,8 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
   deallocate(phiphir)
   deallocate(phi_i)
   deallocate(vg_sqrt)
+  call fftw_free(pr)
+  call fftw_free(pg)
 
 
   !call stop_clock(timing_exchange)
@@ -2197,6 +2247,10 @@ subroutine poisson_solver_fft(rhor, vcoulr)
     enddo
   enddo
 
+  call fftw_free(pr)
+  call fftw_free(pg)
+  call fftw_free(pvr)
+  call fftw_free(pvg)
 
 #else
   vcoulr(:) = rhor(:) ! Fake operation to cheat on the unused dummy variable check of the compiler
@@ -2680,9 +2734,6 @@ subroutine destroy_fft_grid()
   deallocate(rgrid)
   deallocate(rhoelecr)
   call clean_deallocate('PBC basis functions on grid', bfr)
-  if( ALLOCATED(bfrt) ) then
-    call clean_deallocate('PBC basis functions on grid (transpose)', bfrt)
-  endif
   deallocate(normalization_pbc)
 
 end subroutine destroy_fft_grid
