@@ -1177,15 +1177,22 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
 
       enddo ! loop over ibf_local
 
+
       call start_clock(timing_tmp8)
-
-      call DESCINIT(desc1, ng_global, basis%nbf, 1, 1, first_row, first_col, cntxt_cd, ng_global, info)
-      call DESCINIT(desc2, ng_global, basis%nbf, 1, 1, first_row, first_col, cntxt_rd, MAX(1, ng_local), info)
-
+#if defined(HAVE_SCALAPACK)
       !
       ! Communication here
       !
-      call PDGEMR2D(ng_global, basis%nbf, phiphig1, 1, 1, desc1, phiphig, 1, 1, desc2, cntxt_cd)
+      if( npcol_cd > 1 ) then
+        call DESCINIT(desc1, ng_global, basis%nbf, 1, 1, first_row, first_col, cntxt_cd, ng_global, info)
+        call DESCINIT(desc2, ng_global, basis%nbf, 1, 1, first_row, first_col, cntxt_rd, MAX(1, ng_local), info)
+        call PDGEMR2D(ng_global, basis%nbf, phiphig1, 1, 1, desc1, phiphig, 1, 1, desc2, cntxt_cd)
+      else
+#endif
+        phiphig(:, :) = phiphig1(:, :)
+#if defined(HAVE_SCALAPACK)
+      endif
+#endif
       call stop_clock(timing_tmp8)
 
       call start_clock(timing_tmp9)
@@ -1246,12 +1253,16 @@ subroutine transpose_bfr(bfrt, desct)
 
   call DESCINIT(desct, nfft_global, nbf, 1, 1, first_row, first_col, cntxt_cd, MAX(1, mtlocal), info)
 
+#if defined(HAVE_SCALAPACK)
   if( npcol_cd > 1 ) then
     call PDTRAN(nfft_global, nbf, 1.0d0, bfr, 1, 1, desc_bfr, &
                 0.0d0, bfrt, 1, 1, desct)
   else
+#endif
     bfrt(:, :) = TRANSPOSE(bfr(:, :))
+#if defined(HAVE_SCALAPACK)
   endif
+#endif
 
 end subroutine transpose_bfr
 
