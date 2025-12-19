@@ -42,6 +42,7 @@ jobs:
           echo "LIBCINT=../libcint-6.1.2/build/libcint.a" > my_machine.arch
           echo "FCFLAGS=-cpp -O1 -fcheck=all" >> my_machine.arch
           echo "CPPFLAGS=-DHAVE_FFTW3" >> my_machine.arch
+          echo "FFTW3=-lfftw3" >> my_machine.arch
           make -j 4
 
       - name: Run the test suite
