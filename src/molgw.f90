@@ -119,8 +119,8 @@ program molgw
 
   !
   ! start counting time here
-  call init_timing()
-  call start_clock(timing_total)
+  call init_timers()
+  call timer_molgw%start()
 
   !
   ! Output some welcome messages and compilation options
@@ -163,7 +163,8 @@ program molgw
       write(stdout, '(/,/,1x,a,i5,/)') ' === LBFGS step ', istep
     endif
  
-    call start_clock(timing_prescf)
+    call timers_setstage(1)
+    call timer_prescf%start()
  
  
     if( x2c_ ) then
@@ -439,7 +440,8 @@ program molgw
       endif
     endif
    
-    call stop_clock(timing_prescf)
+    call timer_prescf%stop()
+    call timers_setstage(2)
    
    
     !
@@ -606,7 +608,8 @@ program molgw
   ! Part 3 / 3 : Post-processings
   !
   !
-  call start_clock(timing_postscf)
+  call timers_setstage(3)
+  call timer_postscf%start()
 
 #if defined(HAVE_LIBCINT)
   call destroy_libcint(basis)
@@ -964,8 +967,8 @@ program molgw
 
   call destroy_cart_to_pure_transforms()
 
-  call stop_clock(timing_postscf)
-  call stop_clock(timing_total)
+  call timer_postscf%stop()
+  call timer_molgw%stop()
 
   call this_is_the_end()
 
