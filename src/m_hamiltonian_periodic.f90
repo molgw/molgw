@@ -75,9 +75,11 @@ subroutine set_fft_grid(basis)
   type(basis_set), intent(in) :: basis
   !=====
   integer :: nfftx
-  integer :: fft_grids(26) = [ 12, 16, 20, 24, 32, 36, 48, 60, 64, 72, 80, 90, 96, &
-                               108, 120, 128, 144, &
-                               160, 180, 192, 256, 288, 384, 512, 768, 1024]
+  integer, parameter :: fft_grids(*) = [ &
+     8, 12, 16, 18, 20, 24, 30, 32, 36, 40, 45, 48, 50, 60, 64, 72, 75, 80, &
+     90, 96, 100, 108, 120, 128, 144, 150, 160, 180, 192, 200, 216, 240, 256, &
+     288, 300, 320, 360, 384, 400, 432, 480, 512, 576, 600, 640, 720,  &
+     768, 800, 864, 900, 960, 1024]
   integer :: i1, i2, i3, ifft_global, ifft_local
   integer :: ibf, info
   real(dp) :: maximum_extension

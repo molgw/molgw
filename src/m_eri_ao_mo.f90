@@ -1408,7 +1408,7 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootna
   nstate2 = nstate**2
 
   ! Write meta data in a yaml file
-  open(newunit=unitcv, file=TRIM(rootname_) // '_CoulombVertex.yaml', form='formatted', status='unknown', action='write')
+  open(newunit=unitcv, file=TRIM(rootname_) // '_CoulombVertex.yaml', form='formatted', status='replace', action='write')
   write(unitcv, '(a)')    'version: 100'
   write(unitcv, '(a)')    'type: Tensor'
   write(unitcv, '(a)')    'scalarType: Complex64'
@@ -1431,8 +1431,9 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootna
 #if !defined(HAVE_MPI)
   write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // '_CoulombVertex.elements with plain fortran'
   write(stdout, '(1x,a,i8,a,i4,a,i4)') 'Dimensions written: ', naux, ' x ', nstate, ' x ', nstate
+
   open(newunit=unitcv, file=TRIM(rootname_) // '_CoulombVertex.elements', form='unformatted', access='stream', &
-       status='unknown', action='write')
+       status='replace', action='write')
   do istate=LBOUND(eri_3center_updated, DIM=2), UBOUND(eri_3center_updated, DIM=2)
     do jstate=LBOUND(eri_3center_updated, DIM=3), UBOUND(eri_3center_updated, DIM=3)
       if( MOD(nauxil_in, 2) == 0 ) then ! even
@@ -1481,6 +1482,10 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootna
 
   disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(naux, KIND=MPI_OFFSET_KIND)
 
+  !
+  ! Erase file if it exists, MPI-IO needs it
+  call MPI_FILE_DELETE(TRIM(rootname_) // '_CoulombVertex.elements', info, ierr)
+
   call MPI_FILE_OPEN(MPI_COMM_WORLD, TRIM(rootname_) // '_CoulombVertex.elements', &
                      MPI_MODE_WRONLY + MPI_MODE_CREATE, &
                      MPI_INFO_NULL, unitcv, ierr)
@@ -1517,6 +1522,7 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootna
 
   call MPI_FILE_CLOSE(unitcv, ierr)
 #endif
+  write(stdout, '(1x,a)') 'Writing to file done'
 
   call stop_clock(timing_write_coulombvertex)
 
