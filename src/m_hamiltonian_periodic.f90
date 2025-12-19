@@ -1062,6 +1062,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   real(dp), intent(out) :: ex
   real(dp), intent(out) :: h_ao(:, :, :)
   !=====
+#if defined(HAVE_FFTW3)
   integer :: ng_local_mpi(grid%nproc)
   integer :: irank, info
   integer :: ibf, ispin, nocc, istate, ng_global, ng_local
@@ -1224,7 +1225,11 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   ex = 0.5_dp * SUM( p_matrix(:, :, :) * h_ao(:, :, :) )
 
   call stop_clock(timing_exchange)
-
+#else
+  ex = 0.0_dp
+  h_ao(:, :, :) = 0.0_dp
+  call die('setup_exchange_periodic: requires FFTW3 activation')
+#endif
 
 end subroutine setup_exchange_periodic
 
@@ -1272,6 +1277,7 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
 
   real(dp), intent(in) ::  c_matrix(:, :, :)
   !=====
+#if defined(HAVE_FFTW3)
   integer :: ng_local_mpi(grid%nproc)
   integer :: irank
   integer :: ispin, istate, ng_local, jstate, nstate, nbf, ng_global
@@ -1433,6 +1439,9 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
 
   !call stop_clock(timing_exchange)
 
+#else
+  call die('calculate_coulombvertex_periodic: requires FFTW3 activation')
+#endif
 
 end subroutine calculate_coulombvertex_periodic
 
