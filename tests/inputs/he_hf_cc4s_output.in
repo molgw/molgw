@@ -5,7 +5,7 @@
 
  postscf='MP2'
  print_cc4s_files = 'yes'
- cc4s_output = 'molgw_hf_QZ_'
+ cc4s_output = 'molgw_hf_QZ'
 
  natom = 1
 /

@@ -1520,7 +1520,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
   type(dft_xc_info), intent(in), optional :: dft_xc_in(:)
   real(dp), intent(in), optional          :: dm2_JK(:, :, :)
   !=====
-  real(dp), parameter            :: TOL_RHO=1.0e-9_dp
+  real(dp), parameter            :: TOL_RHO = 1.0e-9_dp
   type(dft_xc_info), allocatable :: dft_xc_local(:)
   integer              :: nstate
   integer              :: ibf, jbf, ispin, icoord
@@ -1539,7 +1539,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
   real(dp), allocatable :: dedd_r_batch(:, :)
   real(dp), allocatable :: grad_rhor_batch(:, :, :)
   real(dp), allocatable :: dedgd_r_batch(:, :, :)
-  integer(C_INT)             :: nr
+  integer(C_INT)              :: nr
   real(C_DOUBLE), allocatable :: PIr_batch(:)
   real(C_DOUBLE), allocatable :: rhor_batch(:, :)
   real(C_DOUBLE), allocatable :: sigma_batch(:, :)
@@ -1608,7 +1608,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
     allocate(exc_batch(nr))
     allocate(vrho_batch(nspin, nr))
     allocate(dedd_r_batch(nspin, nr))
-    if( (calc_type%is_noft .and. nspin==2) .and. present(dm2_JK) ) allocate(PIr_batch(nr))
+    if( (calc_type%is_noft .and. nspin==2) .and. PRESENT(dm2_JK) ) allocate(PIr_batch(nr))
 
     if( dft_xc_local(1)%needs_gradient ) then
       allocate(bf_gradx_batch(basis%nbf, nr))
@@ -1631,7 +1631,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
     ! Calculate the density at points r for spin up and spin down
     ! Calculate grad rho at points r for spin up and spin down
     ! Calculate PI at points r (on-top pair density)
-    if( (calc_type%is_noft .and. nspin==2) .and. present(dm2_JK) ) then ! RS-NOFT
+    if( (calc_type%is_noft .and. nspin==2) .and. PRESENT(dm2_JK) ) then ! RS-NOFT
 
       if( .NOT. dft_xc_local(1)%needs_gradient ) then
         call die('RS-NOFT not available for LDA functionals')
@@ -1642,28 +1642,28 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
 
       !$OMP PARALLEL DO PRIVATE(rho_r_tot, s_rho_r, grad_rho_r_tot, factor_r, icoord)
       do ir=1, nr
-        rho_r_tot=rhor_batch(1, ir)+rhor_batch(2, ir)
-        if( abs(rho_r_tot) > 1d-6 ) then
-          s_rho_r=1.0_dp-4.0_dp*PIr_batch(ir)/(rho_r_tot*rho_r_tot)
+        rho_r_tot = rhor_batch(1, ir) + rhor_batch(2, ir)
+        if( ABS(rho_r_tot) > 1d-6 ) then
+          s_rho_r = 1.0_dp -4.0_dp * PIr_batch(ir) / (rho_r_tot*rho_r_tot)
           if ( s_rho_r > 1d-6 ) then
-            s_rho_r=rho_r_tot*dsqrt(s_rho_r) 
+            s_rho_r = rho_r_tot * SQRT(s_rho_r) 
           else
-            s_rho_r=0.0_dp
+            s_rho_r = 0.0_dp
           endif
           ! rho_r
-          rhor_batch(1, ir)=0.5_dp*(rho_r_tot+s_rho_r) 
-          rhor_batch(2, ir)=0.5_dp*(rho_r_tot-s_rho_r)
-          factor_r=rhor_batch(1, ir)/rho_r_tot
+          rhor_batch(1, ir) = 0.5_dp * (rho_r_tot + s_rho_r) 
+          rhor_batch(2, ir) = 0.5_dp * (rho_r_tot - s_rho_r)
+          factor_r = rhor_batch(1, ir) / rho_r_tot
           ! grad_r
           do icoord=1, 3
-            grad_rho_r_tot=grad_rhor_batch(1, ir, icoord)+grad_rhor_batch(2, ir, icoord)
-            grad_rhor_batch(1, ir, icoord)=factor_r*grad_rho_r_tot
-            grad_rhor_batch(2, ir, icoord)=(1.0_dp-factor_r)*grad_rho_r_tot
+            grad_rho_r_tot = grad_rhor_batch(1, ir, icoord) + grad_rhor_batch(2, ir, icoord)
+            grad_rhor_batch(1, ir, icoord) = factor_r * grad_rho_r_tot
+            grad_rhor_batch(2, ir, icoord) = (1.0_dp - factor_r) * grad_rho_r_tot
           enddo
         endif
-        sigma_batch(1, ir) = DOT_PRODUCT( grad_rhor_batch(1, ir, :) , grad_rhor_batch(1, ir, :) )
-        sigma_batch(2, ir) = DOT_PRODUCT( grad_rhor_batch(1, ir, :) , grad_rhor_batch(2, ir, :) )
-        sigma_batch(3, ir) = DOT_PRODUCT( grad_rhor_batch(2, ir, :) , grad_rhor_batch(2, ir, :) )
+        sigma_batch(1, ir) = DOT_PRODUCT( grad_rhor_batch(1, ir, :), grad_rhor_batch(1, ir, :) )
+        sigma_batch(2, ir) = DOT_PRODUCT( grad_rhor_batch(1, ir, :), grad_rhor_batch(2, ir, :) )
+        sigma_batch(3, ir) = DOT_PRODUCT( grad_rhor_batch(2, ir, :), grad_rhor_batch(2, ir, :) )
       enddo
       !$OMP END PARALLEL DO
 
@@ -1678,9 +1678,9 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
         endif
       
         ! X2C average them
-        if( trim(x2c)=='yes' ) then
-          rhor_batch(1, :)=( rhor_batch(1, :)+rhor_batch(2, :) )/2.0_dp
-          rhor_batch(2, :)=rhor_batch(1, :)
+        if( x2c_ ) then
+          rhor_batch(1, :) = ( rhor_batch(1, :)+rhor_batch(2, :) )/2.0_dp
+          rhor_batch(2, :) = rhor_batch(1, :)
         endif
       
       else
@@ -1694,7 +1694,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
         endif
       
         ! X2C average them
-        if( trim(x2c)=='yes' ) then
+        if( x2c_ ) then
           rhor_batch(1, :)=( rhor_batch(1, :)+rhor_batch(2, :) )/2.0_dp
           rhor_batch(2, :)=rhor_batch(1, :)
           grad_rhor_batch(1, :, :)=( grad_rhor_batch(1, :, :) + grad_rhor_batch(2, :, :) )/2.0_dp
@@ -1737,17 +1737,17 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
 
       select case(dft_xc_local(ixc)%family)
       case(XC_FAMILY_LDA)
-        call xc_lda_exc_vxc(dft_xc_local(ixc)%func, nr, rhor_batch(1, 1), exc_batch(1), vrho_batch(1, 1))
+        call xc_lda_exc_vxc(dft_xc_local(ixc)%func, nr, rhor_batch, exc_batch, vrho_batch)
 
       case(XC_FAMILY_GGA, XC_FAMILY_HYB_GGA)
-        call xc_gga_exc_vxc(dft_xc_local(ixc)%func, nr, rhor_batch(1, 1), sigma_batch(1, 1), exc_batch(1), &
-                           vrho_batch(1, 1), vsigma_batch(1, 1))
+        call xc_gga_exc_vxc(dft_xc_local(ixc)%func, nr, rhor_batch, sigma_batch, exc_batch, &
+                           vrho_batch, vsigma_batch)
 
         ! Remove too small densities to stabilize the computation
         ! especially useful for Becke88
         do ir=1, nr
           if( ALL( rhor_batch(:, ir) < TOL_RHO ) ) then
-            exc_batch(ir)      = 0.0_dp
+            exc_batch(ir)       = 0.0_dp
             vrho_batch(:, ir)   = 0.0_dp
             vsigma_batch(:, ir) = 0.0_dp
           endif
@@ -1853,7 +1853,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
     deallocate(basis_function_r_batch)
     deallocate(exc_batch)
     deallocate(rhor_batch)
-    if( ( calc_type%is_noft .and. nspin==2 ) .and. present(dm2_JK) ) deallocate(PIr_batch)
+    if( ( calc_type%is_noft .AND. nspin==2 ) .AND. PRESENT(dm2_JK) ) deallocate(PIr_batch)
     deallocate(vrho_batch)
     deallocate(dedd_r_batch)
     if( dft_xc_local(1)%needs_gradient ) then
@@ -2217,7 +2217,7 @@ subroutine init_c_matrix(basis, occupation, x_matrix, hkin, hnuc, c_matrix)
 
 
   ! Mixing the HOMO-LUMO for GUESS='MIX' and spin-compensated systems
-  if( (TRIM(init_hamiltonian) == 'MIX' .AND. abs(magnetization) < 1.0e-8_dp) .AND. nspin == 2 ) then
+  if( (TRIM(init_hamiltonian) == 'MIX' .AND. ABS(magnetization) < 1.0e-8_dp) .AND. nspin == 2 ) then
     write(stdout, '(a)') ' Guess including mixing the HOMO-LUMO'
 
     allocate(one_mo(basis%nbf))
@@ -2301,7 +2301,7 @@ subroutine init_c_matrix_x2c(basis, c_matrix_rel, x_matrix_rel, hamiltonian_kin_
   nstate=2*basis%nbf
 
   ! init_hamiltonian ( = CORE is alredy in c_matrix_rel )
-  if(TRIM(init_hamiltonian)=='GUESS') then
+  if( TRIM(init_hamiltonian) == 'GUESS' ) then
     allocate(vhxc_ao(basis%nbf, basis%nbf), hamiltonian_x2c_guess(nstate, nstate), E_vec(nstate))
     hamiltonian_x2c_guess=COMPLEX_ZERO
     call dft_approximate_vhxc(basis, vhxc_ao)

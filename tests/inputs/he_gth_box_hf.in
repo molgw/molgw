@@ -1,0 +1,25 @@
+&molgw
+ scf='hf'
+
+ init_hamiltonian='core'
+ ecp_basis='GTH-cc-pVDZ'
+ ecp_auxil_basis='pw'
+ ecp_elements='He'
+ ecp_type='hf.gth'
+
+ fft_coulomb_hartree  = 'bare'
+ fft_coulomb_exchange = 'spherical'
+ fft_coulomb_cutoff = 5.0 ! bohr
+
+ a1=  6., 0., 0.      ! angstrom
+ a2=  0., 6., 0.      ! angstrom
+ a3=  0., 0., 6.      ! angstrom
+
+ fft_ecut = 100.0
+
+ npulay_hist=2
+
+ natom=1
+/
+He         0.000000    0.000000    3.000
+

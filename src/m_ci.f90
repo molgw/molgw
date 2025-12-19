@@ -292,6 +292,7 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
   character(len=142) :: string
   character(len=2)   :: ctmp2
   integer :: ref_sporb(2*(nstate_ci-nfrozen_ci+1))
+  integer, allocatable :: ref_sporb_read(:)
   integer, allocatable :: sporbup(:), sporbdown(:)
   integer :: order_up, order_down
   !=====
@@ -357,7 +358,9 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
     do iref=1, nref
       ref_sporb(:) = 0
       read(fu, '(a)')  string
-      call string_to_integers(string, ref_sporb)
+      ref_sporb_read = string_to_integers(string)
+      ref_sporb(1:SIZE(ref_sporb_read)) = ref_sporb_read(1:SIZE(ref_sporb_read))
+      deallocate(ref_sporb_read)
       if( SUM(ref_sporb(:)) /= conf%nelec_valence ) &
        call die('setup_configuration_ci: manual_ci_ref_xx file does not have the correct number of valence electrons')
       keyud_ref(:, iref) = 0_key_int

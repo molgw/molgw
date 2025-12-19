@@ -45,6 +45,7 @@ program molgw
   use m_spectral_function
   use m_hamiltonian_onebody
   use m_hamiltonian_twobodies
+  use m_hamiltonian_periodic
   use m_relativistic
   use m_selfenergy_tools
   use m_selfenergy_evaluation
@@ -76,7 +77,7 @@ program molgw
   type(lbfgs_state)          :: lbfgs_plan
   type(energy_contributions) :: en_gks, en_mbpt, en_noft
   integer                 :: restart_type
-  integer                 :: nstate, nocc
+  integer                 :: nstate, nocc, ng_global
   integer                 :: istep, istring
   logical                 :: is_restart, is_big_restart, is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
@@ -149,7 +150,7 @@ program molgw
 #endif
 
 #if defined(HAVE_ELPA)
-  if(elpa_init(ELPA_MIN_VERSION)/=ELPA_OK) call die("Error when initialising ELPA")
+  if(elpa_init(ELPA_MIN_VERSION) /= ELPA_OK) call die("molgw: error when initialising ELPA")
 #endif
 
  
@@ -164,9 +165,6 @@ program molgw
  
     call start_clock(timing_prescf)
  
-    !
-    ! Nucleus-nucleus repulsion contribution to the energy
-    call nucleus_nucleus_energy(en_gks%nuc_nuc)
  
     if( x2c_ ) then
       !
@@ -215,7 +213,7 @@ program molgw
  
     !
     ! If an auxiliary basis is given, then set it up now
-    if( has_auxil_basis ) then
+    if( has_auxil_basis .AND. .NOT. pbc_) then
       write(stdout, '(/,a)') ' Setting up the auxiliary basis set for Coulomb integrals'
       if( TRIM(capitalize(auxil_basis_name(1))) == 'AUTO' .OR. TRIM(capitalize(auxil_basis_name(1))) &
        &   == 'PAUTO' .OR.  TRIM(capitalize(ecp_auxil_basis_name(1))) == 'AUTO' .OR. &
@@ -229,7 +227,7 @@ program molgw
     endif
 
 #if defined(HAVE_LIBCINT)
-    if( has_auxil_basis) then
+    if( has_auxil_basis .AND. .NOT. pbc_ ) then
       ! basis object will contain the information for the joint (basis, auxil_basis)
       call init_libcint(basis, auxil_basis)
       ! auxil_basis object will contain the information for the sole auxil_basis
@@ -238,6 +236,14 @@ program molgw
       call init_libcint(basis)
     endif
 #endif
+
+    !
+    ! PBC sets up the FFT and nx cell replication here
+    !  also precalculate the basis functions on the FFT grid and store them
+    if( pbc_ ) then
+      call set_fft_grid(basis)
+    endif
+
 
     !
     ! Calculate overlap matrix S so to obtain "nstate" as soon as possible
@@ -293,32 +299,34 @@ program molgw
     if( memory_evaluation_ ) call evaluate_memory(basis%nbf, auxil_basis%nbf, nstate, occupation)
    
    
-    if( .NOT. has_auxil_basis ) then
-      !
-      ! If no auxiliary basis is given,
-      ! then calculate the required 4-center integrals
-      call calculate_eri(print_eri_, basis, 0.0_dp)
-      !
-      ! for Range-separated hybrids, calculate the long-range ERI
-      if(calc_type%need_exchange_lr) then
-        call calculate_eri(print_eri_, basis, rcut)
-      endif
+    if( .NOT. pbc_ ) then
+      if( .NOT. has_auxil_basis ) then
+        !
+        ! If no auxiliary basis is given,
+        ! then calculate the required 4-center integrals
+        call calculate_eri(print_eri_, basis, 0.0_dp)
+        !
+        ! for Range-separated hybrids, calculate the long-range ERI
+        if(calc_type%need_exchange_lr) then
+          call calculate_eri(print_eri_, basis, rcut)
+        endif
    
-    else
+      else
    
-      ! 2-center and 3-center integrals
-      call calculate_eri_ri(basis, auxil_basis, 0.0_dp)
-   
-   
-      ! If Range-Separated Hybrid are requested
-      ! If is_big_restart, these integrals are NOT needed, I chose code this!
-      if(calc_type%need_exchange_lr ) then
         ! 2-center and 3-center integrals
-        call calculate_eri_ri(basis, auxil_basis, rcut)
+        call calculate_eri_ri(basis, auxil_basis, 0.0_dp)
+   
+   
+        ! If Range-Separated Hybrid are requested
+        ! If is_big_restart, these integrals are NOT needed, I chose code this!
+        if(calc_type%need_exchange_lr ) then
+          ! 2-center and 3-center integrals
+          call calculate_eri_ri(basis, auxil_basis, rcut)
+        endif
+   
+        call reshuffle_distribution_3center()
+   
       endif
-   
-      call reshuffle_distribution_3center()
-   
     endif
     ! ERI integrals have been computed and stored
     !
@@ -356,12 +364,28 @@ program molgw
     ! Calculate the parts of the hamiltonian that does not change along
     ! with the SCF cycles
     !
+
+    !
     ! Kinetic energy contribution
+    !
     call setup_kinetic(basis, hamiltonian_kinetic)
    
     !
-    ! Nucleus-electron interaction
-    call setup_nucleus(basis, hamiltonian_nucleus)
+    ! Nucleus-nucleus interaction
+    ! and Nucleus-electron interaction (including ECP)
+    !
+    if( pbc_ ) then
+      call setup_nucleus_periodic(basis, hamiltonian_nucleus, en_gks%nuc_nuc)
+    else
+      !
+      ! Nucleus-nucleus repulsion contribution to the energy
+      call nucleus_nucleus_energy(en_gks%nuc_nuc)
+      call setup_nucleus(basis, hamiltonian_nucleus)
+      if( nelement_ecp > 0 ) then
+        call setup_nucleus_ecp(basis, hamiltonian_nucleus)
+      endif
+    endif
+
     if( TRIM(parabolic_conf) == 'yes' ) call setup_para_conf(basis, hamiltonian_nucleus)
    
     !
@@ -381,9 +405,6 @@ program molgw
     !endif
    
    
-    if( nelement_ecp > 0 ) then
-      call setup_nucleus_ecp(basis, hamiltonian_nucleus)
-    endif
    
     !If RESTART_TDDFT file exists and is correct, skip the SCF loop and start RT-TDDFT simulation
     if( read_tddft_restart_ ) then
@@ -518,6 +539,9 @@ program molgw
         call write_restart(SMALL_RESTART, 'RESTART', basis, occupation, c_matrix, energy)
       endif
     endif
+    if( pbc_ .AND. scf_has_converged ) then
+      call write_restart_rhogrid()
+    endif
 
     !
     ! HDF5 file with scf data
@@ -586,7 +610,7 @@ program molgw
 
 #if defined(HAVE_LIBCINT)
   call destroy_libcint(basis)
-  if( has_auxil_basis) then
+  if( has_auxil_basis .AND. .NOT. pbc_ ) then
     call destroy_libcint(auxil_basis)
     call init_libcint(basis, auxil_basis)
     call init_libcint(auxil_basis)
@@ -624,10 +648,17 @@ program molgw
     ! Call selfenergy_set_state_range to set up ncore_G and nvirtual_G
     call selfenergy_set_state_range(nstate, occupation)
     call write_cc4s_eigenenergies(occupation(ncore_G+1:nvirtual_G-1,:), &
-                                  energy(ncore_G+1:nvirtual_G-1,:), cc4s_output)
-    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
-    call write_cc4s_coulombvertex(eri_3center_mo, cc4s_output)
-    call destroy_eri_3center_mo()
+                                  energy(ncore_G+1:nvirtual_G-1,:), rootname=cc4s_output)
+    if( .NOT. pbc_ ) then
+      call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+      call write_cc4s_coulombvertex(nauxil_global, eri_3center_mo, rootname=cc4s_output)
+      call destroy_eri_3center_mo()
+    else
+      call calculate_coulombvertex_periodic(c_matrix)
+      call write_cc4s_coulombvertex(desc_eri3_mo_periodic(M_), eri_3center_mo_periodic, desc=desc_eri3_mo_periodic, &
+                                    rootname=cc4s_output)
+      call destroy_eri_3center_mo_periodic()
+    endif
   endif
 
   if( print_multipole_ ) then
@@ -637,6 +668,10 @@ program molgw
     !
     ! Evaluate the static quadrupole
     call static_quadrupole(basis, occupation, c_matrix)
+  endif
+
+  if( pbc_ .AND. cube_state_max - cube_state_min > 0) then
+    call write_cube_file_periodic_wfn(c_matrix)
   endif
 
   if( print_wfn_ ) then
@@ -905,6 +940,9 @@ program molgw
   !
   ! Cleanly exiting the code
   !
+  if( pbc_ ) then
+    call destroy_fft_grid()
+  endif
   call destroy_eri_3center_mo(force=.TRUE.)
   call clean_deallocate('Full RKB wavefunctions C', c_matrix_rel)
   call clean_deallocate('Wavefunctions C_cmplx', c_matrix_cmplx)
@@ -916,7 +954,7 @@ program molgw
   if( has_auxil_basis .AND. calc_type%is_lr_mbpt ) call destroy_eri_3center_lr()
 
   call destroy_basis_set(basis)
-  if(has_auxil_basis) call destroy_basis_set(auxil_basis)
+  if( has_auxil_basis .AND. .NOT. pbc_ ) call destroy_basis_set(auxil_basis)
   call destroy_atoms()
 
 #if defined(HAVE_LIBCINT)

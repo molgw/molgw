@@ -1,0 +1,24 @@
+&molgw
+ scf ='HF'
+ postscf='MP2'
+
+ ecp_basis='GTH-cc-pVTZ'
+ ecp_auxil_basis='pw'
+ ecp_elements='He'
+ ecp_type='hf.gth'
+
+ fft_coulomb_hartree  = 'spherical'
+ fft_coulomb_exchange = 'spherical'
+ a1=  4., 0., 0.      ! angstrom
+ a2=  0., 4., 0.      ! angstrom
+ a3=  0., 0., 4.      ! angstrom
+
+ fft_ecut = 120.0
+
+ nscf=0
+ cc4s_input = 'molgw_hf_GTH-TZ'
+ init_hamiltonian='CC4S_FILES'
+
+ natom = 1
+/
+He  0. 0. 0.

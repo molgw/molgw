@@ -1175,7 +1175,7 @@ SCF Total Energy          ,  -2.8615142286      , 0 , 1.0e-7
 Testing integral (11|11)  ,   1.02581670E+00    , 0 , 1.0e-7
 MP2 correlation           ,  -0.0354780027      , 0 , 1.0e-7
 
-he_hf_cc4s_input.in      , HF+MP2 helium atom with output of Cc4s files, restart
+he_hf_cc4s_input.in      , HF+MP2 helium atom from input Cc4s files, restart
 HF Total Energy           ,  -2.8615142286      , 0 , 1.0e-7
 Testing integral (11|11)  ,   1.02581670E+00    , 0 , 1.0e-7
 MP2 correlation           ,  -0.0354780027      , 0 , 1.0e-7
@@ -1231,3 +1231,123 @@ RT-TDDFT Total Energy     ,    -456.8233701487  , 0 , 1.0e-7
 Kr_Kr_ecp.in              , Kr->He colision using a pseudo potential on both projectile and target
 SCF Total Energy          ,    -923.8534828159  , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,    -893.6924023610  , 0 , 1.0e-6
+
+h2_gth.in                 , H2 molecule with analytical pseudo in GTH formalism, need_libcint
+SCF Total Energy          , -1.1339680189      , 0 , 1.0e-7
+gKS HOMO energy           , -10.411908         , 0 , 1.0e-4
+
+lif_gth.in                , LiF molecule with analytical pseudo in GTH formalism, need_libcint 
+SCF Total Energy          , -31.5478831094     , 0 , 1.0e-7
+gKS HOMO energy           ,  -6.298148         , 0 , 1.0e-4
+gKS LUMO energy           ,  -1.373452         , 0 , 1.0e-4
+
+h2_gth_box.in             , H2 in a periodic box with analytical GTH pseudo, need_libcint need_fftw3
+SCF Total Energy          , -1.1355173048      , 0 , 1.0e-7
+gKS HOMO energy           , -10.200378         , 0 , 1.0e-4
+Nucleus-Nucleus           ,   0.1597873343     , 0 , 1.0e-7
+Kinetic Energy            ,   1.1404293460     , 0 , 1.0e-7
+Nucleus Energy            ,  -2.5201554576     , 0 , 1.0e-7
+Hartree Energy            ,   0.7492754898     , 0 , 1.0e-7
+XC Energy                 ,  -0.6648540174     , 0 , 1.0e-7
+
+h2_gth_box_shifted.in     , H2 in a periodic box with analytical GTH pseudo, need_libcint need_fftw3
+SCF Total Energy          , -1.1355173048      , 0 , 2.0e-5    # shifting atoms induces small changes
+gKS HOMO energy           , -10.200378         , 0 , 5.0e-3    # shifting atoms induces small changes
+Nucleus-Nucleus           ,   0.1597873343     , 0 , 5.0e-5    # shifting atoms induces small changes
+Kinetic Energy            ,   1.1404293460     , 0 , 5.0e-4    # shifting atoms induces small changes
+Nucleus Energy            ,  -2.5201554576     , 0 , 5.0e-4    # shifting atoms induces small changes
+Hartree Energy            ,   0.7492754898     , 0 , 5.0e-4    # shifting atoms induces small changes
+XC Energy                 ,  -0.6648540174     , 0 , 5.0e-4    # shifting atoms induces small changes
+
+li2_gth_box.in            , Li2 in a periodic box GTH pseudo (local only), need_libcint need_fftw3
+SCF Total Energy          ,  -14.6638976820    , 0 , 1.0e-7
+Nucleus-Nucleus           ,   -1.3333009531    , 0 , 1.0e-7
+Kinetic Energy            ,   13.0609436559    , 0 , 1.0e-7
+Nucleus Energy            ,  -29.8326614516    , 0 , 1.0e-7
+Hartree Energy            ,    6.7425313354    , 0 , 1.0e-7
+XC Energy                 ,   -3.3014102685    , 0 , 1.0e-7
+gKS HOMO energy           ,   -3.337858        , 0 , 1.0e-4
+gKS LUMO energy           ,   -1.116500        , 0 , 1.0e-4
+
+lif_gth_box.in            , LiF molecule in a periodic box (GTH pseudo local and non-local), need_libcint need_fftw3
+SCF Total Energy          , -31.5040990758     , 0 , 1.0e-7
+gKS HOMO energy           ,  -5.915098         , 0 , 1.0e-4
+gKS LUMO energy           ,  -1.117682         , 0 , 1.0e-4
+
+he_gth_bcc_box.in         , He atom in a periodic BCC box, need_libcint need_fftw3
+SCF Total Energy          , -2.8318434028      , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.170383        , 0 , 1.0e-4
+
+he2_gth_bcc_box.in        , 2 He atoms in a periodic BCC box, need_libcint need_fftw3
+SCF Total Energy          , -5.6636285654      , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.170383        , 0 , 1.0e-4
+
+he2_chain_gth_bcc_box.in  , Two-helium chain in a periodic box, need_libcint need_fftw3
+SCF Total Energy          , -5.6635911088      , 0 , 1.0e-7
+Nucleus-Nucleus           ,  -0.7965664252     , 0 , 1.0e-7
+Kinetic Energy            ,   5.4198504198     , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.070116        , 0 , 1.0e-4
+
+he4_chain_gth_bcc_box.in  , Four-helium chain in a periodic box, need_libcint need_fftw3
+SCF Total Energy          , -11.3272009156     , 0 , 1.0e-7
+Nucleus-Nucleus           ,  -1.5931328505     , 0 , 1.0e-7
+Kinetic Energy            ,  10.8396099943     , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.070255        , 0 , 1.0e-4
+
+he4_square_gth_bcc_box.in , Four-helium square in a periodic box, need_libcint need_fftw3
+SCF Total Energy          , -11.3271135560     , 0 , 1.0e-7
+Nucleus-Nucleus           ,  -2.1557057390     , 0 , 1.0e-7
+Kinetic Energy            ,  10.8398920507     , 0 , 1.0e-7
+gKS HOMO energy           ,  -14.888080        , 0 , 1.0e-4
+
+he8_lattice_gth_bcc_box.in, Eight-helium lattice in a periodic box, need_libcint need_fftw3
+SCF Total Energy          , -22.6542155364     , 0 , 1.0e-7
+Nucleus-Nucleus           ,  -7.7039928095     , 0 , 1.0e-7
+Kinetic Energy            ,  21.6805153971     , 0 , 1.0e-7
+gKS HOMO energy           ,  -14.446911        , 0 , 1.0e-4
+
+he16_lattice_gth_sc_box.in, Sixteen-helium lattice in a periodic box, need_libcint need_fftw3
+SCF Total Energy          , -45.3071605850     , 0 , 1.0e-7
+Nucleus-Nucleus           , -15.4064033273     , 0 , 1.0e-7
+Kinetic Energy            ,  43.3596224486     , 0 , 1.0e-7
+Nucleus Energy            , -75.2053835552     , 0 , 1.0e-7
+gKS HOMO energy           ,  -14.447436        , 0 , 1.0e-4
+
+diamond_gth_08.in         , 8-atom cell of diamond, need_libcint need_fftw3
+Nucleus-Nucleus           , -51.1779066085     , 0 , 1.0e-7
+SCF Total Energy          , -44.6230418840     , 0 , 1.0e-7
+gKS HOMO energy           ,   13.724214        , 0 , 1.0e-4
+
+he_gth_box_hf.in          , He atom within HF with PBC, need_libcint need_fftw3
+Nucleus-Nucleus           ,  -0.4568908243     , 0 , 1.0e-7
+Hartree Energy            ,   1.5568791138     , 0 , 1.0e-7
+Exchange Energy           ,  -1.0253242172     , 0 , 1.0e-7
+SCF Total Energy          ,  -2.8179084628     , 0 , 1.0e-7
+gKS HOMO energy           ,  -24.891108        , 0 , 1.0e-4
+
+diamond_gth_08_hf.in      , 8-atom cell of diamond within HF, need_libcint need_fftw3
+Nucleus-Nucleus           , -51.1102279515     , 0 , 1.0e-7
+Hartree Energy            ,   4.3523671507     , 0 , 1.0e-7
+Exchange Energy           , -13.1822569359     , 0 , 1.0e-7
+SCF Total Energy          , -43.5733353282     , 0 , 1.0e-7
+gKS HOMO energy           ,    9.610570        , 0 , 1.0e-4
+gKS LUMO energy           ,   24.796982        , 0 , 1.0e-4
+
+he_hf_cc4s_box_output.in  , HF helium atom with output of Cc4s files, need_libcint need_fftw3
+SCF Total Energy          ,  -2.8618499703      , 0 , 1.0e-7
+Testing integral (11|11)  ,   1.02301683E+00    , 0 , 1.0e-7
+
+he_hf_cc4s_box_input.in   , HF+MP2 helium atom from input Cc4s files, need_libcint need_fftw3 restart
+HF Total Energy           ,  -2.8625597646      , 0 , 1.0e-7
+Testing integral (11|11)  ,   1.02301683E+00    , 0 , 1.0e-7
+MP2 correlation           ,  -0.0330692355      , 0 , 1.0e-7
+
+he_gth_box_pbe.in         , PBE helium atom in a box, need_libcint need_fftw3
+SCF Total Energy          ,  -2.8922518757      , 0 , 1.0e-7
+gKS HOMO energy           ,  -15.516261         , 0 , 1.0e-4
+
+diamond_gth_08_pbe.in     , 8-atom cell of diamond within PBE, need_libcint need_fftw3
+SCF Total Energy          , -44.9101913413     , 0 , 1.0e-7
+gKS HOMO energy           ,   13.880276        , 0 , 1.0e-4
+gKS LUMO energy           ,   18.497151        , 0 , 1.0e-4
+

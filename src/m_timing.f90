@@ -90,9 +90,20 @@ module m_timing
   integer, parameter :: timing_grid_generation     = 66
   integer, parameter :: timing_grid_wfn            = 67
   integer, parameter :: timing_read_coulombvertex  = 68
-
+  integer, parameter :: timing_write_coulombvertex = 69
   integer, parameter :: timing_density_matrix_MO   = 70
 
+  !
+  ! PBC related timers
+  !
+  integer, parameter :: timing_pbc_eval_bf          = 85
+  integer, parameter :: timing_pbc_density          = 86
+  integer, parameter :: timing_pbc_potential_to_hao = 87
+  integer, parameter :: timing_pbc_nuclei_density   = 88
+
+  !
+  ! temporary timers to be used when coding and then freed again
+  !
   integer, parameter :: timing_tmp0                = 90
   integer, parameter :: timing_tmp1                = 91
   integer, parameter :: timing_tmp2                = 92
@@ -104,6 +115,9 @@ module m_timing
   integer, parameter :: timing_tmp8                = 98
   integer, parameter :: timing_tmp9                = 99
 
+  !
+  ! RT-TDDFT timers
+  !
   integer, parameter :: timing_tddft_loop             = 110
   integer, parameter :: timing_tddft_fourier          = 111
   integer, parameter :: timing_tddft_one_iter         = 112
@@ -423,6 +437,8 @@ subroutine output_timing()
   call output_timing_line('Electron-nucleus Hamiltonian', timing_hamiltonian_nuc, 1)
   call output_timing_line('Effective core potential Hamiltonian', timing_ecp, 1)
   call output_timing_line('ECP Hamiltonian', timing_hamiltonian_ecp, 1)
+  call output_timing_line('PBC: basis functions on grid', timing_pbc_eval_bf, 1)
+  call output_timing_line('PBC: nuclei density on FFT grid', timing_pbc_density, 1)
 
   write(stdout, '(/,a,/)') '                 -------------------------------------'
   write(stdout, '(a,/)')   '                                 SCF'
@@ -433,11 +449,13 @@ subroutine output_timing()
   call output_timing_line('Density matrix', timing_density_matrix, 1)
   call output_timing_line('Auxiliary basis density', timing_rhoauxil, 1)
   call output_timing_line('Hartree potential', timing_hartree, 1)
+  call output_timing_line('PBC: density on FFT grid', timing_pbc_density, 2)
   call output_timing_line('Exchange operator', timing_exchange, 1)
   call output_timing_line('DFT xc potential', timing_dft_xc, 1)
   call output_timing_line('Densities on a grid', timing_dft_densities, 2)
   call output_timing_line('LIBXC calls', timing_dft_libxc, 2)
   call output_timing_line('Setting up Vxc ', timing_dft_vxc, 2)
+  call output_timing_line('PBC: from v(r) to H_AO', timing_pbc_potential_to_hao, 1)
   call output_timing_line('Hamiltonian diagonalization', timing_diago_hamiltonian, 1)
   call output_timing_line('Pulay DIIS mixing', timing_diis, 1)
   call output_timing_line('RESTART file writing', timing_restart_file, 1)
@@ -450,6 +468,7 @@ subroutine output_timing()
 
   ! Prepare post scf
   call output_timing_line('Reading Coulomb vertex file', timing_read_coulombvertex, 1)
+  call output_timing_line('Writing Coulomb vertex file', timing_write_coulombvertex, 1)
   call output_timing_line('Sigma_x - Vxc', timing_x_m_vxc, 1)
 
   ! Linear response polarization RPA or TDDFT or BSE

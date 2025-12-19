@@ -188,6 +188,78 @@ even_tempered_n_list:
            The maximum angular momentum is determined from the number of integers in the string.
            Only meaningful when basis='even_tempered'.
 
+fft_coulomb_exchange:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'spherical'
+  comment: Selects the Coulomb interaction treatment in the exchange when using PBC.
+           So far, only 'bare' and 'spherical' (for spherical cutoff) exist.
+           Check out `fft_coulomb_cutoff` for the sphere radius.
+
+fft_coulomb_hartree:
+  family: general
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'bare'
+  comment: Selects the Coulomb interaction treatment in electrostatics (Hartree, nucleus-nucleus, nucleus-electron), when using PBC.
+           So far, only 'bare' and 'spherical' (for spherical cutoff) exist.
+           Check out `fft_coulomb_cutoff` for the sphere radius.
+
+fft_coulomb_cutoff:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 0.0
+  comment: Sets the radius of the spherical cutoff of the Coulomb interaction with PBC.
+           Default value triggers Spencer-Alavi recipe. Rc= (3/(4 pi) V)**(1/3)
+
+fft_ecut:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 120.
+  comment: Cutoff energy for the plane-waves used as auxiliary basis. This is equivalent to the density cutoff of a plane-wave code.
+           This means that it is typically 4 times the wavefunction cutoff.
+
+fft_ecut_postscf:
+  family: general
+  datatype: real
+  mandatory: 'no'
+  experimental: 'no'
+  default: 99999.
+  comment: Cutoff energy for the plane-waves used as auxiliary basis for postscf calculation/export.
+
+fft_neighbors:
+  family: general
+  datatype: integer
+  mandatory: 'no'
+  experimental: 'no'
+  default: 1
+  comment: Number of neighbors of the unit cell that are considered.
+           `fft_neighbors=1` implies considering first neighboring cells, which yields 3**3=27 unit cells to calculate.
+           `fft_neighbors=2` yields 5**3=125 unit cells.
+
+fft_read_density:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Read the electronic density obtained from a previous calculation on the same FFT grid.
+
+fft_renormalize:
+  family: general
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: Renormalize the basis functions to unity. Basis functions may deviate from 1 in small cells.
+
 gaussian_type:
   family: general
   datatype: characters
@@ -412,7 +484,7 @@ cc4s_input:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: 'molgw_'
+  default: 'molgw'
   comment: Specifies the rootname for the Cc4s files to be read.
 
 cc4s_output:
@@ -420,7 +492,7 @@ cc4s_output:
   datatype: characters
   mandatory: 'no'
   experimental: 'no'
-  default: 'molgw_'
+  default: 'molgw'
   comment: Specifies the rootname for the Cc4s files to be written.
 
 cube_nx:
@@ -1967,6 +2039,39 @@ noft_tolE:
 #                 Physical system setup input variables
 #============================================================================
 
+a1:
+  family: system
+  datatype: vector_1d_3
+  mandatory: 'no'
+  experimental: 'no'
+  default: !!python/tuple
+  - 0.0
+  - 0.0
+  - 0.0
+  comment: a1 periodicity vector
+
+a2:
+  family: system
+  datatype: vector_1d_3
+  mandatory: 'no'
+  experimental: 'no'
+  default: !!python/tuple
+  - 0.0
+  - 0.0
+  - 0.0
+  comment: a2 periodicity vector
+
+a3:
+  family: system
+  datatype: vector_1d_3
+  mandatory: 'no'
+  experimental: 'no'
+  default: !!python/tuple
+  - 0.0
+  - 0.0
+  - 0.0
+  comment: a3 periodicity vector
+
 charge:
   family: system
   datatype: real
@@ -2045,6 +2150,15 @@ nspin:
   default: 1
   comment: Sets the number of spin channels. 1 enforces spin-restricted calculations.
     2 means spin-unrestricted.
+
+poscar_file:
+  family: system
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ''
+  comment: Specifies the location of a POSCAR file that contains the atomic positions and the lattice vectors.
+    It can be used as an alternate route to set atomic coordinate when using periodic boundary conditions.
 
 temperature:
   family: system

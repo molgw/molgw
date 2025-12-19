@@ -1017,6 +1017,33 @@ pure function determinant_3x3_matrix(mat) RESULT(det)
 
 end function determinant_3x3_matrix
 
+!=========================================================================
+function inverse_3x3_matrix(mat) RESULT(minv)
+  ! Simple 3x3 matrix inverse using cofactors
+  implicit none
+
+  real(dp), intent(in) :: mat(3, 3)
+  !=====
+  real(dp) :: minv(3, 3)
+  real(dp) :: det
+  !=====
+
+  det = determinant_3x3_matrix(mat)
+
+  if( ABS(det) < 1.0e-12_dp ) call die('inverse_3x3_matrix: singular lattice matrix!')
+
+  minv(1,1) =  ( mat(2, 2) * mat(3, 3) - mat(2, 3) * mat(3, 2) ) / det
+  minv(1,2) = -( mat(1, 2) * mat(3, 3) - mat(1, 3) * mat(3, 2) ) / det
+  minv(1,3) =  ( mat(1, 2) * mat(2, 3) - mat(1, 3) * mat(2, 2) ) / det
+  minv(2,1) = -( mat(2, 1) * mat(3, 3) - mat(2, 3) * mat(3, 1) ) / det
+  minv(2,2) =  ( mat(1, 1) * mat(3, 3) - mat(1, 3) * mat(3, 1) ) / det
+  minv(2,3) = -( mat(1, 1) * mat(2, 3) - mat(1, 3) * mat(2, 1) ) / det
+  minv(3,1) =  ( mat(2, 1) * mat(3, 2) - mat(2, 2) * mat(3, 1) ) / det
+  minv(3,2) = -( mat(1, 1) * mat(3, 2) - mat(1, 2) * mat(3, 1) ) / det
+  minv(3,3) =  ( mat(1, 1) * mat(2, 2) - mat(1, 2) * mat(2, 1) ) / det
+
+end function inverse_3x3_matrix
+
 
 !=========================================================================
 ! Fortran translation of a C++ routine by Ivan Duchemin, CEA

@@ -25,6 +25,7 @@ module m_scf_loop
   use m_hamiltonian_tools
   use m_hamiltonian_twobodies
   use m_hamiltonian_wrapper
+  use m_hamiltonian_periodic
   use m_selfenergy_tools
   use m_linear_response
   use m_restart
@@ -125,17 +126,25 @@ subroutine scf_loop(is_restart, &
     write(stdout, '(a,1x,i4,/)') ' *** SCF cycle No:', iscf
 
 
-    en_gks%kinetic  = SUM( hamiltonian_kinetic(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
-    en_gks%nucleus  = SUM( hamiltonian_nucleus(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
 
     !
     ! Setup kinetic and nucleus contributions (that are independent of the
     ! density matrix and therefore of spin channel)
     !
+    en_gks%kinetic  = SUM( hamiltonian_kinetic(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
     do ispin=1, nspin
-      hamiltonian(:, :, ispin) = hamiltonian_kinetic(:, :) + hamiltonian_nucleus(:, :)
+      hamiltonian(:, :, ispin) = hamiltonian_kinetic(:, :)
     enddo
 
+    en_gks%nucleus  = SUM( hamiltonian_nucleus(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
+    do ispin=1, nspin
+      hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + hamiltonian_nucleus(:, :)
+    enddo
+
+
+    !
+    ! PBE + alpha trick (experimental)
+    !
     if( ABS(pbe_plus_alpha) > 1.0e-6_dp ) then
       do ispin=1, nspin
         hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + hamiltonian_pbealpha(:, :)
@@ -146,13 +155,21 @@ subroutine scf_loop(is_restart, &
     !
     ! Hartree contribution to the Hamiltonian
     !
-    call calculate_hartree(basis, p_matrix, hamiltonian_hartree, eh=en_gks%hartree)
-
-    ! calc_type%is_core is an inefficient way to get the Kinetic + Nucleus Hamiltonian
-    if( calc_type%is_core ) then
+    if( .NOT. calc_type%is_core ) then
+      if( .NOT. pbc_ ) then
+        call calculate_hartree(basis, p_matrix, hamiltonian_hartree, eh=en_gks%hartree)
+      else
+        !
+        ! Don't do anything since hartree will be contained in HXC
+        !
+        hamiltonian_hartree(:, :) = 0.0_dp
+      endif
+    else
+      ! is_core completely neglects the electron-electron interaction. (This is exact for 1 electron.)
       hamiltonian_hartree(:, :) = 0.0_dp
       en_gks%hartree = 0.0_dp
     endif
+
     do ispin=1, nspin
       hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + hamiltonian_hartree(:, :)
     enddo
@@ -167,8 +184,15 @@ subroutine scf_loop(is_restart, &
     !
     ! DFT XC potential is added here
     ! hamiltonian_xc is used as a temporary matrix
-    if( calc_type%is_dft ) then
-      call dft_exc_vxc_batch(BATCH_SIZE, basis, occupation, c_matrix, hamiltonian_xc, en_gks%xc)
+    if( .NOT. pbc_ ) then
+      if( calc_type%is_dft ) then
+        call dft_exc_vxc_batch(BATCH_SIZE, basis, occupation, c_matrix, hamiltonian_xc, en_gks%xc)
+      endif
+    else
+      !
+      ! With PBC, hamiltonian_xc is actually H+XC hamiltonian
+      !
+      call setup_hxc_periodic(basis, p_matrix, hamiltonian_xc, en_gks%hartree, en_gks%xc)
     endif
 
     !
@@ -394,7 +418,7 @@ subroutine scf_loop(is_restart, &
   !
   ! Form the final Fock matrix and store it only if needed
   !
-  if( scf_has_converged  &
+  if( scf_has_converged  .AND. (.NOT. pbc_) &
    .AND. ( print_bigrestart_  &
           .OR. TRIM(pt_density_matrix) /= 'NO'   &
           .OR. calc_type%selfenergy_approx > 0  )  ) then
@@ -1317,7 +1341,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
     hamiltonian_pairing(:, :, :) = 0.0_dp
     en_gks%anomalous = 0.0_dp
     if( calc_type%need_exchange_pairing ) then
-      sqrt_occ_hole(:, :) = spin_fact*sqrt_occ_hole(:, :)
+      sqrt_occ_hole(:, :) = spin_fact * sqrt_occ_hole(:, :)
       call calculate_exchange(basis, p_anom_matrix, hamiltonian_pairing, ex=en_gks%anomalous, &
                               occupation=sqrt_occ_hole, c_matrix=c_matrix)
       en_gks%anomalous = -pairing_ri_fact*spin_fact*spin_fact*bogoliubov_sigma*en_gks%anomalous
