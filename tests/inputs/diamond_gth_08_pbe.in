@@ -11,7 +11,7 @@
  ecp_elements='C'
  ecp_type='pbe.gth'
 
- fft_ecut= 12.0
+ fft_ecut= 48.0
  fft_neighbors= 2
 
 

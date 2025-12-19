@@ -11,7 +11,7 @@
  a2=  0., 4., 0.      ! angstrom
  a3=  0., 0., 4.      ! angstrom
 
- fft_ecut = 35.0 ! Ha
+ fft_ecut = 140.0     ! Ha
 
  npulay_hist=2
 

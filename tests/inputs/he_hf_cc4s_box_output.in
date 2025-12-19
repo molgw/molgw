@@ -12,7 +12,8 @@
  a1=  4., 0., 0.      ! angstrom
  a2=  0., 4., 0.      ! angstrom
  a3=  0., 0., 4.      ! angstrom
- fft_delta_x = 0.18   ! bohr
+
+ fft_ecut = 120.0
 
  print_cc4s_files = 'yes'
  cc4s_output = 'molgw_hf_GTH-TZ'

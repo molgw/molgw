@@ -10,7 +10,8 @@
  a1=  8., 0., 0.
  a2=  0., 8., 0.
  a3=  0., 0., 8. 
- fft_delta_x = 0.25
+
+ fft_ecut =   80.0
 
  natom=2
  comment= 'Li bond length=2.5 angstrom along y-axis'

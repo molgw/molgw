@@ -224,7 +224,7 @@ fft_ecut:
   experimental: 'no'
   default: 120.
   comment: Cutoff energy for the plane-waves used as auxiliary basis. This is equivalent to the density cutoff of a plane-wave code.
-           This means that it is typicall 4 times the wavefunction cutoff.
+           This means that it is typically 4 times the wavefunction cutoff.
 
 fft_ecut_postscf:
   family: general
@@ -232,7 +232,7 @@ fft_ecut_postscf:
   mandatory: 'no'
   experimental: 'no'
   default: 99999.
-  comment: cutoff energy for the plane-waves used as auxiliary basis for postscf calculation/export.
+  comment: Cutoff energy for the plane-waves used as auxiliary basis for postscf calculation/export.
 
 fft_neighbors:
   family: general

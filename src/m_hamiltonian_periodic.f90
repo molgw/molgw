@@ -97,15 +97,15 @@ subroutine set_fft_grid(basis)
   endif
 
   ! Direction 1
-  nfftx = CEILING( NORM2(aprim(:, 1)) * SQRT(2.0_dp * fft_ecut) / pi ) * 2
+  nfftx = CEILING( NORM2(aprim(:, 1)) * SQRT(2.0_dp * fft_ecut) / pi )
   nfft1 = next_in_grid(nfftx)
 
   ! Direction 2
-  nfftx = CEILING( NORM2(aprim(:, 2)) * SQRT(2.0_dp * fft_ecut) / pi ) * 2
+  nfftx = CEILING( NORM2(aprim(:, 2)) * SQRT(2.0_dp * fft_ecut) / pi )
   nfft2 = next_in_grid(nfftx)
 
   ! Direction 3
-  nfftx = CEILING( NORM2(aprim(:, 3)) * SQRT(2.0_dp * fft_ecut) / pi ) * 2
+  nfftx = CEILING( NORM2(aprim(:, 3)) * SQRT(2.0_dp * fft_ecut) / pi )
   nfft3 = next_in_grid(nfftx)
 
   nfft_global = nfft1 * nfft2 * nfft3

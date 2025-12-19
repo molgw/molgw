@@ -11,7 +11,8 @@
  a1= -8., 8., 8.
  a2=  5.,-5., 5.
  a3=  5., 5.,-5.
- fft_delta_x = 0.18
+
+ fft_ecut = 160.
 
  npulay_hist=2
  natom=4
