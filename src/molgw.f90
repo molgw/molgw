@@ -65,6 +65,9 @@ program molgw
   use m_acfd
   use m_mp2_energy
   use m_force
+#if defined(HAVE_ELPA)
+  use elpa
+#endif
   implicit none
 
   !=====
@@ -144,6 +147,10 @@ program molgw
   ! Initialize the HDF5 environment
 #if defined(HAVE_HDF5)
   call hdf_init() 
+#endif
+
+#if defined(HAVE_ELPA)
+  if(elpa_init(ELPA_MIN_VERSION) /= ELPA_OK) call die("molgw: error when initialising ELPA")
 #endif
 
  
@@ -961,6 +968,10 @@ program molgw
   call stop_clock(timing_total)
 
   call this_is_the_end()
+
+#if defined(HAVE_ELPA)
+  call elpa_uninit()
+#endif
 
 #if defined(HAVE_HDF5)
   call hdf_finalize() 

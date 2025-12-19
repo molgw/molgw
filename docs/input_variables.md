@@ -2787,7 +2787,7 @@ Contains the post-processing scheme name. TD stands for TD-DFT or TD-HF. BSE sta
 
 **Description:**
 
-Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculations. Available choices are ' ', 'R', 'D', and 'X'.
+Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculations. Current available choices are ' ', 'R', 'D', 'X', 'L', 'G'. ' ' is the regular LAPACK/ScaLAPACK routine. 'D' is the divide-and-conquer LAPACK/ScaLAPACK routine. 'R' is the "relatively robust" LAPACK/ScaLAPACK routine. 'L' is the ELPA 2-stage CPU routine. 'G' is the ELPA 1-stage GPU routine.
 
 
 ---
@@ -3529,7 +3529,7 @@ Contains the self-consistent scheme name. Try LDA, PBE, HSE06, or HF for instanc
 
 **Description:**
 
-Selects the LAPACK/ScaLAPACK diagonalization routines in the SCF cycles. Available choices are ' ', 'R', 'D', and 'X'.
+Selects the LAPACK/ScaLAPACK diagonalization routines in the SCF cycles. Current available choices are ' ', 'R', 'D', 'X', 'L', 'G'. ' ' is the regular LAPACK/ScaLAPACK routine. 'D' is the divide-and-conquer LAPACK/ScaLAPACK routine. 'R' is the "relatively robust" LAPACK/ScaLAPACK routine. 'L' is the ELPA 2-stage CPU routine. 'G' is the ELPA 1-stage GPU routine.
 
 
 ---

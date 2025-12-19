@@ -140,3 +140,5 @@ The code should compile properly in parallel with `make -j`.
 - Xixi Qi
 - Young-Moo Byun
 - Meiyue Shao
+- Marc Sarraute
+- Guillaume Piris

@@ -191,11 +191,11 @@ level005: m_warning.o real_spherical_harmonics.o m_lbfgs_intern.o m_integd.o m_r
 
 level008: m_mpi_tools.o m_elag.o
 
-level010: m_elements.o m_timing.o m_hdf5_tools.o m_memory.o m_fftw3.o \
+level010: m_elements.o m_nvtx.o m_timing.o m_hdf5_tools.o m_memory.o m_fftw3.o \
           m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_solid_harmonics.o \
 	  m_mpi.o m_lbfgs.o m_cart_to_pure.o m_libxc_tools.o m_hessian.o m_gammatodm2.o
 
-level015: m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o m_diagf.o m_e_grad_occ.o m_e_grad_occ_cpx.o  
+level015: m_scalapack.o m_elpa.o m_atoms.o m_ecp.o m_gaussian.o m_diagf.o m_e_grad_occ.o m_e_grad_occ_cpx.o  
 
 level020: m_inputparam.o m_basis_set.o
 
@@ -235,8 +235,8 @@ level100: molgw.o
         lebedev_quadrature.o pdbssolver1.o boys_function.o \
         m_warning.o real_spherical_harmonics.o m_lbfgs.o \
         m_mpi_tools.o m_libxc_tools.o \
-        m_elements.o m_timing.o m_memory.o m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_mpi.o m_cart_to_pure.o m_solid_harmonics.o \
-        m_scalapack.o m_atoms.o m_ecp.o m_gaussian.o m_block_diago.o \
+        m_elements.o m_nvtx.o m_timing.o m_memory.o m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_mpi.o m_cart_to_pure.o m_solid_harmonics.o \
+        m_scalapack.o m_elpa.o m_atoms.o m_ecp.o m_gaussian.o m_block_diago.o \
         m_basis_set.o \
         m_inputparam.o \
         m_eri.o m_scf.o m_dft_grid.o m_libint_tools.o m_libcint_tools.o m_selfenergy_tools.o \
@@ -253,7 +253,7 @@ level100: molgw.o
 	$(LINKER) \
                         m_definitions.o m_warning.o m_lbfgs.o m_elements.o m_cart_to_pure.o m_solid_harmonics.o \
                         m_mpi.o m_mpi_tools.o m_hdf5_tools.o m_fftw3.o m_scalapack_interface.o \
-                        m_libxc_tools.o m_scalapack.o m_timing.o m_memory.o m_inputparam.o \
+                        m_libxc_tools.o m_scalapack.o m_elpa.o m_nvtx.o m_timing.o m_memory.o m_inputparam.o \
                         m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_scf.o m_selfenergy_tools.o m_atoms.o m_ecp.o \
                         m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o m_libcint_tools.o \
                         m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o m_dm_mbpt.o m_spectra.o \
@@ -269,24 +269,24 @@ level100: molgw.o
                         pdbssolver1.o m_selfenergy_evaluation.o real_spherical_harmonics.o m_force.o m_realtime_tddft.o \
                         molgw.o \
                         -o ../molgw \
-                        $(SCALAPACK) $(LAPACK)   \
                         $(LIBXC) $(LIBXC_INCS)  \
                         $(LIBINT) $(LIBINT_INCS) \
                         $(ELPA) $(ELPA_INCS) \
                         $(LIBCINT) \
 			$(HDF5) $(HDF5_INCS) \
+                        $(SCALAPACK) $(LAPACK)   \
 			$(FFTW3) $(FFTW3_INCS) \
                         $(LINKS)
 
 molgw.o: m_definitions.o m_warning.o m_hdf5_tools.o m_fftw3.o m_timing.o m_memory.o m_inputparam.o m_lbfgs.o \
-         m_atoms.o m_scf.o m_scalapack.o  m_ecp.o m_io.o \
+         m_atoms.o m_scf.o m_scalapack.o m_elpa.o m_ecp.o m_io.o \
          m_gaussian.o m_basis_set.o  m_eri.o m_dft_grid.o m_spectral_function.o m_ci.o m_eri_calculate.o m_eri_ao_mo.o \
          m_hamiltonian_onebody.o m_selfenergy_tools.o m_scf_loop.o \
          m_dm_analysis.o m_realtime_tddft.o m_restart.o m_dm_mbpt.o m_multipole.o \
          m_virtual_orbital_space.o m_selfenergy_evaluation.o m_noft.o m_relativistic.o \
          m_fourier_quadrature.o m_libcint_tools.o m_linear_response.o m_acfd.o m_hamiltonian_twobodies.o m_mp2_energy.o m_force.o \
          molgw.f90
-	$(FC_W_OPTS) -c molgw.f90 $(LIBXC_INCS)
+	$(FC_W_OPTS) -c molgw.f90 $(LIBXC_INCS) $(ELPA_INCS)
 
 m_fourier_quadrature.o: m_definitions.o m_warning.o m_timing.o m_atoms.o m_basis_set.o m_inputparam.o m_hamiltonian_onebody.o \
         m_fourier_quadrature.f90
@@ -566,8 +566,11 @@ m_atoms.o: m_definitions.o m_warning.o m_elements.o m_linear_algebra.o m_lbfgs.o
 m_ecp.o: m_definitions.o m_warning.o m_elements.o m_string_tools.o m_ecp.f90
 	$(FC_W_OPTS) -c m_ecp.f90 $(LIBXC_INCS)
 
-m_scalapack.o: m_definitions.o m_warning.o m_linear_algebra.o m_mpi.o m_scalapack_interface.o m_scalapack.f90
-	$(FC_W_OPTS) -c m_scalapack.f90 $(LIBXC_INCS)
+m_scalapack.o: m_definitions.o m_warning.o m_linear_algebra.o m_elpa.o m_mpi.o m_scalapack_interface.o m_scalapack.f90
+	$(FC_W_OPTS) -c m_scalapack.f90 $(LIBXC_INCS) $(ELPA_INCS)
+
+m_elpa.o: m_definitions.o m_warning.o  m_mpi.o m_elpa.f90
+	$(FC_W_OPTS) -c m_elpa.f90 $(LIBXC_INCS) $(ELPA_INCS)
 
 m_mpi.o: m_definitions.o m_warning.o m_mpi_tools.o m_mpi.f90
 	$(FC_W_OPTS) -c m_mpi.f90 $(LIBXC_INCS)
@@ -587,7 +590,10 @@ m_linear_algebra.o: m_definitions.o m_warning.o m_linear_algebra.f90
 m_memory.o: m_definitions.o m_warning.o m_memory.f90
 	$(FC_W_OPTS) -c m_memory.f90 $(LIBXC_INCS)
 
-m_timing.o: m_definitions.o m_warning.o m_timing.f90
+m_nvtx.o: m_nvtx.f90
+	$(FC_W_OPTS) -c m_nvtx.f90 $(LIBXC_INCS)
+
+m_timing.o: m_definitions.o m_warning.o m_nvtx.o m_timing.f90
 	$(FC_W_OPTS) -c m_timing.f90 $(LIBXC_INCS)
 
 m_fftw3.o: m_definitions.o m_fftw3.f90
