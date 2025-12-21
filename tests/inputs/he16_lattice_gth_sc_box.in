@@ -1,0 +1,19 @@
+&molgw
+ scf='lda'
+
+ ecp_basis='GTH-cc-pVDZ'
+ auxil_basis='PW'
+
+
+ ecp_elements='He'
+ ecp_type='hf.gth'
+
+ fft_ecut = 160.0
+
+ npulay_hist=2
+
+ ! position and lattice read from POSCAR
+ poscar_file='../data_for_tests/POSCAR_He16_sc'
+
+/
+

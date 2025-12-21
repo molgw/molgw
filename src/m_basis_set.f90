@@ -33,20 +33,21 @@ module m_basis_set
     real(dp)                     :: x0(3)                      ! Coordinates of the gaussian center
     real(dp)                     :: v0(3)                      ! Velocity of the gaussian center
     integer                      :: ngaussian                  ! Number of primitive gausssians
-    type(gaussian), allocatable   :: g(:)                       ! The primitive gaussian functions
-    real(dp), allocatable         :: coeff(:)                   ! Their mixing coefficients
+    type(gaussian), allocatable  :: g(:)                       ! The primitive gaussian functions
+    real(dp), allocatable        :: coeff(:)                   ! Their mixing coefficients
+    real(dp)                     :: radius                     ! define radius as the 1.0/SQRT(MINVAl(g(:)%alpha))
   end type
 
   type shell_type
-    integer              :: am
-    integer              :: ng
+    integer               :: am
+    integer               :: ng
     real(dp), allocatable :: alpha(:)
     real(dp), allocatable :: coeff(:)
-    real(dp)             :: x0(3)
-    real(dp)             :: v0(3)
-    integer              :: icenter
-    integer              :: istart, iend                        ! index of the shell's basis functions in the final basis set
-    integer              :: istart_cart, iend_cart              ! index of the shell's basis functions in the cartesian basis set
+    real(dp)              :: x0(3)
+    real(dp)              :: v0(3)
+    integer               :: icenter
+    integer               :: istart, iend                ! index of the shell's basis functions in the final basis set
+    integer               :: istart_cart, iend_cart      ! index of the shell's basis functions in the cartesian basis set
   end type shell_type
 
 
@@ -64,9 +65,9 @@ module m_basis_set
                                                         ! the same exponents,
                                                         ! the same mixing coefficients
                                                         ! and the same angular momentum
-    character(len=4)                 :: gaussian_type   ! CART or PURE
-    type(basis_function), allocatable :: bfc(:)          ! Cartesian basis function
-    type(basis_function), allocatable :: bff(:)          ! Final basis function (can be Cartesian or Pure)
+    character(len=4)                  :: gaussian_type  ! CART or PURE
+    type(basis_function), allocatable :: bfc(:)         ! Cartesian basis function
+    type(basis_function), allocatable :: bff(:)         ! Final basis function (can be Cartesian or Pure)
     type(shell_type), allocatable     :: shell(:)
 
     integer(C_INT) :: LIBCINT_natm, LIBCINT_nbas
@@ -78,6 +79,7 @@ module m_basis_set
   end type basis_set
 
   private :: form_n_list
+
 
 contains
 
@@ -96,14 +98,14 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
   type(basis_set), intent(out)   :: basis
   !=====
   character(len=200)            :: basis_filename
-  integer                       :: ibf, jbf, ng, ig
+  integer                       :: jbf, ng, ig
   integer                       :: ishell, ishell_file
   integer                       :: jbf_cart
-  real(dp), allocatable          :: alpha(:), coeff(:)
+  real(dp), allocatable         :: alpha(:), coeff(:)
   logical                       :: file_exists
   integer                       :: basisfile
   integer                       :: am_read, nshell_file
-  logical, parameter             :: normalized=.TRUE.
+  logical, parameter            :: normalized=.TRUE.
   integer                       :: icenter
   integer                       :: index_in_shell
   integer                       :: nx, ny, nz, mm
@@ -158,8 +160,8 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
       if(nshell_file<1) call die('ERROR in basis set file')
       do ishell=1, nshell_file
         read(basisfile, *) ng, am_read
-        if(ng<1) call die('ERROR in basis set file')
-        if(am_read==10) call die('Deprecated basis set file with shared exponent SP orbitals. Please split them')
+        if( ng < 1 ) call die('ERROR in basis set file')
+        if( am_read == 10 ) call die('Deprecated basis set file with shared exponent SP orbitals. Please split them')
         basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             , am_read)
         basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type, am_read)
         basis%nshell   = basis%nshell   + 1
@@ -345,6 +347,16 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
 
   ! Find the maximum angular momentum employed in the basis set
   basis%ammax = MAXVAL(basis%bfc(:)%am)
+
+  !
+  ! Define the radius of each basis function as
+  ! r = 1/√α with α from the slowest decaying primitive
+  do jbf=1, basis%nbf
+    basis%bff(jbf)%radius = 1.0_dp / SQRT( MINVAl(basis%bff(jbf)%g(:)%alpha) )
+  enddo
+  do jbf=1, basis%nbf_cart
+    basis%bfc(jbf)%radius = 1.0_dp / SQRT( MINVAl(basis%bfc(jbf)%g(:)%alpha) )
+  enddo
 
   call echo_basis_summary(basis)
 
@@ -1331,6 +1343,91 @@ end subroutine print_basis_function
 
 
 !=========================================================================
+! NOT TESTED
+! normalization is not correct for sure
+pure function eval_basis_function_pure_shell(shell, rr) RESULT(shellr)
+  implicit none
+
+  type(shell_type), intent(in) :: shell
+  real(dp), intent(in)         :: rr(:, :)     ! 3 x nr
+  real(dp), allocatable        :: shellr(:, :) ! nbf_in_shell x nr
+  !=====
+  integer                      :: nr, ig, ir
+  real(dp), allocatable        :: dr(:, :), dr2(:), gaussian_part(:)
+  real(dp), parameter :: factor = 1.0_dp / SQRT(4.0_dp * pi)
+  !=====
+
+  nr = SIZE(rr, DIM=2)
+  allocate(dr(3, nr))
+  allocate(dr2(nr), gaussian_part(nr))
+
+  allocate(shellr(2*shell%am+1, nr))
+
+  do concurrent(ir=1:nr)
+    dr(:, ir) = rr(:, ir) - shell%x0(:)
+  enddo
+  dr2(:) = SUM( dr(:, :)**2, DIM=1 )
+
+  
+  gaussian_part(:) = 0.0_dp
+  do ig=1, shell%ng
+    gaussian_part(:) = gaussian_part(:) + EXP( - shell%alpha(ig) * dr2(ir) ) * shell%coeff(ig)
+  enddo
+
+  select case(shell%am)
+  case(0)
+    shellr(1, :) = factor * gaussian_part(:)
+
+  case(1)
+    shellr(1, :) = factor * dr(1, :) * gaussian_part(:)
+    shellr(2, :) = factor * dr(2, :) * gaussian_part(:)
+    shellr(3, :) = factor * dr(3, :) * gaussian_part(:)
+
+  case(2)
+    shellr(1, :) = SQRT(5.0_dp/4.0_dp) * factor * (3.0_dp * dr(3, :)**2 - dr2(:)) * gaussian_part(:)
+    shellr(2, :) = SQRT(15.0_dp) * factor * dr(1, :) * dr(2, :) * gaussian_part(:)
+    shellr(3, :) = SQRT(15.0_dp) * factor * dr(2, :) * dr(3, :) * gaussian_part(:)
+    shellr(4, :) = SQRT(15.0_dp) * factor * dr(3, :) * dr(1, :) * gaussian_part(:)
+    shellr(5, :) = SQRT(15.0_dp/4.0_dp) * factor * (dr(1, :)**2 - dr(2, :)**2) * gaussian_part(:)
+    
+  case default
+    ! not coded
+    shellr(:, :) = 0.0_dp
+  end select
+
+
+end function eval_basis_function_pure_shell
+
+
+!=========================================================================
+pure function eval_basis_function2(bf, x) result(eval_basis_function)
+  implicit none
+  type(basis_function), intent(in) :: bf
+  real(dp), intent(in)             :: x(3)
+  real(dp)                         :: eval_basis_function
+  !=====
+  integer  :: ig, nx, ny, nz
+  real(dp) :: polynomial, dx2, dx(3)
+  !=====
+
+  dx(:) = x(:) - bf%x0(:)
+  dx2 = SUM( dx(:)**2 )
+  eval_basis_function = 0.0_dp
+  nx = bf%g(1)%nx
+  ny = bf%g(1)%ny
+  nz = bf%g(1)%nz
+  polynomial = dx(1)**nx * dx(2)**ny * dx(3)**nz
+  do ig=1, bf%ngaussian
+    eval_basis_function = eval_basis_function &
+                  + bf%coeff(ig) * bf%g(ig)%norm_factor * EXP( - bf%g(ig)%alpha * dx2 ) &
+                    * polynomial
+  enddo
+
+
+end function eval_basis_function2
+
+
+!=========================================================================
 pure function eval_basis_function(bf, x)
   implicit none
   type(basis_function), intent(in) :: bf
@@ -1340,7 +1437,7 @@ pure function eval_basis_function(bf, x)
   integer                         :: ig
   !=====
 
-  eval_basis_function=0.0_dp
+  eval_basis_function = 0.0_dp
   do ig=1, bf%ngaussian
     eval_basis_function = eval_basis_function + eval_gaussian(bf%g(ig), x) * bf%coeff(ig)
   enddo
@@ -1358,7 +1455,7 @@ function eval_basis_function_grad(bf, x)
   integer                         :: ig
   !=====
 
-  eval_basis_function_grad(:)=0.0_dp
+  eval_basis_function_grad(:) = 0.0_dp
   do ig=1, bf%ngaussian
     eval_basis_function_grad(:) = eval_basis_function_grad(:) + eval_gaussian_grad(bf%g(ig), x) * bf%coeff(ig)
   enddo
@@ -1376,7 +1473,7 @@ function eval_basis_function_lapl(bf, x)
   integer                         :: ig
   !=====
 
-  eval_basis_function_lapl(:)=0.0_dp
+  eval_basis_function_lapl(:) = 0.0_dp
   do ig=1, bf%ngaussian
     eval_basis_function_lapl(:) = eval_basis_function_lapl(:) + eval_gaussian_lapl(bf%g(ig), x) * bf%coeff(ig)
   enddo
@@ -1394,7 +1491,7 @@ subroutine overlap_basis_function(bf1, bf2, overlap)
   real(dp)                        :: overlap_one_gaussian
   !=====
 
-  overlap=0.0_dp
+  overlap = 0.0_dp
   do ig=1, bf1%ngaussian
     do jg=1, bf2%ngaussian
       call overlap_recurrence(bf1%g(ig), bf2%g(jg), overlap_one_gaussian)
@@ -1416,7 +1513,7 @@ subroutine kinetic_basis_function(bf1, bf2, kinetic)
   real(dp)                        :: kinetic_one_gaussian
   !=====
 
-  kinetic=0.0_dp
+  kinetic = 0.0_dp
   do ig=1, bf1%ngaussian
     do jg=1, bf2%ngaussian
       call kinetic_recurrence(bf1%g(ig), bf2%g(jg), kinetic_one_gaussian)
@@ -1439,7 +1536,7 @@ subroutine nucleus_basis_function(bf1, bf2, zatom, x, nucleus_pot)
   real(dp)                        :: nucleus_pot_one_gaussian
   !=====
 
-  nucleus_pot=0.0_dp
+  nucleus_pot = 0.0_dp
   do ig=1, bf1%ngaussian
     do jg=1, bf2%ngaussian
       call nucleus_recurrence(zatom, x, bf1%g(ig), bf2%g(jg), nucleus_pot_one_gaussian)
@@ -1458,9 +1555,9 @@ subroutine basis_function_prod(bf1, bf2, bfprod)
   type(basis_function), allocatable, intent(out) :: bfprod(:)
   !=====
   integer           :: ig, jg
-  logical, parameter :: unnormalized=.FALSE.
-  integer           :: fake_shell=1
-  integer           :: fake_index=1
+  logical, parameter :: unnormalized = .FALSE.
+  integer           :: fake_shell = 1
+  integer           :: fake_index = 1
   integer           :: nbfprod, ibf
   integer           :: ix, iy, iz
   real(dp)          :: coeff_xyzg(1), c_x, c_y, c_z
@@ -1540,9 +1637,9 @@ subroutine basis_function_dipole(bf1, bf2, dipole)
   !=====
   type(basis_function)             :: bftmp
   real(dp)                         :: dipole_tmp
-  logical, parameter                :: normalized=.FALSE.
-  integer                          :: fake_shell=1
-  integer                          :: fake_index=1
+  logical, parameter                :: normalized = .FALSE.
+  integer                          :: fake_shell = 1
+  integer                          :: fake_index = 1
   real(dp), allocatable             :: bf2_alpha(:)
   !=====
 
@@ -1849,6 +1946,7 @@ end subroutine basis_function_quadrupole
 
 
 !=========================================================================
+! Calculate < ϕ_α | exp(i 𝐪·𝐫) | ϕ_β >
 subroutine basis_function_gos(bf1, bf2, qvec, gos_bf1bf2)
   implicit none
   type(basis_function), intent(in)  :: bf1, bf2

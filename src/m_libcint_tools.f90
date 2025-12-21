@@ -254,7 +254,7 @@ module m_libcint_tools
     !  import :: C_INT,C_DOUBLE,C_PTR
     !  integer(C_INT),value  :: natm,nbas
     !  real(C_DOUBLE),intent(in) :: env(*)
-    !  integer(C_INT),intent(in) :: shls(*),atm(*),bas(*)
+    !  integer(C_INT),intent(in) :: shls(*), atm(*), bas(*)
     !  real(C_DOUBLE),intent(out) :: array_cart(*)
     !  type(C_PTR) :: opt(*)
     !end function cint2e_cart
@@ -686,11 +686,13 @@ end subroutine libcint_3center
 
 
 !=========================================================================
-subroutine libcint_overlap(amA, contrdepthA, A, alphaA, cA, &
+subroutine libcint_overlap(gaussian_type, &
+                           amA, contrdepthA, A, alphaA, cA, &
                            amC, contrdepthC, C, alphaC, cC, &
                            ovlpAC)
   implicit none
 
+  character(len=4), intent(in)  :: gaussian_type
   integer(C_INT), intent(in)    :: amA, contrdepthA
   real(C_DOUBLE), intent(in)    :: A(:)
   real(C_DOUBLE), intent(in)    :: alphaA(:)
@@ -699,14 +701,16 @@ subroutine libcint_overlap(amA, contrdepthA, A, alphaA, cA, &
   real(C_DOUBLE), intent(in)    :: C(:)
   real(C_DOUBLE), intent(in)    :: alphaC(:)
   real(C_DOUBLE), intent(in)    :: cC(:)
-  real(C_DOUBLE), intent(inout)    :: ovlpAC(:)
+  real(C_DOUBLE), intent(inout) :: ovlpAC(:)
   !=====
   real(C_DOUBLE) :: tmp_env(1000)
   integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS, 2)
   integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS, 2)
   integer(C_INT) :: shls(2)
-  integer        :: info, off
+  integer        :: info, off, gt_tag
   !=====
+
+  gt_tag = get_gaussian_type_tag(gaussian_type)
 
   tmp_env(:) = 0.0_dp
 
@@ -761,7 +765,11 @@ subroutine libcint_overlap(amA, contrdepthA, A, alphaA, cA, &
   shls(2) = 1
 
 #if defined(HAVE_LIBCINT)
-  info = cint1e_ovlp_cart(ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+  if( gt_tag == CARTG ) then
+    info = cint1e_ovlp_cart(ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+  else
+    info = cint1e_ovlp_sph (ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+  endif
 #endif
 
 
@@ -1239,8 +1247,8 @@ subroutine transform_libcint_to_molgw_2d(gaussian_type, am1, am2, array_in, matr
   !=====
 
   gt_tag = get_gaussian_type_tag(gaussian_type)
-  n1c = number_basis_function_am('CART',am1)
-  n2c = number_basis_function_am('CART',am2)
+  n1c = number_basis_function_am('CART', am1)
+  n2c = number_basis_function_am('CART', am2)
   n1  = number_basis_function_am(gaussian_type, am1)
   n2  = number_basis_function_am(gaussian_type, am2)
 
@@ -1252,7 +1260,7 @@ subroutine transform_libcint_to_molgw_2d(gaussian_type, am1, am2, array_in, matr
       do i2=1, n2
         ii = ii + 1
         matrix_out(i1, i2) = array_in(ii) * cart_to_pure_norm(am1, CARTG)%matrix(i1, i1) &
-                                         * cart_to_pure_norm(am2, CARTG)%matrix(i2, i2)
+                                          * cart_to_pure_norm(am2, CARTG)%matrix(i2, i2)
       enddo
     enddo
   else
@@ -1301,9 +1309,9 @@ subroutine transform_libcint_to_molgw_3d(gaussian_type_left, am1, gaussian_type_
 
   gt_tagl = get_gaussian_type_tag(gaussian_type_left)
   gt_tagr = get_gaussian_type_tag(gaussian_type_right)
-  n1c = number_basis_function_am('CART',am1)
-  n2c = number_basis_function_am('CART',am2)
-  n3c = number_basis_function_am('CART',am3)
+  n1c = number_basis_function_am('CART', am1)
+  n2c = number_basis_function_am('CART', am2)
+  n3c = number_basis_function_am('CART', am3)
   n1  = number_basis_function_am(gaussian_type_left, am1)
   n2  = number_basis_function_am(gaussian_type_right, am2)
   n3  = number_basis_function_am(gaussian_type_right, am3)

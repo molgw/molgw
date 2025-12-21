@@ -300,10 +300,10 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
     allocate(matrix_tmp2(nbf_scf, nbf_scf))
 
     ! M2 = P * S
-    call DSYMM('L', 'L', nbf_scf, nbf_scf, 1.0d0, p_matrix(1, 1, ispin), nbf_scf, s_matrix, nbf_scf, 0.0d0, matrix_tmp2,nbf_scf)
+    call DSYMM('L', 'L', nbf_scf, nbf_scf, 1.0d0, p_matrix(1, 1, ispin), nbf_scf, s_matrix, nbf_scf, 0.0d0, matrix_tmp2, nbf_scf)
 
     ! M1 = H * M2 = H * P * S
-    call DSYMM('L', 'L', nbf_scf, nbf_scf, 1.0d0, ham(1, 1, ispin), nbf_scf, matrix_tmp2, nbf_scf, 0.0d0, matrix_tmp1,nbf_scf)
+    call DSYMM('L', 'L', nbf_scf, nbf_scf, 1.0d0, ham(1, 1, ispin), nbf_scf, matrix_tmp2, nbf_scf, 0.0d0, matrix_tmp1, nbf_scf)
 
     ! M2 = S * P * H = ( H * P * S )**T = M1**T
     matrix_tmp2(:, :) = TRANSPOSE( matrix_tmp1(:, :) )

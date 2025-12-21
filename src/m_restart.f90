@@ -15,7 +15,8 @@ module m_restart
   use m_atoms
   use m_basis_set
   use m_hamiltonian_tools, only: dump_out_occupation, orthogonalize_c_matrix, get_number_occupied_states
-  use m_hamiltonian_onebody, only: setup_overlap_mixedbasis, setup_overlap
+  use m_hamiltonian_onebody, only: setup_overlap_mixedbasis
+  use m_hamiltonian_wrapper, only: setup_overlap
   use m_linear_algebra, only: invert
   use m_io
   use m_libcint_tools

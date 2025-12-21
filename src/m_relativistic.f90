@@ -22,6 +22,7 @@ module m_relativistic
   use m_inputparam
   use m_hamiltonian_onebody
   use m_hamiltonian_tools
+  use m_hamiltonian_wrapper
   use m_libcint_tools
 
  public::relativistic_init, check_CdaggerSC_I

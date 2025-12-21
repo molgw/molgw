@@ -4,7 +4,7 @@
  auxil_basis='pauto'  ! auxiliary basis is on purpose in disagreement with we read
 
  nscf=0
- cc4s_input = 'molgw_hf_QZ_'
+ cc4s_input = 'molgw_hf_QZ'
  init_hamiltonian='CC4S_FILES'
  postscf='MP2'
 

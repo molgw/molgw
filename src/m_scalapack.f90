@@ -19,6 +19,7 @@ module m_scalapack
   use m_mpi
   use m_linear_algebra
   use m_scalapack_interface
+  use m_elpa
 #if defined(HAVE_MPI)
   use mpi
 #endif
@@ -27,7 +28,12 @@ module m_scalapack
   ! SCALAPACK variables
   !
   ! Choose a rather large value of block size to avoid the scattering of the basis function shells across different processors
+#if defined(HAVE_ELPA)
+  ! ELPA doesn't like when block size is higher than matrix size
+  integer, parameter :: SCALAPACK_BLOCKSIZE_MAX = 4
+#else
   integer, parameter :: SCALAPACK_BLOCKSIZE_MAX = 64
+#endif
 
   integer, parameter :: block_row = SCALAPACK_BLOCKSIZE_MAX
   integer, parameter :: block_col = SCALAPACK_BLOCKSIZE_MAX
@@ -52,6 +58,8 @@ module m_scalapack
   integer, protected :: nproc_sca = 1
   integer, protected :: iproc_sca = 0
 
+  ! SCALAPACK grid for master only
+  integer, protected :: cntxt_master
 
   ! SCALAPACK grid: auxiliary basis distribution in AO basis ( alpha beta | P ): 1 x auxil%nproc
   integer, protected :: cntxt_eri3_ao
@@ -162,10 +170,57 @@ module m_scalapack
   end interface
 
 #if defined(HAVE_SCALAPACK)
-  integer, external  :: NUMROC, INDXL2G, INDXG2L, INDXG2P
-  real(dp), external :: PDLATRA, PDLAMCH, PDLANGE
+  interface
+    integer function NUMROC(n, nb, iproc, isrcproc, nproc)
+      integer, intent(in) :: n         ! global number of rows/cols
+      integer, intent(in) :: nb        ! blocking factor (block size)
+      integer, intent(in) :: iproc     ! process coordinate (owner)
+      integer, intent(in) :: isrcproc  ! source process coordinate
+      integer, intent(in) :: nproc     ! total number of processes
+    end function NUMROC
+    integer function INDXL2G(indxloc, nb, iproc, isrcproc, nproc)
+      integer, intent(in) :: indxloc   ! local index
+      integer, intent(in) :: nb        ! blocking factor
+      integer, intent(in) :: iproc     ! process coordinate (owner)
+      integer, intent(in) :: isrcproc  ! source process coordinate
+      integer, intent(in) :: nproc     ! total number of processes
+    end function INDXL2G
+    integer function INDXG2L(indglob, nb, iproc, isrcproc, nproc)
+      implicit none
+      integer, intent(in) :: indglob   ! global index (1-based)
+      integer, intent(in) :: nb        ! blocking factor
+      integer, intent(in) :: iproc     ! local dummy (kept for API compatibility)
+      integer, intent(in) :: isrcproc  ! source process coordinate
+      integer, intent(in) :: nproc     ! total number of processes
+    end function INDXG2L
+    integer function INDXG2P(indxglob, nb, iproc, isrcproc, nproc)
+      integer, intent(in) :: indxglob  ! global index
+      integer, intent(in) :: nb        ! blocking factor
+      integer, intent(in) :: iproc     ! (not used internally by indxg2p but part of interface)
+      integer, intent(in) :: isrcproc  ! source process coordinate
+      integer, intent(in) :: nproc     ! total number of processes
+    end function INDXG2P
+    double precision function PDLANGE(norm, m, n, a, ia, ja, desca, work)
+      character, intent(in) :: norm
+      integer, intent(in) :: m, n
+      integer, intent(in) :: ia, ja
+      integer, intent(in) :: desca(*)
+      double precision, intent(in) :: a(*)
+      double precision, intent(inout) :: work(*)
+    end function PDLANGE
+    double precision function PDLATRA(m, a, ia, ja, desca)
+      integer, intent(in) :: m
+      integer, intent(in) :: ia, ja
+      integer, intent(in) :: desca(*)
+      double precision, intent(in) :: a(*)
+    end function PDLATRA
+    double precision function PDLAMCH(ictxt, cmach)
+      implicit none
+      integer, intent(in) :: ictxt
+      character, intent(in) :: cmach
+    end function PDLAMCH
+  end interface
 #endif
-
 
 contains
 
@@ -440,7 +495,7 @@ subroutine gather_distributed_copy_nospin_dp(desc, matrix, matrix_global)
       enddo
     enddo
 
-    ! Only the master proc (0,0) gets the complete information
+    ! Only the master proc (0, 0) gets the complete information
     call DGSUM2D(cntxt, 'A', ' ', mglobal, nglobal, matrix_global(1, 1), mglobal, 0, 0)
 
   endif
@@ -503,7 +558,7 @@ subroutine gather_distributed_copy_spin_dp(desc, matrix, matrix_global)
         enddo
       enddo
 
-      ! Only the master proc (0,0) gets the complete information
+      ! Only the master proc (0, 0) gets the complete information
       call DGSUM2D(cntxt, 'A', ' ', mglobal, nglobal, matrix_global(1, 1, idim3), mglobal, 0, 0)
     enddo
 
@@ -561,7 +616,7 @@ subroutine gather_distributed_copy_nospin_cdp(desc, matrix, matrix_global)
       enddo
     enddo
 
-    ! Only the master proc (0,0) gets the complete information
+    ! Only the master proc (0, 0) gets the complete information
     call ZGSUM2D(cntxt, 'A', ' ', mglobal, nglobal, matrix_global, mglobal, 0, 0)
 
   endif
@@ -606,8 +661,8 @@ subroutine matmul_diag_sca(side, diag, desc, matrix)
     end forall
 #else
     ! Alternative coding
-    !   do iglobal=1,nglobal
-    !     call PDSCAL(nglobal,diag(iglobal),matrix,iglobal,1,desc,nglobal)
+    !   do iglobal=1, nglobal
+    !     call PDSCAL(nglobal, diag(iglobal), matrix, iglobal, 1, desc, nglobal)
     !   enddo
     do ilocal=1, mlocal
       iglobal = rowindex_local_to_global(desc, ilocal)
@@ -623,8 +678,8 @@ subroutine matmul_diag_sca(side, diag, desc, matrix)
     end forall
 #else
     ! Alternative coding
-    !   do jglobal=1,nglobal
-    !     call PDSCAL(nglobal,diag(jglobal),matrix,1,jglobal,desc,1)
+    !   do jglobal=1, nglobal
+    !     call PDSCAL(nglobal, diag(jglobal), matrix, 1, jglobal, desc, 1)
     !   enddo
     do jlocal=1, nlocal
       jglobal = colindex_local_to_global(desc, jlocal)
@@ -753,17 +808,17 @@ subroutine diagonalize_inplace_sca_dp(flavor, matrix, desc, eigval)
     allocate(work(3))
 
     select case(flavor)
-    case('r','R')
+    case('r', 'R')
       liwork = -1
       allocate(iwork(1))
-      call PDSYEVR('V', 'A', 'L', nglobal, matrix,1,1,desc,0.0d0,0.0d0,0,0, &
+      call PDSYEVR('V', 'A', 'L', nglobal, matrix, 1, 1, desc, 0.0d0, 0.0d0, 0, 0, &
                   neigval, neigvec, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, iwork, liwork, info)
-    case('x','X')
+    case('x', 'X')
       liwork = -1
       allocate(iwork(1))
       allocate(ifail(nglobal))
       ABSTOL = PDLAMCH(desc(CTXT_), 'U')
-      call PDSYEVX('V', 'A', 'L', nglobal, matrix, 1,1,desc,0.0_dp,0.0_dp,0,0, &
+      call PDSYEVX('V', 'A', 'L', nglobal, matrix, 1, 1, desc, 0.0_dp, 0.0_dp, 0, 0, &
                   ABSTOL, neigval, neigvec, eigval, 0.0_dp,                  &
                   eigvec, 1, 1, desc_eigvec, work, lwork, iwork, liwork,        &
                   ifail, iclustr, gap, info)
@@ -778,18 +833,18 @@ subroutine diagonalize_inplace_sca_dp(flavor, matrix, desc, eigval)
     allocate(work(lwork))
 
     select case(flavor)
-    case('r','R')
+    case('r', 'R')
       liwork = iwork(1)
       deallocate(iwork)
       allocate(iwork(liwork))
-      call PDSYEVR('V', 'A', 'L', nglobal, matrix,1,1,desc,0.0d0,0.0d0,0,0, &
+      call PDSYEVR('V', 'A', 'L', nglobal, matrix, 1, 1, desc, 0.0d0, 0.0d0, 0, 0, &
                   neigval, neigvec, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, iwork, liwork, info)
       deallocate(iwork)
-    case('x','X')
+    case('x', 'X')
       liwork = iwork(1)
       deallocate(iwork)
       allocate(iwork(liwork))
-      call PDSYEVX('V', 'A', 'L', nglobal, matrix, 1,1,desc,0.0_dp,0.0_dp,0,0, &
+      call PDSYEVX('V', 'A', 'L', nglobal, matrix, 1, 1, desc, 0.0_dp, 0.0_dp, 0, 0, &
                   ABSTOL, neigval, neigvec, eigval, 0.0_dp,                  &
                   eigvec, 1, 1, desc_eigvec, work, lwork, iwork, liwork,        &
                   ifail, iclustr, gap, info)
@@ -859,7 +914,7 @@ subroutine diagonalize_inplace_sca_cdp(flavor, matrix, desc, eigval)
     allocate(rwork(1))
     select case(flavor)
     case default
-      call PZHEEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork,rwork,lrwork,info)
+      call PZHEEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, rwork, lrwork, info)
     end select
 
 
@@ -872,7 +927,7 @@ subroutine diagonalize_inplace_sca_cdp(flavor, matrix, desc, eigval)
     allocate(work(lwork))
     select case(flavor)
     case default
-      call PZHEEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork,rwork,lrwork,info)
+      call PZHEEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, rwork, lrwork, info)
     end select
 
     deallocate(work)
@@ -914,18 +969,23 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
   real(dp), allocatable :: work(:)
   integer, allocatable  :: iwork(:)
   integer              :: liwork
-  integer              :: neigval, neigvec
+  integer              :: neigval, neigvec, m, n
   real(dp)             :: ABSTOL
-  integer              :: iclustr(2*nprow_sd*npcol_sd)
-  real(dp)             :: gap(nprow_sd*npcol_sd)
+  integer              :: iclustr(2 * nprow_sd * npcol_sd)
+  real(dp)             :: gap(nprow_sd * npcol_sd)
   integer, allocatable  :: ifail(:)
   real(sp), allocatable :: work_sp(:)
   real(sp), allocatable :: matrix_sp(:, :)
   real(sp), allocatable :: eigvec_sp(:, :)
   real(sp), allocatable :: eigval_sp(:)
+#if defined(HAVE_ELPA)
+  type(elpa_hdl_t) :: elpa_hdl
+  integer          :: use_gpu
+  logical          :: use_two_stage
+#endif
   !=====
 
-  nglobal = SIZE(eigval)
+  nglobal = desc(M_)
 
 #if defined(HAVE_SCALAPACK)
   call BLACS_GRIDINFO( desc(CTXT_), nprow, npcol, iprow, ipcol )
@@ -934,12 +994,12 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
   if( nprow * npcol > 1 ) then
 
     select case(flavor)
-    case('r','R')
+    case('r', 'R')
       lwork = -1
       allocate(work(3))
       liwork = -1
       allocate(iwork(1))
-      call PDSYEVR('V', 'A', 'L', nglobal, matrix,1,1,desc,0.0d0,0.0d0,0,0, &
+      call PDSYEVR('V', 'A', 'L', nglobal, matrix, 1, 1, desc, 0.0d0, 0.0d0, 0, 0, &
                   neigval, neigvec, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, iwork, liwork, info)
 
       lwork = NINT(work(1))
@@ -948,17 +1008,47 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
       liwork = iwork(1)
       deallocate(iwork)
       allocate(iwork(liwork))
-      call PDSYEVR('V', 'A', 'L', nglobal, matrix,1,1,desc,0.0d0,0.0d0,0,0, &
+      call PDSYEVR('V', 'A', 'L', nglobal, matrix, 1, 1, desc, 0.0d0, 0.0d0, 0, 0, &
                   neigval, neigvec, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, iwork, liwork, info)
       deallocate(iwork)
       deallocate(work)
 
-    case('d','D')
+    ! ELPA-based flavors:
+    ! L: CPU with 2-stage solver
+    ! N: CPU with 1-stage solver (testing purposes, slower than L)
+    ! G: GPU with 1-stage solver
+    ! H: GPU with 2-stage solver (testing purposes, slower than G)
+    case('l', 'L', 'n', 'N', 'g', 'G', 'h', 'H')
+
+#if defined(HAVE_ELPA)
+      m = SIZE(matrix, DIM=1)
+      n = SIZE(matrix, DIM=2)
+      neigvec = nglobal  ! Full diago only
+      use_gpu = 0
+      use_two_stage = .TRUE.
+      if( INDEX('gGhH', flavor) > 0 ) use_gpu = 1
+      if( INDEX('gGnN', flavor) > 0 ) use_two_stage  = .FALSE.
+
+      call elpa_func_allocate(elpa_hdl, gpu=use_gpu, blacs_ctx=desc(CTXT_))
+
+      call elpa_func_set_matrix(elpa_hdl, nglobal, desc(MB_), neigvec, m, n)
+
+      call elpa_func_get_communicators(elpa_hdl, world%comm, iprow_sd, ipcol_sd)
+
+      call elpa_func_solve_evp(elpa_hdl, matrix, eigvec, eigval, nglobal, use_two_stage)
+
+      call elpa_func_deallocate(elpa_hdl)
+#else
+      call die('diagonalize_outofplace_sca_dp: you requested a diago flavor among {L, N, G, H}, ' // &
+               'but MOLGW was not compiled with ELPA support.')
+#endif
+
+    case('d', 'D')
       lwork = -1
       allocate(work(3))
       liwork = -1
       allocate(iwork(1))
-      call PDSYEVD('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork,iwork,liwork,info)
+      call PDSYEVD('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, iwork, liwork, info)
 
       lwork = NINT(work(1))
       deallocate(work)
@@ -966,16 +1056,16 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
       liwork = iwork(1)
       deallocate(iwork)
       allocate(iwork(liwork))
-      call PDSYEVD('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork,iwork,liwork,info)
+      call PDSYEVD('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, iwork, liwork, info)
       deallocate(iwork)
 
-    case('x','X')
+    case('x', 'X')
       lwork = -1
       allocate(work(3))
       liwork = -1
       allocate(iwork(1), ifail(nglobal))
       ABSTOL = PDLAMCH(desc(CTXT_), 'U')
-      call PDSYEVX('V', 'A', 'L', nglobal, matrix, 1,1,desc,0.0_dp,0.0_dp,0,0, &
+      call PDSYEVX('V', 'A', 'L', nglobal, matrix, 1, 1, desc, 0.0_dp, 0.0_dp, 0, 0, &
                   ABSTOL, neigval, neigvec, eigval, 0.0_dp,                  &
                   eigvec, 1, 1, desc_eigvec, work, lwork, iwork, liwork,        &
                   ifail, iclustr, gap, info)
@@ -986,14 +1076,14 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
       liwork = iwork(1)
       deallocate(iwork)
       allocate(iwork(liwork))
-      call PDSYEVX('V', 'A', 'L', nglobal, matrix, 1,1,desc,0.0_dp,0.0_dp,0,0, &
+      call PDSYEVX('V', 'A', 'L', nglobal, matrix, 1, 1, desc, 0.0_dp, 0.0_dp, 0, 0, &
                   ABSTOL, neigval, neigvec, eigval, 0.0_dp,                  &
                   eigvec, 1, 1, desc_eigvec, work, lwork, iwork, liwork,        &
                   ifail, iclustr, gap, info)
       deallocate(iwork, ifail)
       deallocate(work)
 
-    case('s','S')
+    case('s', 'S')
       call issue_warning('Experimental feature: Convert double to single precision for diagonalization ' // &
                          'to improve performance. May affect accuracy.')
       lwork = -1
@@ -1002,19 +1092,19 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
       allocate(matrix_sp(SIZE(matrix, DIM=1), SIZE(matrix, DIM=2)))
       allocate(eigvec_sp(SIZE(eigvec, DIM=1), SIZE(eigvec, DIM=2)))
       matrix_sp(:, :) = matrix(:, :)
-      call PSSYEV('V', 'L', nglobal, matrix_sp, 1, 1, desc, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, work_sp,lwork,info)
+      call PSSYEV('V', 'L', nglobal, matrix_sp, 1, 1, desc, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, work_sp, lwork, info)
 
       lwork = NINT(work_sp(1))
       deallocate(work_sp)
       allocate(work_sp(lwork))
-      call PSSYEV('V', 'L', nglobal, matrix_sp, 1, 1, desc, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, work_sp,lwork,info)
+      call PSSYEV('V', 'L', nglobal, matrix_sp, 1, 1, desc, eigval_sp, eigvec_sp, 1, 1, desc_eigvec, work_sp, lwork, info)
       deallocate(work_sp)
       deallocate(matrix_sp)
       eigvec(:, :) = eigvec_sp(:, :)
       eigval(:)   = eigval_sp(:)
       deallocate(eigvec_sp, eigval_sp)
 
-    case('e','E')
+    case('e', 'E')
       call issue_warning('Experimental feature: Convert double to single precision for diagonalization ' // &
                          'to improve performance. May affect accuracy.')
       lwork = -1
@@ -1043,7 +1133,7 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
       eigval(:)   = eigval_sp(:)
       deallocate(eigvec_sp, eigval_sp)
 
-    case('f','F')
+    case('f', 'F')
       call issue_warning('Experimental feature: Convert double to single precision for diagonalization ' // &
                          'to improve performance. May affect accuracy.')
 
@@ -1078,12 +1168,12 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
     case default
       lwork = -1
       allocate(work(3))
-      call PDSYEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec,work,lwork,info)
+      call PDSYEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, info)
 
       lwork = NINT(work(1))
       deallocate(work)
       allocate(work(lwork))
-      call PDSYEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec,work,lwork,info)
+      call PDSYEV('V', 'L', nglobal, matrix, 1, 1, desc, eigval, eigvec, 1, 1, desc_eigvec, work, lwork, info)
       deallocate(work)
 
     end select
@@ -1136,7 +1226,7 @@ subroutine diagonalize_scalapack_dp(flavor, scalapack_block_min, matrix_global, 
     call BLACS_GET( -1, 0, cntxt )
     call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
     call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-    write(stdout, '(a,i4,a,i4)') ' Diagonalization using SCALAPACK with a grid', nprow, ' x ', npcol
+    write(stdout, '(a, i4, a, i4)') ' Diagonalization using SCALAPACK with a grid', nprow, ' x ', npcol
 
     ! Find the master
     if( iprow == 0 .AND. ipcol == 0 ) then
@@ -1171,7 +1261,7 @@ subroutine diagonalize_scalapack_dp(flavor, scalapack_block_min, matrix_global, 
       call BLACS_GRIDEXIT( cntxt )
     endif
 
-    ! Then the master proc (0,0) broadcasts to all the others
+    ! Then the master proc (0, 0) broadcasts to all the others
     call world%bcast(rank_master, eigval)
 
 
@@ -1219,7 +1309,7 @@ subroutine diagonalize_scalapack_cdp(flavor, scalapack_block_min, matrix_global,
     call BLACS_GET( -1, 0, cntxt )
     call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
     call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-    write(stdout, '(a,i4,a,i4)') ' Diagonalization using SCALAPACK with a grid', nprow, ' x ', npcol
+    write(stdout, '(a, i4, a, i4)') ' Diagonalization using SCALAPACK with a grid', nprow, ' x ', npcol
 
     ! Find the master
     if( iprow == 0 .AND. ipcol == 0 ) then
@@ -1254,7 +1344,7 @@ subroutine diagonalize_scalapack_cdp(flavor, scalapack_block_min, matrix_global,
       call BLACS_GRIDEXIT( cntxt )
     endif
 
-    ! Then the master proc (0,0) broadcasts to all the others
+    ! Then the master proc (0, 0) broadcasts to all the others
     call world%bcast(rank_master, eigval)
 
 
@@ -1314,7 +1404,7 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min, a_matrix, b_matrix, c_mat
     call BLACS_GET( -1, 0, cntxt )
     call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
     call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-    write(stdout, '(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
+    write(stdout, '(a, i4, a, i4)') ' Matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
 
     !
     ! Participate to the calculation only if the CPU has been selected
@@ -1345,7 +1435,7 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min, a_matrix, b_matrix, c_mat
       call DESCINIT(descc, mmat, nmat, block_row, block_col, first_row, first_col, cntxt, MAX(1, mc), info)
 
       ! Calculate C = A * B
-      call PDGEMM('N', 'N', mmat, nmat, kmat, 1.0_dp, a_matrix_local,1,1,desca,    &
+      call PDGEMM('N', 'N', mmat, nmat, kmat, 1.0_dp, a_matrix_local, 1, 1, desca,    &
                   b_matrix_local, 1, 1, descb, 0.0_dp, c_matrix_local, 1, 1, descc)
 
       deallocate(a_matrix_local, b_matrix_local)
@@ -1363,15 +1453,15 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min, a_matrix, b_matrix, c_mat
 
   else ! Only one SCALAPACK proc
 
-    !   c_matrix(:,:) = MATMUL( a_matrix , b_matrix )
-    call DGEMM('N', 'N', mmat, nmat, kmat, 1.0_dp, a_matrix, mmat, b_matrix, kmat, 0.0_dp,c_matrix,mmat)
+    !   c_matrix(:, :) = MATMUL( a_matrix , b_matrix )
+    call DGEMM('N', 'N', mmat, nmat, kmat, 1.0_dp, a_matrix, mmat, b_matrix, kmat, 0.0_dp, c_matrix, mmat)
 
   endif
 
 #else
 
-  ! c_matrix(:,:) = MATMUL( a_matrix , b_matrix )
-  call DGEMM('N', 'N', mmat, nmat, kmat, 1.0_dp, a_matrix, mmat, b_matrix, kmat, 0.0_dp,c_matrix,mmat)
+  ! c_matrix(:, :) = MATMUL( a_matrix , b_matrix )
+  call DGEMM('N', 'N', mmat, nmat, kmat, 1.0_dp, a_matrix, mmat, b_matrix, kmat, 0.0_dp, c_matrix, mmat)
 
 
 
@@ -1426,7 +1516,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix, c_ma
     call BLACS_GET( -1, 0, cntxt )
     call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
     call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-    write(stdout, '(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
+    write(stdout, '(a, i4, a, i4)') ' Matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
 
     !
     ! Participate to the calculation only if the CPU has been selected
@@ -1457,7 +1547,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix, c_ma
       call DESCINIT(descc, mmat, nmat, block_row, block_col, first_row, first_col, cntxt, MAX(1, mc), info)
 
       ! Calculate C = A * B
-      call PZGEMM('N', 'N', mmat, nmat, kmat, ONE, a_matrix_local,1,1,desca,    &
+      call PZGEMM('N', 'N', mmat, nmat, kmat, ONE, a_matrix_local, 1, 1, desca,    &
                   b_matrix_local, 1, 1, descb, ZERO, c_matrix_local, 1, 1, descc)
 
       deallocate(a_matrix_local, b_matrix_local)
@@ -1475,15 +1565,15 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix, c_ma
 
   else ! Only one SCALAPACK proc
 
-    !   c_matrix(:,:) = MATMUL( a_matrix , b_matrix )
-    call ZGEMM('N', 'N', mmat, nmat, kmat, ONE, a_matrix, mmat, b_matrix, kmat, ZERO,c_matrix,mmat)
+    !   c_matrix(:, :) = MATMUL( a_matrix , b_matrix )
+    call ZGEMM('N', 'N', mmat, nmat, kmat, ONE, a_matrix, mmat, b_matrix, kmat, ZERO, c_matrix, mmat)
 
   endif
 
 #else
 
-  ! c_matrix(:,:) = MATMUL( a_matrix , b_matrix )
-  call ZGEMM('N', 'N', mmat, nmat, kmat, ONE, a_matrix, mmat, b_matrix, kmat, ZERO,c_matrix,mmat)
+  ! c_matrix(:, :) = MATMUL( a_matrix , b_matrix )
+  call ZGEMM('N', 'N', mmat, nmat, kmat, ONE, a_matrix, mmat, b_matrix, kmat, ZERO, c_matrix, mmat)
 
 
 
@@ -1544,7 +1634,7 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min, a_matrix, b_matrix, c_ma
     call BLACS_GET( -1, 0, cntxt )
     call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
     call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-    write(stdout, '(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
+    write(stdout, '(a, i4, a, i4)') ' Matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
 
 
     !
@@ -1576,7 +1666,7 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min, a_matrix, b_matrix, c_ma
       call DESCINIT(descm, mmat, lmat, block_row, block_col, first_row, first_col, cntxt, MAX(1, mm), info)
 
       ! Calculate M = A * B
-      call PDGEMM('N', 'N', mmat, lmat, kmat, 1.0_dp, a_matrix_local,1,1,desca,    &
+      call PDGEMM('N', 'N', mmat, lmat, kmat, 1.0_dp, a_matrix_local, 1, 1, desca,    &
                   b_matrix_local, 1, 1, descb, 0.0_dp, m_matrix_local, 1, 1, descm)
 
       deallocate(a_matrix_local, b_matrix_local)
@@ -1598,7 +1688,7 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min, a_matrix, b_matrix, c_ma
       call DESCINIT(descd, mmat, nmat, block_row, block_col, first_row, first_col, cntxt, MAX(1, md), info)
 
       ! Calculate D = M * C
-      call PDGEMM('N', 'N', mmat, nmat, lmat, 1.0_dp, m_matrix_local,1,1,descm,    &
+      call PDGEMM('N', 'N', mmat, nmat, lmat, 1.0_dp, m_matrix_local, 1, 1, descm,    &
                   c_matrix_local, 1, 1, descc, 0.0_dp, d_matrix_local, 1, 1, descd)
 
       deallocate(m_matrix_local, c_matrix_local)
@@ -1617,10 +1707,10 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min, a_matrix, b_matrix, c_ma
 
     allocate(m_matrix(mmat, lmat))
 
-    !   m_matrix(:,:) = MATMUL( a_matrix , b_matrix )
-    !   d_matrix(:,:) = MATMUL( m_matrix , c_matrix )
-    call DGEMM('N', 'N', mmat, lmat, kmat, 1.0_dp, a_matrix, mmat, b_matrix, kmat, 0.0_dp,m_matrix,mmat)
-    call DGEMM('N', 'N', mmat, nmat, lmat, 1.0_dp, m_matrix, mmat, c_matrix, lmat, 0.0_dp,d_matrix,mmat)
+    !   m_matrix(:, :) = MATMUL( a_matrix , b_matrix )
+    !   d_matrix(:, :) = MATMUL( m_matrix , c_matrix )
+    call DGEMM('N', 'N', mmat, lmat, kmat, 1.0_dp, a_matrix, mmat, b_matrix, kmat, 0.0_dp, m_matrix, mmat)
+    call DGEMM('N', 'N', mmat, nmat, lmat, 1.0_dp, m_matrix, mmat, c_matrix, lmat, 0.0_dp, d_matrix, mmat)
 
 
     deallocate(m_matrix)
@@ -1631,10 +1721,10 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min, a_matrix, b_matrix, c_ma
 
   allocate(m_matrix(mmat, lmat))
 
-  ! m_matrix(:,:) = MATMUL( a_matrix , b_matrix )
-  ! d_matrix(:,:) = MATMUL( m_matrix , c_matrix )
-  call DGEMM('N', 'N', mmat, lmat, kmat, 1.0_dp, a_matrix, mmat, b_matrix, kmat, 0.0_dp,m_matrix,mmat)
-  call DGEMM('N', 'N', mmat, nmat, lmat, 1.0_dp, m_matrix, mmat, c_matrix, lmat, 0.0_dp,d_matrix,mmat)
+  ! m_matrix(:, :) = MATMUL( a_matrix , b_matrix )
+  ! d_matrix(:, :) = MATMUL( m_matrix , c_matrix )
+  call DGEMM('N', 'N', mmat, lmat, kmat, 1.0_dp, a_matrix, mmat, b_matrix, kmat, 0.0_dp, m_matrix, mmat)
+  call DGEMM('N', 'N', mmat, nmat, lmat, 1.0_dp, m_matrix, mmat, c_matrix, lmat, 0.0_dp, d_matrix, mmat)
 
   deallocate(m_matrix)
 
@@ -1698,7 +1788,7 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix, c_m
     call BLACS_GET( -1, 0, cntxt )
     call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
     call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-    write(stdout, '(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
+    write(stdout, '(a, i4, a, i4)') ' Matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
 
 
     !
@@ -1730,7 +1820,7 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix, c_m
       call DESCINIT(descm, mmat, lmat, block_row, block_col, first_row, first_col, cntxt, MAX(1, mm), info)
 
       ! Calculate M = A * B
-      call PZGEMM('N', 'N', mmat, lmat, kmat, ONE, a_matrix_local,1,1,desca,    &
+      call PZGEMM('N', 'N', mmat, lmat, kmat, ONE, a_matrix_local, 1, 1, desca,    &
                   b_matrix_local, 1, 1, descb, ZERO, m_matrix_local, 1, 1, descm)
 
       deallocate(a_matrix_local, b_matrix_local)
@@ -1752,7 +1842,7 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix, c_m
       call DESCINIT(descd, mmat, nmat, block_row, block_col, first_row, first_col, cntxt, MAX(1, md), info)
 
       ! Calculate D = M * C
-      call PZGEMM('N', 'N', mmat, nmat, lmat, ONE, m_matrix_local,1,1,descm,    &
+      call PZGEMM('N', 'N', mmat, nmat, lmat, ONE, m_matrix_local, 1, 1, descm,    &
                   c_matrix_local, 1, 1, descc, ZERO, d_matrix_local, 1, 1, descd)
 
       deallocate(m_matrix_local, c_matrix_local)
@@ -1771,10 +1861,10 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix, c_m
 
     allocate(m_matrix(mmat, lmat))
 
-    !   m_matrix(:,:) = MATMUL( a_matrix , b_matrix )
-    !   d_matrix(:,:) = MATMUL( m_matrix , c_matrix )
-    call ZGEMM('N', 'N', mmat, lmat, kmat, ONE, a_matrix, mmat, b_matrix, kmat, ZERO,m_matrix,mmat)
-    call ZGEMM('N', 'N', mmat, nmat, lmat, ONE, m_matrix, mmat, c_matrix, lmat, ZERO,d_matrix,mmat)
+    !   m_matrix(:, :) = MATMUL( a_matrix , b_matrix )
+    !   d_matrix(:, :) = MATMUL( m_matrix , c_matrix )
+    call ZGEMM('N', 'N', mmat, lmat, kmat, ONE, a_matrix, mmat, b_matrix, kmat, ZERO, m_matrix, mmat)
+    call ZGEMM('N', 'N', mmat, nmat, lmat, ONE, m_matrix, mmat, c_matrix, lmat, ZERO, d_matrix, mmat)
 
 
     deallocate(m_matrix)
@@ -1785,10 +1875,10 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix, c_m
 
   allocate(m_matrix(mmat, lmat))
 
-  ! m_matrix(:,:) = MATMUL( a_matrix , b_matrix )
-  ! d_matrix(:,:) = MATMUL( m_matrix , c_matrix )
-  call ZGEMM('N', 'N', mmat, lmat, kmat, ONE, a_matrix, mmat, b_matrix, kmat, ZERO,m_matrix,mmat)
-  call ZGEMM('N', 'N', mmat, nmat, lmat, ONE, m_matrix, mmat, c_matrix, lmat, ZERO,d_matrix,mmat)
+  ! m_matrix(:, :) = MATMUL( a_matrix , b_matrix )
+  ! d_matrix(:, :) = MATMUL( m_matrix , c_matrix )
+  call ZGEMM('N', 'N', mmat, lmat, kmat, ONE, a_matrix, mmat, b_matrix, kmat, ZERO, m_matrix, mmat)
+  call ZGEMM('N', 'N', mmat, nmat, lmat, ONE, m_matrix, mmat, c_matrix, lmat, ZERO, d_matrix, mmat)
 
   deallocate(m_matrix)
 
@@ -1859,7 +1949,7 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min, a_matrix, b_matrix,
     call BLACS_GET( -1, 0, cntxt )
     call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
     call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-    write(stdout, '(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
+    write(stdout, '(a, i4, a, i4)') ' Matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
 
     !
     ! Participate to the diagonalization only if the CPU has been selected
@@ -1890,7 +1980,7 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min, a_matrix, b_matrix,
       call DESCINIT(descm, mmat, kmat, block_row, block_col, first_row, first_col, cntxt, MAX(1, mm), info)
 
       ! Calculate M = A^T * B
-      call PDGEMM('T', 'N', mmat, kmat, kmat, 1.0_dp, a_matrix_local,1,1,desca,    &
+      call PDGEMM('T', 'N', mmat, kmat, kmat, 1.0_dp, a_matrix_local, 1, 1, desca,    &
                   b_matrix_local, 1, 1, descb, 0.0_dp, m_matrix_local, 1, 1, descm)
 
       deallocate(b_matrix_local)
@@ -1903,7 +1993,7 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min, a_matrix, b_matrix,
       call DESCINIT(descc, mmat, mmat, block_row, block_col, first_row, first_col, cntxt, MAX(1, mc), info)
 
       ! Calculate C = M * A
-      call PDGEMM('N', 'N', mmat, mmat, kmat, 1.0_dp, m_matrix_local,1,1,descm,    &
+      call PDGEMM('N', 'N', mmat, mmat, kmat, 1.0_dp, m_matrix_local, 1, 1, descm,    &
                   a_matrix_local, 1, 1, desca, 0.0_dp, c_matrix_local, 1, 1, descc)
 
       deallocate(m_matrix_local, a_matrix_local)
@@ -1922,10 +2012,10 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min, a_matrix, b_matrix,
 
     allocate(m_matrix(mmat, kmat))
 
-    !   m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
-    !   c_matrix(:,:) = MATMUL( m_matrix , a_matrix )
-    call DGEMM('T', 'N', mmat, kmat, kmat, 1.0_dp, a_matrix, kmat, b_matrix, kmat, 0.0_dp,m_matrix,mmat)
-    call DGEMM('N', 'N', mmat, mmat, kmat, 1.0_dp, m_matrix, mmat, a_matrix, kmat, 0.0_dp,c_matrix,mmat)
+    !   m_matrix(:, :) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
+    !   c_matrix(:, :) = MATMUL( m_matrix , a_matrix )
+    call DGEMM('T', 'N', mmat, kmat, kmat, 1.0_dp, a_matrix, kmat, b_matrix, kmat, 0.0_dp, m_matrix, mmat)
+    call DGEMM('N', 'N', mmat, mmat, kmat, 1.0_dp, m_matrix, mmat, a_matrix, kmat, 0.0_dp, c_matrix, mmat)
 
     deallocate(m_matrix)
 
@@ -1935,10 +2025,10 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min, a_matrix, b_matrix,
 
   allocate(m_matrix(mmat, kmat))
 
-  ! m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
-  ! c_matrix(:,:) = MATMUL( m_matrix , a_matrix )
-  call DGEMM('T', 'N', mmat, kmat, kmat, 1.0_dp, a_matrix, kmat, b_matrix, kmat, 0.0_dp,m_matrix,mmat)
-  call DGEMM('N', 'N', mmat, mmat, kmat, 1.0_dp, m_matrix, mmat, a_matrix, kmat, 0.0_dp,c_matrix,mmat)
+  ! m_matrix(:, :) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
+  ! c_matrix(:, :) = MATMUL( m_matrix , a_matrix )
+  call DGEMM('T', 'N', mmat, kmat, kmat, 1.0_dp, a_matrix, kmat, b_matrix, kmat, 0.0_dp, m_matrix, mmat)
+  call DGEMM('N', 'N', mmat, mmat, kmat, 1.0_dp, m_matrix, mmat, a_matrix, kmat, 0.0_dp, c_matrix, mmat)
 
   deallocate(m_matrix)
 
@@ -2011,7 +2101,7 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix
     call BLACS_GET( -1, 0, cntxt )
     call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
     call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-    write(stdout, '(a,i4,a,i4)') ' Matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
+    write(stdout, '(a, i4, a, i4)') ' Matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
 
     !
     ! Participate to the diagonalization only if the CPU has been selected
@@ -2042,7 +2132,7 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix
       call DESCINIT(descm, mmat, kmat, block_row, block_col, first_row, first_col, cntxt, MAX(1, mm), info)
 
       ! Calculate M = A^T * B
-      call PZGEMM('T', 'N', mmat, kmat, kmat, ONE, a_matrix_local,1,1,desca,    &
+      call PZGEMM('T', 'N', mmat, kmat, kmat, ONE, a_matrix_local, 1, 1, desca,    &
                   b_matrix_local, 1, 1, descb, ZERO, m_matrix_local, 1, 1, descm)
 
       deallocate(b_matrix_local)
@@ -2055,7 +2145,7 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix
       call DESCINIT(descc, mmat, mmat, block_row, block_col, first_row, first_col, cntxt, MAX(1, mc), info)
 
       ! Calculate C = M * A
-      call PZGEMM('N', 'N', mmat, mmat, kmat, ONE, m_matrix_local,1,1,descm,    &
+      call PZGEMM('N', 'N', mmat, mmat, kmat, ONE, m_matrix_local, 1, 1, descm,    &
                   a_matrix_local, 1, 1, desca, ZERO, c_matrix_local, 1, 1, descc)
 
       deallocate(m_matrix_local, a_matrix_local)
@@ -2074,10 +2164,10 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix
 
     allocate(m_matrix(mmat, kmat))
 
-    !   m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
-    !   c_matrix(:,:) = MATMUL( m_matrix , a_matrix )
-    call ZGEMM('T', 'N', mmat, kmat, kmat, ONE, a_matrix, kmat, b_matrix, kmat, ZERO,m_matrix,mmat)
-    call ZGEMM('N', 'N', mmat, mmat, kmat, ONE, m_matrix, mmat, a_matrix, kmat, ZERO,c_matrix,mmat)
+    !   m_matrix(:, :) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
+    !   c_matrix(:, :) = MATMUL( m_matrix , a_matrix )
+    call ZGEMM('T', 'N', mmat, kmat, kmat, ONE, a_matrix, kmat, b_matrix, kmat, ZERO, m_matrix, mmat)
+    call ZGEMM('N', 'N', mmat, mmat, kmat, ONE, m_matrix, mmat, a_matrix, kmat, ZERO, c_matrix, mmat)
 
     deallocate(m_matrix)
 
@@ -2087,10 +2177,10 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix
 
   allocate(m_matrix(mmat, kmat))
 
-  ! m_matrix(:,:) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
-  ! c_matrix(:,:) = MATMUL( m_matrix , a_matrix )
-  call ZGEMM('T', 'N', mmat, kmat, kmat, ONE, a_matrix, kmat, b_matrix, kmat, ZERO,m_matrix,mmat)
-  call ZGEMM('N', 'N', mmat, mmat, kmat, ONE, m_matrix, mmat, a_matrix, kmat, ZERO,c_matrix,mmat)
+  ! m_matrix(:, :) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
+  ! c_matrix(:, :) = MATMUL( m_matrix , a_matrix )
+  call ZGEMM('T', 'N', mmat, kmat, kmat, ONE, a_matrix, kmat, b_matrix, kmat, ZERO, m_matrix, mmat)
+  call ZGEMM('N', 'N', mmat, mmat, kmat, ONE, m_matrix, mmat, a_matrix, kmat, ZERO, c_matrix, mmat)
 
   deallocate(m_matrix)
 
@@ -2148,7 +2238,7 @@ subroutine trace_transab_scalapack(scalapack_block_min, a_matrix, b_matrix, ab_t
     call BLACS_GET( -1, 0, cntxt )
     call BLACS_GRIDINIT( cntxt, 'R', nprow, npcol )
     call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-    write(stdout, '(a,i4,a,i4)') ' Trace of matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
+    write(stdout, '(a, i4, a, i4)') ' Trace of matrix product using SCALAPACK with a grid', nprow, ' x ', npcol
 
     !
     ! Participate to the calculation only if the CPU has been selected
@@ -2179,7 +2269,7 @@ subroutine trace_transab_scalapack(scalapack_block_min, a_matrix, b_matrix, ab_t
       call DESCINIT(descm, kmat2, mmat2, block_row, block_col, first_row, first_col, cntxt, MAX(1, mm), info)
 
       ! Calculate M = A^T * B
-      call PDGEMM('T', 'N', kmat2, mmat2, mmat1, 1.0_dp, a_matrix_local,1,1,desca,    &
+      call PDGEMM('T', 'N', kmat2, mmat2, mmat1, 1.0_dp, a_matrix_local, 1, 1, desca,    &
                   b_matrix_local, 1, 1, descb, 0.0_dp, m_matrix_local, 1, 1, descm)
 
       deallocate(a_matrix_local)
@@ -2205,8 +2295,8 @@ subroutine trace_transab_scalapack(scalapack_block_min, a_matrix, b_matrix, ab_t
     ab_trace = matrix_trace(m_matrix)
 
     ! FIXME the following coding
-    !   call DGEMM('T','N',mmat,kmat,kmat,1.0_dp,a_matrix,kmat,b_matrix,kmat,0.0_dp,m_matrix,mmat)
-    !   call DGEMM('N','N',mmat,mmat,kmat,1.0_dp,m_matrix,mmat,a_matrix,kmat,0.0_dp,c_matrix,mmat)
+    !   call DGEMM('T', 'N', mmat, kmat, kmat, 1.0_dp, a_matrix, kmat, b_matrix, kmat, 0.0_dp, m_matrix, mmat)
+    !   call DGEMM('N', 'N', mmat, mmat, kmat, 1.0_dp, m_matrix, mmat, a_matrix, kmat, 0.0_dp, c_matrix, mmat)
 
     deallocate(m_matrix)
 
@@ -2219,8 +2309,8 @@ subroutine trace_transab_scalapack(scalapack_block_min, a_matrix, b_matrix, ab_t
   m_matrix(:, :) = MATMUL( TRANSPOSE(a_matrix) , b_matrix )
   ab_trace = matrix_trace(m_matrix)
 
-  ! call DGEMM('T','N',mmat,kmat,kmat,1.0_dp,a_matrix,kmat,b_matrix,kmat,0.0_dp,m_matrix,mmat)
-  ! call DGEMM('N','N',mmat,mmat,kmat,1.0_dp,m_matrix,mmat,a_matrix,kmat,0.0_dp,c_matrix,mmat)
+  ! call DGEMM('T', 'N', mmat, kmat, kmat, 1.0_dp, a_matrix, kmat, b_matrix, kmat, 0.0_dp, m_matrix, mmat)
+  ! call DGEMM('N', 'N', mmat, mmat, kmat, 1.0_dp, m_matrix, mmat, a_matrix, kmat, 0.0_dp, c_matrix, mmat)
 
   deallocate(m_matrix)
 
@@ -2273,7 +2363,7 @@ subroutine matmul_abc_sca(desca, a_matrix_local, descb, b_matrix_local, descc, c
 
   cntxt = desca(CTXT_)
   call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-  write(stdout, '(a,i4,a,i4)') ' Matrix product A * B * C using SCALAPACK with a grid', nprow, ' x ', npcol
+  write(stdout, '(a, i4, a, i4)') ' Matrix product A * B * C using SCALAPACK with a grid', nprow, ' x ', npcol
 
   !
   ! Participate to the diagonalization only if the CPU has been selected
@@ -2288,11 +2378,11 @@ subroutine matmul_abc_sca(desca, a_matrix_local, descb, b_matrix_local, descc, c
     call DESCINIT(descm, mmat, lmat, block_row, block_col, first_row, first_col, cntxt, MAX(1, mm), info)
 
     ! Calculate M = A * B
-    call PDGEMM('N', 'N', mmat, lmat, kmat, 1.0_dp, a_matrix_local,1,1,desca,    &
+    call PDGEMM('N', 'N', mmat, lmat, kmat, 1.0_dp, a_matrix_local, 1, 1, desca,    &
                 b_matrix_local, 1, 1, descb, 0.0_dp, m_matrix_local, 1, 1, descm)
 
     ! Calculate D = M * C
-    call PDGEMM('N', 'N', mmat, nmat, lmat, 1.0_dp, m_matrix_local,1,1,descm,    &
+    call PDGEMM('N', 'N', mmat, nmat, lmat, 1.0_dp, m_matrix_local, 1, 1, descm,    &
                 c_matrix_local, 1, 1, descc, 0.0_dp, d_matrix_local, 1, 1, descd)
 
     deallocate(m_matrix_local)
@@ -2357,7 +2447,7 @@ subroutine matmul_transaba_sca(desca, a_matrix_local, descb, b_matrix_local, des
 #if defined(HAVE_SCALAPACK)
   cntxt = desca(CTXT_)
   call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
-  write(stdout, '(a,i4,a,i4)') ' Matrix product A**T * B * A using SCALAPACK with a grid', nprow, ' x ', npcol
+  write(stdout, '(a, i4, a, i4)') ' Matrix product A**T * B * A using SCALAPACK with a grid', nprow, ' x ', npcol
 
   !
   ! Participate to the diagonalization only if the CPU has been selected
@@ -2372,11 +2462,11 @@ subroutine matmul_transaba_sca(desca, a_matrix_local, descb, b_matrix_local, des
     call DESCINIT(descm, mmat, kmat, block_row, block_col, first_row, first_col, cntxt, MAX(1, mm), info)
 
     ! Calculate M = A^T * B
-    call PDGEMM('T', 'N', mmat, kmat, kmat, 1.0_dp, a_matrix_local,1,1,desca,    &
+    call PDGEMM('T', 'N', mmat, kmat, kmat, 1.0_dp, a_matrix_local, 1, 1, desca,    &
                 b_matrix_local, 1, 1, descb, 0.0_dp, m_matrix_local, 1, 1, descm)
 
     ! Calculate C = M * A
-    call PDGEMM('N', 'N', mmat, mmat, kmat, 1.0_dp, m_matrix_local,1,1,descm,    &
+    call PDGEMM('N', 'N', mmat, mmat, kmat, 1.0_dp, m_matrix_local, 1, 1, descm,    &
                 a_matrix_local, 1, 1, desca, 0.0_dp, c_matrix_local, 1, 1, descc)
 
     deallocate(m_matrix_local)
@@ -2481,7 +2571,7 @@ subroutine symmetrize_matrix_sca(uplo, nglobal, desc, matrix, desc_tmp, matrix_t
   end select
 
   call PDLACPY('A', nglobal, nglobal, matrix, 1, 1, desc, matrix_tmp, 1, 1, desc_tmp)
-  call PDGEADD('T', nglobal, nglobal, 1.d0, matrix_tmp, 1, 1, desc, 1.d0, matrix, 1,1,desc)
+  call PDGEADD('T', nglobal, nglobal, 1.d0, matrix_tmp, 1, 1, desc, 1.d0, matrix, 1, 1, desc)
 
 #endif
 
@@ -2582,10 +2672,10 @@ subroutine invert_chol_sca(desc, matrix)
 
       nmat = desc(M_)
 
-      call PDPOTRF('L', nmat, matrix, 1, 1, desc,info)
+      call PDPOTRF('L', nmat, matrix, 1, 1, desc, info)
       if( info /=0 ) call die('FAILURE in PDPOTRF')
 
-      call PDPOTRI('L', nmat, matrix, 1, 1, desc,info)
+      call PDPOTRI('L', nmat, matrix, 1, 1, desc, info)
       if( info /=0 ) call die('FAILURE in PDPOTRI')
 
     endif
@@ -2594,9 +2684,9 @@ subroutine invert_chol_sca(desc, matrix)
 #endif
 
     nmat = SIZE(matrix, DIM=1)
-    call DPOTRF('L', nmat, matrix, nmat,info)
+    call DPOTRF('L', nmat, matrix, nmat, info)
     if( info /=0 ) call die('FAILURE in DPOTRF')
-    call DPOTRI('L', nmat, matrix, nmat,info)
+    call DPOTRI('L', nmat, matrix, nmat, info)
     if( info /=0 ) call die('FAILURE in DPOTRI')
 
 #if defined(HAVE_SCALAPACK)
@@ -2702,6 +2792,10 @@ subroutine init_scalapack_other(nbf, eri3_nprow, eri3_npcol)
   call BLACS_GRIDMAP(cntxt_eri3_ao, usermap, 1          , 1, auxil%nproc)
   call BLACS_GRIDMAP(cntxt_eri3_mo, usermap, auxil%nproc, auxil%nproc, 1)
   deallocate(usermap)
+
+  ! Create a SCALAPACK context for the master only
+  call BLACS_GET( -1, 0, cntxt_master)
+  call BLACS_GRIDMAP(cntxt_master, [0], 1, 1, 1)
 
   call BLACS_GRIDINFO(cntxt_eri3_ao, nprow_eri3_ao, npcol_eri3_ao, iprow_eri3_ao, ipcol_eri3_ao)
   call poorman%max(nprow_eri3_ao)
@@ -3080,7 +3174,7 @@ subroutine set_auxil_block_size(block_size_max)
 
   endif
 
-  write(stdout, '(/1x,a,i4)') 'SCALAPACK block size for auxiliary basis: ', NB_eri3_ao
+  write(stdout, '(/1x, a, i4)') 'SCALAPACK block size for auxiliary basis: ', NB_eri3_ao
   MB_eri3_ao = NB_eri3_ao
   MB_eri3_mo = NB_eri3_ao
   NB_eri3_mo = NB_eri3_ao
@@ -3142,7 +3236,7 @@ subroutine diagonalize_davidson_sca(tolerance, desch, ham, neig, eigval, desc_ve
   !=====
 
 #if defined(HAVE_SCALAPACK)
-  write(stdout, '(/,1x,a,i5)') 'Davidson diago for eigenvector count: ', neig
+  write(stdout, '(/, 1x, a, i5)') 'Davidson diago for eigenvector count: ', neig
 
   eigval(:) = 0.0_dp
 
@@ -3186,9 +3280,9 @@ subroutine diagonalize_davidson_sca(tolerance, desch, ham, neig, eigval, desc_ve
 
   !
   ! Initialize with stupid coefficients
-  ! bb(:,1:neig) = 0.01_dp
+  ! bb(:, 1:neig) = 0.01_dp
   ! forall(ieig=1:neig)
-  !   bb(ieig,ieig) = 1.0_dp
+  !   bb(ieig, ieig) = 1.0_dp
   ! end forall
   bb(:, :) = 0.01_dp
   do jlocal=1, nbb
@@ -3202,8 +3296,8 @@ subroutine diagonalize_davidson_sca(tolerance, desch, ham, neig, eigval, desc_ve
   call orthogonalize_sca(desc_bb, 1, neig, bb)
 
 
-  ! ab(:,1:neig) = MATMUL( ham(:,:) , bb(:,1:neig) )
-  call PDGEMM('N', 'N', mmat, neig, mmat, 1.0_dp, ham, 1, 1, desch, bb, 1, 1, desc_bb, 0.0_dp,ab,1,1,desc_bb)
+  ! ab(:, 1:neig) = MATMUL( ham(:, :) , bb(:, 1:neig) )
+  call PDGEMM('N', 'N', mmat, neig, mmat, 1.0_dp, ham, 1, 1, desch, bb, 1, 1, desc_bb, 0.0_dp, ab, 1, 1, desc_bb)
 
 
   do icycle=1, ncycle
@@ -3216,18 +3310,18 @@ subroutine diagonalize_davidson_sca(tolerance, desch, ham, neig, eigval, desc_ve
     call DESCINIT(desc_at, mm, mm, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, mat), info)
     allocate(atilde(mat, nat), alphavec(mat, nat))
 
-    !atilde(1:mm,1:mm) = MATMUL( TRANSPOSE(bb(:,1:mm)) , ab(:,1:mm) )
-    call PDGEMM('T', 'N', mm, mm, mmat, 1.0_dp, bb, 1, 1, desc_bb, ab, 1, 1, desc_bb, 0.0_dp, atilde,1,1,desc_at)
+    !atilde(1:mm, 1:mm) = MATMUL( TRANSPOSE(bb(:, 1:mm)) , ab(:, 1:mm) )
+    call PDGEMM('T', 'N', mm, mm, mmat, 1.0_dp, bb, 1, 1, desc_bb, ab, 1, 1, desc_bb, 0.0_dp, atilde, 1, 1, desc_at)
 
 
-    call diagonalize_sca(' ', atilde, desc_at, lambda, alphavec,desc_at)
+    call diagonalize_sca(' ', atilde, desc_at, lambda, alphavec, desc_at)
 
     deallocate(atilde)
 
-    !write(stdout,*) 'icycle',icycle,lambda(1:mm)
+    !write(stdout, *) 'icycle', icycle, lambda(1:mm)
 
     ! qq = bb * alphavec
-    call PDGEMM('N', 'N', mmat, neig, mm, 1.0_dp, bb, 1, 1, desc_bb, alphavec, 1, 1, desc_at, 0.0_dp,qq,1,1,desc_qq)
+    call PDGEMM('N', 'N', mmat, neig, mm, 1.0_dp, bb, 1, 1, desc_bb, alphavec, 1, 1, desc_at, 0.0_dp, qq, 1, 1, desc_qq)
     eigvec(:, :) = qq(:, :)
     eigval(1:neig) = lambda(1:neig)
     ! qq = qq * Lambda
@@ -3237,17 +3331,17 @@ subroutine diagonalize_davidson_sca(tolerance, desch, ham, neig, eigval, desc_ve
 
 
     ! qq = ab * alphavec - lambda * bb * alphavec
-    call PDGEMM('N', 'N', mmat, neig, mm, 1.0_dp, ab, 1, 1, desc_bb, alphavec, 1, 1, desc_at, -1.0_dp,qq,1,1,desc_qq)
+    call PDGEMM('N', 'N', mmat, neig, mm, 1.0_dp, ab, 1, 1, desc_bb, alphavec, 1, 1, desc_at, -1.0_dp, qq, 1, 1, desc_qq)
 
 
     deallocate(alphavec)
     !   residual_norm = 0.0_dp
-    !   do ieig=1,neig
+    !   do ieig=1, neig
     !
-    !     qq(:,ieig) = MATMUL( ab(:,1:mm) ,  alphavec(1:mm,ieig) ) &
-    !                   - lambda(ieig) * MATMUL( bb(:,1:mm) , alphavec(1:mm,ieig) )
+    !     qq(:, ieig) = MATMUL( ab(:, 1:mm) ,  alphavec(1:mm, ieig) ) &
+    !                   - lambda(ieig) * MATMUL( bb(:, 1:mm) , alphavec(1:mm, ieig) )
     !
-    !     residual_norm = MAX( residual_norm , NORM2(qq(:,ieig)) )
+    !     residual_norm = MAX( residual_norm , NORM2(qq(:, ieig)) )
     !   enddo
 
     residual_norm = 0.0_dp
@@ -3259,7 +3353,7 @@ subroutine diagonalize_davidson_sca(tolerance, desch, ham, neig, eigval, desc_ve
     call world%max(residual_norm)
 
 
-    write(stdout, '(1x,a,i4,1x,i4,1x,es12.4,1x,f18.8)') 'Cycle, Subspace dim, Max residual norm, Electronic energy: ', &
+    write(stdout, '(1x, a, i4, 1x, i4, 1x, es12.4, 1x, f18.8)') 'Cycle, Subspace dim, Max residual norm, Electronic energy: ', &
                                                       icycle, mm, residual_norm, lambda(1)
 
     !
@@ -3272,8 +3366,8 @@ subroutine diagonalize_davidson_sca(tolerance, desch, ham, neig, eigval, desc_ve
     !
     ! New trial vectors
     !
-    !   forall(imat=1:nmat,ieig=1:neig)
-    !     bb(imat,mm+ieig) = qq(imat,ieig) / ( lambda(ieig) - ham(imat,imat) )
+    !   forall(imat=1:nmat, ieig=1:neig)
+    !     bb(imat, mm+ieig) = qq(imat, ieig) / ( lambda(ieig) - ham(imat, imat) )
     !   end forall
     do jlocal=1, nqq
       jglobal = colindex_local_to_global(desc_qq, jlocal)
@@ -3288,8 +3382,8 @@ subroutine diagonalize_davidson_sca(tolerance, desch, ham, neig, eigval, desc_ve
 
     call orthogonalize_sca(desc_bb, mm+1, mm+neig, bb)
 
-    !ab(:,mm+1:mm+neig) = MATMUL( ham(:,:) , bb(:,mm+1:mm+neig) )
-    call PDGEMM('N', 'N', mmat, neig, mmat, 1.0_dp, ham, 1, 1, desch, bb, 1, mm+1, desc_bb, 0.0_dp,ab,1,mm+1,desc_bb)
+    !ab(:, mm+1:mm+neig) = MATMUL( ham(:, :) , bb(:, mm+1:mm+neig) )
+    call PDGEMM('N', 'N', mmat, neig, mmat, 1.0_dp, ham, 1, 1, desch, bb, 1, mm+1, desc_bb, 0.0_dp, ab, 1, mm+1, desc_bb)
 
 
 
@@ -3329,13 +3423,13 @@ subroutine orthogonalize_sca(desc_vec, mvec_ortho, nvec_ortho, vec)
     do jvec=1, ivec-1
       call PDDOT(mglobal, dot_prod_ij, vec, 1, ivec, desc_vec, 1, vec, 1, jvec, desc_vec, 1)
 
-      !     vec(:,ivec) = vec(:,ivec) - vec(:,jvec) * DOT_PRODUCT( vec(:,ivec) , vec(:,jvec) )
+      !     vec(:, ivec) = vec(:, ivec) - vec(:, jvec) * DOT_PRODUCT( vec(:, ivec) , vec(:, jvec) )
       call PDAXPY(mglobal, -dot_prod_ij, vec, 1, jvec, desc_vec, 1, vec, 1, ivec, desc_vec, 1)
 
     enddo
 
     ! Normalize
-    ! vec(:,ivec) = vec(:,ivec) / NORM2( vec(:,ivec) )
+    ! vec(:, ivec) = vec(:, ivec) / NORM2( vec(:, ivec) )
     call PDNRM2(mglobal, norm_i, vec, 1, ivec, desc_vec, 1)
     call PDSCAL(mglobal, 1.0_dp/norm_i, vec, 1, ivec, desc_vec, 1)
 

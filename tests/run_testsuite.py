@@ -341,6 +341,7 @@ have_gradients        = 'Running with external LIBINT calculation of the gradien
 have_libint_forces    = False  # FIXME force calculation is broken as of today
 is_libcint            = 'Code compiled with LIBCINT support' in open(tmpfolder + '/fake.out').read()
 have_hdf5             = 'Running with HDF5' in open(tmpfolder + '/fake.out').read()
+have_fftw3            = 'Running with FFTW3' in open(tmpfolder + '/fake.out').read()
 
 #with open(tmpfolder + '/fake.out', 'r') as ffake:
 #  for line in ffake:
@@ -354,6 +355,7 @@ print('                        MPI: {}'.format(have_mpi) )
 print('                  SCALAPACK: {}'.format(have_scalapack) )
 print('                      LIBXC: {}'.format(have_libxc) )
 print('                       HDF5: {}'.format(have_hdf5) )
+print('                      FFTW3: {}'.format(have_fftw3) )
 if is_libcint:
     print('                  integrals: LIBCINT' )
 else:
@@ -382,6 +384,7 @@ need_scalapack = []
 need_gradients = []
 need_forces    = []
 need_libcint   = []
+need_fftw3     = []
 test_names     = []
 testinfo       = []
 command        = []
@@ -404,6 +407,7 @@ for line in ftestsuite:
     need_gradients.append(False)
     need_forces.append(False)
     need_libcint.append(False)
+    need_fftw3.append(False)
     command.append("")
 
   if len(parsing) == 3:
@@ -425,6 +429,7 @@ for line in ftestsuite:
     need_gradients.append( 'need_gradients' in parsing[2].lower() )
     need_forces.append( 'need_forces' in parsing[2].lower() )
     need_libcint.append( 'need_libcint' in parsing[2].lower() )
+    need_fftw3.append( 'need_fftw3' in parsing[2].lower() )
 
   elif len(parsing) == 4:
     testinfo[ninput-1].append(parsing)
@@ -540,6 +545,12 @@ for iinput in range(ninput):
     print('\nSkipping test file: ' + inp)
     print('  because this compilation of MOLGW does not have LIBCINT')
     skipping_reason.append('this compilation of MOLGW does not have LIBCINT')
+    continue
+  if need_fftw3[iinput] and not have_fftw3:
+    test_files_skipped += 1
+    print('\nSkipping test file: ' + inp)
+    print('  because this compilation of MOLGW does not have FFTW3')
+    skipping_reason.append('this compilation of MOLGW does not have FFTW3')
     continue
   if need_scalapack[iinput] and not have_scalapack:
     test_files_skipped += 1

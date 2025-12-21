@@ -1,0 +1,20 @@
+&molgw
+ scf='lda'
+
+ init_hamiltonian='core'
+ ecp_basis='TZV2P_cp2k'
+ ecp_auxil_basis='pw'
+ ecp_elements='H'
+ ecp_type='blyp.gth'
+
+ a1=  5., 0., 0.       ! angstrom
+ a2=  0., 5., 0.       ! angstrom
+ a3=  0., 0., 5.       ! angstrom
+
+ fft_ecut = 200.0
+
+ natom=2
+/
+H          0.000000    0.000000    4.650
+H          0.000000    0.000000    0.350
+

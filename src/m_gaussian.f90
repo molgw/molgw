@@ -23,7 +23,7 @@ module m_gaussian
     real(dp)         :: x0(3)                ! center of the gaussian
     real(dp)         :: norm_factor          ! normalization factor for the gaussian squared
     real(dp)         :: common_norm_factor   ! normalization factor for the gaussian squared
-                                             ! without the nx,ny,nz dependence
+                                             ! without the nx, ny, nz dependence
   end type gaussian
 
   interface

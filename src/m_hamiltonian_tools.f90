@@ -1219,8 +1219,9 @@ subroutine setup_x_matrix(TOL_OVERLAP, s_matrix, nstate, x_matrix)
   call clean_allocate('Overlap X * X**H = S**-1', x_matrix, nbf, nstate)
 
   write(stdout, '(/,a)')       ' Filtering basis functions that induce overcompleteness'
-  write(stdout, '(a,es9.2)')   '   Lowest S eigenvalue is           ', MINVAL( s_eigval(:) )
-  write(stdout, '(a,es9.2)')   '   Tolerance on overlap eigenvalues ', TOL_OVERLAP
+  write(stdout, '(a,es10.2)')  '   S condition number               ', MAXVAL(s_eigval(:)) / MINVAL(s_eigval(:))
+  write(stdout, '(a,es10.2)')  '   Lowest S eigenvalue is           ', MINVAL( s_eigval(:) )
+  write(stdout, '(a,es10.2)')  '   Tolerance on overlap eigenvalues ', TOL_OVERLAP
   write(stdout, '(a,i5,a,i5)') '   Retaining ', nstate, ' among ', nbf
 
   !! X = U*s^(-1/2)

@@ -118,7 +118,7 @@ module m_libxc_tools
       import :: C_PTR, C_DOUBLE, C_CHAR
       implicit none
       type(C_PTR), intent(inout) :: func
-      character(kind=C_CHAR)    :: name
+      character(kind=C_CHAR)     :: name
       real(C_DOUBLE), value      :: param
     end subroutine xc_func_set_ext_params_name
 
@@ -126,7 +126,7 @@ module m_libxc_tools
       import :: C_PTR, C_INT, C_DOUBLE
       implicit none
       type(C_PTR)                :: func
-      integer(C_INT), value       :: np
+      integer(C_INT), value      :: np
       real(C_DOUBLE)             :: rho(*)
       real(C_DOUBLE)             :: exc(*)
     end subroutine xc_lda_exc
@@ -135,7 +135,7 @@ module m_libxc_tools
       import :: C_PTR, C_INT, C_DOUBLE
       implicit none
       type(C_PTR)                :: func
-      integer(C_INT), value       :: np
+      integer(C_INT), value      :: np
       real(C_DOUBLE)             :: rho(*)
       real(C_DOUBLE)             :: exc(*)
       real(C_DOUBLE)             :: vrho(*)
@@ -145,7 +145,7 @@ module m_libxc_tools
       import :: C_PTR, C_INT, C_DOUBLE
       implicit none
       type(C_PTR)                :: func
-      integer(C_INT), value       :: np
+      integer(C_INT), value      :: np
       real(C_DOUBLE)             :: rho(*)
       real(C_DOUBLE)             :: v2rho2(*)
     end subroutine xc_lda_fxc
@@ -154,7 +154,7 @@ module m_libxc_tools
       import :: C_PTR, C_INT, C_DOUBLE
       implicit none
       type(C_PTR)                :: func
-      integer(C_INT), value       :: np
+      integer(C_INT), value      :: np
       real(C_DOUBLE)             :: rho(*)
       real(C_DOUBLE)             :: sigma(*)
       real(C_DOUBLE)             :: exc(*)
@@ -164,7 +164,7 @@ module m_libxc_tools
       import :: C_PTR, C_INT, C_DOUBLE
       implicit none
       type(C_PTR)                :: func
-      integer(C_INT), value       :: np
+      integer(C_INT), value      :: np
       real(C_DOUBLE)             :: rho(*)
       real(C_DOUBLE)             :: sigma(*)
       real(C_DOUBLE)             :: exc(*)
@@ -176,7 +176,7 @@ module m_libxc_tools
       import :: C_PTR, C_INT, C_DOUBLE
       implicit none
       type(C_PTR)                :: func
-      integer(C_INT), value       :: np
+      integer(C_INT), value      :: np
       real(C_DOUBLE)             :: rho(*)
       real(C_DOUBLE)             :: sigma(*)
       real(C_DOUBLE)             :: vrho(*)
@@ -187,7 +187,7 @@ module m_libxc_tools
       import :: C_PTR, C_INT, C_DOUBLE
       implicit none
       type(C_PTR)                :: func
-      integer(C_INT), value       :: np
+      integer(C_INT), value      :: np
       real(C_DOUBLE)             :: rho(*)
       real(C_DOUBLE)             :: sigma(*)
       real(C_DOUBLE)             :: v2rho2(*)

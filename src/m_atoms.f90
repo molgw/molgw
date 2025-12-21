@@ -11,7 +11,7 @@ module m_atoms
   use m_definitions
   use m_warning, only: die, issue_warning
   use m_elements
-  use m_linear_algebra, only: cross_product
+  use m_linear_algebra, only: cross_product, inverse_3x3_matrix, determinant_3x3_matrix
 
   real(dp), parameter, private     :: tol_geom=1.0e-5_dp
 
@@ -48,6 +48,14 @@ module m_atoms
   logical, protected              :: planar=.TRUE.
   real(dp), protected             :: xcenter(3)
   real(dp), protected             :: xnormal(3)
+
+  logical, protected              :: pbc_ = .FALSE.
+  real(dp), protected             :: aprim(3, 3) = 0.0_dp
+  real(dp), protected             :: aprim_inv(3, 3) = 1000.0_dp
+  real(dp), protected             :: bprim(3, 3) = 1000.0_dp
+  real(dp), protected             :: volume
+  real(dp), protected             :: recip_volume
+  real(dp), protected             :: minimal_image_distance
 
 
 contains
@@ -467,6 +475,81 @@ function same_element(icenter, jcenter)
 
 end function same_element
 
+
+!=========================================================================
+subroutine setup_periodicity_vectors(length_unit, a1, a2, a3)
+  implicit none
+  character(len=*), intent(in) :: length_unit
+  real(dp), intent(in) :: a1(3), a2(3), a3(3)
+  !=====
+  real(dp) :: length_factor, x(3)
+  integer :: i1, i2, i3
+  !=====
+
+  select case(TRIM(length_unit))
+  case('A', 'ANGSTROM')
+    length_factor = 1.0_dp / bohr_A
+  case('BOHR', 'AU','A.U','A.U.')
+    length_factor = 1.0_dp
+  case default
+    call die('units for lengths in input file not understood')
+  end select
+
+  if( NORM2(a1) > 1.0e-1_dp ) then
+    aprim(:, 1) = a1(:) * length_factor
+  endif
+
+  if( NORM2(a2) > 1.0e-1_dp ) then
+    aprim(:, 2) = a2(:) * length_factor
+  endif
+
+  if( NORM2(a3) > 1.0e-1_dp ) then
+    aprim(:, 3) = a3(:) * length_factor
+  endif
+
+  pbc_ = NORM2(aprim) > 1.0e-1_dp
+
+
+  if( pbc_ ) then
+
+    volume = determinant_3x3_matrix(aprim)
+    ! Calculate the reciprocal lattice vectors
+    if( volume < 0.0_dp ) then
+      call die('setup_periodicity_vectors: periodic vectors are in indirect order. Swap two of them to recover direct order.')
+    endif
+    aprim_inv(:, :) = inverse_3x3_matrix(aprim)
+    bprim(:, :) = 2.0_dp * pi * TRANSPOSE(aprim_inv)
+    recip_volume = determinant_3x3_matrix(bprim)
+
+    minimal_image_distance = 9999.9_dp
+    do i3=-5, 5
+      do i2=-5, 5
+        do i1=-5, 5
+          if( i1 == 0 .AND. i2 == 0 .AND. i3 == 0 ) cycle
+          x(:) = MATMUL(aprim, [i1, i2, i3])
+          minimal_image_distance = MIN(minimal_image_distance, NORM2(x(:)) )
+        enddo
+      enddo
+    enddo
+
+    write(stdout, '(/,1x,a,/)') 'Periodic boundary conditions are switched on'
+    write(stdout, '(1x,a)') 'Primitive cell vectors (bohr):'
+    write(stdout, '(1x,3(f12.6,1x))')  aprim(:, 1)
+    write(stdout, '(1x,3(f12.6,1x))')  aprim(:, 2)
+    write(stdout, '(1x,3(f12.6,1x))')  aprim(:, 3)
+    write(stdout, '(1x,a,1x,f12.6)') 'Volume (bohr**3):             ', volume
+    write(stdout, '(1x,a,1x,f12.6)') 'Minimal image distance (bohr):', minimal_image_distance
+    write(stdout, '(1x,a)') 'Reciprocal lattice vectors (bohr**-1):'
+    write(stdout, '(1x,3(f12.6,1x))')  bprim(:, 1)
+    write(stdout, '(1x,3(f12.6,1x))')  bprim(:, 2)
+    write(stdout, '(1x,3(f12.6,1x))')  bprim(:, 3)
+    write(stdout, '(1x,a,1x,f12.6)') 'Volume (bohr**-3):', recip_volume
+    write(stdout, '(1x,a)')  '==============================================='
+
+ endif
+
+
+end subroutine setup_periodicity_vectors
 
 
 end module m_atoms

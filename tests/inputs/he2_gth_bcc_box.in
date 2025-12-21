@@ -1,0 +1,22 @@
+&molgw
+ scf='lda'
+
+ ecp_basis='GTH-cc-pVDZ'
+ auxil_basis='PW'
+
+
+ ecp_elements='He'
+ ecp_type='hf.gth'
+
+ a1= -10., 10., 10.
+ a2=  5.,-5., 5.
+ a3=  5., 5.,-5.
+
+ fft_ecut = 160.0
+
+ npulay_hist=2
+ natom=2
+/
+He    0. 0. 0.
+He   -5. 5. 5.
+

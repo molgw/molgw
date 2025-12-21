@@ -1,0 +1,14 @@
+&molgw
+ scf='lda'
+
+ ecp_basis='QZV3P_cp2k'
+ auxil_basis='auto'
+
+ ecp_elements='Li F'
+ ecp_type='blyp.gth'
+
+ natom=2
+/
+Li  0.00 0.00 0.00
+F   0.00 0.00 1.5639
+

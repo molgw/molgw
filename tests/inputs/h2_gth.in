@@ -1,0 +1,15 @@
+&molgw
+ scf='lda'
+
+ ecp_basis='QZV3P_cp2k'
+ auxil_basis='auto'
+
+ npulay_hist=3
+ ecp_elements='H'
+ ecp_type='blyp.gth'
+
+ natom=2
+/
+H  0.00 0.00 0.00
+H  0.00 0.00 0.70
+

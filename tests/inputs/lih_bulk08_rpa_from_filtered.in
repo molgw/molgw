@@ -10,7 +10,7 @@
  print_bigrestart='no'
 
  init_hamiltonian='CC4S_FILES'
- cc4s_input='./lih_bulk08_filtered_'
+ cc4s_input='./lih_bulk08_filtered'
 
  postscf='RPA'
 

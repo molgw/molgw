@@ -237,6 +237,9 @@ subroutine header()
 #if defined(HAVE_HDF5)
   write(stdout, *) 'Running with HDF5'
 #endif
+#if defined(HAVE_FFTW3)
+  write(stdout, *) 'Running with FFTW3'
+#endif
 #if defined(HAVE_MPI) && !defined(HAVE_SCALAPACK)
   call die('Code compiled with SCALAPACK, but without MPI. This is not permitted')
 #endif
@@ -300,21 +303,29 @@ end subroutine header
 
 
 !=========================================================================
-subroutine dump_out_matrix_dp(print_matrix, title, matrix)
+subroutine dump_out_matrix_dp(print_matrix, title, matrix, fmt)
   implicit none
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
   real(dp), intent(in)         :: matrix(:, :, :)
+  character(len=*), intent(in), optional :: fmt
   !=====
   integer, parameter :: MAXSIZE=50
   !=====
   real(dp) :: row(MIN(SIZE(matrix, DIM=2), MAXSIZE))
   integer  :: imat, ispin, nspin, mmat, nmat
+  character(:), allocatable :: fmt_
   !=====
 
   if( .NOT. print_matrix .AND. .NOT. debug ) return
 
+  if( PRESENT(fmt) ) then
+    fmt_ = fmt
+  else
+    fmt_ = 'f12.5'
+  endif
+ 
   mmat  = SIZE(matrix, DIM=1)
   nmat  = SIZE(matrix, DIM=2)
   nspin = SIZE(matrix, DIM=3)
@@ -322,7 +333,7 @@ subroutine dump_out_matrix_dp(print_matrix, title, matrix)
   write(stdout, '(/,1x,a)') TRIM(title)
 
   do ispin=1, nspin
-    if(nspin==2) then
+    if( nspin == 2 ) then
       write(stdout, '(a,i1)') ' spin polarization # ', ispin
     endif
     write(stdout,'(4x,*(1x,i12))') (imat, imat=1,SIZE(row))
@@ -332,36 +343,36 @@ subroutine dump_out_matrix_dp(print_matrix, title, matrix)
       elsewhere
         row(:) = 1.0e-6_dp
       end where
-      write(stdout, '(1x,i3,*(1x,f12.5))') imat, row(:)
+      write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
     enddo
-  write(stdout, *)
+    write(stdout, *)
   enddo
 
 end subroutine dump_out_matrix_dp
 
 
 !=========================================================================
-subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, form)
+subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, fmt)
   implicit none
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
   real(dp), intent(in)         :: matrix(:, :)
-  character(len=*), optional, intent(in) :: form
+  character(len=*), optional, intent(in) :: fmt
   !=====
   integer, parameter :: MAXSIZE=50
   !=====
   real(dp) :: row(MIN(SIZE(matrix, DIM=2), MAXSIZE))
   integer :: imat, mmat, nmat
-  character(20) :: form_
+  character(:), allocatable :: fmt_
   !=====
 
   if( .NOT. print_matrix .AND. .NOT. debug ) return
 
-  if( PRESENT(form) ) then
-    form_ = '(1x,i3,*(1x,' // form // '))'
+  if( PRESENT(fmt) ) then
+    fmt_ = fmt
   else
-    form_ = '(1x,i3,*(1x,f12.5))'
+    fmt_ = 'f12.5'
   endif
 
   mmat  = SIZE(matrix, DIM=1)
@@ -371,32 +382,40 @@ subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, form)
 
   do imat=1, MIN(mmat, MAXSIZE)
     where( ABS(matrix(imat, 1:MIN(nmat, MAXSIZE))) > 1.0e-5_dp )
-    row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE))
+      row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE))
     elsewhere
-    row(:) = 1.0e-6_dp
-  end where
-  write(stdout, form_) imat, row(:)
-enddo
-write(stdout, *)
+      row(:) = 1.0e-6_dp
+    end where
+    write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
+  enddo
+  write(stdout, *)
 
 end subroutine dump_out_matrix_nospin_dp
 
 
 !=========================================================================
-subroutine dump_out_matrix_cdp(print_matrix, title, matrix)
+subroutine dump_out_matrix_cdp(print_matrix, title, matrix, fmt)
   implicit none
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
   complex(dp), intent(in)      :: matrix(:, :, :)
+  character(len=*), optional, intent(in) :: fmt
   !=====
   integer, parameter :: MAXSIZE=50
   !=====
   real(dp) :: row(MIN(SIZE(matrix, DIM=2), MAXSIZE))
   integer  :: imat, ispin, mmat, nmat, nspin
+  character(:), allocatable :: fmt_
   !=====
 
   if( .NOT. print_matrix .AND. .NOT. debug ) return
+
+  if( PRESENT(fmt) ) then
+    fmt_ = fmt
+  else
+    fmt_ = 'f12.5'
+  endif
 
   mmat  = SIZE(matrix, DIM=1)
   nmat  = SIZE(matrix, DIM=2)
@@ -405,20 +424,33 @@ subroutine dump_out_matrix_cdp(print_matrix, title, matrix)
   write(stdout, '(/,1x,a)') TRIM(title)
 
   do ispin=1, nspin
-    if(nspin==2) then
+    if( nspin == 2 ) then
       write(stdout, '(a,i1)') ' spin polarization # ', ispin
     endif
+
+    write(stdout, '(1x,a)') '=== Real part ==='
     do imat=1, MIN(mmat, MAXSIZE)
-      where( ABS(matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)) > 1.0e-5_dp )
-      row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)
-      elsewhere
-      row(:) = 1.0e-6_dp
-    end where
-    write(stdout, '(1x,i3,*(1x,2(1x,f12.5)))') imat, row(:)
+        where( ABS(matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)) > 1.0e-5_dp )
+          row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)%re
+        elsewhere
+          row(:) = 1.0e-6_dp
+      end where
+      write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
+    enddo
+    write(stdout, *)
+
+    write(stdout, '(1x,a)') '=== Imaginary part ==='
+    do imat=1, MIN(mmat, MAXSIZE)
+        where( ABS(matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)) > 1.0e-5_dp )
+          row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)%im
+        elsewhere
+          row(:) = 1.0e-6_dp
+      end where
+      write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
+    enddo
+    write(stdout, *)
   enddo
   write(stdout, *)
-enddo
-write(stdout, *)
 
 end subroutine dump_out_matrix_cdp
 
@@ -1251,7 +1283,7 @@ subroutine plot_cube_wfn(rootname, basis, occupation, c_matrix)
   real(dp)                    :: dx, dy, dz
   real(dp)                    :: basis_function_r(basis%nbf)
   integer                     :: ix, iy, iz, icenter
-  integer, allocatable         :: ocubefile(:, :)
+  integer, allocatable        :: ocubefile(:, :)
   integer                     :: ocuberho(nspin)
   character(len=200)          :: file_name
   integer                     :: icubefile
@@ -3420,8 +3452,8 @@ subroutine read_gaussian_fchk(read_fchk_in, file_name, basis, p_matrix_out)
 
   endif
 
-  ! Broadcast the density matrix from proc iomaster to all the other procs.
-  call world%bcast(iomaster, p_matrix_out)
+  ! Broadcast the density matrix from proc rank_iomaster to all the other procs.
+  call world%bcast(rank_iomaster, p_matrix_out)
 
 
 end subroutine read_gaussian_fchk
@@ -3640,7 +3672,7 @@ subroutine write_energy_qp(energy_qp)
   !=====
 
   !
-  ! Only the proc iomaster writes down the ENERGY_QP file
+  ! Only the proc rank_iomaster writes down the ENERGY_QP file
   if( .NOT. is_iomaster) return
 
   nstate = SIZE(energy_qp, DIM=1)
@@ -4051,7 +4083,7 @@ subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, 
   real(dp), allocatable, intent(inout) :: hamiltonian_fock(:, :, :)
   character(len=*), intent(in), optional :: rootname
   !=====
-  character(len=128) :: rootname_ = 'molgw_'
+  character(len=128) :: rootname_ = 'molgw'
   integer, allocatable :: yaml_integers(:)
   real(dp), allocatable :: yaml_reals(:)
   real(dp) :: efermi
@@ -4063,16 +4095,16 @@ subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, 
   endif
 
   if( nspin > 1 ) call die('read_cc4s_eigenenergies: only spin restricted implemented')
-  write(stdout, '(/,1x,a)') 'Reading ' // TRIM(rootname_) // 'EigenEnergies.yaml and ' &
-                            // TRIM(rootname_) // 'Eigenenergies.elements'
+  write(stdout, '(/,1x,a)') 'Reading ' // TRIM(rootname_) // '_EigenEnergies.yaml and ' &
+                            // TRIM(rootname_) // '_Eigenenergies.elements'
 
   nstate_old = nstate
 
-  call yaml_search_keyword(TRIM(rootname_) // 'EigenEnergies.yaml', 'fermiEnergy', yaml_reals)
+  call yaml_search_keyword(TRIM(rootname_) // '_EigenEnergies.yaml', 'fermiEnergy', yaml_reals)
   efermi = yaml_reals(1)
   write(stdout, '(1x,a,f12.5)') 'Fermi energy from file (eV): ', efermi * Ha_eV
 
-  call yaml_search_keyword(TRIM(rootname_) // 'EigenEnergies.yaml', 'length', yaml_integers)
+  call yaml_search_keyword(TRIM(rootname_) // '_EigenEnergies.yaml', 'length', yaml_integers)
   nstate = yaml_integers(1)
   basis%nbf = nstate
 
@@ -4096,7 +4128,7 @@ subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, 
   allocate(energy(nstate, nspin))
   allocate(occupation(nstate, nspin))
 
-  open(newunit=ifile, file=TRIM(rootname_) // 'EigenEnergies.elements', status='old', action='read')
+  open(newunit=ifile, file=TRIM(rootname_) // '_EigenEnergies.elements', status='old', action='read')
   hamiltonian_fock(:, :, :) = 0.0_dp
   do istate=1, nstate
     read(ifile, *) energy(istate, 1)
@@ -4125,7 +4157,7 @@ subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
   integer :: unit_file
   integer :: nstate, istate, nocc
   real(dp) :: efermi
-  character(len=128) :: rootname_ = 'molgw_'
+  character(len=128) :: rootname_ = 'molgw'
   !=====
 
   if( nspin > 1 ) call die('write_cc4s_eigenenergies: only spin restricted implemented')
@@ -4136,7 +4168,7 @@ subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
 
   nstate = MIN(SIZE(occupation, DIM=1), SIZE(energy, DIM=1))
 
-  open(newunit=unit_file, file=TRIM(rootname_) // 'EigenEnergies.elements', action='write', form='formatted')
+  open(newunit=unit_file, file=TRIM(rootname_) // '_EigenEnergies.elements', action='write', form='formatted')
   do istate=1, nstate
     write(unit_file, '(1x,es16.8)') energy(istate, 1)
   enddo
@@ -4145,7 +4177,7 @@ subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
   nocc = get_number_occupied_states(occupation)
   efermi = 0.5_dp * ( energy(nocc, 1) + energy(nocc+1, 1) ) 
 
-  open(newunit=unit_file, file=TRIM(rootname_) // 'EigenEnergies.yaml', action='write', form='formatted')
+  open(newunit=unit_file, file=TRIM(rootname_) // '_EigenEnergies.yaml', action='write', form='formatted')
   write(unit_file, '(a)')    'version: 100'
   write(unit_file, '(a)')    'type: Tensor'
   write(unit_file, '(a)')    'scalarType: Real64'
@@ -4288,6 +4320,58 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
 
 
 end subroutine print_restart_hdf5
+
+
+!=========================================================================
+! Write a volumetric data in a cube format file
+!
+subroutine write_cube_file(cubefilename, n1, n2, n3, dr, data, comment)
+  implicit none
+
+  character(len=*), intent(in) :: cubefilename
+  integer, intent(in) :: n1, n2, n3
+  real(dp), intent(in) :: dr(3, 3)
+  real(dp), intent(in) :: data(:)
+  character(len=*), intent(in), optional :: comment
+  !=====
+  integer :: fileunit, icenter, i1, i2, i3, ii
+  real(dp), allocatable :: data_reshuffled(:)
+  !=====
+
+  open(newunit=fileunit, file=TRIM(cubefilename))
+  write(fileunit, '(a)') 'Cube file generated from MOLGW'
+  if( PRESENT(comment) ) then
+    write(fileunit, '(a)') TRIM(comment)
+  else
+    write(fileunit, '(a)') ' volumetric data'
+  endif
+
+  write(fileunit, '(i6,3(f12.6,2x))') ncenter_nuclei, 0.0_dp, 0.0_dp, 0.0_dp
+  write(fileunit, '(i6,3(f12.6,2x))') n1, dr(:, 1)
+  write(fileunit, '(i6,3(f12.6,2x))') n2, dr(:, 2)
+  write(fileunit, '(i6,3(f12.6,2x))') n3, dr(:, 3)
+  do icenter=1, ncenter_nuclei
+    write(fileunit, '(i6,4(2x,f12.6))') NINT(zatom(icenter)), 0.0_dp, xatom(:, icenter)
+  enddo
+
+  ! cube files have C-ordering
+  allocate(data_reshuffled, MOLD=data)
+  ii = 0
+  do i1=1, n1
+    do i2=1, n2
+      do i3=1, n3
+        ii = ii + 1
+        data_reshuffled(ii) = data(i1 + (i2-1) * n1 + (i3-1) * n1 * n2)
+      enddo
+    enddo
+  enddo
+
+  write(fileunit, '(10(e16.8,2x))') data_reshuffled(:)
+  deallocate(data_reshuffled)
+
+  close(fileunit)
+
+end subroutine write_cube_file
 
 
 !=========================================================================

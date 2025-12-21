@@ -36,7 +36,7 @@ module m_mpi
   !===================================================
 
 
-  integer, protected :: iomaster = 0
+  integer, protected :: rank_iomaster = 0
   logical, protected :: is_iomaster = .TRUE.
 
   integer, private :: ngrid_mpi
@@ -75,7 +75,7 @@ subroutine init_mpi_world()
   call world%init(dummy)
 #endif
 
-  if( world%rank /= iomaster ) then
+  if( world%rank /= rank_iomaster ) then
     is_iomaster = .FALSE.
 #if defined(DEBUG)
     call set_standard_output(2000+world%rank)
@@ -153,7 +153,7 @@ subroutine init_mpi_other_communicators(mpi_poorman_)
   write(stdout, '(a50,1x,i6)')  'grid%nproc:    ', grid%nproc
   write(stdout, '(a50,1x,i6)')  'auxil%nproc:   ', auxil%nproc
   write(stdout, '(a50,1x,i6)')  'poorman%nproc:   ', poorman%nproc
-  write(stdout, '(a50,1x,i6)')  'Master proc is:', iomaster
+  write(stdout, '(a50,1x,i6)')  'Master proc is:', rank_iomaster
   write(stdout, '(a50,6x,l1)') 'Parallelize auxiliary basis:', parallel_auxil
   write(stdout, '(a50,6x,l1)')  'Parallelize XC grid points:', parallel_grid
 #if defined(HAVE_SCALAPACK)
