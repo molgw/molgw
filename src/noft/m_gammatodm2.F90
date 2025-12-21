@@ -1784,7 +1784,7 @@ subroutine dm2_hfb(RDMd,Docc_gamma,sqrt_occ,DM2_iiii,DM2_J,DM2_K,DM2_L,DDM2_gamm
 !arrays
 !************************************************************************
 
-!     DM2_Jpq = 2NpNq, DM2_Kpq = -NpNq, DM2_Lpq = -sqrt[Np (1-Np) Nq (1-Nq)]
+!     DM2_Jpq = 2NpNq, DM2_Kpq = -NpNq, DM2_Lpq = sqrt[Np (1-Np) Nq (1-Nq)]
  do iorb=1,RDMd%NBF_occ
   sqrt_hole1=dsqrt(one-RDMd%occ(iorb))
   do iorb1=1,RDMd%NBF_occ
