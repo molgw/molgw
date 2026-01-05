@@ -92,6 +92,7 @@ module m_timing
   integer, parameter :: timing_read_coulombvertex  = 68
   integer, parameter :: timing_write_coulombvertex = 69
   integer, parameter :: timing_density_matrix_MO   = 70
+  integer, parameter :: timing_coulombvertex       = 71
 
   !
   ! PBC related timers
@@ -467,6 +468,7 @@ subroutine output_timing()
   write(stdout, '(a,/)')   '                            Post SCF'
 
   ! Prepare post scf
+  call output_timing_line('Calculate Coulomb vertices', timing_coulombvertex, 1)
   call output_timing_line('Reading Coulomb vertex file', timing_read_coulombvertex, 1)
   call output_timing_line('Writing Coulomb vertex file', timing_write_coulombvertex, 1)
   call output_timing_line('Sigma_x - Vxc', timing_x_m_vxc, 1)

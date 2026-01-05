@@ -1293,7 +1293,8 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
   real(dp) :: rtmp
   !=====
 
-  !call start_clock(timing_exchange)
+
+  call start_clock(timing_coulombvertex)
 
   write(stdout, '(/,1x,a)') 'Calculate Coulomb vertices with PBC'
   nbf    = SIZE(c_matrix, DIM=1)
@@ -1439,7 +1440,7 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
   call fftw_free(pg)
 
 
-  !call stop_clock(timing_exchange)
+  call stop_clock(timing_coulombvertex)
 
 #else
   call die('calculate_coulombvertex_periodic: requires FFTW3 activation')
