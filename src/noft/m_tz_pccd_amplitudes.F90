@@ -29,6 +29,7 @@ module m_tz_pCCD_amplitudes
  implicit none
 
  private :: calc_t_residues,calc_z_residues,calc_Grad_t_amp,calc_Grad_z_amp,calc_t_Jia_diag,calc_E_sd
+ private :: Grad_r_wrt_t,Grad_r_wrt_z
 ! private :: num_calc_Grad_t_amp,num_calc_Grad_z_amp
 !!***
 
@@ -75,21 +76,23 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
  logical::diagco,converged,only_phases_
  integer,parameter::msave=7
  integer::iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5,ipair
- integer::iflag,Mtosave,Nwork,Nvirtual
+ integer::iflag,Mtosave,Nwork,Nvirtual,nOcc,nVir,info
  real(dp)::tol10=1e-10
  real(dp)::sumdiff_t,sumdiff_z,maxdiff_t,maxdiff_z
  real(dp)::Ecorr_new,Ecorr_old,Ecorr_diff,Ediff,Esingle_det,Energy_dm
 !arrays
  character(len=200)::msg
  integer,dimension(2)::info_print
- real(dp),allocatable,dimension(:)::diag,Work,diag_tz,Grad_residue
- real(dp),allocatable,dimension(:,:)::y_ij,y_ab,Jia_diag
+ integer,allocatable,dimension(:)::IPIV
+ real(dp),allocatable,dimension(:)::diag,Work,diag_tz,Grad_residue,vec_tmp
+ real(dp),allocatable,dimension(:,:)::y_ij,y_ab,Jacobian_res_tz
 !************************************************************************
 
  Ecorr_new=zero; Ecorr_old=zero; Ecorr_diff=zero;
  maxdiff_t=zero; maxdiff_z=zero; Ediff=Energy;
  iter_t=0; iter_z=0; converged=.false.; Nvirtual=RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs);
  sumdiff_t=zero;sumdiff_z=zero; only_phases_=.false.;
+ nOcc=RDMd%Npairs; nVir=RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs);
  if(present(only_phases)) only_phases_=only_phases
 
  ! Build diag elements of the Lambda matrix (with HF 1-RDM and 2-RDM) and compute SD energy
@@ -134,24 +137,50 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
 
  if(.not.keep_occs .and. (.not.converged .and. .not.only_phases_)) then
          
-  if(imethod/=1) then
+  if(imethod==1) then
 
+   ! Newton-Rapson method
+   write(msg,'(a)') 'Using Newton-Rapson to optimize t-amplitudes'
+   call write_output(msg)
    iter_t=0
 
-   allocate(Jia_diag(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)))
+   allocate(Jacobian_res_tz(nOcc*nVir,nOcc*nVir),vec_tmp(nOcc*nVir),IPIV(nOcc*nVir))
 
    do
 
-    ! Build t_ia (using the intermediate y_ij)
+    ! Build t_ia residues (using the intermediate y_ij)
     call calc_t_residues(ELAGd,RDMd,INTEGd,y_ij) 
-    call calc_t_Jia_diag(ELAGd,RDMd,INTEGd,Jia_diag) 
+    ! Build residue vector
+    iorb1=1
     do iorb=1,RDMd%Npairs ! Occ
-     iorb1=iorb+RDMd%Nfrozen
      do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
-      iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
-      RDMd%t_pccd(iorb,iorb2)=RDMd%t_pccd_old(iorb,iorb2)-RDMd%tz_residue(iorb,iorb2) &
-      & /(Jia_diag(iorb,iorb2)+tol10)
-      !& /(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))+tol10) ! This is not stable in the disoc. limit
+      vec_tmp(iorb1)=RDMd%tz_residue(iorb,iorb2)
+      iorb1=iorb1+1
+     enddo
+    enddo
+    ! Build the Jacobian
+    call Grad_r_wrt_t(ELAGd,RDMd,INTEGd,Jacobian_res_tz,nOcc,nVir)
+    ! Compute J^-1 residues_vector
+    call DGETRF(nOcc*nVir,nOcc*nVir,Jacobian_res_tz,nOcc*nVir,IPIV,info)
+    if(info/=0) then
+     write(msg,'(a,i5)') 'Error computing dgetrf for the inverse of the Jacobian at iter ',iter_t
+     call write_output(msg)
+     stop
+    else
+     call DGETRS('N',nOcc*nVir,1,Jacobian_res_tz,nOcc*nVir,IPIV,vec_tmp,nOcc*nVir,info)
+     if(info/=0) then
+      write(msg,'(a,i5)') 'Error computing dgetrs for the inverse of the Jacobian at iter ',iter_t
+      call write_output(msg)
+      stop
+     endif
+    endif
+
+    ! Update t 
+    iorb1=1
+    do iorb=1,RDMd%Npairs ! Occ
+     do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+      RDMd%t_pccd(iorb,iorb2)=RDMd%t_pccd_old(iorb,iorb2)-vec_tmp(iorb1)
+      iorb1=iorb1+1
      enddo
     enddo
 
@@ -197,7 +226,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
 
    enddo
 
-   deallocate(Jia_diag)
+   deallocate(Jacobian_res_tz,vec_tmp,IPIV)
 
   else
 
@@ -302,20 +331,50 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
 
   if(.not. converged) then
 
-   if(imethod/=1) then
+   if(imethod==1) then
    
+    ! Newton-Rapson method
+    write(msg,'(a)') 'Using Newton-Rapson to optimize z-amplitudes'
+    call write_output(msg)
     iter_z=0
    
+    allocate(Jacobian_res_tz(nOcc*nVir,nOcc*nVir),vec_tmp(nOcc*nVir),IPIV(nOcc*nVir))
+
     do
-   
-     ! Build z_ia
+
+    ! Build z_ia residues (using the intermediates y_ij and y_ab)
      call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab) 
+     ! Build residue vector
+     iorb1=1
      do iorb=1,RDMd%Npairs ! Occ
-      iorb1=iorb+RDMd%Nfrozen
       do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
-       iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
-       RDMd%z_pccd(iorb,iorb2)=RDMd%z_pccd_old(iorb,iorb2)-RDMd%tz_residue(iorb,iorb2) &
-       & /(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))+tol10)
+       vec_tmp(iorb1)=RDMd%tz_residue(iorb,iorb2)
+       iorb1=iorb1+1
+      enddo
+     enddo
+     ! Build the Jacobian
+     call Grad_r_wrt_z(ELAGd,RDMd,INTEGd,Jacobian_res_tz,nOcc,nVir)
+     ! Compute J^-1 residues_vector
+     call DGETRF(nOcc*nVir,nOcc*nVir,Jacobian_res_tz,nOcc*nVir,IPIV,info)
+     if(info/=0) then
+      write(msg,'(a,i5)') 'Error computing dgetrf for the inverse of the Jacobian at iter ',iter_z
+      call write_output(msg)
+      stop
+     else
+      call DGETRS('N',nOcc*nVir,1,Jacobian_res_tz,nOcc*nVir,IPIV,vec_tmp,nOcc*nVir,info)
+      if(info/=0) then
+       write(msg,'(a,i5)') 'Error computing dgetrs for the inverse of the Jacobian at iter ',iter_z
+       call write_output(msg)
+       stop
+      endif
+     endif
+
+     ! Update z 
+     iorb1=1
+     do iorb=1,RDMd%Npairs ! Occ
+      do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+       RDMd%z_pccd(iorb,iorb2)=RDMd%z_pccd_old(iorb,iorb2)-vec_tmp(iorb1)
+       iorb1=iorb1+1
       enddo
      enddo
    
@@ -347,6 +406,8 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
    
     enddo
    
+    deallocate(Jacobian_res_tz,vec_tmp,IPIV)
+
    else
    
     ! L-BFGS
@@ -495,6 +556,139 @@ subroutine calc_Grad_t_amp(ELAGd,RDMd,INTEGd,Grad_residue)
  Grad_res_wrt_tia=zero
 
  ! d r_ia / d t_kd
+ call Grad_r_wrt_t(ELAGd,RDMd,INTEGd,Grad_res_wrt_tia,nOcc,nVir)
+
+ ! d f(r) / d t_kb = sum_ia d f(r) / d r_ia  * d r_ia / d t_kb
+ sumdiff_t=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
+ do iorb=1,nOcc
+  do iorb1=1,nVir
+   index_ia=iorb1+(iorb-1)*nVir
+   do iorb2=1,nOcc
+    do iorb3=1,nVir
+     if(abs(RDMd%tz_residue(iorb2,iorb3))>tol10) then
+      index_jb=iorb3+(iorb2-1)*nVir
+      Grad_res_tmp(iorb,iorb1)=Grad_res_tmp(iorb,iorb1)+RDMd%tz_residue(iorb2,iorb3) &
+      &   *Grad_res_wrt_tia(index_jb,index_ia)/sumdiff_t
+     endif
+    enddo
+   enddo
+  enddo
+ enddo
+
+ Grad_residue=reshape(Grad_res_tmp,(/RDMd%Namplitudes/))
+
+ deallocate(Grad_res_tmp,Grad_res_wrt_tia)
+
+end subroutine calc_Grad_t_amp
+!!***
+
+
+!!***
+!!****f* DoNOF/calc_Grad_z_amp
+!! NAME
+!!  calc_Grad_z_amp
+!!
+!! FUNCTION
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine calc_Grad_z_amp(ELAGd,RDMd,INTEGd,Grad_residue)
+!Arguments ------------------------------------
+!scalars
+ type(elag_t),intent(inout)::ELAGd
+ type(rdm_t),intent(inout)::RDMd
+ type(integ_t),intent(inout)::INTEGd
+!arrays
+ real(dp),dimension(RDMd%Namplitudes)::Grad_residue
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,iorbi,iorba,iorbk,iorbd
+ integer::nVir,nOcc,index_ia,index_jb
+ real(dp)::sum_tmp,sumdiff_t,tol10=1e-10
+!arrays
+ real(dp),allocatable,dimension(:,:)::Grad_res_wrt_zia
+ real(dp),allocatable,dimension(:,:)::Grad_res_tmp
+!************************************************************************
+
+ nOcc=RDMd%Npairs
+ nVir=RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)
+ allocate(Grad_res_wrt_zia(nOcc*nVir,nOcc*nVir))
+ allocate(Grad_res_tmp(nOcc,nVir))
+ Grad_res_tmp=zero
+ Grad_res_wrt_zia=zero
+
+ ! d r_ia / d z_kd
+ call Grad_r_wrt_z(ELAGd,RDMd,INTEGd,Grad_res_wrt_zia,nOcc,nVir)
+
+ ! d f(r) / d z_kb = sum_ia d f(r) / d r_ia  * d r_ia / d z_kb
+ sumdiff_t=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
+ do iorb=1,nOcc
+  do iorb1=1,nVir
+   index_ia=iorb1+(iorb-1)*nVir
+   do iorb2=1,nOcc
+    do iorb3=1,nVir
+     if(abs(RDMd%tz_residue(iorb2,iorb3))>tol10) then
+      index_jb=iorb3+(iorb2-1)*nVir
+      Grad_res_tmp(iorb,iorb1)=Grad_res_tmp(iorb,iorb1)+RDMd%tz_residue(iorb2,iorb3) &
+      &   *Grad_res_wrt_zia(index_jb,index_ia)/sumdiff_t
+     endif
+    enddo
+   enddo
+  enddo
+ enddo
+
+ Grad_residue=reshape(Grad_res_tmp,(/RDMd%Namplitudes/))
+
+ deallocate(Grad_res_tmp,Grad_res_wrt_zia)
+
+end subroutine calc_Grad_z_amp
+!!***
+
+!!***
+!!****f* DoNOF/Grad_r_wrt_t
+!! NAME
+!!  Grad_r_wrt_t
+!!
+!! FUNCTION
+!!
+!! INPUTS
+!!
+!! OUTPUT
+!!
+!! PARENTS
+!!  
+!! CHILDREN
+!!
+!! SOURCE
+
+subroutine Grad_r_wrt_t(ELAGd,RDMd,INTEGd,Grad_res_wrt_tia,nOcc,nVir)
+!Arguments ------------------------------------
+!scalars
+ type(elag_t),intent(inout)::ELAGd
+ type(rdm_t),intent(inout)::RDMd
+ type(integ_t),intent(inout)::INTEGd
+ integer,intent(in)::nOcc,nVir
+!arrays
+ real(dp),dimension(nOcc*nVir,nOcc*nVir),intent(out)::Grad_res_wrt_tia
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,iorbi,iorba,iorbk,iorbd
+ integer::index_ia,index_jb
+ real(dp)::sum_tmp
+!arrays
+!************************************************************************
+
+ Grad_res_wrt_tia=zero
+
+ ! d r_ia / d t_kd
  ! Residue r_ia = r_iorb,iorb1
  do iorb=1,nOcc
   iorbi=iorb+RDMd%Nfrozen
@@ -513,7 +707,7 @@ subroutine calc_Grad_t_amp(ELAGd,RDMd,INTEGd,Grad_residue)
        Grad_res_wrt_tia(index_ia,index_jb)=Grad_res_wrt_tia(index_ia,index_jb)   &
        &   -two*(two*real(INTEGd%ERImol_cmplx(iorbi,iorba,iorbi,iorba))          &
        &   -real(INTEGd%ERImol_cmplx(iorba,iorbi,iorbi,iorba))                   &
-       &   -real(INTEGd%ERImol_cmplx(iorba,iorbi,iorbi,iorba))*RDMd%t_pccd_old(iorb,iorb1))                               
+       &   -real(INTEGd%ERImol_cmplx(iorba,iorbi,iorbi,iorba))*RDMd%t_pccd_old(iorb,iorb1))
        Grad_res_wrt_tia(index_ia,index_jb)=Grad_res_wrt_tia(index_ia,index_jb)   &
        &   +two*real(INTEGd%ERImol_cmplx(iorba,iorbi,iorbi,iorba))*RDMd%t_pccd_old(iorb,iorb1)
        Grad_res_wrt_tia(index_ia,index_jb)=Grad_res_wrt_tia(index_ia,index_jb)   &
@@ -532,7 +726,7 @@ subroutine calc_Grad_t_amp(ELAGd,RDMd,INTEGd,Grad_residue)
        Grad_res_wrt_tia(index_ia,index_jb)=Grad_res_wrt_tia(index_ia,index_jb)   &
        &   -two*(two*INTEGd%ERImol(iorbi,iorba,iorbi,iorba)                      &
        &   -INTEGd%ERImol(iorba,iorbi,iorbi,iorba)                               &
-       &   -INTEGd%ERImol(iorba,iorbi,iorbi,iorba)*RDMd%t_pccd_old(iorb,iorb1))                               
+       &   -INTEGd%ERImol(iorba,iorbi,iorbi,iorba)*RDMd%t_pccd_old(iorb,iorb1))
        Grad_res_wrt_tia(index_ia,index_jb)=Grad_res_wrt_tia(index_ia,index_jb)   &
        &   +two*INTEGd%ERImol(iorba,iorbi,iorbi,iorba)*RDMd%t_pccd_old(iorb,iorb1)
        Grad_res_wrt_tia(index_ia,index_jb)=Grad_res_wrt_tia(index_ia,index_jb)   &
@@ -602,35 +796,13 @@ subroutine calc_Grad_t_amp(ELAGd,RDMd,INTEGd,Grad_residue)
   enddo
  enddo
 
- ! d f(r) / d t_kb = sum_ia d f(r) / d r_ia  * d r_ia / d t_kb
- sumdiff_t=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
- do iorb=1,nOcc
-  do iorb1=1,nVir
-   index_ia=iorb1+(iorb-1)*nVir
-   do iorb2=1,nOcc
-    do iorb3=1,nVir
-     if(abs(RDMd%tz_residue(iorb2,iorb3))>tol10) then
-      index_jb=iorb3+(iorb2-1)*nVir
-      Grad_res_tmp(iorb,iorb1)=Grad_res_tmp(iorb,iorb1)+RDMd%tz_residue(iorb2,iorb3) &
-      &   *Grad_res_wrt_tia(index_jb,index_ia)/sumdiff_t
-     endif
-    enddo
-   enddo
-  enddo
- enddo
-
- Grad_residue=reshape(Grad_res_tmp,(/RDMd%Namplitudes/))
-
- deallocate(Grad_res_tmp,Grad_res_wrt_tia)
-
-end subroutine calc_Grad_t_amp
+end subroutine Grad_r_wrt_t
 !!***
 
-
 !!***
-!!****f* DoNOF/calc_Grad_z_amp
+!!****f* DoNOF/Grad_r_wrt_z
 !! NAME
-!!  calc_Grad_z_amp
+!!  Grad_r_wrt_z
 !!
 !! FUNCTION
 !!
@@ -644,29 +816,23 @@ end subroutine calc_Grad_t_amp
 !!
 !! SOURCE
 
-subroutine calc_Grad_z_amp(ELAGd,RDMd,INTEGd,Grad_residue)
+subroutine Grad_r_wrt_z(ELAGd,RDMd,INTEGd,Grad_res_wrt_zia,nOcc,nVir)
 !Arguments ------------------------------------
 !scalars
  type(elag_t),intent(inout)::ELAGd
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
+ integer,intent(in)::nOcc,nVir
 !arrays
- real(dp),dimension(RDMd%Namplitudes)::Grad_residue
+ real(dp),dimension(nOcc*nVir,nOcc*nVir),intent(out)::Grad_res_wrt_zia
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,iorbi,iorba,iorbk,iorbd
- integer::nVir,nOcc,index_ia,index_jb
- real(dp)::sum_tmp,sumdiff_t,tol10=1e-10
+ integer::index_ia,index_jb
+ real(dp)::sum_tmp
 !arrays
- real(dp),allocatable,dimension(:,:)::Grad_res_wrt_zia
- real(dp),allocatable,dimension(:,:)::Grad_res_tmp
 !************************************************************************
 
- nOcc=RDMd%Npairs
- nVir=RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)
- allocate(Grad_res_wrt_zia(nOcc*nVir,nOcc*nVir))
- allocate(Grad_res_tmp(nOcc,nVir))
- Grad_res_tmp=zero
  Grad_res_wrt_zia=zero
 
  ! d r_ia / d z_kd
@@ -773,30 +939,8 @@ subroutine calc_Grad_z_amp(ELAGd,RDMd,INTEGd,Grad_residue)
   enddo
  enddo
 
- ! d f(r) / d z_kb = sum_ia d f(r) / d r_ia  * d r_ia / d z_kb
- sumdiff_t=dsqrt(sum(RDMd%tz_residue(:,:)**two)) ! The function we are minimizing is sqrt(Sum_ia residue_ia^2)
- do iorb=1,nOcc
-  do iorb1=1,nVir
-   index_ia=iorb1+(iorb-1)*nVir
-   do iorb2=1,nOcc
-    do iorb3=1,nVir
-     if(abs(RDMd%tz_residue(iorb2,iorb3))>tol10) then
-      index_jb=iorb3+(iorb2-1)*nVir
-      Grad_res_tmp(iorb,iorb1)=Grad_res_tmp(iorb,iorb1)+RDMd%tz_residue(iorb2,iorb3) &
-      &   *Grad_res_wrt_zia(index_jb,index_ia)/sumdiff_t
-     endif
-    enddo
-   enddo
-  enddo
- enddo
-
- Grad_residue=reshape(Grad_res_tmp,(/RDMd%Namplitudes/))
-
- deallocate(Grad_res_tmp,Grad_res_wrt_zia)
-
-end subroutine calc_Grad_z_amp
+end subroutine Grad_r_wrt_z
 !!***
-
 
 ! !!***
 ! !!****f* DoNOF/num_calc_Grad_t_amp
