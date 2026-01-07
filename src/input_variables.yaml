@@ -1959,8 +1959,8 @@ noft_NR_OCC:
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
-  default: 'no'
-  comment: Use quasi-Newton-Rapson method for the t and z amplitudes optimization in pCCD (default= 'no').
+  default: 'yes'
+  comment: Use Newton-Rapson method for the t and z amplitudes optimization in pCCD (default= 'yes').
 
 noft_QC_ORB:
   family: noft

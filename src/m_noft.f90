@@ -90,7 +90,7 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
   if(noft_readCOEF=='yes') ireadCOEF=1
   if(noft_readFdiag=='yes') ireadFdiag=1
   if(noft_readGAMMAS=='yes') ireadGAMMAs=1
-  if(noft_NR_OCC=='yes') imethocc=2
+  if(noft_NR_OCC=='no') imethocc=2
   if(noft_QC_ORB=='yes') imethorb=2
 
   select case(capitalize(noft_functional))
