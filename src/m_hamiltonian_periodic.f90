@@ -1244,7 +1244,9 @@ subroutine calculate_coulombvertex_periodic2(c_matrix, rootname)
   !=====
 #if defined(HAVE_FFTW3)
   character(len=128) :: rootname_ = 'molgw'
+#if defined(HAVE_MPI)
   integer(kind=MPI_OFFSET_KIND) :: disp, disp_increment
+#endif
   integer :: ierr
   integer :: unitcv
   integer :: irank, info
@@ -1414,9 +1416,13 @@ subroutine calculate_coulombvertex_periodic2(c_matrix, rootname)
           enddo
         enddo
 
+#if defined(HAVE_MPI)
         disp = disp_increment * ( (jstate - 1) * nstate + (istate - 1) )
         call MPI_FILE_WRITE_AT(unitcv, disp, phiphig_cutoffed, &
                                ng, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE, ierr)
+#else
+        write(unitcv) phiphig_cutoffed(:)
+#endif
 
       enddo ! loop over istate_local
 
@@ -1426,7 +1432,11 @@ subroutine calculate_coulombvertex_periodic2(c_matrix, rootname)
     enddo
   enddo
 
+#if defined(HAVE_MPI)
   call MPI_FILE_CLOSE(unitcv, ierr)
+#else
+  close(unitcv)
+#endif
 
   call clean_deallocate('phi_i(r) transpose', phi_it)
 
@@ -1481,15 +1491,20 @@ subroutine prepare_cc4s_vertex_writing()
 
   write(stdout, *) 'File size (bytes):', INT(complex_length, KIND=8) * INT(ng, KIND=8) * INT(nstate**2, KIND = 8)
 
-  disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(ng, KIND=MPI_OFFSET_KIND)
-
   !
   ! Erase file if it exists, MPI-IO needs it
   call erase_file(TRIM(rootname_) // '_CoulombVertex.elements')
 
+#if defined(HAVE_MPI)
+  disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(ng, KIND=MPI_OFFSET_KIND)
+
   call MPI_FILE_OPEN(MPI_COMM_WORLD, TRIM(rootname_) // '_CoulombVertex.elements', &
                      MPI_MODE_WRONLY + MPI_MODE_CREATE, &
                      MPI_INFO_NULL, unitcv, ierr)
+#else
+  open(newunit=unitcv, file=TRIM(rootname_) // '_CoulombVertex.elements', form='unformatted', access='stream', &
+       status='replace', action='write')
+#endif
 
 end subroutine prepare_cc4s_vertex_writing
 
