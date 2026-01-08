@@ -1237,6 +1237,270 @@ end subroutine setup_exchange_periodic
 
 
 !=========================================================================
+subroutine calculate_coulombvertex_periodic2(c_matrix, rootname)
+
+  real(dp), intent(in) ::  c_matrix(:, :, :)
+  character(len=*), intent(in), optional :: rootname
+  !=====
+#if defined(HAVE_FFTW3)
+  character(len=128) :: rootname_ = 'molgw'
+  integer(kind=MPI_OFFSET_KIND) :: disp, disp_increment
+  integer :: ierr
+  integer :: unitcv
+  integer :: irank, info
+  integer :: ibf, ispin, istate, jstate, jstate_local
+  integer :: ig1, ig2, ig3, ig, ng
+  integer :: nstate_local, istate_local, nbf, nstate
+  real(dp), allocatable :: phi_j(:), phiphir_global(:)
+  real(dp), allocatable :: phi_i(:, :), phi_it(:, :)
+  real(dp), allocatable :: phiphig(:, :), phiphig1(:, :)
+  real(dp), allocatable :: vg_sqrt(:, :, :)
+  type(C_PTR) :: plan
+  type(C_PTR) :: pr, pg
+  real(C_DOUBLE), pointer            :: phiphir_fftw(:, :, :)
+  complex(C_DOUBLE_COMPLEX), pointer :: phiphig_fftw(:, :, :)
+  complex(dp), allocatable :: phiphig_cutoffed(:)
+  integer :: desc_phii(NDEL), desc_phiit(NDEL)
+  !=====
+
+  if( nspin > 1 ) call die("write_cc4s_coulombvertex: spin polarized not implemented yet")
+
+  call start_clock(timing_coulombvertex)
+
+  if( PRESENT(rootname) ) then
+    rootname_ = rootname
+  endif
+
+  write(stdout, '(/,1x,a)') 'Calculate Coulomb vertices with PBC'
+
+  if( .NOT. ALLOCATED(bfr) ) then
+    call die('calculate_coulombvertex_periodic: basis function on FFT grid should be available at this stage')
+  endif
+
+  nbf    = SIZE(c_matrix, DIM=1)
+  nstate = SIZE(c_matrix, DIM=2)
+
+  !
+  ! Determine the number of G-vectors inside the cutoff sphere
+  !
+  ng = 0
+  do ig3=1, nfft3
+    do ig2=1, nfft2
+      do ig1=1, nfft1/2+1
+        ! Apply a cutoff selection here
+        if( gkin(ig1, ig2, ig3) < fft_ecut_postscf ) then
+          ng = ng + 1
+        endif
+      enddo
+    enddo
+  enddo
+  write(stdout,'(1x,a,f12.2)') 'Using cutoff energy (Ha): ', fft_ecut_postscf
+  write(stdout,'(1x,a,i9,a,i9)') 'which retains ', ng, ' plane-waves out of ', (nfft1/2+1) * nfft2 * nfft3
+
+  call prepare_cc4s_vertex_writing()
+
+  allocate(vg_sqrt(nfft1 / 2 + 1, nfft2, nfft3))
+  do ig3=1, nfft3
+    do ig2=1, nfft2
+      do ig1=1, nfft1/2+1
+        select case(coulomb_type_exchange)
+        case(0)
+          vg_sqrt(ig1, ig2, ig3) = SQRT(vcoulg(ig1, ig2, ig3))
+        case(1)
+          vg_sqrt(ig1, ig2, ig3) = SQRT(vcoulg_cutoff(ig1, ig2, ig3))
+        end select
+      enddo
+    enddo
+  enddo
+
+  !
+  ! Prepare all phi_i(r) at once
+  !
+  call clean_allocate('phi_i(r)', phi_i, nstate, nfft_local)
+  nstate_local = NUMROC(nstate, 1, ipcol_cd, 0, npcol_cd)
+  call clean_allocate('phi_i(r) transpose', phi_it, nfft_global, nstate_local)
+
+  do ispin=1, nspin
+    call DGEMM('T', 'N', nstate, nfft_local, nbf, 1.0d0, c_matrix(:, :, ispin), nbf, &
+               bfr(:, :), nbf, 0.0d0, phi_i, nstate)
+      
+#if defined(HAVE_SCALAPACK)
+    if( npcol_cd > 1 ) then
+      call DESCINIT(desc_phii, nstate, nfft_global, 1, 1, first_row, first_col, cntxt_cd, nstate, info)
+      call DESCINIT(desc_phiit, nfft_global, nstate, 1, 1, first_row, first_col, cntxt_cd, nfft_global, info)
+      call PDTRAN(nfft_global, nstate, 1.0d0, phi_i, 1, 1, desc_phii, &
+                  0.0d0, phi_it, 1, 1, desc_phiit)
+    else
+#endif
+      phi_it(:, :) = TRANSPOSE(phi_i(:, :))
+#if defined(HAVE_SCALAPACK)
+    endif
+#endif
+
+  enddo ! end loop on spin
+  call clean_deallocate('phi_i(r)', phi_i)
+
+
+  allocate(phi_j(nfft_global))
+  allocate(phiphir_global(nfft_global))
+  allocate(phiphig_cutoffed(ng))
+
+  ! Allocate arrays with FFTW functions
+  pr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
+  call C_F_POINTER(pr, phiphir_fftw, [nfft1, nfft2, nfft3])
+  pg = fftw_alloc_complex(INT( (nfft1/2+1) * nfft2 * nfft3, C_SIZE_T))
+  call C_F_POINTER(pg, phiphig_fftw, [(nfft1/2+1), nfft2, nfft3])
+
+
+  do ispin=1, nspin
+
+    do jstate=1, nstate
+      write(stdout, '(1x,a,i6,a,i6)') 'Loop over states: ', jstate, ' / ', nstate
+      call start_clock(timing_tmp0)
+
+      !
+      ! Communication here
+      ! Send current phi_j to all procs
+      !
+      if( ipcol_cd == INDXG2P(jstate, 1, 0, first_col, npcol_cd) ) then
+        jstate_local = INDXG2L(jstate, 1, 0, first_col, npcol_cd)
+        irank = world%rank
+        phi_j(:) = phi_it(:, jstate_local)
+      else
+        irank = -1
+      endif
+      call world%max(irank)
+      call world%bcast(irank, phi_j)
+
+
+      ! Parallelization over second state index
+      ! Loop over local state index
+      do istate_local=1, nstate_local
+        istate = INDXL2G(istate_local, 1, ipcol_cd, first_col, npcol_cd)
+
+        phiphir_global(:) = phi_j(:) * phi_it(:, istate_local)
+
+        phiphir_fftw(:, :, :) = RESHAPE(phiphir_global(:), [nfft1, nfft2, nfft3] )
+
+        call start_clock(timing_tmp4)
+        ! Perform FFT phi_i(r) * phi_α(r) -> M_{iα}(G)
+        plan = fftw_plan_dft_r2c_3d(nfft3, nfft2, nfft1, phiphir_fftw, phiphig_fftw, FFTW_ESTIMATE)
+        call fftw_execute_dft_r2c(plan, phiphir_fftw, phiphig_fftw)
+        call fftw_destroy_plan(plan)
+        call stop_clock(timing_tmp4)
+
+        phiphig_fftw(:, :, :) = phiphig_fftw(:, :, :) * volume / REAL(nfft_global, KIND=dp)
+
+        ! M_{iα}(G) * √v(G) → M_{iα}(G)
+        phiphig_fftw(:, :, :) = vg_sqrt(:, :, :) * phiphig_fftw(:, :, :)
+
+        ! When G_1 /= 0, all the terms should be accounted with double weight,
+        !   due to real to complex (r2c) FFT transform that only gives G_1 >=0
+        phiphig_fftw(1, :, :)  = SQRT(1.0_dp / volume) * phiphig_fftw(1, :, :)
+        phiphig_fftw(2:, :, :) = SQRT(2.0_dp / volume) * phiphig_fftw(2:, :, :)
+
+        ! Cast the complex FFT into a real array (G index will be summed over then the order does not matter)
+        !phiphig1(:, istate_local) = TRANSFER(phiphig_fftw, [1.0_dp, 1.0_dp])
+        ig = 0
+        do ig3=1, nfft3
+          do ig2=1, nfft2
+            do ig1=1, nfft1/2+1
+              ! Apply a cutoff selection here
+              if( gkin(ig1, ig2, ig3) < fft_ecut_postscf ) then
+                ig = ig + 1
+                phiphig_cutoffed(ig) = phiphig_fftw(ig1, ig2, ig3)
+              endif
+            enddo
+          enddo
+        enddo
+
+        disp = disp_increment * ( (jstate - 1) * nstate + (istate - 1) )
+        call MPI_FILE_WRITE_AT(unitcv, disp, phiphig_cutoffed, &
+                               ng, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE, ierr)
+
+      enddo ! loop over istate_local
+
+
+      call stop_clock(timing_tmp0)
+
+    enddo
+  enddo
+
+  call MPI_FILE_CLOSE(unitcv, ierr)
+
+  call clean_deallocate('phi_i(r) transpose', phi_it)
+
+  call clean_deallocate('Temporary phiphi(G)', phiphig)
+  call clean_deallocate('Temporary phiphi(G)', phiphig1)
+
+  call fftw_free(pr)
+  call fftw_free(pg)
+
+  deallocate(vg_sqrt)
+  deallocate(phiphig_cutoffed, phi_j, phiphir_global)
+
+
+  call stop_clock(timing_coulombvertex)
+
+
+contains
+
+subroutine prepare_cc4s_vertex_writing()
+  !=====
+  integer :: complex_length
+  !=====
+
+  write(stdout, '(1x,a)') 'Writing ' // TRIM(rootname_) // '_CoulombVertex.yaml and ' &
+                          // TRIM(rootname_) // '_CoulombVertex.elements'
+
+  ! Write meta data in a yaml file
+  open(newunit=unitcv, file=TRIM(rootname_) // '_CoulombVertex.yaml', form='formatted', status='replace', action='write')
+  write(unitcv, '(a)')    'version: 100'
+  write(unitcv, '(a)')    'type: Tensor'
+  write(unitcv, '(a)')    'scalarType: Complex64'
+  write(unitcv, '(a)')    'dimensions:'
+  write(unitcv, '(a,i8)')    '- length:', ng
+  write(unitcv, '(a)')    '  type: AuxiliaryField'
+  write(unitcv, '(a,i8)')    '- length:', nstate
+  write(unitcv, '(a)')    '  type: State'
+  write(unitcv, '(a,i8)')    '- length:', nstate
+  write(unitcv, '(a)')    '  type: State'
+  write(unitcv, '(a)')    'elements:'
+  write(unitcv, '(a)')    '  type: IeeeBinaryFile'
+  write(unitcv, '(a)')    'unit: 1.0   # Atomic units'
+  write(unitcv, '(a)')    'metaData:'
+  write(unitcv, '(a)')    '  halfGrid: 1'
+  close(unitcv)
+
+  write(stdout, '(/,1x,a)') 'Writing file ' // TRIM(rootname_) // '_CoulombVertex.elements with MPI-IO'
+  write(stdout, '(5x,a,i4,a,i4)') 'using a processor grid:', nprow_cd, ' x ', npcol_cd
+  write(stdout, '(1x,a,i8,a,i4,a,i4)') 'Dimensions written: ', ng, ' x ', nstate, ' x ', nstate
+
+  ! complex_length in bytes whereas STORAGE_SIZE is in bits
+  complex_length = STORAGE_SIZE(im) / 8
+
+  write(stdout, *) 'File size (bytes):', INT(complex_length, KIND=8) * INT(ng, KIND=8) * INT(nstate**2, KIND = 8)
+
+  disp_increment = INT(complex_length, KIND=MPI_OFFSET_KIND) * INT(ng, KIND=MPI_OFFSET_KIND)
+
+  !
+  ! Erase file if it exists, MPI-IO needs it
+  call MPI_FILE_DELETE(TRIM(rootname_) // '_CoulombVertex.elements', info, ierr)
+
+  call MPI_FILE_OPEN(MPI_COMM_WORLD, TRIM(rootname_) // '_CoulombVertex.elements', &
+                     MPI_MODE_WRONLY + MPI_MODE_CREATE, &
+                     MPI_INFO_NULL, unitcv, ierr)
+
+end subroutine prepare_cc4s_vertex_writing
+
+#else
+  call die('calculate_coulombvertex_periodic: requires FFTW3 activation')
+#endif
+
+end subroutine calculate_coulombvertex_periodic2
+
+
+!=========================================================================
 ! Transpose bfr -> bfrt
 ! always distributed on the 2nd index (columns)
 !
