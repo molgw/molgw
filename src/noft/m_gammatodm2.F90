@@ -1906,7 +1906,7 @@ subroutine dm2_pnof5_sup(RDMd,Docc_gamma,sqrt_occ,Dsqrt_occ_gamma,DM2_iiii,DM2_J
     DM2_L(iorb5,iorb4) = sqrt_occ(iorb5)*sqrt_occ(iorb4)
     DDM2_gamma_J(iorb5,iorb4,:) = zero
     DDM2_gamma_K(iorb5,iorb4,:) = zero
-    DDM2_gamma_L(iorb5,iorb4,:) = -Dsqrt_occ_gamma(iorb5,:)*sqrt_occ(iorb4)
+    DDM2_gamma_L(iorb5,iorb4,:) = Dsqrt_occ_gamma(iorb5,:)*sqrt_occ(iorb4)
    enddo
   enddo
  enddo
