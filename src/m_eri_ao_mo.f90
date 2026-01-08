@@ -17,7 +17,7 @@ module m_eri_ao_mo
   use m_timing
   use m_eri
   use m_inputparam, only: nspin, has_auxil_basis
-  use m_io, only: yaml_search_keyword
+  use m_io, only: yaml_search_keyword, erase_file
 
 
   logical, protected :: eri_3center_mo_stay_in_memory = .FALSE.
@@ -1484,7 +1484,7 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootna
 
   !
   ! Erase file if it exists, MPI-IO needs it
-  call MPI_FILE_DELETE(TRIM(rootname_) // '_CoulombVertex.elements', info, ierr)
+  call erase_file(TRIM(rootname_) // '_CoulombVertex.elements')
 
   call MPI_FILE_OPEN(MPI_COMM_WORLD, TRIM(rootname_) // '_CoulombVertex.elements', &
                      MPI_MODE_WRONLY + MPI_MODE_CREATE, &

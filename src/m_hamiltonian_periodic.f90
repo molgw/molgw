@@ -1485,7 +1485,7 @@ subroutine prepare_cc4s_vertex_writing()
 
   !
   ! Erase file if it exists, MPI-IO needs it
-  call MPI_FILE_DELETE(TRIM(rootname_) // '_CoulombVertex.elements', info, ierr)
+  call erase_file(TRIM(rootname_) // '_CoulombVertex.elements')
 
   call MPI_FILE_OPEN(MPI_COMM_WORLD, TRIM(rootname_) // '_CoulombVertex.elements', &
                      MPI_MODE_WRONLY + MPI_MODE_CREATE, &

@@ -4375,5 +4375,29 @@ end subroutine write_cube_file
 
 
 !=========================================================================
+subroutine erase_file(filename)
+  implicit none
+
+  character(len=*), intent(in) :: filename
+  !=====
+  logical :: exists
+  integer :: fu
+  !=====
+
+  if(is_iomaster) then
+    inquire(file=TRIM(filename), exist=exists)
+
+    if(exists) then
+      open(newunit=fu, file=TRIM(filename), status="old", action="read")
+      close(fu, status="delete")
+    endif
+  endif
+
+  call world%barrier()
+
+end subroutine erase_file
+
+
+!=========================================================================
 end module m_io
 !=========================================================================
