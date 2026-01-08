@@ -28,9 +28,9 @@ module m_tz_pCCD_amplitudes
 
  implicit none
 
- private :: calc_t_residues,calc_z_residues,calc_Grad_t_amp,calc_Grad_z_amp,calc_t_Jia_diag,calc_E_sd
+ private :: calc_t_residues,calc_z_residues,calc_Grad_t_amp,calc_Grad_z_amp,calc_E_sd
  private :: Grad_r_wrt_t,Grad_r_wrt_z
-! private :: num_calc_Grad_t_amp,num_calc_Grad_z_amp
+! private :: num_calc_Grad_t_amp,num_calc_Grad_z_amp,calc_t_Jia_diag   
 !!***
 
  public :: calc_tz_pCCD_amplitudes
@@ -540,9 +540,9 @@ subroutine calc_Grad_t_amp(ELAGd,RDMd,INTEGd,Grad_residue)
  real(dp),dimension(RDMd%Namplitudes)::Grad_residue
 !Local variables ------------------------------
 !scalars
- integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,iorbi,iorba,iorbk,iorbd
+ integer::iorb,iorb1,iorb2,iorb3
  integer::nVir,nOcc,index_ia,index_jb
- real(dp)::sum_tmp,sumdiff_t,tol10=1e-10
+ real(dp)::sumdiff_t,tol10=1e-10
 !arrays
  real(dp),allocatable,dimension(:,:)::Grad_res_wrt_tia
  real(dp),allocatable,dimension(:,:)::Grad_res_tmp
@@ -610,9 +610,9 @@ subroutine calc_Grad_z_amp(ELAGd,RDMd,INTEGd,Grad_residue)
  real(dp),dimension(RDMd%Namplitudes)::Grad_residue
 !Local variables ------------------------------
 !scalars
- integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5,iorbi,iorba,iorbk,iorbd
+ integer::iorb,iorb1,iorb2,iorb3
  integer::nVir,nOcc,index_ia,index_jb
- real(dp)::sum_tmp,sumdiff_t,tol10=1e-10
+ real(dp)::sumdiff_t,tol10=1e-10
 !arrays
  real(dp),allocatable,dimension(:,:)::Grad_res_wrt_zia
  real(dp),allocatable,dimension(:,:)::Grad_res_tmp
@@ -1277,88 +1277,88 @@ subroutine calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
 end subroutine calc_z_residues
 !!***
 
-!!***
-!!****f* DoNOF/calc_t_Jia_diag
-!! NAME
-!!  calc_t_Jia_diag
-!!
-!! FUNCTION
-!!
-!! INPUTS
-!!
-!! OUTPUT
-!!
-!! PARENTS
-!!  
-!! CHILDREN
-!!
-!! SOURCE
-
-subroutine calc_t_Jia_diag(ELAGd,RDMd,INTEGd,Jia_diag) 
-!Arguments ------------------------------------
-!scalars
- type(elag_t),intent(inout)::ELAGd
- type(rdm_t),intent(inout)::RDMd
- type(integ_t),intent(inout)::INTEGd
-!arrays
- real(dp),intent(inout),dimension(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs))::Jia_diag
-!Local variables ------------------------------
-!scalars
- integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5
-!arrays
-!************************************************************************
-
- Jia_diag=zero
- if(INTEGd%complex_ints) then
-  do iorb=1,RDMd%Npairs ! Occ
-   iorb1=iorb+RDMd%Nfrozen
-   do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
-    iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
-    Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)+real(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))         &
-   &        -four*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb1,iorb3)+two*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1)) &
-   &        +real(INTEGd%ERImol_cmplx(iorb3,iorb3,iorb3,iorb3)+INTEGd%ERImol_cmplx(iorb1,iorb1,iorb1,iorb1))     &
-   &        -real(two*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1)*RDMd%t_pccd_old(iorb,iorb2))
-    do iorb4=1,RDMd%Npairs ! Occ
-     iorb5=iorb+RDMd%Nfrozen
-     if(iorb/=iorb4) then
-      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-real(RDMd%t_pccd_old(iorb4,iorb2)*INTEGd%ERImol_cmplx(iorb5,iorb3,iorb3,iorb5))
-     endif
-    enddo
-    do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
-     iorb5=iorb+RDMd%Nfrozen+RDMd%Npairs
-     if(iorb2/=iorb4) then
-      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-real(RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol_cmplx(iorb1,iorb5,iorb5,iorb1))
-     endif
-    enddo
-   enddo
-  enddo
- else
-  do iorb=1,RDMd%Npairs ! Occ
-   iorb1=iorb+RDMd%Nfrozen
-   do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
-    iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
-    Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)+(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1)) &
-   &        -four*INTEGd%ERImol(iorb1,iorb3,iorb1,iorb3)+two*INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)) &
-   &        +INTEGd%ERImol(iorb3,iorb3,iorb3,iorb3)+INTEGd%ERImol(iorb1,iorb1,iorb1,iorb1)           &
-   &        -two*INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)*RDMd%t_pccd_old(iorb,iorb2)
-    do iorb4=1,RDMd%Npairs ! Occ
-     iorb5=iorb+RDMd%Nfrozen
-     if(iorb/=iorb4) then
-      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-RDMd%t_pccd_old(iorb4,iorb2)*INTEGd%ERImol(iorb5,iorb3,iorb3,iorb5)
-     endif
-    enddo
-    do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
-     iorb5=iorb+RDMd%Nfrozen+RDMd%Npairs
-     if(iorb2/=iorb4) then
-      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
-     endif
-    enddo
-   enddo
-  enddo
- endif
-
-end subroutine calc_t_Jia_diag
-!!***
+!!!***
+!!!****f* DoNOF/calc_t_Jia_diag
+!!! NAME
+!!!  calc_t_Jia_diag
+!!!
+!!! FUNCTION
+!!!
+!!! INPUTS
+!!!
+!!! OUTPUT
+!!!
+!!! PARENTS
+!!!  
+!!! CHILDREN
+!!!
+!!! SOURCE
+!
+!subroutine calc_t_Jia_diag(ELAGd,RDMd,INTEGd,Jia_diag) 
+!!Arguments ------------------------------------
+!!scalars
+! type(elag_t),intent(inout)::ELAGd
+! type(rdm_t),intent(inout)::RDMd
+! type(integ_t),intent(inout)::INTEGd
+!!arrays
+! real(dp),intent(inout),dimension(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs))::Jia_diag
+!!Local variables ------------------------------
+!!scalars
+! integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5
+!!arrays
+!!************************************************************************
+!
+! Jia_diag=zero
+! if(INTEGd%complex_ints) then
+!  do iorb=1,RDMd%Npairs ! Occ
+!   iorb1=iorb+RDMd%Nfrozen
+!   do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+!    iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+!    Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)+real(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))         &
+!   &        -four*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb1,iorb3)+two*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1)) &
+!   &        +real(INTEGd%ERImol_cmplx(iorb3,iorb3,iorb3,iorb3)+INTEGd%ERImol_cmplx(iorb1,iorb1,iorb1,iorb1))     &
+!   &        -real(two*INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1)*RDMd%t_pccd_old(iorb,iorb2))
+!    do iorb4=1,RDMd%Npairs ! Occ
+!     iorb5=iorb+RDMd%Nfrozen
+!     if(iorb/=iorb4) then
+!      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-real(RDMd%t_pccd_old(iorb4,iorb2)*INTEGd%ERImol_cmplx(iorb5,iorb3,iorb3,iorb5))
+!     endif
+!    enddo
+!    do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+!     iorb5=iorb+RDMd%Nfrozen+RDMd%Npairs
+!     if(iorb2/=iorb4) then
+!      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-real(RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol_cmplx(iorb1,iorb5,iorb5,iorb1))
+!     endif
+!    enddo
+!   enddo
+!  enddo
+! else
+!  do iorb=1,RDMd%Npairs ! Occ
+!   iorb1=iorb+RDMd%Nfrozen
+!   do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+!    iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+!    Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)+(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1)) &
+!   &        -four*INTEGd%ERImol(iorb1,iorb3,iorb1,iorb3)+two*INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)) &
+!   &        +INTEGd%ERImol(iorb3,iorb3,iorb3,iorb3)+INTEGd%ERImol(iorb1,iorb1,iorb1,iorb1)           &
+!   &        -two*INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)*RDMd%t_pccd_old(iorb,iorb2)
+!    do iorb4=1,RDMd%Npairs ! Occ
+!     iorb5=iorb+RDMd%Nfrozen
+!     if(iorb/=iorb4) then
+!      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-RDMd%t_pccd_old(iorb4,iorb2)*INTEGd%ERImol(iorb5,iorb3,iorb3,iorb5)
+!     endif
+!    enddo
+!    do iorb4=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
+!     iorb5=iorb+RDMd%Nfrozen+RDMd%Npairs
+!     if(iorb2/=iorb4) then
+!      Jia_diag(iorb,iorb2)=Jia_diag(iorb,iorb2)-RDMd%t_pccd_old(iorb,iorb4)*INTEGd%ERImol(iorb1,iorb5,iorb5,iorb1)
+!     endif
+!    enddo
+!   enddo
+!  enddo
+! endif
+!
+!end subroutine calc_t_Jia_diag
+!!!***
 
 !!***
 !!****f* DoNOF/calc_E_sd

@@ -95,7 +95,7 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
 
   select case(capitalize(noft_functional))
   case('PNOF7_PHASES')
-    inof=70
+    inof=700
   case('GNOFS')
     inof=8
     ista=3
