@@ -769,7 +769,7 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   call write_output(msg)
   write(msg,'(a)') ' M. Piris, Phys. Rev. Lett., 127, 233001 (2021)'
   call write_output(msg)
- elseif(INOF_in==70) then
+ elseif(INOF_in==700) then
   write(msg,'(a)') ' Using PNOF7_PHASES approximation'
   call write_output(msg)
  else
