@@ -16,6 +16,12 @@ module m_timing
 
   implicit none
 
+  !
+  ! Calculations are divided in 3 "stages"
+  ! 1. preSCF
+  ! 2. SCF
+  ! 3. postSCF
+  !
   integer, parameter, private :: nstage = 3
   
   integer, private :: current_stage
@@ -52,6 +58,20 @@ module m_timing
   type(timer) :: timer_tmp8
   type(timer) :: timer_tmp9
 
+  type(timer) :: timer_auto_auxil
+  type(timer) :: timer_eri_screening
+  type(timer) :: timer_eri_4center
+  type(timer) :: timer_eri_2center
+  type(timer) :: timer_eri_2center_ints
+  type(timer) :: timer_eri_2center_invert
+  type(timer) :: timer_eri_2center_inverse_sqrt
+
+
+
+  type(timer) :: timer_dft_xc
+  type(timer) :: timer_dft_density
+  type(timer) :: timer_dft_libxc
+  type(timer) :: timer_dft_vxc
 
 
 
@@ -59,14 +79,8 @@ module m_timing
 
   integer, parameter :: NTIMING=150
 
-  integer, parameter :: timing_total               =  1
-
   integer, parameter :: timing_relativistic        = 80
-  integer, parameter :: timing_prescf              = 81
-  integer, parameter :: timing_scf                 = 82
-  integer, parameter :: timing_postscf             = 83
 
-  integer, parameter :: timing_dft_xc              =  2
   integer, parameter :: timing_pola                =  3
   integer, parameter :: timing_gw_self             =  4
   integer, parameter :: timing_overlap             =  5
@@ -117,9 +131,6 @@ module m_timing
   integer, parameter :: timing_mbpt_dm             = 52
   integer, parameter :: timing_eri_3center_ints    = 53
   integer, parameter :: timing_eri_3center_matmul  = 54
-  integer, parameter :: timing_dft_densities       = 55
-  integer, parameter :: timing_dft_libxc           = 56
-  integer, parameter :: timing_dft_vxc             = 57
   integer, parameter :: timing_x_m_vxc             = 58
   integer, parameter :: timing_auto_auxil          = 59
   integer, parameter :: timing_stopping            = 60
@@ -214,9 +225,6 @@ subroutine init_timers()
   call timer_scf%init('Total SCF')
   call timer_postscf%init('Total post SCF')
 
-
-
-
   ! Temporary timers
   call timer_tmp0%init('temporary timer 0')
   call timer_tmp1%init('temporary timer 1')
@@ -228,6 +236,28 @@ subroutine init_timers()
   call timer_tmp7%init('temporary timer 7')
   call timer_tmp8%init('temporary timer 8')
   call timer_tmp9%init('temporary timer 9')
+
+  !
+  call timer_auto_auxil%init('Automatic auxiliary basis')
+  call timer_eri_screening%init('Coulomb integrals screening')
+  call timer_eri_4center%init('4-center integrals')
+  call timer_eri_2center%init('2-center integrals')
+  call timer_eri_2center_ints%init('Integrals evaluation')
+  call timer_eri_2center_invert%init('Inversion')
+  call timer_eri_2center_inverse_sqrt%init('Inverse sqrt (diago)')
+  call timer_eri_3center%init('3-center integrals')
+  call timer_eri_3center_ints%init('Integrals evaluation')
+  call timer_eri_3center_matmul%init('Matrix multiplication')
+
+
+
+  !
+  call timer_dft_xc%init('DFT xc potential')
+  call timer_dft_density%init('Densities on a grid')
+  call timer_dft_libxc%init('LIBXC calls')
+  call timer_dft_vxc%init('Setting up Vxc')
+
+
 
 
 end subroutine init_timers
@@ -353,134 +383,159 @@ subroutine output_timers()
   write(stdout, '(/,a,/)') '                 -------------------------------------'
   write(stdout, '(a,/)')   '                             Pre SCF'
 
-  call output_timing_line('Automatic auxiliary basis', timing_auto_auxil, 1)
-  call output_timing_line('Integral pre-screening', timing_eri_screening, 1)
-  call output_timing_line('4-center integrals', timing_eri_4center, 1)
-  call output_timing_line('2-center integrals', timing_eri_2center, 1)
-  call output_timing_line('Integrals evaluation', timing_eri_2center_ints, 2)
-  call output_timing_line('Matrix inversion', timing_eri_2center_invert, 2)
-  call output_timing_line('Matrix inverse sqrt', timing_eri_2center_inverse_sqrt, 2)
-  call output_timing_line('3-center integrals', timing_eri_3center, 1)
-  call output_timing_line('Integrals evaluation', timing_eri_3center_ints, 2)
-  call output_timing_line('Matrix multiplication', timing_eri_3center_matmul, 2)
-  call output_timing_line('Overlap matrix S', timing_overlap, 1)
-  call output_timing_line('Approximate guess Hamiltonian', timing_approx_ham, 1)
-  call output_timing_line('Kinetic Hamiltonian', timing_hamiltonian_kin, 1)
-  call output_timing_line('Electron-nucleus Hamiltonian', timing_hamiltonian_nuc, 1)
-  call output_timing_line('Effective core potential Hamiltonian', timing_ecp, 1)
-  call output_timing_line('ECP Hamiltonian', timing_hamiltonian_ecp, 1)
-  call output_timing_line('PBC: basis functions on grid', timing_pbc_eval_bf, 1)
-  call output_timing_line('PBC: nuclei density on FFT grid', timing_pbc_density, 1)
+  call timer_auto_auxil%print(1)
+  call timer_eri_screening%print(1)
+  call timer_eri_4center%print(1)
+  call timer_eri_2center%print(1)
+  call timer_eri_2center_ints%print(2)
+  call timer_eri_2center_invert%print(2)
+  call timer_eri_2center_inverse_sqrt%print(2)
+
+  call timer_eri_3center%print(1)
+  call timer_eri_3center_ints%print(2)
+  call timer_eri_3center_matmul%print(2)
+
+
 
   write(stdout, '(/,a,/)') '                 -------------------------------------'
   write(stdout, '(a,/)')   '                                 SCF'
 
-  call output_timing_line('DFT grid initialization', timing_grid_init, 1)
-  call output_timing_line('Grid generation', timing_grid_generation, 2)
-  call output_timing_line('Wavefunction evaluation', timing_grid_wfn, 2)
-  call output_timing_line('Density matrix', timing_density_matrix, 1)
-  call output_timing_line('Auxiliary basis density', timing_rhoauxil, 1)
-  call output_timing_line('Hartree potential', timing_hartree, 1)
-  call output_timing_line('PBC: density on FFT grid', timing_pbc_density, 2)
-  call output_timing_line('Exchange operator', timing_exchange, 1)
-  call output_timing_line('DFT xc potential', timing_dft_xc, 1)
-  call output_timing_line('Densities on a grid', timing_dft_densities, 2)
-  call output_timing_line('LIBXC calls', timing_dft_libxc, 2)
-  call output_timing_line('Setting up Vxc ', timing_dft_vxc, 2)
-  call output_timing_line('PBC: from v(r) to H_AO', timing_pbc_potential_to_hao, 1)
-  call output_timing_line('Hamiltonian diagonalization', timing_diago_hamiltonian, 1)
-  call output_timing_line('Pulay DIIS mixing', timing_diis, 1)
-  call output_timing_line('RESTART file writing', timing_restart_file, 1)
-  call output_timing_line('Virtual FNO generation', timing_fno, 1)
-  call output_timing_line('Forces', timing_force,1)
+  call timer_dft_xc%print(1, stage=2)
+  call timer_dft_density%print(2, stage=2)
+  call timer_dft_libxc%print(2, stage=2)
+  call timer_dft_vxc%print(2, stage=2)
+
+
+  write(stdout, '(/,a,/)') '                 -------------------------------------'
+  write(stdout, '(a,/)')   '                            Post SCF'
+
+
+
+
+
+
+
+  write(stdout, '(/,a,/)') '                 -------------------------------------'
+  write(stdout, '(a,/)')   '                             Pre SCF'
+
+  call output_timer_line('Overlap matrix S', timer_overlap, 1)
+  call output_timer_line('Approximate guess Hamiltonian', timer_approx_ham, 1)
+  call output_timer_line('Kinetic Hamiltonian', timer_hamiltonian_kin, 1)
+  call output_timer_line('Electron-nucleus Hamiltonian', timer_hamiltonian_nuc, 1)
+  call output_timer_line('Effective core potential Hamiltonian', timer_ecp, 1)
+  call output_timer_line('ECP Hamiltonian', timer_hamiltonian_ecp, 1)
+  call output_timer_line('PBC: basis functions on grid', timer_pbc_eval_bf, 1)
+  call output_timer_line('PBC: nuclei density on FFT grid', timer_pbc_density, 1)
+
+  write(stdout, '(/,a,/)') '                 -------------------------------------'
+  write(stdout, '(a,/)')   '                                 SCF'
+
+  call output_timer_line('DFT grid initialization', timer_grid_init, 1)
+  call output_timer_line('Grid generation', timer_grid_generation, 2)
+  call output_timer_line('Wavefunction evaluation', timer_grid_wfn, 2)
+  call output_timer_line('Density matrix', timer_density_matrix, 1)
+  call output_timer_line('Auxiliary basis density', timer_rhoauxil, 1)
+  call output_timer_line('Hartree potential', timer_hartree, 1)
+  call output_timer_line('PBC: density on FFT grid', timer_pbc_density, 2)
+  call output_timer_line('Exchange operator', timer_exchange, 1)
+  !call output_timer_line('DFT xc potential', timer_dft_xc, 1)
+  !call output_timer_line('Densities on a grid', timer_dft_densities, 2)
+  !call output_timer_line('LIBXC calls', timer_dft_libxc, 2)
+  !call output_timer_line('Setting up Vxc ', timer_dft_vxc, 2)
+  call output_timer_line('PBC: from v(r) to H_AO', timer_pbc_potential_to_hao, 1)
+  call output_timer_line('Hamiltonian diagonalization', timer_diago_hamiltonian, 1)
+  call output_timer_line('Pulay DIIS mixing', timer_diis, 1)
+  call output_timer_line('RESTART file writing', timer_restart_file, 1)
+  call output_timer_line('Virtual FNO generation', timer_fno, 1)
+  call output_timer_line('Forces', timer_force,1)
 
 
   write(stdout, '(/,a,/)') '                 -------------------------------------'
   write(stdout, '(a,/)')   '                            Post SCF'
 
   ! Prepare post scf
-  call output_timing_line('Reading Coulomb vertex file', timing_read_coulombvertex, 1)
-  call output_timing_line('Writing Coulomb vertex file', timing_write_coulombvertex, 1)
-  call output_timing_line('Sigma_x - Vxc', timing_x_m_vxc, 1)
+  call output_timer_line('Reading Coulomb vertex file', timer_read_coulombvertex, 1)
+  call output_timer_line('Writing Coulomb vertex file', timer_write_coulombvertex, 1)
+  call output_timer_line('Sigma_x - Vxc', timer_x_m_vxc, 1)
 
   ! Linear response polarization RPA or TDDFT or BSE
-  call output_timing_line('3-center AO to MO transform', timing_eri_3center_ao2mo, 1)
-  call output_timing_line('Response function chi on grid', timing_rpa_dynamic, 1)
-  call output_timing_line('Response function chi', timing_pola, 1)
-  call output_timing_line('3-center AO to MO transform in chi', timing_aomo_pola, 2)
-  call output_timing_line('4-center AO to MO transform', timing_eri_4center_ao2mo, 2)
-  call output_timing_line('Static polarization for BSE', timing_rpa_static, 2)
-  call output_timing_line('Build 2-particle Hamiltonian', timing_build_h2p, 2)
-  call output_timing_line('RPA part', timing_build_common, 3)
-  call output_timing_line('TDDFT part', timing_build_tddft, 3)
-  call output_timing_line('BSE part', timing_build_bse, 3)
-  call output_timing_line('Diago 2 particle H', timing_diago_h2p, 2)
-  call output_timing_line('Build W', timing_vchiv,2)
-  call output_timing_line('Optical spectrum', timing_spectrum, 2)
-  call output_timing_line('Stopping power', timing_stopping, 2)
+  call output_timer_line('3-center AO to MO transform', timer_eri_3center_ao2mo, 1)
+  call output_timer_line('Response function chi on grid', timer_rpa_dynamic, 1)
+  call output_timer_line('Response function chi', timer_pola, 1)
+  call output_timer_line('3-center AO to MO transform in chi', timer_aomo_pola, 2)
+  call output_timer_line('4-center AO to MO transform', timer_eri_4center_ao2mo, 2)
+  call output_timer_line('Static polarization for BSE', timer_rpa_static, 2)
+  call output_timer_line('Build 2-particle Hamiltonian', timer_build_h2p, 2)
+  call output_timer_line('RPA part', timer_build_common, 3)
+  call output_timer_line('TDDFT part', timer_build_tddft, 3)
+  call output_timer_line('BSE part', timer_build_bse, 3)
+  call output_timer_line('Diago 2 particle H', timer_diago_h2p, 2)
+  call output_timer_line('Build W', timer_vchiv,2)
+  call output_timer_line('Optical spectrum', timer_spectrum, 2)
+  call output_timer_line('Stopping power', timer_stopping, 2)
 
   ! Self-energies
-  call output_timing_line('MBPT density matrix', timing_mbpt_dm, 1)
-  call output_timing_line('GW self-energy', timing_gw_self, 1)
-  call output_timing_line('3-center AO to MO transform in GW', timing_aomo_gw, 2)
-  call output_timing_line('PT self-energy', timing_pt_self, 1)
-  call output_timing_line('Vertex corrected self-energy', timing_vertex_selfenergy, 1)
-  call output_timing_line('MP2 energy', timing_mp2_energy, 1)
+  call output_timer_line('MBPT density matrix', timer_mbpt_dm, 1)
+  call output_timer_line('GW self-energy', timer_gw_self, 1)
+  call output_timer_line('3-center AO to MO transform in GW', timer_aomo_gw, 2)
+  call output_timer_line('PT self-energy', timer_pt_self, 1)
+  call output_timer_line('Vertex corrected self-energy', timer_vertex_selfenergy, 1)
+  call output_timer_line('MP2 energy', timer_mp2_energy, 1)
 
   ! CI
-  call output_timing_line('Full CI for few electrons', timing_full_ci, 1)
-  call output_timing_line('Setup CI configurations', timing_ci_config, 2)
-  call output_timing_line('Screen CI Hamiltonian zeroes', timing_zeroes_ci, 2)
-  call output_timing_line('Build CI Hamiltonian', timing_ham_ci, 2)
-  call output_timing_line('CI diagonalization', timing_ci_diago, 2)
-  call output_timing_line('CI eigenvector file writing', timing_ci_write, 2)
-  call output_timing_line('CI self-energy', timing_ci_selfenergy, 2)
+  call output_timer_line('Full CI for few electrons', timer_full_ci, 1)
+  call output_timer_line('Setup CI configurations', timer_ci_config, 2)
+  call output_timer_line('Screen CI Hamiltonian zeroes', timer_zeroes_ci, 2)
+  call output_timer_line('Build CI Hamiltonian', timer_ham_ci, 2)
+  call output_timer_line('CI diagonalization', timer_ci_diago, 2)
+  call output_timer_line('CI eigenvector file writing', timer_ci_write, 2)
+  call output_timer_line('CI self-energy', timer_ci_selfenergy, 2)
 
   ! NOFT
-  call output_timing_line('NOFT calculation', timing_noft_energy, 1)
+  call output_timer_line('NOFT calculation', timer_noft_energy, 1)
 
   ! RT-TDDFT
-  call output_timing_line('Real-time TDDFT', timing_tddft_loop, 1)
-  call output_timing_line('TDDFT propagator', timing_tddft_propagation, 2)
-  call output_timing_line('TDDFT propagator diago', timing_propagate_diago, 3)
-  call output_timing_line('TDDFT propagator matmul', timing_propagate_matmul, 3)
-  call output_timing_line('TDDFT propagator invert', timing_propagate_inverse, 3)
+  call output_timer_line('Real-time TDDFT', timer_tddft_loop, 1)
+  call output_timer_line('TDDFT propagator', timer_tddft_propagation, 2)
+  call output_timer_line('TDDFT propagator diago', timer_propagate_diago, 3)
+  call output_timer_line('TDDFT propagator matmul', timer_propagate_matmul, 3)
+  call output_timer_line('TDDFT propagator invert', timer_propagate_inverse, 3)
 
-  call output_timing_line('Update basis, auxilary and eri', timing_update_basis_eri, 2)
-  call output_timing_line('Update 2-center ERI', timing_tddft_eri_2center_ints, 3)
-  call output_timing_line('Integrals evaluation', timing_tddft_eri_2center_ints, 4)
-  call output_timing_line('Matrix inversion', timing_tddft_eri_2center_invert, 4)
-  call output_timing_line('Update 3-center ERI', timing_tddft_eri_3center, 3)
-  call output_timing_line('Integrals evaluation', timing_tddft_eri_3center_ints, 4)
-  call output_timing_line('Update S and D matrices', timing_update_overlaps, 2)
-  call output_timing_line('Overlap gradient', timing_overlap_grad, 3)
-  call output_timing_line('Grid initialization', timing_tddft_grid_init, 2)
-  call output_timing_line('Grid generation', timing_tddft_grid_generation, 3)
-  call output_timing_line('Wavefunction evaluation', timing_tddft_grid_wfn, 3)
+  call output_timer_line('Update basis, auxilary and eri', timer_update_basis_eri, 2)
+  call output_timer_line('Update 2-center ERI', timer_tddft_eri_2center_ints, 3)
+  call output_timer_line('Integrals evaluation', timer_tddft_eri_2center_ints, 4)
+  call output_timer_line('Matrix inversion', timer_tddft_eri_2center_invert, 4)
+  call output_timer_line('Update 3-center ERI', timer_tddft_eri_3center, 3)
+  call output_timer_line('Integrals evaluation', timer_tddft_eri_3center_ints, 4)
+  call output_timer_line('Update S and D matrices', timer_update_overlaps, 2)
+  call output_timer_line('Overlap gradient', timer_overlap_grad, 3)
+  call output_timer_line('Grid initialization', timer_tddft_grid_init, 2)
+  call output_timer_line('Grid generation', timer_tddft_grid_generation, 3)
+  call output_timer_line('Wavefunction evaluation', timer_tddft_grid_wfn, 3)
 
-  call output_timing_line('TDDFT frozen core', timing_tddft_frozen_core, 2)
-  call output_timing_line('TDDFT q_matrix', timing_tddft_q_matrix, 2)
+  call output_timer_line('TDDFT frozen core', timer_tddft_frozen_core, 2)
+  call output_timer_line('TDDFT q_matrix', timer_tddft_q_matrix, 2)
 
-  call output_timing_line('Hamiltonian calculation', timing_tddft_hamiltonian, 2)
-  call output_timing_line('Kinetic energy', timing_tddft_kin, 3)
-  call output_timing_line('Complex density matrix', timing_density_matrix_cmplx, 3)
-  call output_timing_line('P in MO basis', timing_density_matrix_MO, 3)
-  call output_timing_line('Electron-Nucleus potential', timing_tddft_hamiltonian_nuc, 3)
-  call output_timing_line('Auxiliary basis density', timing_tddft_rhoauxil, 3)
-  call output_timing_line('Hartree potential', timing_tddft_hartree, 3)
-  call output_timing_line('Exchange operator', timing_tddft_exchange, 3)
-  call output_timing_line('XC potential', timing_tddft_xc, 3)
-  call output_timing_line('Kinetic energy gradient', timing_grad_kin, 3)
-  call output_timing_line('Nucleus energy gradient', timing_grad_nuc, 3)
-  call output_timing_line('Densities on a grid', timing_tddft_densities, 4)
-  call output_timing_line('LIBXC calls', timing_tddft_libxc, 4)
-  call output_timing_line('Setting up Vxc ', timing_tddft_vxc, 4)
-  call output_timing_line('Orthogonal basis', timing_tddft_ham_orthobasis, 3)
+  call output_timer_line('Hamiltonian calculation', timer_tddft_hamiltonian, 2)
+  call output_timer_line('Kinetic energy', timer_tddft_kin, 3)
+  call output_timer_line('Complex density matrix', timer_density_matrix_cmplx, 3)
+  call output_timer_line('P in MO basis', timer_density_matrix_MO, 3)
+  call output_timer_line('Electron-Nucleus potential', timer_tddft_hamiltonian_nuc, 3)
+  call output_timer_line('Auxiliary basis density', timer_tddft_rhoauxil, 3)
+  call output_timer_line('Hartree potential', timer_tddft_hartree, 3)
+  call output_timer_line('Exchange operator', timer_tddft_exchange, 3)
+  call output_timer_line('XC potential', timer_tddft_xc, 3)
+  call output_timer_line('Kinetic energy gradient', timer_grad_kin, 3)
+  call output_timer_line('Nucleus energy gradient', timer_grad_nuc, 3)
+  call output_timer_line('Densities on a grid', timer_tddft_densities, 4)
+  call output_timer_line('LIBXC calls', timer_tddft_libxc, 4)
+  call output_timer_line('Setting up Vxc ', timer_tddft_vxc, 4)
+  call output_timer_line('Orthogonal basis', timer_tddft_ham_orthobasis, 3)
 
-  call output_timing_line('RESTART_TDDFT file writing', timing_restart_tddft_file, 2)
-  call output_timing_line('Cube density file writing', timing_print_cube_rho_tddft, 2)
-  call output_timing_line('Line density file writing', timing_print_line_rho_tddft, 2)
-  call output_timing_line('Electronic density in discs', timing_calc_dens_disc, 2)
+  call output_timer_line('RESTART_TDDFT file writing', timer_restart_tddft_file, 2)
+  call output_timer_line('Cube density file writing', timer_print_cube_rho_tddft, 2)
+  call output_timer_line('Line density file writing', timer_print_line_rho_tddft, 2)
+  call output_timer_line('Electronic density in discs', timer_calc_dens_disc, 2)
 
   write(stdout, '(/,a,/)') '                 -------------------------------------'
 

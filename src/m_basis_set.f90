@@ -671,7 +671,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
   logical, parameter :: normalized=.TRUE.
   !=====
 
-  call start_clock(timing_auto_auxil)
+  call timer_auto_auxil%start()
 
   pauto = TRIM( capitalize(auxil_basis_name(1)) ) == 'PAUTO'
 
@@ -928,7 +928,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
 
   deallocate(shell_tmp)
 
-  call stop_clock(timing_auto_auxil)
+  call timer_auto_auxil%stop()
 
 
 contains
