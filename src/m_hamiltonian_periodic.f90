@@ -1237,7 +1237,7 @@ end subroutine setup_exchange_periodic
 
 
 !=========================================================================
-subroutine calculate_coulombvertex_periodic2(c_matrix, rootname)
+subroutine calculate_coulombvertex_periodic(c_matrix, rootname)
 
   real(dp), intent(in) ::  c_matrix(:, :, :)
   character(len=*), intent(in), optional :: rootname
@@ -1401,8 +1401,6 @@ subroutine calculate_coulombvertex_periodic2(c_matrix, rootname)
         phiphig_fftw(1, :, :)  = SQRT(1.0_dp / volume) * phiphig_fftw(1, :, :)
         phiphig_fftw(2:, :, :) = SQRT(2.0_dp / volume) * phiphig_fftw(2:, :, :)
 
-        ! Cast the complex FFT into a real array (G index will be summed over then the order does not matter)
-        !phiphig1(:, istate_local) = TRANSFER(phiphig_fftw, [1.0_dp, 1.0_dp])
         ig = 0
         do ig3=1, nfft3
           do ig2=1, nfft2
@@ -1512,7 +1510,7 @@ end subroutine prepare_cc4s_vertex_writing
   call die('calculate_coulombvertex_periodic: requires FFTW3 activation')
 #endif
 
-end subroutine calculate_coulombvertex_periodic2
+end subroutine calculate_coulombvertex_periodic
 
 
 !=========================================================================
@@ -1554,7 +1552,7 @@ end subroutine transpose_bfr
 
 
 !=========================================================================
-subroutine calculate_coulombvertex_periodic(c_matrix)
+subroutine calculate_coulombvertex_periodic_legacy(c_matrix)
 
   real(dp), intent(in) ::  c_matrix(:, :, :)
   !=====
@@ -1725,7 +1723,7 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
   call die('calculate_coulombvertex_periodic: requires FFTW3 activation')
 #endif
 
-end subroutine calculate_coulombvertex_periodic
+end subroutine calculate_coulombvertex_periodic_legacy
 
 
 !=========================================================================
