@@ -276,7 +276,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(RDMd%INOF<0) then ! pCCD
    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs)
   else ! NOFT
-   if(RDMd%INOF==70) then ! pCCD phases
+   if(RDMd%INOF==700) then ! pCCD phases
     call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs,only_phases=.true.)
    endif
    if(RDMd%NBF_occ-(RDMd%Nfrozen+1)<=20 .and. .false.) then ! May print some phases for debug 
@@ -304,7 +304,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(RDMd%INOF<0) then ! pCCD
    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs)
   else ! NOFT
-   if(RDMd%INOF==70) then ! pCCD phases
+   if(RDMd%INOF==700) then ! pCCD phases
     call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs,only_phases=.true.)
    endif
    if(RDMd%NBF_occ-(RDMd%Nfrozen+1)<=20 .and. .false.) then ! May print some phases for debug 
@@ -995,7 +995,7 @@ subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOv
 
  ! Read GAMMAs (indep. parameters used to optimize occs.) from GAMMAS file 
  if(ireadGAMMAS==1) then
-  if(RDMd%INOF>-1 .and. RDMd%INOF/=70) then
+  if(RDMd%INOF>-1 .and. RDMd%INOF/=700) then
    allocate(GAMMAS_in(RDMd%Ngammas))
    open(unit=iunit,form='unformatted',file='GAMMAS',iostat=istat,status='old')
    icount=0
@@ -1022,7 +1022,7 @@ subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOv
    close(iunit)
    deallocate(GAMMAS_in)
   else ! pCCD or PNOF7-PHASES
-   if(RDMd%INOF==70) then
+   if(RDMd%INOF==700) then
     allocate(GAMMAS_in(RDMd%Ngammas))
     open(unit=iunit,form='unformatted',file='GAMMAS',iostat=istat,status='old')
     icount=0
