@@ -21,3 +21,5 @@ He_harm*
 basis/*_rel
 utils/basis_2_basisrel.x
 *.egg-info
+noft/m_fcidump_nof.F90
+noft/m_noft_driver_c.F90
