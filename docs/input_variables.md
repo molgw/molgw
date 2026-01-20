@@ -2030,11 +2030,11 @@ Sets the number of ghost atoms in the molecule. Used to place basis function whe
 
 **Type:** yes/no
 
-**Default:** no
+**Default:** yes
 
 **Description:**
 
-Use the ADAM method in orbital optimization (default= 'no').
+Use the ADAM method in orbital optimization (default= 'yes').
 
 
 ---

@@ -465,7 +465,7 @@
  noft_readOCC = 'no'
  noft_NR_OCC = 'yes'
  noft_QC_ORB = 'no'
- noft_ADAM_ORB = 'no'
+ noft_ADAM_ORB = 'yes'
  noft_ithresh_lambda = 5
  noft_Lpower = 0.53_dp 
  noft_npairs = 1

@@ -213,6 +213,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxd
  endif
 
  ! Optimization loop
+ if(icall_max>200) icall_max=10
  Energy_adam=Energy_old
  icall=0; icall_2=0;
  do
@@ -251,8 +252,15 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxd
     call ADAMd%build(ELAGd,RDMd,icall,kappa_mat_cmplx=kappa_mat_cmplx_tmp)
     call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=kappa_mat_cmplx_tmp,U_mat_cmplx=U_mat_cmplx)
     NO_COEF_cmplx_tmp=matmul(NO_COEF_cmplx_tmp,U_mat_cmplx)
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx_tmp, &
-    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERIs)
+    if(INTEGd%irange_sep/=0) then
+     call dm2_JK_3d(RDMd%NBF_occ,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_iiii,DM2_JK)
+     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,DM2_JK=DM2_JK,NO_COEF_cmplx=NO_COEF_cmplx_tmp, &
+     & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,ERImolJsr_cmplx=INTEGd%ERImolJsr_cmplx, &
+     & ERImolLsr_cmplx=INTEGd%ERImolLsr_cmplx,all_ERIs=all_ERIs,Edft_xc=Edft_xc)
+    else
+     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx_tmp, &
+     & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERIs)
+    endif
     call INTEGd%eritoeriJKL(RDMd%NBF_occ)
     call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,Phases,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx, &
     & INTEGd%ERI_K_cmplx,INTEGd%ERI_L_cmplx,INTEGd%ERI_Jsr_cmplx,INTEGd%ERI_Lsr_cmplx,nogamma=nogamma)
@@ -266,8 +274,14 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxd
     call ADAMd%build(ELAGd,RDMd,icall,kappa_mat=kappa_mat_tmp)
     call anti_2_unitary(RDMd%NBF_tot,X_mat=kappa_mat_tmp,U_mat=U_mat)                             
     NO_COEF_tmp=matmul(NO_COEF_tmp,U_mat)
-    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_tmp, &
-    & hCORE=INTEGd%hCORE,ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
+    if(INTEGd%irange_sep/=0) then
+     call dm2_JK_3d(RDMd%NBF_occ,RDMd%DM2_J,RDMd%DM2_K,RDMd%DM2_L,RDMd%DM2_iiii,DM2_JK)
+     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,DM2_JK=DM2_JK,NO_COEF=NO_COEF_tmp,hCORE=INTEGd%hCORE, &
+     & ERImol=INTEGd%ERImol,ERImolJsr=INTEGd%ERImolJsr,ERImolLsr=INTEGd%ERImolLsr,all_ERIs=all_ERIs,Edft_xc=Edft_xc)
+    else
+     call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_tmp, &
+     & hCORE=INTEGd%hCORE,ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
+    endif
     call INTEGd%eritoeriJKL(RDMd%NBF_occ)
     call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,Phases,INTEGd%hCORE,INTEGd%ERI_J,       &
     & INTEGd%ERI_K,INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)

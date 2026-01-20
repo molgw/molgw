@@ -13,6 +13,7 @@
  noft_ncoupled=2
  noft_dft='yes'
  noft_dft0='no'
+ noft_ADAM_ORB='no'
  
 /
 H  0. 0.    0.

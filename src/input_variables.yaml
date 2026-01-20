@@ -1975,8 +1975,8 @@ noft_ADAM_ORB:
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
-  default: 'no'
-  comment: Use the ADAM method in orbital optimization (default= 'no').
+  default: 'yes'
+  comment: Use the ADAM method in orbital optimization (default= 'yes').
 
 noft_ithresh_lambda:
   family: noft
