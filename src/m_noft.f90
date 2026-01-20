@@ -92,6 +92,7 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
   if(noft_readGAMMAS=='yes') ireadGAMMAs=1
   if(noft_NR_OCC=='no') imethocc=2
   if(noft_QC_ORB=='yes') imethorb=2
+  if(noft_ADAM_ORB=='yes') imethorb=0
 
   select case(capitalize(noft_functional))
   case('PNOF7_PHASES')

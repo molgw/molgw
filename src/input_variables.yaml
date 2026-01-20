@@ -1970,6 +1970,14 @@ noft_QC_ORB:
   default: 'no'
   comment: Use the Quadratic Convergence method in orbital optimization by constructing the Hessian (default= 'no').
 
+noft_ADAM_ORB:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Use the ADAM method in orbital optimization (default= 'no').
+
 noft_ithresh_lambda:
   family: noft
   datatype: integer

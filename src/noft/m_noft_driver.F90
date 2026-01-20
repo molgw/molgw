@@ -167,7 +167,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  
 ! Check whether to compute the Hessian matrix (for Quadratic Convergence or to check the eigenvalues)
  if(present(hessian)) hessian_in=hessian
- if(imethorb/=1) hessian_in=.true.
+ if(imethorb==2) hessian_in=.true.
 
  ! Check whether to use a range-sep. calculation
  if(present(irange_sep)) then 
@@ -226,9 +226,13 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 & Nbeta_elect_in,Nalpha_elect_in,irs_noft)
  endif
 
- if(present(lowmemERI) .and. (.not.hessian_in .and. imethorb/=1)) then ! The Hessian for Quadratic Convergence method needs all integrals
-  call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft,lowmemERI=lowmemERI)
- else
+ if(imethorb==0 .or. imethorb==1) then ! F_diag and ADAM can use lowmemERI
+  if(present(lowmemERI)) then
+   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft,lowmemERI=lowmemERI)
+  else
+   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
+  endif
+ else                                  ! The Hessian for Quadratic Convergence method needs all integrals  
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
  endif
  call elag_init(ELAGd,RDMd%NBF_tot,diagLpL,itolLambda,ndiis,tolE_in,cpx_mos)
@@ -793,7 +797,12 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
  else
   ! TODO
  endif
- if(imethorb==1) then
+ if(imethorb==0) then
+  write(msg,'(a,i12)') ' ADAM method used in orb opt.      ',imethorb
+  call write_output(msg)
+  write(msg,'(a,e10.3)') ' Tolerance gradient convergence      ',ten**(-itolLambda)
+  call write_output(msg)
+ elseif(imethorb==1) then
   write(msg,'(a,i12)') ' F_diag method used in orb opt.    ',imethorb
   call write_output(msg)
   write(msg,'(a,e10.3)') ' Tolerance Lambda convergence        ',ten**(-itolLambda)
