@@ -218,7 +218,7 @@ subroutine build_adam(ADAMd,ELAGd,RDMd,icall,kappa_mat,kappa_mat_cmplx)
  complex(dp),dimension(RDMd%NBF_tot,RDMd%NBF_tot),optional,intent(out)::kappa_mat_cmplx
 !Local variables ------------------------------
 !scalars
- integer::ipair,jpair
+ integer::ipair
  integer::iorbp,iorbq
  real(dp)::grad_pq,mom1_hat,mom2_hat
  complex(dp)::grad_pq_cmplx,mom1_hat_cmplx,mom2_hat_cmplx
