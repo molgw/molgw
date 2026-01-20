@@ -50,7 +50,6 @@ module m_adam
   real(dp)::fact_rate=0.2d0     ! Learning rate factor
   real(dp)::beta1=0.7d0         ! beta1 parameter
   real(dp)::beta2=0.9d0         ! beta2 parameter
-  real(dp)::best_E              ! best energy
 ! arrays 
   real(dp),allocatable,dimension(:)::mom1_vec                 ! first_moment
   real(dp),allocatable,dimension(:)::mom2_vec                 ! second_moment
