@@ -248,7 +248,7 @@ subroutine build_adam(ADAMd,ELAGd,RDMd,icall,kappa_mat,kappa_mat_cmplx)
     mom1_hat_cmplx=ADAMd%mom1_vec_cmplx(ipair)/(one-ADAMd%beta1**icall)
     mom2_hat_cmplx=ADAMd%mom2_vec_cmplx(ipair)/(one-ADAMd%beta2**icall)
     ADAMd%mom2_vec_max_cmplx(ipair)=max(real(ADAMd%mom2_vec_max_cmplx(ipair)),real(mom2_hat_cmplx))
-    kappa_mat_cmplx(iorbp,iorbq)=ADAMd%l_rate*mom1_hat_cmplx/(sqrt(ADAMd%mom2_vec_max_cmplx(ipair))+1d-15)
+    kappa_mat_cmplx(iorbp,iorbq)=-ADAMd%l_rate*mom1_hat_cmplx/(sqrt(ADAMd%mom2_vec_max_cmplx(ipair))+1d-15)
     kappa_mat_cmplx(iorbq,iorbp)=-conjg(kappa_mat_cmplx(iorbp,iorbq))
    enddo
   enddo
@@ -272,7 +272,7 @@ subroutine build_adam(ADAMd,ELAGd,RDMd,icall,kappa_mat,kappa_mat_cmplx)
     mom1_hat=ADAMd%mom1_vec(ipair)/(one-ADAMd%beta1**icall)
     mom2_hat=ADAMd%mom2_vec(ipair)/(one-ADAMd%beta2**icall)
     ADAMd%mom2_vec_max(ipair)=max(ADAMd%mom2_vec_max(ipair),mom2_hat)
-    kappa_mat(iorbp,iorbq)=ADAMd%l_rate*mom1_hat/(sqrt(ADAMd%mom2_vec_max(ipair))+1d-15)
+    kappa_mat(iorbp,iorbq)=-ADAMd%l_rate*mom1_hat/(sqrt(ADAMd%mom2_vec_max(ipair))+1d-15)
     kappa_mat(iorbq,iorbp)=-kappa_mat(iorbp,iorbq)
    enddo
   enddo

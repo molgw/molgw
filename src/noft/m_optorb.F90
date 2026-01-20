@@ -105,7 +105,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxd
  logical::convLambda,nogamma,diddiis,allocated_DMNs,all_ERIs
  logical::F_meth_printed,NR_meth_printed,improved_adam
  integer::icall,icall_2,icall_max,iorbmax1,iorbmax2,imethod_in,iorbp,iorbq,iterm,jterm
- real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old,Energy_adam,Energy_2,Edft_xc,tol10
+ real(dp)::sumdiff,maxdiff_all,maxdiff_adam,Ediff,Energy_old,Energy_adam,Energy_2,Edft_xc,tol10
 !arrays
  real(dp),allocatable,dimension(:,:,:)::DM2_JK
  real(dp),allocatable,dimension(:)::DM2_L_saved
@@ -260,6 +260,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxd
      improved_adam=.true.
      Energy_adam=Energy
      NO_COEF_cmplx=NO_COEF_cmplx_tmp
+     maxdiff_adam=maxdiff_all
     endif
    else
     call ADAMd%build(ELAGd,RDMd,icall,kappa_mat=kappa_mat_tmp)
@@ -270,10 +271,11 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxd
     call INTEGd%eritoeriJKL(RDMd%NBF_occ)
     call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,Phases,INTEGd%hCORE,INTEGd%ERI_J,       &
     & INTEGd%ERI_K,INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
-    if(Energy<Energy_old) then
+    if(Energy<Energy_adam) then
      improved_adam=.true.
      Energy_adam=Energy
      NO_COEF=NO_COEF_tmp
+     maxdiff_adam=maxdiff_all
     endif
    endif
   elseif(imethod_in==1) then ! Build F matrix for iterative diagonalization
@@ -422,7 +424,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxd
    call write_output(msg)
    exit
   endif
-  if(imethod_in/=0) Energy_old=Energy
+  Energy_old=Energy
 
   ! We allow at most 10+Max or 30 generations of new NO_COEF updates (and integrals) in Piris Ugalde Algoritms
   if(icall==icall_max) exit
@@ -445,6 +447,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxd
 
  ! Analisis and deallocate arrays for ADAM
  if(imethod==0) then
+  maxdiff_all=maxdiff_adam
   ! Orbitals were not optimized. ADAM will request to redo the optimization lowering the learning rate and adding more iter if the change on the energy due to orb. rot. is still large.
   if(.not.improved_adam.and.(dabs(Ediff)>ELAGd%tolE)) then
    ADAMd%restart=.true.
@@ -456,14 +459,10 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxd
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERIs)
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,Phases,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx, &
-   & INTEGd%ERI_K_cmplx,INTEGd%ERI_L_cmplx,INTEGd%ERI_Jsr_cmplx,INTEGd%ERI_Lsr_cmplx,nogamma=nogamma)
   else
    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF, &
    & hCORE=INTEGd%hCORE,ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
-   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,Phases,INTEGd%hCORE,INTEGd%ERI_J,       &
-   & INTEGd%ERI_K,INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
   endif
   ! Deallocate arrays
   if(INTEGd%complex_ints) then
