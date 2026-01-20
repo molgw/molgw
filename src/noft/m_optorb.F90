@@ -21,6 +21,7 @@ module m_optorb
  use m_integd
  use m_elag
  use m_hessian
+ use m_adam
  use m_diagf
  use m_e_grad_occ
  use m_e_grad_occ_cpx
@@ -60,7 +61,7 @@ contains
 !!
 !! SOURCE
 
-subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo_ints,Phases,NO_COEF,NO_COEF_cmplx)
+subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxdiff,mo_ints,Phases,NO_COEF,NO_COEF_cmplx)
 !Arguments ------------------------------------
 !scalars
  integer,intent(in)::iter,imethod
@@ -70,6 +71,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
  type(hessian_t),intent(inout)::HESSIANd
+ type(adam_t),intent(inout)::ADAMd
  interface 
   subroutine mo_ints(nbf,nstate_occ,nstate_kji,Occ,DM2_JK,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
      &             NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,ERImolJsr_cmplx,ERImolLsr_cmplx,all_ERIs,&
@@ -101,9 +103,9 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
 !Local variables ------------------------------
 !scalars
  logical::convLambda,nogamma,diddiis,allocated_DMNs,all_ERIs
- logical::F_meth_printed,NR_meth_printed
+ logical::F_meth_printed,NR_meth_printed,improved_adam
  integer::icall,icall_2,icall_max,iorbmax1,iorbmax2,imethod_in,iorbp,iorbq,iterm,jterm
- real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old,Energy_2,Edft_xc,tol10
+ real(dp)::sumdiff,maxdiff_all,Ediff,Energy_old,Energy_adam,Energy_2,Edft_xc,tol10
 !arrays
  real(dp),allocatable,dimension(:,:,:)::DM2_JK
  real(dp),allocatable,dimension(:)::DM2_L_saved
@@ -121,8 +123,9 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  imethod_in=imethod
  HESSIANd%hk=half
 
- Ediff=zero; Energy=zero; Energy_old=zero; Edft_xc=zero; convLambda=.false.;nogamma=.true.;
- allocated_DMNs=.false.;F_meth_printed=.false.;NR_meth_printed=.false.;all_ERIs=.false.;
+ Ediff=zero; Energy=zero; Energy_old=zero; Edft_xc=zero; convLambda=.false.; nogamma=.true.;
+ allocated_DMNs=.false.; F_meth_printed=.false.; NR_meth_printed=.false.; all_ERIs=.false.;
+ improved_adam=.false.; Energy_adam=zero;
 
  ! If RS-NOFT
  if(INTEGd%irange_sep/=0) then
@@ -134,27 +137,52 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  endif
 
  ! Select the method
- if(imethod_in/=1 .and. iter>1 .and. abs(maxdiff)<0.5d-3) then
-  write(msg,'(a)') 'Performing QC method for orbital optimization'
-  call write_output(msg)
-  allocated_DMNs=.true.;all_ERIs=.true.;
-  if(INTEGd%complex_ints) then
-   allocate(U_mat_cmplx(RDMd%NBF_tot,RDMd%NBF_tot),kappa_mat_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
-   allocate(NO_COEF_cmplx_tmp(RDMd%NBF_tot,RDMd%NBF_tot),tmp_vec_cmplx(HESSIANd%NDIM_hess))
-   allocate(kappa_mat_cmplx_tmp(RDMd%NBF_tot,RDMd%NBF_tot))
+ if(imethod_in==2) then
+  if(iter>1 .and. abs(maxdiff)<0.5d-3) then
+   write(msg,'(a)') 'Performing QC method for orbital optimization'
+   call write_output(msg)
+   allocated_DMNs=.true.;all_ERIs=.true.;
+   if(INTEGd%complex_ints) then
+    allocate(U_mat_cmplx(RDMd%NBF_tot,RDMd%NBF_tot),kappa_mat_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
+    allocate(NO_COEF_cmplx_tmp(RDMd%NBF_tot,RDMd%NBF_tot),tmp_vec_cmplx(HESSIANd%NDIM_hess))
+    allocate(kappa_mat_cmplx_tmp(RDMd%NBF_tot,RDMd%NBF_tot))
+   else
+    allocate(U_mat(RDMd%NBF_tot,RDMd%NBF_tot),kappa_mat(RDMd%NBF_tot,RDMd%NBF_tot))
+    allocate(NO_COEF_tmp(RDMd%NBF_tot,RDMd%NBF_tot),tmp_vec(HESSIANd%NDIM_hess))
+    allocate(kappa_mat_tmp(RDMd%NBF_tot,RDMd%NBF_tot))
+   endif
+   ! Allocate density matrices for QC method
+   allocate(DM2_L_saved(RDMd%NBF_occ*RDMd%NBF_occ))
+   DM2_L_saved=RDMd%DM2_L
+   RDMd%DM2_K=RDMd%DM2_K+RDMd%DM2_L; RDMd%DM2_L=zero; ! Time-rev. sym DM2_L - added to -> DM2_K
   else
-   allocate(U_mat(RDMd%NBF_tot,RDMd%NBF_tot),kappa_mat(RDMd%NBF_tot,RDMd%NBF_tot))
-   allocate(NO_COEF_tmp(RDMd%NBF_tot,RDMd%NBF_tot),tmp_vec(HESSIANd%NDIM_hess))
-   allocate(kappa_mat_tmp(RDMd%NBF_tot,RDMd%NBF_tot))
+   imethod_in=1
+   write(msg,'(a)') 'Building F matrix for orbital optimization'
+   call write_output(msg)
   endif
-  ! Allocate density matrices for QC method
-  allocate(DM2_L_saved(RDMd%NBF_occ*RDMd%NBF_occ))
-  DM2_L_saved=RDMd%DM2_L
-  RDMd%DM2_K=RDMd%DM2_K+RDMd%DM2_L; RDMd%DM2_L=zero; ! Time-rev. sym DM2_L - added to -> DM2_K
  else
-  imethod_in=1
-  write(msg,'(a)') 'Building F matrix for orbital optimization'
-  call write_output(msg)
+  if(imethod_in==1) then
+   imethod_in=1
+   write(msg,'(a)') 'Building F matrix for orbital optimization'
+   call write_output(msg)
+  else
+   imethod_in=0
+   icall_max=10+ADAMd%icall_max_add
+   write(msg,'(a)') 'Computing ADAM for orbital optimization'
+   call write_output(msg)
+   call ADAMd%clean() 
+   if(INTEGd%complex_ints) then
+    allocate(U_mat_cmplx(RDMd%NBF_tot,RDMd%NBF_tot))
+    allocate(NO_COEF_cmplx_tmp(RDMd%NBF_tot,RDMd%NBF_tot))
+    allocate(kappa_mat_cmplx_tmp(RDMd%NBF_tot,RDMd%NBF_tot))
+    NO_COEF_cmplx_tmp=NO_COEF_cmplx
+   else
+    allocate(U_mat(RDMd%NBF_tot,RDMd%NBF_tot))
+    allocate(NO_COEF_tmp(RDMd%NBF_tot,RDMd%NBF_tot))
+    allocate(kappa_mat_tmp(RDMd%NBF_tot,RDMd%NBF_tot))
+    NO_COEF_tmp=NO_COEF
+   endif
+  endif
  endif
  
  if(INTEGd%complex_ints) then
@@ -185,6 +213,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
  endif
 
  ! Optimization loop
+ Energy_adam=Energy_old
  icall=0; icall_2=0;
  do
   ! If we used a DIIS step, do not stop after DIIS for small Energy dif.
@@ -198,9 +227,13 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
   if(convLambda) then
    write(msg,'(a)') 'Lambda_qp - Lambda_pq* converged for the Hemiticty of Lambda'
    call write_output(msg)
+   if(imethod_in==0) then
+    ADAMd%l_rate=0.01d0
+    ADAMd%icall_max_add=0
+   endif
    exit
   else
-   if(imethod_in==1.and.icall==0) then                                        ! F method: adjust MaxScaling for the rest of orb. icall iterations
+   if(imethod_in==1.and.icall==0) then                                     ! F method: adjust MaxScaling for the rest of orb. icall iterations
     if(iter>2.and.iter>ELAGd%itscale.and.(sumdiff>ELAGd%sumdiff_old)) then ! Parameters chosen from experience to
      ELAGd%itscale=iter+10                                                 ! ensure convergence. Maybe we can set them as input variables?
      ELAGd%MaxScaling=ELAGd%MaxScaling+1
@@ -213,7 +246,37 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
   endif
 
   ! Update NO_COEF
-  if(imethod_in==1) then ! Build F matrix for iterative diagonalization
+  if(imethod_in==0) then ! Doing ADAM for orbital rotations
+   if(INTEGd%complex_ints) then
+    call ADAMd%build(ELAGd,RDMd,icall,kappa_mat_cmplx=kappa_mat_cmplx_tmp)
+    call anti_2_unitary(RDMd%NBF_tot,X_mat_cmplx=kappa_mat_cmplx_tmp,U_mat_cmplx=U_mat_cmplx)
+    NO_COEF_cmplx_tmp=matmul(NO_COEF_cmplx_tmp,U_mat_cmplx)
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx_tmp, &
+    & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERIs)
+    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+    call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,Phases,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx, &
+    & INTEGd%ERI_K_cmplx,INTEGd%ERI_L_cmplx,INTEGd%ERI_Jsr_cmplx,INTEGd%ERI_Lsr_cmplx,nogamma=nogamma)
+    if(Energy<Energy_adam) then
+     improved_adam=.true.
+     Energy_adam=Energy
+     NO_COEF_cmplx=NO_COEF_cmplx_tmp
+    endif
+   else
+    call ADAMd%build(ELAGd,RDMd,icall,kappa_mat=kappa_mat_tmp)
+    call anti_2_unitary(RDMd%NBF_tot,X_mat=kappa_mat_tmp,U_mat=U_mat)                             
+    NO_COEF_tmp=matmul(NO_COEF_tmp,U_mat)
+    call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF_tmp, &
+    & hCORE=INTEGd%hCORE,ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
+    call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+    call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,Phases,INTEGd%hCORE,INTEGd%ERI_J,       &
+    & INTEGd%ERI_K,INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+    if(Energy<Energy_old) then
+     improved_adam=.true.
+     Energy_adam=Energy
+     NO_COEF=NO_COEF_tmp
+    endif
+   endif
+  elseif(imethod_in==1) then ! Build F matrix for iterative diagonalization
    if(INTEGd%complex_ints) then
     call diagF_to_coef(iter,icall,maxdiff,diddiis,ELAGd,RDMd,NO_COEF_cmplx=NO_COEF_cmplx) ! Build new NO_COEF and set icall=icall+1
     ! Build all integrals in the new NO_COEF basis (including arrays for ERI_J and ERI_K)
@@ -349,7 +412,7 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
 
   ! Check if we did Diag[(Lambda_pq + Lambda_qp*)/2] for F method (first iteration)
   if((imethod_in==1.and.iter==0).and.ELAGd%diagLpL_done) then ! For F method if we did Diag[(Lambda_pq + Lambda_qp*)/2].
-   exit                                                    ! -> Do only one icall iteration before the occ. opt.
+   exit                                                       ! -> Do only one icall iteration before the occ. opt.
   endif
 
   ! For this icall using the new NO_COEF (and fixed RDMs). Is the Energy still changing?
@@ -359,9 +422,9 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
    call write_output(msg)
    exit
   endif
-  Energy_old=Energy
+  if(imethod_in/=0) Energy_old=Energy
 
-  ! We allow at most 30 generations of new NO_COEF updates (and integrals) in Piris Ugalde Algoritms
+  ! We allow at most 10+Max or 30 generations of new NO_COEF updates (and integrals) in Piris Ugalde Algoritms
   if(icall==icall_max) exit
 !-- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- -- --       
  enddo
@@ -377,6 +440,38 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
   else
    deallocate(U_mat,kappa_mat,kappa_mat_tmp)
    deallocate(NO_COEF_tmp,tmp_vec)
+  endif
+ endif
+
+ ! Analisis and deallocate arrays for ADAM
+ if(imethod==0) then
+  ! Orbitals were not optimized. ADAM will request to redo the optimization lowering the learning rate and adding more iter if the change on the energy due to orb. rot. is still large.
+  if(.not.improved_adam.and.(dabs(Ediff)>ELAGd%tolE)) then
+   ADAMd%restart=.true.
+   ADAMd%l_rate=ADAMd%fact_rate*ADAMd%l_rate
+   ADAMd%icall_max_add=ADAMd%icall_max_add+20
+  endif
+  ! Compute integrals in the latest best NO basis
+  if(INTEGd%complex_ints) then 
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF_cmplx=NO_COEF_cmplx, &
+   & hCORE_cmplx=INTEGd%hCORE_cmplx,ERImol_cmplx=INTEGd%ERImol_cmplx,all_ERIs=all_ERIs)
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call calc_E_occ_cmplx(RDMd,RDMd%GAMMAs_old,Energy,Phases,INTEGd%hCORE_cmplx,INTEGd%ERI_J_cmplx, &
+   & INTEGd%ERI_K_cmplx,INTEGd%ERI_L_cmplx,INTEGd%ERI_Jsr_cmplx,INTEGd%ERI_Lsr_cmplx,nogamma=nogamma)
+  else
+   call mo_ints(RDMd%NBF_tot,RDMd%NBF_occ,INTEGd%NBF_jkl,RDMd%occ,NO_COEF=NO_COEF, &
+   & hCORE=INTEGd%hCORE,ERImol=INTEGd%ERImol,all_ERIs=all_ERIs)
+   call INTEGd%eritoeriJKL(RDMd%NBF_occ)
+   call calc_E_occ(RDMd,RDMd%GAMMAs_old,Energy,Phases,INTEGd%hCORE,INTEGd%ERI_J,       &
+   & INTEGd%ERI_K,INTEGd%ERI_L,INTEGd%ERI_Jsr,INTEGd%ERI_Lsr,nogamma=nogamma)
+  endif
+  ! Deallocate arrays
+  if(INTEGd%complex_ints) then
+   deallocate(U_mat_cmplx,kappa_mat_cmplx_tmp)
+   deallocate(NO_COEF_cmplx_tmp)
+  else
+   deallocate(U_mat,kappa_mat_tmp)
+   deallocate(NO_COEF_tmp)
   endif
  endif
 

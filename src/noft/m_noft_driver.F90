@@ -27,6 +27,7 @@ module m_noft_driver
  use m_integd
  use m_elag
  use m_hessian
+ use m_adam
  use m_optocc
  use m_optorb
  use m_tz_pCCD_amplitudes
@@ -143,6 +144,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  type(integ_t),target::INTEGd
  type(elag_t),target::ELAGd
  type(hessian_t),target::HESSIANd
+ type(adam_t),target::ADAMd
 !arrays
  real(dp),allocatable,dimension(:,:)::DM1,Phases
  real(dp),allocatable,dimension(:,:,:)::DM2_JK
@@ -240,6 +242,12 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call hessian_init(HESSIANd,RDMd%NBF_tot,cpx_mos)
  else
   call hessian_init(HESSIANd,2,cpx_mos)
+ endif
+
+ if(imethorb==0) then ! Allocate ADAMd (even if it is allocated with size 1)
+  call adam_init(ADAMd,RDMd%NBF_tot,cpx_mos)
+ else
+  call adam_init(ADAMd,2,cpx_mos)
  endif
 
  ! Check for the presence of restart files. Then, if they are available read them (only if required)
@@ -377,10 +385,10 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(.not.keep_orbs) then
    call ELAGd%clean_diis()
    if(cpx_mos) then
-    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints,Phases, &
+    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxdiff_lambda,mo_ints,Phases, &
     & NO_COEF_cmplx=NO_COEF_cmplx)
    else   
-    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints,Phases, &
+    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxdiff_lambda,mo_ints,Phases, &
     & NO_COEF=NO_COEF)
    endif
    if(imethorb==1) then ! For F diag method, print F_pp elements after each global iteration
@@ -414,7 +422,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(RDMd%INOF<0) call RDMd%print_tz_amplitudes()
 
   ! Check convergence
-  if(dabs(Energy-Energy_old)<ELAGd%tolE) then
+  if(dabs(Energy-Energy_old)<ELAGd%tolE .and. .not.ADAMd%restart) then
    Energy_old=Energy
    exit
   endif
@@ -606,6 +614,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 
  ! Free all allocated RDMd, INTEGd, ELAGd, and HESSIANd arrays
  call ELAGd%free() 
+ call ADAMd%free()
  call HESSIANd%free()
  call INTEGd%free()
  ! Reallocated INTEGd and print FCIDUMP file if required for real orbs and not rs-NOFT calcs
