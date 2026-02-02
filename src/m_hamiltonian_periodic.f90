@@ -2786,7 +2786,7 @@ subroutine setup_nucleus_gth_nonlocal_periodic(basis, h_ecp)
 #endif
                 call transform_libcint_to_molgw_gth_projector(basis%gaussian_type, li, lj, array_cart, matrix)
 
-                proj_i(jbf1:jbf2, :, ipl) = proj_i(jbf1:jbf2, :, ipl) + TRANSPOSE(matrix(:, :))
+                proj_i(jbf1:jbf2, :, ipl) = proj_i(jbf1:jbf2, :, ipl) + matrix(:, :)
 
               enddo
             enddo
