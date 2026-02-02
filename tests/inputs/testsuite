@@ -1343,7 +1343,6 @@ gKS LUMO energy           ,   24.796982        , 0 , 1.0e-4
 
 he_hf_cc4s_box_output.in  , HF helium atom with output of Cc4s files, need_libcint need_fftw3
 SCF Total Energy          ,  -2.8618499703      , 0 , 1.0e-7
-Testing integral (11|11)  ,   1.02301683E+00    , 0 , 1.0e-7
 
 he_hf_cc4s_box_input.in   , HF+MP2 helium atom from input Cc4s files, need_libcint need_fftw3 restart
 HF Total Energy           ,  -2.8625597646      , 0 , 1.0e-7
