@@ -207,9 +207,13 @@ ne_gth.in                 , BLYP Ne atom with analytical pseudo in GTH formalism
 SCF Total Energy          , -34.9153582541     , 0 , 1.0e-7
 gKS HOMO energy           , -13.008824         , 0 , 1.0e-3   # Loosened  criterium (because of BLYP in LIBXC)
 
+ne2_gth.in                , LDA Ne dimer with GTH pseudo, need_libcint
+SCF Total Energy          , -69.3289904981     , 0 , 1.0e-7
+gKS HOMO energy           ,  -7.778715         , 0 , 1.0e-4
+
 sih4_gth.in               , LDA silane molecule with analytical pseudo in GTH formalism, need_libcint
-SCF Total Energy          ,  -6.5639453146     , 0 , 1.0e-7
-gKS HOMO energy           ,  -8.4306584        , 0 , 1.0e-4
+SCF Total Energy          ,  -6.2359561987     , 0 , 1.0e-7
+gKS HOMO energy           ,  -8.504489         , 0 , 1.0e-4
 
 h2o_scalapack.in          , H2O molecule within PBE0 with possibly SCALAPACK
 gKS HOMO energy           ,   -9.039335        , 0 , 1.0e-4

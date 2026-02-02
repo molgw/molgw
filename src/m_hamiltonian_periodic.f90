@@ -2742,7 +2742,7 @@ subroutine setup_nucleus_gth_nonlocal_periodic(basis, h_ecp)
     call set_rinv_origin_libcint(xatom(:, icenter), env_local)
 
     do il=1, ecp(ie)%gth_nl
-      li      = il -1
+      li      = il - 1
       ni      = number_basis_function_am('PURE',li)
       ni_cart = number_basis_function_am('CART',li)
       allocate(proj_i(basis%nbf, ni, ecp(ie)%gth_npl(il)))
