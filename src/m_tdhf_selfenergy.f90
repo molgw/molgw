@@ -73,6 +73,16 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
   if( mpi_poorman_ ) then
     write(stdout, '(5x,a)')   'using poor man parallelization'
   endif
+  write(stdout, '(/,1x,a)')     'Scaling coefficients:'
+  write(stdout, '(1x,a,f6.2)') 'alpha: ', selfenergy_tdhf_alpha
+  write(stdout, '(1x,a,f6.2)') 'beta:  ', selfenergy_tdhf_beta
+  write(stdout, '(1x,a,f6.2)') 'gamma: ', selfenergy_tdhf_gamma
+  write(stdout, '(1x,a,f6.2)') 'delta: ', selfenergy_tdhf_delta
+
+  write(stdout, '(1x,a)') 'GW         is recovered with 0.0, 2.0, 0.0, any'
+  write(stdout, '(1x,a)') 'TDHF       is recovered with 0.0, 0.0, 1.0, 2.0'
+  write(stdout, '(1x,a)') 'PSD arno   is recovered with 0.5, 0.0, 0.0, 2.0'
+  write(stdout, '(1x,a)') 'PSD fabien is recovered with 0.5, 1.0, 0.0, 1.0'
 
   call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
@@ -276,7 +286,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
                    1.0d0, xpy_matrix(:, :), nmat, eri_tmp1o(:, :), nmat, &
                    0.0d0, num_tmp2o(:, :), nmat)
 
-    num_tmp1o(:, :) = 2.0 * num_tmp2o(:, :)
+    num_tmp1o(:, :) = selfenergy_tdhf_delta * num_tmp2o(:, :)  ! FBFB
     call DGEMM('T', 'N', nmat, nhomo_G-ncore_G,nmat, &
                   -1.0d0, x_matrix(:, :), nmat, eri_tmp3o(:, :), nmat, &
                    1.0d0, num_tmp1o(:, :), nmat)
@@ -289,8 +299,11 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     !$OMP PARALLEL DO COLLAPSE(2) REDUCTION(+:sigma_tmp)
     do jstate=ncore_G+1, nhomo_G
       do spole=1, wpol%npole_reso
+        !FBFB
         sigma_tmp(:) = sigma_tmp(:) &
-                       +  num_tmp1o(spole, jstate) * num_tmp2o(spole, jstate) &
+                    +  (  selfenergy_tdhf_alpha * num_tmp1o(spole, jstate)**2 &
+                        + selfenergy_tdhf_gamma * num_tmp1o(spole, jstate) * num_tmp2o(spole, jstate) &
+                        + selfenergy_tdhf_beta  * num_tmp2o(spole, jstate)**2 ) &
                           / ( se%omega(:) + se%energy0(pstate, 1) - energy(jstate, 1) + wpol%pole(spole) - ieta )
 
       enddo ! loop over spole
@@ -402,7 +415,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     call DGEMM('T', 'N', nmat, nvirtual_G-nhomo_G-1,nmat, &
                    1.0d0, xpy_matrix(:, :), nmat, eri_tmp1v(:, :), nmat, &
                    0.0d0, num_tmp2v(:, :), nmat)
-    num_tmp1v(:, :) = 2.0 * num_tmp2v(:, :)
+    num_tmp1v(:, :) = selfenergy_tdhf_delta * num_tmp2v(:, :)  ! FBFB
     call DGEMM('T', 'N', nmat, nvirtual_G-nhomo_G-1,nmat, &
                   -1.0d0, x_matrix(:, :), nmat, eri_tmp2v(:, :), nmat, &
                    1.0d0, num_tmp1v(:, :), nmat)
@@ -414,8 +427,14 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     !$OMP PARALLEL DO COLLAPSE(2) REDUCTION(+:sigma_tmp)
     do bstate=nhomo_G+1, nvirtual_G-1
       do spole=1, wpol%npole_reso
+        !FBFB
         sigma_tmp(:) = sigma_tmp(:) &
-                       +  num_tmp1v(spole, bstate) * num_tmp2v(spole, bstate) &
+                       !+  num_tmp1v(spole, bstate) * num_tmp2v(spole, bstate) &
+                       !+  (0.5_dp*num_tmp1v(spole, bstate)**2 + 1.0d0*num_tmp2v(spole, bstate)**2) &
+                       !+  (2.0d0* num_tmp2v(spole, bstate)**2)  &  !GW
+                    +  (  selfenergy_tdhf_alpha * num_tmp1v(spole, bstate)**2 &
+                        + selfenergy_tdhf_gamma * num_tmp1v(spole, bstate) * num_tmp2v(spole, bstate) &
+                        + selfenergy_tdhf_beta  * num_tmp2v(spole, bstate)**2 ) &
                           / ( se%omega(:) + se%energy0(pstate, 1) - energy(bstate, 1) - wpol%pole(spole) + ieta )
       enddo ! loop over spole
     enddo ! loop over bstate
@@ -450,188 +469,6 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
   call stop_clock(timing_vertex_selfenergy)
 
 end subroutine tdhf_selfenergy
-
-
-!=========================================================================
-! Vacondio et al.'s expression as I interprete it
-!
-subroutine tdhf_vacondio_selfenergy(basis, occupation, energy, c_matrix, se)
-  implicit none
-
-  type(basis_set)                    :: basis
-  real(dp), intent(in)                :: occupation(:, :), energy(:, :)
-  real(dp), intent(in)                :: c_matrix(:, :, :)
-  type(selfenergy_grid), intent(inout) :: se
-  !=====
-  integer                 :: nstate, nmat, imat
-  integer                 :: istate, astate, jstate, bstate, iaspin, spole
-  integer                 :: pstate, iomega_sigma
-  real(dp), allocatable    :: x_matrix(:, :), y_matrix(:, :)
-  real(dp), allocatable    :: a_matrix(:, :), b_matrix(:, :)
-  real(dp)                :: erpa_tmp, egw_tmp
-  type(spectral_function) :: wpol
-  complex(dp), allocatable :: sigma_tdhf(:, :, :)
-  real(dp) :: eri_iajp, eri_ijap, eri_ajip
-  real(dp) :: eri_iabp, eri_ibap, eri_abip
-  real(dp), allocatable :: eri_tmp1(:, :), eri_tmp2(:, :), eri_tmp3(:, :)
-  real(dp), allocatable :: eri_tmp1v(:, :), eri_tmp2v(:, :), eri_tmp3v(:, :)
-  real(dp), allocatable :: num_tmp1(:, :), num_tmp2(:, :)
-  real(dp), allocatable :: num_tmp1v(:, :), num_tmp2v(:, :)
-  real(dp), allocatable :: xpy_matrix(:, :)
-  real(dp) :: num1, num2
-  !=====
-
-  call start_clock(timing_gw_self)
-
-  if( .NOT. has_auxil_basis ) call die('tdhf_selfenergy: not implemented without an auxiliary basis')
-  if( nspin > 1 ) call die('tdhf_selfenergy: not implemented for spin unrestricted')
-
-  nstate = SIZE(energy, DIM=1)
-
-  write(stdout, '(/,1x,a)') 'Calculate Sigma_TDHF (Vacondio formula)'
-
-  call wpol%init(nstate, occupation, 0)
-  nmat = wpol%npole_reso
-
-  call clean_allocate('X matrix', x_matrix, nmat, nmat)
-  call clean_allocate('Y matrix', y_matrix, nmat, nmat)
-  call clean_allocate('A matrix', a_matrix, nmat, nmat)
-  call clean_allocate('B matrix', b_matrix, nmat, nmat)
-
-  ! Get A and B, X and Y
-  call polarizability(.FALSE., .TRUE., basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol, &
-                       a_matrix=a_matrix, b_matrix=b_matrix, x_matrix=x_matrix, y_matrix=y_matrix)
-
-  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
-
-  allocate(sigma_tdhf(-se%nomega:se%nomega, nsemin:nsemax, nspin))
-  allocate(xpy_matrix(nmat, nmat))
-  xpy_matrix(:, :) = x_matrix(:, :) + y_matrix(:, :)
-  allocate(eri_tmp1(nmat, ncore_G+1:nhomo_G))
-  allocate(eri_tmp2(nmat, ncore_G+1:nhomo_G))
-  allocate(eri_tmp3(nmat, ncore_G+1:nhomo_G))
-  allocate(eri_tmp1v(nmat, nhomo_G+1:nvirtual_G-1))
-  allocate(eri_tmp2v(nmat, nhomo_G+1:nvirtual_G-1))
-  allocate(eri_tmp3v(nmat, nhomo_G+1:nvirtual_G-1))
-  allocate(num_tmp1(nmat, ncore_G+1:nhomo_G))
-  allocate(num_tmp2(nmat, ncore_G+1:nhomo_G))
-  allocate(num_tmp1v(nmat, nhomo_G+1:nvirtual_G-1))
-  allocate(num_tmp2v(nmat, nhomo_G+1:nvirtual_G-1))
-  sigma_tdhf(:, :, :) = 0.0_dp
-
-  do pstate=nsemin, nsemax
-
-    do jstate=ncore_G+1, nhomo_G
-      do imat=1, nmat
-        istate = wpol%transition_table(1, imat)
-        astate = wpol%transition_table(2, imat)
-
-        eri_tmp1(imat, jstate) = evaluate_eri_mo(istate, astate, 1, jstate, pstate, 1)
-        eri_tmp2(imat, jstate) = evaluate_eri_mo(istate, jstate, 1, astate, pstate, 1)  ! set to zero to recover GW
-        eri_tmp3(imat, jstate) = evaluate_eri_mo(astate, jstate, 1, istate, pstate, 1)  ! set to zero to recover GW
-     enddo
-   enddo
-
-   num_tmp2(:, :) = MATMUL( TRANSPOSE(xpy_matrix(:, :)) , eri_tmp1(:, :) )
-
-   num_tmp1(:, :) = 2.0 * num_tmp2(:, :) &
-                   - MATMUL( TRANSPOSE(x_matrix(:, :)) , eri_tmp2(:, :) ) &
-                   - MATMUL( TRANSPOSE(y_matrix(:, :)) , eri_tmp3(:, :) )
-
-
-  !    do spole=1,wpol%npole_reso
-
-  !      num1 = 0.0
-  !      num2 = 0.0
-  !      do imat=1,nmat
-  !        istate = wpol%transition_table(1,imat)
-  !        astate = wpol%transition_table(2,imat)
-
-  !        eri_iajp = evaluate_eri_mo(istate,astate,1,jstate,pstate,1)
-  !        eri_ijap = evaluate_eri_mo(istate,jstate,1,astate,pstate,1)  ! set to zero to recover GW
-  !        eri_ajip = evaluate_eri_mo(astate,jstate,1,istate,pstate,1)  ! set to zero to recover GW
-
-  !        num1 = num1 + 2.0 * x_matrix(imat,spole) * eri_iajp - x_matrix(imat,spole) * eri_ijap  &
-  !                    + 2.0 * y_matrix(imat,spole) * eri_iajp - y_matrix(imat,spole) * eri_ajip 
-  !        num2 = num2 + ( x_matrix(imat,spole) + y_matrix(imat,spole) ) * eri_iajp
-
-  !      enddo
-
-    do jstate=ncore_G+1, nhomo_G
-      do spole=1, wpol%npole_reso
-        sigma_tdhf(:, pstate, 1) = sigma_tdhf(:, pstate, 1) &
-                       +  num_tmp1(spole, jstate) * num_tmp2(spole, jstate) &
-                          / ( se%omega(:) + se%energy0(pstate, 1) - energy(jstate, 1) + wpol%pole(spole) -ieta )
-
-      enddo ! loop over spole
-    enddo ! loop over jstate
-
-    do bstate=nhomo_G+1, nvirtual_G-1
-      do imat=1, nmat
-        istate = wpol%transition_table(1, imat)
-        astate = wpol%transition_table(2, imat)
-
-        eri_tmp1v(imat, bstate) = evaluate_eri_mo(istate, astate, 1, bstate, pstate, 1)
-        eri_tmp2v(imat, bstate) = evaluate_eri_mo(istate, bstate, 1, astate, pstate, 1)  ! set to zero to recover GW
-        eri_tmp3v(imat, bstate) = evaluate_eri_mo(astate, bstate, 1, istate, pstate, 1)  ! set to zero to recover GW
-     enddo
-   enddo
-   num_tmp2v(:, :) = MATMUL( TRANSPOSE(xpy_matrix(:, :)) , eri_tmp1v(:, :) )
-   num_tmp1v(:, :) = 2.0 * num_tmp2v(:, :) &
-                   - MATMUL( TRANSPOSE(x_matrix(:, :)) , eri_tmp2v(:, :) ) &
-                   - MATMUL( TRANSPOSE(y_matrix(:, :)) , eri_tmp3v(:, :) )
-    do bstate=nhomo_G+1, nvirtual_G-1
-      do spole=1, wpol%npole_reso
-        sigma_tdhf(:, pstate, 1) = sigma_tdhf(:, pstate, 1) &
-                       +  num_tmp1v(spole, bstate) * num_tmp2v(spole, bstate) &
-                          / ( se%omega(:) + se%energy0(pstate, 1) - energy(bstate, 1) - wpol%pole(spole) +ieta )
-      enddo ! loop over spole
-    enddo ! loop over bstate
-
-    !do bstate=nhomo_G+1,nvirtual_G-1
-    !  do spole=1,wpol%npole_reso
-
-    !    num1 = 0.0
-    !    num2 = 0.0
-    !    do imat=1,nmat
-    !      istate = wpol%transition_table(1,imat)
-    !      astate = wpol%transition_table(2,imat)
-
-    !      eri_iabp = evaluate_eri_mo(istate,astate,1,bstate,pstate,1)
-    !      eri_ibap = evaluate_eri_mo(istate,bstate,1,astate,pstate,1)  ! set to zero to recover GW
-    !      eri_abip = evaluate_eri_mo(astate,bstate,1,istate,pstate,1)  ! set to zero to recover GW
-
-    !      num1 = num1 + 2.0 * x_matrix(imat,spole) * eri_iabp - x_matrix(imat,spole) * eri_ibap  &
-    !                  + 2.0 * y_matrix(imat,spole) * eri_iabp - y_matrix(imat,spole) * eri_abip
-    !      num2 = num2 + ( x_matrix(imat,spole) + y_matrix(imat,spole) ) * eri_iabp
-
-    !    enddo
-
-    !    sigma_tdhf(:,pstate,1) = sigma_tdhf(:,pstate,1) &
-    !                   +  num1 * num2 &
-    !                      / ( se%omega(:) + se%energy0(pstate,1) - energy(bstate,1) - wpol%pole(spole) +ieta )
-
-
-    !  enddo ! loop over spole
-    !enddo ! loop over bstate
-
-  enddo ! loop over pstate
-
-  se%sigma(:, :, :) = sigma_tdhf(:, :, :)
-
-  call clean_deallocate('X matrix', x_matrix)
-  call clean_deallocate('Y matrix', y_matrix)
-
-  call clean_deallocate('A matrix', a_matrix)
-  call clean_deallocate('B matrix', b_matrix)
-
-  deallocate(sigma_tdhf)
-  call destroy_eri_3center_mo()
-  call wpol%destroy()
-
-  call stop_clock(timing_gw_self)
-
-end subroutine tdhf_vacondio_selfenergy
 
 
 end module m_tdhf_selfenergy

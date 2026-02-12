@@ -1287,6 +1287,38 @@ selfenergy_state_range:
     For instance, selfenergy_state_range=0 will trigger the calculation of the HOMO
     only. selfenergy_state_range=1 will trigger the evaluation of the HOMO-1, HOMO, HOMO+1. etc.
 
+selfenergy_tdhf_alpha:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 0.0
+  comment: TDHF and TDscHF self-energy parameter alpha
+
+selfenergy_tdhf_beta:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 0.0
+  comment: TDHF and TDscHF self-energy parameter beta
+
+selfenergy_tdhf_gamma:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 1.0
+  comment: TDHF and TDscHF self-energy parameter gamma
+
+selfenergy_tdhf_delta:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 2.0
+  comment: TDHF and TDscHF self-energy parameter gamma
+
 small_basis:
   family: post
   datatype: characters
