@@ -77,7 +77,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
  integer,parameter::msave=7
  integer::iter_t,iter_z,iorb,iorb1,iorb2,iorb3,iorb4,iorb5,ipair
  integer::iflag,Mtosave,Nwork,Nvirtual,nOcc,nVir,info
- real(dp)::tol10=1e-10
+ real(dp)::denom
  real(dp)::sumdiff_t,sumdiff_z,maxdiff_t,maxdiff_z
  real(dp)::Ecorr_new,Ecorr_old,Ecorr_diff,Ediff,Esingle_det,Energy_dm
 !arrays
@@ -110,12 +110,13 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
    iorb1=iorb+RDMd%Nfrozen
    do iorb2=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs) ! Virt
     iorb3=iorb2+RDMd%Nfrozen+RDMd%Npairs
+    denom=two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))
     if(INTEGd%complex_ints) then
      RDMd%t_pccd_old(iorb,iorb2)=real(INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1))  &
-  &  /(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))+tol10)
+  &  *(one-exp(-RDMd%s_reg*denom*denom))*denom/(denom*denom) 
     else
      RDMd%t_pccd_old(iorb,iorb2)=INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)  &
-  &  /(two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))+tol10)
+  &  *(one-exp(-RDMd%s_reg*denom*denom))*denom/(denom*denom) 
     endif
    enddo
   enddo

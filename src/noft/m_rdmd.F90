@@ -50,6 +50,7 @@ module m_rdmd
   integer::Ngammas                 ! Number of gammas (independet variables used in occ optimization procedure)
   integer::Namplitudes             ! Number of t and z pCCD amplitudes
   real(dp)::Lpower=0.53d0          ! Power functional exponent
+  real(dp)::s_reg=1.0d8            ! Regularization in t-amp guess
   real(dp)::Hcut=0.02d0*dsqrt(two) ! Hcut parameter defined in GNOF to determine the Ecorr type (i.e. dyn or nondyn)
 ! arrays 
   real(dp),allocatable,dimension(:)::occ,chempot_orb,occ_dyn
