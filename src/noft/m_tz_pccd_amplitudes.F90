@@ -113,13 +113,14 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
     denom=two*(ELAGd%Lambdas_pp(iorb3)-ELAGd%Lambdas_pp(iorb1))
     if(INTEGd%complex_ints) then
      RDMd%t_pccd_old(iorb,iorb2)=real(INTEGd%ERImol_cmplx(iorb1,iorb3,iorb3,iorb1))  &
-  &  *(one-exp(-RDMd%s_reg*denom*denom))*denom/(denom*denom) 
+  &  *(one-exp(-abs(RDMd%s_reg)*denom*denom))*denom/(denom*denom) 
     else
      RDMd%t_pccd_old(iorb,iorb2)=INTEGd%ERImol(iorb1,iorb3,iorb3,iorb1)  &
-  &  *(one-exp(-RDMd%s_reg*denom*denom))*denom/(denom*denom) 
+  &  *(one-exp(-abs(RDMd%s_reg)*denom*denom))*denom/(denom*denom) 
     endif
    enddo
   enddo
+  if(RDMd%s_reg<zero) RDMd%t_pccd_old(:,:)=one
  endif
 
  ! Check if the current t amplitudes solve the problem
