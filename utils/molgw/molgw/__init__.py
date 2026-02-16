@@ -22,6 +22,7 @@ import difflib
 import json
 import copy
 import pathlib, glob
+import hashlib
 try:
     from yaml import load, dump
 except ImportError:
@@ -64,11 +65,30 @@ except:
 
 
 ########################################################################
+# Two possibilities to feed "run"
+# by priority order
+# 1. provide a python dict `pyinput` that contains the input parameters
+# 2. provide a text file with `inputfile`
+#
 def run(inputfile="molgw.in", outputfile="", yamlfile="",
         pyinput={}, mpirun="", executable_path="", openmp=1, tmp="", keep_tmp=False, **kwargs):
 
-    if len(tmp) > 0:
-        os.makedirs(tmp, exist_ok=True)
+    if len(pyinput) > 0:
+        text = json.dumps(pyinput, sort_keys=True)
+        key = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+    else:
+        path = pathlib.Path(inputfile)
+        if not path.exists():
+            sys.exit("Input file does not exist and no dictionary was given")
+        with open(path, "rb") as f:
+            key = hashlib.sha256(f.read()).hexdigest()[:16]
+
+    # If no tmp folder imposed, create a unique one
+    if len(tmp) == 0:
+        tmp = "tmp_" + key
+    os.makedirs(tmp, exist_ok=True)
+
     if len(executable_path) > 0:
         exe_local = executable_path
     else:
