@@ -413,6 +413,8 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
    endif
    
    ! If required print post-procesing files
+   occupation(:,:)=0.0d0
+   c_matrix(:,:,:)=0.0d0
    occupation(1:nstate_occ, 1)=occ(1:nstate_occ, 1)
    if( irs_noft==0 ) then
      if(noft_complex=='yes') then
