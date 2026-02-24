@@ -9,7 +9,7 @@
 
  postscf='bse'
  frozencore='no'
- scissor=1.0e-5
+ scissor=1.0e-10
 
  length_unit='bohr'
  natom=2
