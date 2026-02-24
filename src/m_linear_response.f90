@@ -37,7 +37,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   real(dp), intent(in)                   :: energy(:, :), c_matrix(:, :, :)
   real(dp), intent(out)                  :: en_rpa, en_gw
   type(spectral_function), intent(inout) :: wpol_out
-  integer, intent(in), optional           :: enforce_spin_multiplicity
+  integer, intent(in), optional          :: enforce_spin_multiplicity
   real(dp), optional                     :: lambda
   real(dp), optional                     :: x_matrix(:, :), y_matrix(:, :)
   real(dp), optional                     :: a_matrix(:, :), b_matrix(:, :)
@@ -632,7 +632,7 @@ subroutine get_energy_qp(energy, occupation, energy_qp)
   nstate = SIZE(occupation, DIM=1)
   ! If the keyword scissor is used in the input file,
   ! then use it and ignore the ENERGY_QP file
-  if( ABS(scissor) > 1.0e-5_dp ) then
+  if( ABS(scissor) > 1.0e-6_dp ) then
 
     call issue_warning('BSE: using a manual scissor to open up the fundamental gap')
 
@@ -652,7 +652,7 @@ subroutine get_energy_qp(energy, occupation, energy_qp)
     enddo
     write(stdout, *)
 
-  else if( ABS(scissor) > 1.0e-8_dp ) then
+  else if( ABS(scissor) > 1.0e-12_dp ) then
     call issue_warning('BSE: using nor a scissor, nor GW energies')
     energy_qp(:, :) = energy(:, :)
 

@@ -1319,6 +1319,14 @@ selfenergy_tdhf_delta:
   default: 2.0
   comment: TDHF and TDscHF self-energy parameter gamma
 
+selfenergy_tdhf_epsilon:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 0.0
+  comment: TDHF and TDscHF self-energy parameter epsilon
+
 small_basis:
   family: post
   datatype: characters
