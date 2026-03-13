@@ -218,6 +218,7 @@
   write(stdout, '(1x,a32,2x,es16.8)') 'selfenergy_tdhf_delta', selfenergy_tdhf_delta 
   write(stdout, '(1x,a32,2x,es16.8)') 'selfenergy_tdhf_epsilon', selfenergy_tdhf_epsilon 
   write(stdout, '(1x,a32,2x,es16.8)') 'selfenergy_tdhf_gamma', selfenergy_tdhf_gamma 
+  write(stdout, '(1x,a32,2x,es16.8)') 'selfenergy_tdhf_zeta', selfenergy_tdhf_zeta 
   write(stdout, '(1x,a32,6x,a)') 'small_basis', TRIM(small_basis) 
   write(stdout, '(1x,a32,2x,es16.8)') 'step_sigma', step_sigma 
   write(stdout, '(1x,a32,2x,es16.8)') 'step_sigma_calc', step_sigma_calc 

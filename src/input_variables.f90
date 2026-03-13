@@ -151,6 +151,7 @@
     selfenergy_tdhf_gamma,       &
     selfenergy_tdhf_delta,       &
     selfenergy_tdhf_epsilon,       &
+    selfenergy_tdhf_zeta,       &
     small_basis,       &
     step_sigma,       &
     step_sigma_calc,       &
@@ -397,6 +398,7 @@
  selfenergy_tdhf_gamma = 1.0_dp 
  selfenergy_tdhf_delta = 2.0_dp 
  selfenergy_tdhf_epsilon = 0.0_dp 
+ selfenergy_tdhf_zeta = 0.0_dp 
  small_basis = ''
  step_sigma = 0.01_dp 
  step_sigma_calc = 0.03_dp 

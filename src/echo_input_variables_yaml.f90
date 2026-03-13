@@ -218,6 +218,7 @@
  write(unit_yaml, '(4x,a,9x,es16.8)') 'selfenergy_tdhf_delta:', selfenergy_tdhf_delta 
  write(unit_yaml, '(4x,a,7x,es16.8)') 'selfenergy_tdhf_epsilon:', selfenergy_tdhf_epsilon 
  write(unit_yaml, '(4x,a,9x,es16.8)') 'selfenergy_tdhf_gamma:', selfenergy_tdhf_gamma 
+ write(unit_yaml, '(4x,a,10x,es16.8)') 'selfenergy_tdhf_zeta:', selfenergy_tdhf_zeta 
  write(unit_yaml, '(4x,a,19x,a)') 'small_basis:', TRIM(small_basis) 
  write(unit_yaml, '(4x,a,20x,es16.8)') 'step_sigma:', step_sigma 
  write(unit_yaml, '(4x,a,15x,es16.8)') 'step_sigma_calc:', step_sigma_calc 

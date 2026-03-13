@@ -491,8 +491,8 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
   real(dp), allocatable    :: eri_i_a(:, :), eri_a_i(:, :), eri_P_ia(:, :)
   real(dp), allocatable    :: eri_tmp1o(:, :), eri_tmp2o(:, :), eri_tmp3o(:, :)
   real(dp), allocatable    :: eri_tmp1v(:, :), eri_tmp2v(:, :), eri_tmp3v(:, :)
-  real(dp), allocatable    :: num_tmp1o(:, :), num_tmp2o(:, :), num_tmp1ot(:, :)
-  real(dp), allocatable    :: num_tmp1v(:, :), num_tmp2v(:, :), num_tmp1vt(:, :)
+  real(dp), allocatable    :: num_tmp1o(:, :), num_tmp2o(:, :), num_tmp1ot(:, :), num_tmp3o(:, :)
+  real(dp), allocatable    :: num_tmp1v(:, :), num_tmp2v(:, :), num_tmp1vt(:, :), num_tmp3v(:, :)
   real(dp), allocatable    :: xpy_matrix(:, :)
   real(dp) :: fxc
   type(spectral_function) :: wpol_static_rpa
@@ -638,9 +638,11 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
   allocate(num_tmp1o(nmat, ncore_G+1:nhomo_G))
   allocate(num_tmp1ot(nmat, ncore_G+1:nhomo_G))
   allocate(num_tmp2o(nmat, ncore_G+1:nhomo_G))
+  allocate(num_tmp3o(nmat, ncore_G+1:nhomo_G))
   allocate(num_tmp1v(nmat, nhomo_G+1:nvirtual_G-1))
   allocate(num_tmp1vt(nmat, nhomo_G+1:nvirtual_G-1))
   allocate(num_tmp2v(nmat, nhomo_G+1:nvirtual_G-1))
+  allocate(num_tmp3v(nmat, nhomo_G+1:nvirtual_G-1))
   sigma_tdhf(:, :, :) = 0.0_dp
 
   do pstate=nsemin, nsemax
@@ -750,13 +752,14 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
                    1.0d0, xpy_matrix(:, :), nmat, eri_tmp1o(:, :), nmat, &
                    0.0d0, num_tmp2o(:, :), nmat)
 
-    num_tmp1o(:, :) = selfenergy_tdhf_delta * num_tmp2o(:, :)
+    num_tmp3o(:, :) = 0.0
     call DGEMM('T', 'N', nmat, nhomo_G-ncore_G,nmat, &
                   -1.0d0, x_matrix_singlet(:, :), nmat, eri_tmp3o(:, :), nmat, &
-                   1.0d0, num_tmp1o(:, :), nmat)
+                   1.0d0, num_tmp3o(:, :), nmat)
     call DGEMM('T', 'N', nmat, nhomo_G-ncore_G,nmat, &
                   -1.0d0, y_matrix_singlet(:, :), nmat, eri_tmp2o(:, :), nmat, &
-                   1.0d0, num_tmp1o(:, :), nmat)
+                   1.0d0, num_tmp3o(:, :), nmat)
+    num_tmp1o(:, :) = selfenergy_tdhf_delta * num_tmp2o(:, :) + num_tmp3o(:, :)
 
     num_tmp1ot(:, :) = 0.0_dp
     call DGEMM('T', 'N', nmat, nhomo_G-ncore_G,nmat, &
@@ -774,7 +777,8 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
         sigma_tmp(:) = sigma_tmp(:) &
                     +  (  selfenergy_tdhf_alpha * num_tmp1o(spole, jstate)**2 &
                         + selfenergy_tdhf_gamma * num_tmp1o(spole, jstate) * num_tmp2o(spole, jstate) &
-                        + selfenergy_tdhf_beta  * num_tmp2o(spole, jstate)**2 ) &
+                        + selfenergy_tdhf_beta * num_tmp2o(spole, jstate)**2   &
+                        + selfenergy_tdhf_zeta * num_tmp3o(spole, jstate)**2 ) &
                           / ( se%omega(:) + se%energy0(pstate, 1) - energy(jstate, 1) + wpol_singlet%pole(spole) - ieta )
 
       enddo ! loop over spole
@@ -899,13 +903,15 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
                    1.0d0, xpy_matrix(:, :), nmat, eri_tmp1v(:, :), nmat, &
                    0.0d0, num_tmp2v(:, :), nmat)
 
-    num_tmp1v(:, :) = selfenergy_tdhf_delta * num_tmp2v(:, :)
+    num_tmp3v(:, :) = 0.0_dp
     call DGEMM('T', 'N', nmat, nvirtual_G-nhomo_G-1,nmat, &
                   -1.0d0, x_matrix_singlet(:, :), nmat, eri_tmp2v(:, :), nmat, &
-                   1.0d0, num_tmp1v(:, :), nmat)
+                   1.0d0, num_tmp3v(:, :), nmat)
     call DGEMM('T', 'N', nmat, nvirtual_G-nhomo_G-1,nmat, &
                   -1.0d0, y_matrix_singlet(:, :), nmat, eri_tmp3v(:, :), nmat, &
-                   1.0d0, num_tmp1v(:, :), nmat)
+                   1.0d0, num_tmp3v(:, :), nmat)
+    num_tmp1v(:, :) = selfenergy_tdhf_delta * num_tmp2v(:, :) + num_tmp3v(:, :)
+
     num_tmp1vt(:, :) = 0.0_dp
     call DGEMM('T', 'N', nmat, nvirtual_G-nhomo_G-1,nmat, &
                   -1.0d0, x_matrix_triplet(:, :), nmat, eri_tmp2v(:, :), nmat, &
@@ -921,7 +927,8 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
         sigma_tmp(:) = sigma_tmp(:) &
                     +  (  selfenergy_tdhf_alpha * num_tmp1v(spole, bstate)**2 &
                         + selfenergy_tdhf_gamma * num_tmp1v(spole, bstate) * num_tmp2v(spole, bstate) &
-                        + selfenergy_tdhf_beta  * num_tmp2v(spole, bstate)**2 ) &
+                        + selfenergy_tdhf_beta  * num_tmp2v(spole, bstate)**2   &
+                        + selfenergy_tdhf_zeta  * num_tmp3v(spole, bstate)**2 ) &
                           / ( se%omega(:) + se%energy0(pstate, 1) - energy(bstate, 1) - wpol_singlet%pole(spole) + ieta )
       enddo ! loop over spole
     enddo ! loop over bstate

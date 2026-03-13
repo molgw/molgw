@@ -206,6 +206,7 @@
  real(dp), protected :: selfenergy_tdhf_gamma
  real(dp), protected :: selfenergy_tdhf_delta
  real(dp), protected :: selfenergy_tdhf_epsilon
+ real(dp), protected :: selfenergy_tdhf_zeta
  character(len=256), protected :: small_basis
  real(dp), protected :: step_sigma
  real(dp), protected :: step_sigma_calc

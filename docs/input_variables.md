@@ -147,6 +147,7 @@
 [selfenergy_tdhf_gamma](#selfenergy_tdhf_gamma)
 [selfenergy_tdhf_delta](#selfenergy_tdhf_delta)
 [selfenergy_tdhf_epsilon](#selfenergy_tdhf_epsilon)
+[selfenergy_tdhf_zeta](#selfenergy_tdhf_zeta)
 [small_basis](#small_basis)
 [step_sigma](#step_sigma)
 [step_sigma_calc](#step_sigma_calc)
@@ -3705,6 +3706,24 @@ TDHF and TDscHF self-energy parameter epsilon
 **Description:**
 
 TDHF and TDscHF self-energy parameter gamma
+
+
+---
+### selfenergy_tdhf_zeta
+
+**experimental**
+
+*Optional*
+
+**Family:** post
+
+**Type:** real
+
+**Default:** 0.0
+
+**Description:**
+
+TDHF and TDscHF self-energy parameter zeta
 
 
 ---
