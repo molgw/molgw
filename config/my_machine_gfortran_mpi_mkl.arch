@@ -10,17 +10,19 @@ CXX=g++
 FCFLAGS= -cpp -m64 -I${MKLROOT}/include -O3 -march=native -mtune=native 
 CXXFLAGS= -O3 -march=native -mtune=native
 
-# MKL without threads
-LAPACK=  -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_sequential -lmkl_core -lpthread -lm -ldl
-
-SCALAPACK=-L${HOME}/src/scalapack-2.0.2/ -lscalapack
+# Make sure MKLROOT is defined by running the MKL environment script
+LAPACK=
+SCALAPACK=-Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
+ ${MKLROOT}/lib/intel64/libmkl_scalapack_lp64.a \
+ ${MKLROOT}/lib/intel64/libmkl_core.a \
+ ${MKLROOT}/lib/intel64/libmkl_sequential.a \
+ ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a \
+ -Wl,--end-group -lpthread -lm -ldl
 
 LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 
-#LIBINT_ROOT=${HOME}/src/libint-2.4.2/
-
 
 # Link to a shared library with RPATH technique
-LIBCINT_PATH=${HOME}/devel/spack/opt/spack/linux-fedora39-zen4/gcc-13.2.1/libcint-5.3.0-4p3oc3rkc2vvd5apsbibgwl5ip4rvh7l/lib64/
-LIBCINT=-L${LIBCINT_PATH} -lcint -Wl,-rpath,${LIBCINT_PATH}
+LIBCINT_ROOT=${HOME}/devel/spack/opt/spack/linux-fedora39-zen4/gcc-13.2.1/libcint-5.3.0-4p3oc3rkc2vvd5apsbibgwl5ip4rvh7l/
+LIBCINT=-L${LIBCINT_ROOT}/lib64/ -lcint -Wl,-rpath,${LIBCINT_ROOT}/lib64/
 
