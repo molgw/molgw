@@ -200,26 +200,3 @@ selectedci_avq_homo = {
 }
 
 
-########################################################################
-def diff(data1, data2):
-    """
-        Returns a dictionary containing data2 - data1
-    """
-    errors = dict()
-    shared_keys = set(data1.keys()) & set(data2.keys())
-    for cas in shared_keys:
-        errors[cas] = data2[cas] - data1[cas]
-    return errors
-
-########################################################################
-def mae_mse_max(data1, data2):
-    """
-        Returns MAE, MSE, Max errors with data1 being the reference
-    """
-    errors = list( diff(data1, data2).values() )
-
-    ndata = len(errors)
-    mse = np.sum(errors) / float(ndata)
-    mae = np.sum(np.abs(errors)) / float(ndata)
-    mxe = np.max(np.abs(errors))
-    return mae, mse, mxe
