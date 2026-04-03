@@ -23,7 +23,7 @@ def diff(data1, data2):
     errors = dict()
     shared_keys = set(data1.keys()) & set(data2.keys())
     for cas in shared_keys:
-        errors[cas] = data2[cas] - data1[cas]
+        errors[cas] = data1[cas] - data2[cas]
     return errors
 
 ########################################################################
@@ -37,7 +37,7 @@ def mae_mse_max(data1, data2):
     mse = np.sum(errors) / float(ndata)
     mae = np.sum(np.abs(errors)) / float(ndata)
     mxe = np.max(np.abs(errors))
-    return mae, mse, mxe
+    return mae, mse, mxe, ndata
 
 ########################################################################
 def correlation_plot(data1, data2, labels=False):
