@@ -507,6 +507,220 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
     enddo
   enddo
 
+
+  if( .TRUE. ) then
+
+  block
+    integer :: pqstate, klstate, iter, kstate, lstate, cstate
+    integer :: it, jt, nocc, nvirt, nt
+    real(dp), allocatable :: sigma_inf(:), b(:), a(:), a11(:, :), a21(:, :), b1(:), b2(:), c1(:), c2(:)
+    real(dp) :: eri_pqkl, eri_plkq, eri_pklq, deltae, factor
+    real(dp) :: eri_iajb, eri_ibja, eri_ijab, delta
+
+    allocate(sigma_inf((nstate * (nstate+1))/2))
+    allocate(b((nstate * (nstate+1))/2))
+    allocate(a((nstate * (nstate+1))/2))
+
+    
+
+    do pqspin=1, nspin
+      b(:) = 0.0_dp
+      write(*,*) 'start'
+
+      pqstate = 0
+      do qstate=1, nstate
+      do pstate=1, qstate
+        pqstate = pqstate + 1
+        klstate = 0
+        do lstate=1, nstate
+        do kstate=1, lstate
+          klstate = klstate + 1
+          factor = MERGE(0.5d0, 1.0d0, kstate==lstate)
+          eri_pqkl = DOT_PRODUCT(eri_3center_mo(:, pstate, qstate, pqspin), eri_3center_mo(:, kstate, lstate, pqspin) )
+          eri_plkq = DOT_PRODUCT(eri_3center_mo(:, pstate, lstate, pqspin), eri_3center_mo(:, kstate, qstate, pqspin) )
+          eri_pklq = DOT_PRODUCT(eri_3center_mo(:, pstate, kstate, pqspin), eri_3center_mo(:, lstate, qstate, pqspin) )
+          b(pqstate) = b(pqstate) + factor * (4.0_dp * eri_pqkl - eri_plkq - eri_pklq) * p_matrix_gw(kstate, lstate, pqspin) * 0.5d0
+        enddo
+        enddo
+      enddo
+      enddo
+      sigma_inf(:) = b(:)
+
+      do iter=1, 20
+        write(*,*) 'iter', iter
+        a(:) = 0.0_dp
+        pqstate = 0
+        do qstate=1, nstate
+        do pstate=1, qstate
+          pqstate = pqstate + 1
+          klstate = 0
+          do lstate=1, nstate
+          do kstate=1, lstate
+            klstate = klstate + 1
+            if( lstate <= nhomo_G ) cycle
+            if( kstate >  nhomo_G ) cycle
+            deltae = energy(kstate, pqspin) - energy(lstate, pqspin)
+            eri_pqkl = DOT_PRODUCT(eri_3center_mo(:, pstate, qstate, pqspin), eri_3center_mo(:, kstate, lstate, pqspin) )
+            eri_plkq = DOT_PRODUCT(eri_3center_mo(:, pstate, lstate, pqspin), eri_3center_mo(:, kstate, qstate, pqspin) )
+            eri_pklq = DOT_PRODUCT(eri_3center_mo(:, pstate, kstate, pqspin), eri_3center_mo(:, lstate, qstate, pqspin) )
+            a(pqstate) = a(pqstate) + (4.0_dp * eri_pqkl - eri_plkq - eri_pklq) / deltae * sigma_inf(klstate)
+          enddo
+          enddo
+        enddo
+        enddo
+        factor = MIN(1.0_dp, 0.1d0 * iter) 
+        sigma_inf(:) = b(:) + a(:) * factor
+
+
+        write(stdout, *) '========== iter', iter
+        pqstate = 0
+        do qstate=1, nstate
+        do pstate=1, qstate
+          pqstate = pqstate + 1
+          if( pstate == qstate ) then
+            write(stdout,'(1x,i8,4x,f12.6,4x,f12.6)') pstate, sigma_inf(pqstate) * Ha_eV, b(pqstate) * Ha_eV
+          endif
+        enddo
+        enddo
+      enddo ! loop over iter
+    enddo
+
+    nvirt = nstate - nhomo_G
+    nocc  = nhomo_G
+    nt = nvirt * nocc
+    allocate(a11(nt, nt))
+    allocate(a21(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2, nt))
+    allocate(b1(nt))
+    allocate(b2(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2))
+    allocate(c1(nt))
+    allocate(c2(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2))
+
+    b1(:) = 0.0_dp
+    it = 0
+    do istate=1, nhomo_G
+      do astate=nhomo_G+1, nstate
+        it = it + 1
+        do pstate=1, nstate
+          do qstate=1, nstate
+            eri_iajb = DOT_PRODUCT(eri_3center_mo(:, istate, astate, 1), eri_3center_mo(:, pstate, qstate, 1) )
+            eri_ibja = DOT_PRODUCT(eri_3center_mo(:, istate, qstate, 1), eri_3center_mo(:, pstate, astate, 1) )
+            b1(it) = b1(it) + (2.0_dp * eri_iajb - eri_ibja) * p_matrix_gw(pstate, qstate, 1) / spin_fact
+          enddo
+        enddo
+      enddo
+    enddo
+    b2(:) = 0.0_dp
+    it = 0
+    do istate=1, nhomo_G
+      do kstate=1, istate
+        it = it + 1
+        do pstate=1, nstate
+          do qstate=1, nstate
+            eri_iajb = DOT_PRODUCT(eri_3center_mo(:, istate, kstate, 1), eri_3center_mo(:, pstate, qstate, 1) )
+            eri_ibja = DOT_PRODUCT(eri_3center_mo(:, istate, qstate, 1), eri_3center_mo(:, pstate, kstate, 1) )
+            b2(it) = b2(it) + (2.0_dp * eri_iajb - eri_ibja) * p_matrix_gw(pstate, qstate, 1) / spin_fact
+          enddo
+        enddo
+      enddo
+    enddo
+    do cstate=nhomo_G+1, nstate
+      do astate=nhomo_G+1, cstate
+        it = it + 1
+        do pstate=1, nstate
+          do qstate=1, nstate
+            eri_iajb = DOT_PRODUCT(eri_3center_mo(:, cstate, astate, 1), eri_3center_mo(:, pstate, qstate, 1) )
+            eri_ibja = DOT_PRODUCT(eri_3center_mo(:, cstate, qstate, 1), eri_3center_mo(:, pstate, astate, 1) )
+            b2(it) = b2(it) + (2.0_dp * eri_iajb - eri_ibja) * p_matrix_gw(pstate, qstate, 1) / spin_fact
+          enddo
+        enddo
+      enddo
+    enddo
+
+    it = 0
+    do istate=1, nhomo_G
+      do astate=nhomo_G+1, nstate
+        it = it + 1
+        jt = 0
+        do jstate=1, nhomo_G
+          do bstate=nhomo_G+1, nstate
+            jt = jt + 1
+            delta = MERGE(1.0_dp, 0.0_dp, it == jt)
+            eri_iajb = DOT_PRODUCT(eri_3center_mo(:, istate, astate, 1), eri_3center_mo(:, jstate, bstate, 1) )
+            eri_ibja = DOT_PRODUCT(eri_3center_mo(:, istate, bstate, 1), eri_3center_mo(:, jstate, astate, 1) )
+            eri_ijab = DOT_PRODUCT(eri_3center_mo(:, istate, jstate, 1), eri_3center_mo(:, astate, bstate, 1) )
+            a11(it, jt) = delta - 4.0_dp * eri_iajb - eri_ibja - eri_ijab
+          enddo
+        enddo
+      enddo
+    enddo
+    call invert(a11)
+
+    it = 0
+    do istate=1, nhomo_G
+      do kstate=1, istate
+        it = it + 1
+        jt = 0
+        do jstate=1, nhomo_G
+          do bstate=nhomo_G+1, nstate
+            jt = jt + 1
+            eri_iajb = DOT_PRODUCT(eri_3center_mo(:, istate, kstate, 1), eri_3center_mo(:, jstate, bstate, 1) )
+            eri_ibja = DOT_PRODUCT(eri_3center_mo(:, istate, bstate, 1), eri_3center_mo(:, jstate, kstate, 1) )
+            eri_ijab = DOT_PRODUCT(eri_3center_mo(:, istate, jstate, 1), eri_3center_mo(:, kstate, bstate, 1) )
+            a21(it, jt) = 4.0_dp * eri_iajb - eri_ibja - eri_ijab
+          enddo
+        enddo
+      enddo
+    enddo
+    do cstate=nhomo_G+1, nstate
+      do astate=nhomo_G+1, cstate
+        it = it + 1
+        jt = 0
+        do jstate=1, nhomo_G
+          do bstate=nhomo_G+1, nstate
+            jt = jt + 1
+            eri_iajb = DOT_PRODUCT(eri_3center_mo(:, cstate, astate, 1), eri_3center_mo(:, jstate, bstate, 1) )
+            eri_ibja = DOT_PRODUCT(eri_3center_mo(:, cstate, bstate, 1), eri_3center_mo(:, jstate, astate, 1) )
+            eri_ijab = DOT_PRODUCT(eri_3center_mo(:, cstate, jstate, 1), eri_3center_mo(:, astate, bstate, 1) )
+            a21(it, jt) = 4.0_dp * eri_iajb - eri_ibja - eri_ijab
+          enddo
+        enddo
+      enddo
+    enddo
+    write(*,*) it, SIZE(a21, DIM=1)
+    a21(:, :) = MATMUL( a21, a11)
+
+    c1(:) = MATMUL(a11, b1)
+    c2(:) = MATMUL(a21, b1) + b2(:)
+
+    it = 0
+    do istate=1, nhomo_G
+      do kstate=1, istate
+        it = it + 1
+        if( istate == kstate ) then
+          write(*, *) istate, c2(it) * Ha_eV, b2(it) * Ha_eV
+        endif
+      enddo
+    enddo
+    do cstate=nhomo_G+1, nstate
+      do astate=nhomo_G+1, cstate
+        it = it + 1
+        if( cstate == astate ) then
+          write(*, *) cstate, c2(it) * Ha_eV, b2(it) * Ha_eV
+        endif
+      enddo
+    enddo
+    
+
+  end block
+
+
+  endif
+
+
+
+
+
+
   call update_density_matrix(occupation, c_matrix, p_matrix_gw, p_matrix)
 
   deallocate(p_matrix_gw)
