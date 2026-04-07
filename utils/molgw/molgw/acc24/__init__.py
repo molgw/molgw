@@ -65,11 +65,11 @@ structures = {
 names = [ k for k in structures ]
 
 #
-# acc24.molecule: dictionary of molgw.Molecule objects
+# acc24.molecules: dictionary of molgw.Molecule objects
 # 
-molecule = dict()
+molecules = dict()
 for k, v in structures.items():
-    molecule[k] = Molecule(v)
+    molecules[k] = Molecule(v)
 
 
 

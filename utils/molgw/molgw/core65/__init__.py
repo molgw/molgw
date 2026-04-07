@@ -137,11 +137,11 @@ structures = {
 }
 
 #
-# core65.molecule: dictionary of molgw.Molecule objects
+# core65.molecules: dictionary of molgw.Molecule objects
 # 
-molecule = dict()
+molecules = dict()
 for k, v in structures.items():
-    molecule[k] = Molecule(v)
+    molecules[k] = Molecule(v)
 
 
 #ccsdt_homo = {

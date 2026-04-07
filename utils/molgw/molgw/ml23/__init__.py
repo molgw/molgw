@@ -11,8 +11,6 @@
 
 import numpy as np
 import json, yaml
-import pathlib
-import matplotlib.pyplot as plt
 from molgw import __version__, Molecule
 
 default_input_parameters = {
@@ -61,9 +59,9 @@ names = [ k for k in structures ]
 #
 # ml23.molecule: dictionary of molgw.Molecule objects
 #
-molecule = dict()
+molecules = dict()
 for k, v in structures.items():
-    molecule[k] = Molecule(v)
+    molecules[k] = Molecule(v)
 
 otrsh_gamma_gw = {
    "co": 0.417,
