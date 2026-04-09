@@ -338,14 +338,16 @@ end subroutine onering_density_matrix
 
 
 !=========================================================================
-subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
+subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix, cederbaum)
   implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
   type(spectral_function), intent(in) :: wpol
   real(dp), intent(inout)             :: p_matrix(:, :, :)
+  logical, intent(in), optional       :: cederbaum
   !=====
+  logical  :: cederbaum_
   integer  :: nstate
   integer  :: pstate, qstate
   integer  :: istate, jstate
@@ -358,11 +360,23 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
   real(dp), allocatable :: p_matrix_gw(:, :, :)
   real(dp), allocatable :: w_s_occ(:, :), w_s_virt(:, :)
   real(dp), allocatable :: w_s_occ_local(:, :), w_s_virt_local(:, :)
+  ! Cederbaum Appendix B
+  integer :: kstate, cstate
+  integer :: it, jt, nocc, nvirt, nt
+  real(dp), allocatable :: a11(:, :), a21(:, :), b1(:), b2(:), sigma_inf1(:), sigma_inf2(:)
+  real(dp) :: eri_pqkl, eri_plkq, eri_pklq, deltae
+  real(dp) :: eri_iajb, eri_ibja, eri_ijab, delta, eri_ijkb, eri_ikjb, eri_ikpq, eri_iqpk
+  real(dp) :: eri_iapq, eri_iqpa, eri_cajb, eri_capq, eri_cqpa, eri_cbja, eri_cjab, eri_ibjk
   !=====
 
   call start_clock(timing_mbpt_dm)
 
   nstate = SIZE(occupation, DIM=1)
+  if( PRESENT(cederbaum) ) then
+    cederbaum_ = cederbaum
+  else
+    cederbaum_ = .FALSE.
+  endif
 
   write(stdout, '(/,a)') ' Calculate the GW density matrix'
 
@@ -508,43 +522,43 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
   enddo
 
 
-  if( .TRUE. ) then
-
-  block
-    integer :: kstate, cstate
-    integer :: it, jt, nocc, nvirt, nt
-    real(dp), allocatable :: a11(:, :), a21(:, :), b1(:), b2(:), sigma_inf1(:), sigma_inf2(:)
-    real(dp) :: eri_pqkl, eri_plkq, eri_pklq, deltae
-    real(dp) :: eri_iajb, eri_ibja, eri_ijab, delta, eri_ijkb, eri_ikjb, eri_ikpq, eri_iqpk
-    real(dp) :: eri_iapq, eri_iqpa, eri_cajb, eri_capq, eri_cqpa, eri_cbja, eri_cjab, eri_ibjk
-
+  !
+  ! Cederbaum Appendix B
+  !
+  if( cederbaum_ ) then
+    write(stdout, '(/,1x,a)') &
+        'Renormalization of the occupied-virtual coupling block following Cederbaum Appendix B'
 
     pqspin=1
 
-    nvirt = nstate - nhomo_G
-    nocc  = nhomo_G
+    nvirt = nvirtual_G-1 - nhomo_G
+    nocc  = nhomo_G - ncore_G
     nt = nvirt * nocc
     allocate(a11(nt, nt))
-    allocate(a21(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2, nt))
     allocate(b1(nt))
-    allocate(b2(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2))
     allocate(sigma_inf1(nt))
+
+#if defined(BLOCK2)
+    allocate(a21(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2, nt))
+    allocate(b2(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2))
     allocate(sigma_inf2(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2))
+#endif
 
     !
     ! Step 1: Build B= (B₁
     !                   B₂)
+    !
     ! Block 1: occ-virt block
     ! Block 2: occ-occ and then virt-virt block
     ! Equation B2.b
     !
     b1(:) = 0.0_dp
     it = 0
-    do istate=1, nhomo_G
-      do astate=nhomo_G+1, nstate
+    do istate=ncore_G+1, nhomo_G
+      do astate=nhomo_G+1, nvirtual_G-1
         it = it + 1
-        do pstate=1, nstate
-          do qstate=1, nstate
+        do pstate=ncore_G+1, nvirtual_G-1
+          do qstate=ncore_G+1, nvirtual_G-1
             eri_iapq = DOT_PRODUCT(eri_3center_mo(:, istate, astate, 1), eri_3center_mo(:, pstate, qstate, 1) )
             eri_iqpa = DOT_PRODUCT(eri_3center_mo(:, istate, qstate, 1), eri_3center_mo(:, pstate, astate, 1) )
             b1(it) = b1(it) + (2.0_dp * eri_iapq - eri_iqpa) * p_matrix_gw(pstate, qstate, 1) / spin_fact
@@ -552,13 +566,15 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
         enddo
       enddo
     enddo
+
+#if defined(BLOCK2)
     b2(:) = 0.0_dp
     it = 0
-    do istate=1, nhomo_G
-      do kstate=1, istate
+    do istate=ncore_G+1, nhomo_G
+      do kstate=ncore_G+1, istate
         it = it + 1
-        do pstate=1, nstate
-          do qstate=1, nstate
+        do pstate=ncore_G+1, nvirtual_G-1
+          do qstate=ncore_G+1, nvirtual_G-1
             eri_ikpq = DOT_PRODUCT(eri_3center_mo(:, istate, kstate, 1), eri_3center_mo(:, pstate, qstate, 1) )
             eri_iqpk = DOT_PRODUCT(eri_3center_mo(:, istate, qstate, 1), eri_3center_mo(:, pstate, kstate, 1) )
             b2(it) = b2(it) + (2.0_dp * eri_ikpq - eri_iqpk) * p_matrix_gw(pstate, qstate, 1) / spin_fact
@@ -566,11 +582,11 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
         enddo
       enddo
     enddo
-    do cstate=nhomo_G+1, nstate
+    do cstate=nhomo_G+1, nvirtual_G-1
       do astate=nhomo_G+1, cstate
         it = it + 1
-        do pstate=1, nstate
-          do qstate=1, nstate
+        do pstate=ncore_G+1, nvirtual_G-1
+          do qstate=ncore_G+1, nvirtual_G-1
             eri_capq = DOT_PRODUCT(eri_3center_mo(:, cstate, astate, 1), eri_3center_mo(:, pstate, qstate, 1) )
             eri_cqpa = DOT_PRODUCT(eri_3center_mo(:, cstate, qstate, 1), eri_3center_mo(:, pstate, astate, 1) )
             b2(it) = b2(it) + (2.0_dp * eri_capq - eri_cqpa) * p_matrix_gw(pstate, qstate, 1) / spin_fact
@@ -578,6 +594,7 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
         enddo
       enddo
     enddo
+#endif
 
 
     !
@@ -591,12 +608,12 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
     ! Step 2.1: do (1 - A₁₁)
     ! Block 11: indices  (ia, jb)
     it = 0
-    do istate=1, nhomo_G
-      do astate=nhomo_G+1, nstate
+    do istate=ncore_G+1, nhomo_G
+      do astate=nhomo_G+1, nvirtual_G-1
         it = it + 1
         jt = 0
-        do jstate=1, nhomo_G
-          do bstate=nhomo_G+1, nstate
+        do jstate=ncore_G+1, nhomo_G
+          do bstate=nhomo_G+1, nvirtual_G-1
             jt = jt + 1
             delta = MERGE(1.0_dp, 0.0_dp, it == jt)
             deltae = energy(jstate, pqspin) - energy(bstate, pqspin)
@@ -612,17 +629,28 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
     !
     ! a11 now contains (1-A₁₁)⁻¹
     !
+    write(stdout, '(1x,a)') 'invert (1-A11) block'
+    ! TODO: solve instead of inverting
+    ! sigma_inf1(:) = b1(:)
+    ! call DGESV(nt, 1, a11, nt, ipiv, sigma_inf1, nt, info)
+    !
     call invert(a11)
 
+    !
+    ! Σ₁(∞) = (1-A₁₁)⁻¹ · B₁
+    !
+    sigma_inf1(:) = MATMUL(a11, b1)
+
+#if defined(BLOCK2)
     ! Step 2.2: build A₂₁
     ! first, occ-occ rows, occ-virt columns
     it = 0
-    do istate=1, nhomo_G
-      do kstate=1, istate
+    do istate=ncore_G+1, nhomo_G
+      do kstate=ncore_G+1, istate
         it = it + 1
         jt = 0
-        do jstate=1, nhomo_G
-          do bstate=nhomo_G+1, nstate
+        do jstate=ncore_G+1, nhomo_G
+          do bstate=nhomo_G+1, nvirtual_G-1
             jt = jt + 1
             deltae = energy(jstate, pqspin) - energy(bstate, pqspin)
             eri_ikjb = DOT_PRODUCT(eri_3center_mo(:, istate, kstate, pqspin), eri_3center_mo(:, jstate, bstate, pqspin) )
@@ -634,12 +662,12 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
       enddo
     enddo
     ! second, virt-virt rows, occ-virt columns
-    do cstate=nhomo_G+1, nstate
+    do cstate=nhomo_G+1, nvirtual_G-1
       do astate=nhomo_G+1, cstate
         it = it + 1
         jt = 0
-        do jstate=1, nhomo_G
-          do bstate=nhomo_G+1, nstate
+        do jstate=ncore_G+1, nhomo_G
+          do bstate=nhomo_G+1, nvirtual_G-1
             jt = jt + 1
             deltae = energy(jstate, 1) - energy(bstate, 1)
             eri_cajb = DOT_PRODUCT(eri_3center_mo(:, cstate, astate, 1), eri_3center_mo(:, jstate, bstate, 1) )
@@ -656,20 +684,21 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
     !
     a21(:, :) = MATMUL( a21, a11)
 
-
-    sigma_inf1(:) = MATMUL(a11, b1)
+    !
+    ! Σ₂(∞) = A₂₁·(1-A₁₁)⁻¹ · B₁ + B₂
+    !
     sigma_inf2(:) = MATMUL(a21, b1) + b2(:)
 
     it = 0
-    do istate=1, nhomo_G
-      do kstate=1, istate
+    do istate=ncore_G+1, nhomo_G
+      do kstate=ncore_G+1, istate
         it = it + 1
         if( istate == kstate ) then
           write(*, *) istate, sigma_inf2(it) * Ha_eV, b2(it) * Ha_eV
         endif
       enddo
     enddo
-    do cstate=nhomo_G+1, nstate
+    do cstate=nhomo_G+1, nvirtual_G-1
       do astate=nhomo_G+1, cstate
         it = it + 1
         if( cstate == astate ) then
@@ -677,29 +706,25 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
         endif
       enddo
     enddo
+#endif
 
     !
     ! Step 3: Add the density-matrix correction to the GW density-matrix
     ! Note: only the occ-virt block is involved
     it = 0
-    do istate=1, nhomo_G
-      do astate=nhomo_G+1, nstate
+    do istate=ncore_G+1, nhomo_G
+      do astate=nhomo_G+1, nvirtual_G-1
         it = it + 1
         deltae = energy(istate, pqspin) - energy(astate, pqspin)
         p_matrix_gw(istate, astate, pqspin) = p_matrix_gw(istate, astate, pqspin) + sigma_inf1(it) * spin_fact / deltae
         p_matrix_gw(astate, istate, pqspin) = p_matrix_gw(istate, astate, pqspin)
       enddo
     enddo
-
-
-  end block
-
+    deallocate(a11)
+    deallocate(b1)
+    deallocate(sigma_inf1)
 
   endif
-
-
-
-
 
 
   call update_density_matrix(occupation, c_matrix, p_matrix_gw, p_matrix)
