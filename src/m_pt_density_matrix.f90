@@ -511,27 +511,13 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
   if( .TRUE. ) then
 
   block
-    integer :: pqstate, klstate, kstate, lstate, cstate
+    integer :: kstate, cstate
     integer :: it, jt, nocc, nvirt, nt
-    real(dp), allocatable :: a11(:, :), a21(:, :), b1(:), b2(:), c1(:), c2(:), b2hf(:)
-    real(dp) :: eri_pqkl, eri_plkq, eri_pklq, deltae, factor, rtmp, eh
+    real(dp), allocatable :: a11(:, :), a21(:, :), b1(:), b2(:), sigma_inf1(:), sigma_inf2(:)
+    real(dp) :: eri_pqkl, eri_plkq, eri_pklq, deltae
     real(dp) :: eri_iajb, eri_ibja, eri_ijab, delta, eri_ijkb, eri_ikjb, eri_ikpq, eri_iqpk
     real(dp) :: eri_iapq, eri_iqpa, eri_cajb, eri_capq, eri_cqpa, eri_cbja, eri_cjab, eri_ibjk
-    real(dp) :: p_matrix_hf(nstate, nstate, nspin)
 
-
-    p_matrix_hf(:, :, :) = 0.0d0
-    eh = 0.0d0
-    do istate=1, nhomo_G
-      p_matrix_hf(istate, istate, :) = spin_fact
-      rtmp = 0.0d0
-      do jstate=1, nhomo_G
-        rtmp = rtmp + DOT_PRODUCT(eri_3center_mo(:, istate, istate, 1), eri_3center_mo(:, jstate, jstate, 1) ) * 2.0d0
-      enddo
-      eh = eh + 0.5d0 * rtmp * 2.0d0
-      write(*,*) istate, 2.0, rtmp * Ha_eV, energy(istate, 1) * Ha_eV
-    enddo
-    write(*,*) 'Hartree energy (Ha):', eh
 
     pqspin=1
 
@@ -542,9 +528,8 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
     allocate(a21(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2, nt))
     allocate(b1(nt))
     allocate(b2(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2))
-    allocate(b2hf(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2))
-    allocate(c1(nt))
-    allocate(c2(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2))
+    allocate(sigma_inf1(nt))
+    allocate(sigma_inf2(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2))
 
     !
     ! Step 1: Build B= (B₁
@@ -568,7 +553,6 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
       enddo
     enddo
     b2(:) = 0.0_dp
-    b2hf(:) = 0.0_dp
     it = 0
     do istate=1, nhomo_G
       do kstate=1, istate
@@ -578,7 +562,6 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
             eri_ikpq = DOT_PRODUCT(eri_3center_mo(:, istate, kstate, 1), eri_3center_mo(:, pstate, qstate, 1) )
             eri_iqpk = DOT_PRODUCT(eri_3center_mo(:, istate, qstate, 1), eri_3center_mo(:, pstate, kstate, 1) )
             b2(it) = b2(it) + (2.0_dp * eri_ikpq - eri_iqpk) * p_matrix_gw(pstate, qstate, 1) / spin_fact
-            b2hf(it) = b2hf(it) + (2.0_dp * eri_ikpq - eri_iqpk) * p_matrix_hf(pstate, qstate, 1) / spin_fact
           enddo
         enddo
       enddo
@@ -591,7 +574,6 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
             eri_capq = DOT_PRODUCT(eri_3center_mo(:, cstate, astate, 1), eri_3center_mo(:, pstate, qstate, 1) )
             eri_cqpa = DOT_PRODUCT(eri_3center_mo(:, cstate, qstate, 1), eri_3center_mo(:, pstate, astate, 1) )
             b2(it) = b2(it) + (2.0_dp * eri_capq - eri_cqpa) * p_matrix_gw(pstate, qstate, 1) / spin_fact
-            b2hf(it) = b2hf(it) + (2.0_dp * eri_capq - eri_cqpa) * p_matrix_hf(pstate, qstate, 1) / spin_fact
           enddo
         enddo
       enddo
@@ -674,15 +656,16 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
     !
     a21(:, :) = MATMUL( a21, a11)
 
-    c1(:) = MATMUL(a11, b1)
-    c2(:) = MATMUL(a21, b1) + b2(:)
+
+    sigma_inf1(:) = MATMUL(a11, b1)
+    sigma_inf2(:) = MATMUL(a21, b1) + b2(:)
 
     it = 0
     do istate=1, nhomo_G
       do kstate=1, istate
         it = it + 1
         if( istate == kstate ) then
-          write(*, *) istate, c2(it) * Ha_eV, b2(it) * Ha_eV, b2hf(it) * Ha_eV
+          write(*, *) istate, sigma_inf2(it) * Ha_eV, b2(it) * Ha_eV
         endif
       enddo
     enddo
@@ -690,10 +673,24 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
       do astate=nhomo_G+1, cstate
         it = it + 1
         if( cstate == astate ) then
-          write(*, *) cstate, c2(it) * Ha_eV, b2(it) * Ha_eV, b2hf(it) * Ha_eV
+          write(*, *) cstate, sigma_inf2(it) * Ha_eV, b2(it) * Ha_eV
         endif
       enddo
     enddo
+
+    !
+    ! Step 3: Add the density-matrix correction to the GW density-matrix
+    ! Note: only the occ-virt block is involved
+    it = 0
+    do istate=1, nhomo_G
+      do astate=nhomo_G+1, nstate
+        it = it + 1
+        deltae = energy(istate, pqspin) - energy(astate, pqspin)
+        p_matrix_gw(istate, astate, pqspin) = p_matrix_gw(istate, astate, pqspin) + sigma_inf1(it) * spin_fact / deltae
+        p_matrix_gw(astate, istate, pqspin) = p_matrix_gw(istate, astate, pqspin)
+      enddo
+    enddo
+
 
   end block
 
@@ -725,6 +722,7 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix)
   endif
 
   call stop_clock(timing_mbpt_dm)
+
 
 end subroutine gw_density_matrix
 
