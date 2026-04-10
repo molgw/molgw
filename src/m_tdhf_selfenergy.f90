@@ -528,14 +528,17 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
   write(stdout, '(1x,a,f6.2)') 'gamma:   ', selfenergy_tdhf_gamma
   write(stdout, '(1x,a,f6.2)') 'delta:   ', selfenergy_tdhf_delta
   write(stdout, '(1x,a,f6.2)') 'epsilon: ', selfenergy_tdhf_epsilon
+  write(stdout, '(1x,a,f6.2)') 'zeta:    ', selfenergy_tdhf_zeta
 
-  write(stdout, '(1x,a)') 'GW          is recovered with 0.00, 2.0, 0.0, any, 0.00'
-  write(stdout, '(1x,a)') 'TDHF        is recovered with 0.00, 0.0, 1.0, 2.0, 0.00'
-  write(stdout, '(1x,a)') 'PSD arno    is recovered with 0.50, 0.0, 0.0, 2.0, 0.00'
-  write(stdout, '(1x,a)') 'PSD-II S    is recovered with 0.50, 0.0, 0.0, 2.0, 0.00'
-  write(stdout, '(1x,a)') 'PSD-II  S+T is recovered with 0.50, 0.0, 0.0, 2.0, 1.50'
-  write(stdout, '(1x,a)') 'PSD-III S   is recovered with 0.25, 1.0, 0.0, 2.0, 0.00'
-  write(stdout, '(1x,a)') 'PSD-III S+T is recovered with 0.25, 1.0, 0.0, 2.0, 0.75'
+  write(stdout, '(1x,a)') '                              alpha beta gamma delta epsilon zeta'
+  write(stdout, '(1x,a)') 'GW           is recovered with 0.00, 2.0, 0.0,  any,  0.00,  0.00'
+  write(stdout, '(1x,a)') 'TDHF         is recovered with 0.00, 0.0, 1.0,  2.0,  0.00,  0.00'
+  write(stdout, '(1x,a)') 'PSD I S      is recovered with 0.50, 0.0, 0.0,  2.0,  0.00,  0.00'
+  write(stdout, '(1x,a)') 'PSD-II S+T   is recovered with 0.50, 0.0, 0.0,  2.0,  1.50,  0.00'
+  write(stdout, '(1x,a)') 'PSD-VI S     is recovered with 0.25, 1.0, 0.0,  2.0,  0.00,  0.00'
+  write(stdout, '(1x,a)') 'PSD-VII S+T  is recovered with 0.25, 1.0, 0.0,  2.0,  0.75,  0.00'
+  write(stdout, '(1x,a)') 'PSD-VIII S   is recovered with 0.25, 1.0, 0.0,  2.0,  0.00,  0.50'
+  write(stdout, '(1x,a)') 'PSD-VIX S+T  is recovered with 0.25, 1.0, 0.0,  2.0,  1.50,  0.50'
 
   call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
@@ -770,6 +773,7 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
                    1.0d0, num_tmp3o(:, :), nmat)
     num_tmp1o(:, :) = selfenergy_tdhf_delta * num_tmp2o(:, :) + num_tmp3o(:, :)
 
+
     ! - ∑_ia X_ia^T (a k | i q ) - ∑_ia Y_ia^T (i k | a q )
     num_tmp1ot(:, :) = 0.0_dp
     call DGEMM('T', 'N', nmat, nhomo_G-ncore_G, nmat, &
@@ -779,6 +783,11 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
                   -1.0d0, y_matrix_triplet(:, :), nmat, eri_tmp2o(:, :), nmat, &
                    1.0d0, num_tmp1ot(:, :), nmat)
 
+    ! Yaroslav's notes correspondance:
+    ! num_tmp2o is a/2
+    ! num_tmp3o is b
+    ! num_tmp1o is (a+b)
+    ! num_tmp1t is b for triplet
 
     sigma_tmp(:) = 0.0_dp
     !$OMP PARALLEL DO COLLAPSE(2) REDUCTION(+:sigma_tmp)
