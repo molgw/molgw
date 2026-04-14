@@ -54,9 +54,10 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
   real(dp)                           :: coeff(2*chi%npole_reso), trace
   real(dp)                           :: dynamical_pol(nomega, 3, 3), photoabsorp_cross(nomega, 3, 3)
   real(dp)                           :: static_polarizability(3, 3)
-  real(dp)                           :: oscillator_strength, trk_sumrule, mean_excitation
-  real(dp), allocatable               :: dipole_ao(:, :, :), dipole_mo(:, :, :, :)
-  real(dp), allocatable               :: residue(:, :)
+  real(dp), allocatable              :: oscillator_strength(:)
+  real(dp)                           :: trk_sumrule, mean_excitation
+  real(dp), allocatable              :: dipole_ao(:, :, :), dipole_mo(:, :, :, :)
+  real(dp), allocatable              :: residue(:, :)
   integer                            :: dynpolfile
   integer                            :: photocrossfile
   integer                            :: parityi, parityj, reflectioni, reflectionj
@@ -150,7 +151,6 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
       write(char6, '(i6)') iexc
       write(unit_yaml, '(12x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', eigenvalue(iexc) * Ha_eV
     enddo
-    write(unit_yaml, '(8x,a)') 'oscillator strengths:'
   endif
 
   write(stdout, '(/,5x,a)') 'Excitation energies (eV)     Oscil. strengths   [Symmetry] '
@@ -158,154 +158,172 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
   trk_sumrule=0.0_dp
   mean_excitation=0.0_dp
 
+  allocate(oscillator_strength(nexc))
+
+  if( is_iomaster .AND. print_yaml_ ) then
+      write(unit_yaml, '(8x,a)') 'transitions:'
+  endif
 
   do t_jb_global=1, nexc
     t_jb = colindex_global_to_local('S', t_jb_global)
 
     if( is_triplet_currently ) then
-      oscillator_strength = 0.0_dp
+      oscillator_strength(t_jb_global) = 0.0_dp
     else
-      oscillator_strength = 2.0_dp/3.0_dp * DOT_PRODUCT(residue(:, t_jb_global), residue(:, t_jb_global)) * eigenvalue(t_jb_global)
+      oscillator_strength(t_jb_global) = 2.0_dp/3.0_dp &
+                     * DOT_PRODUCT(residue(:, t_jb_global), residue(:, t_jb_global)) * eigenvalue(t_jb_global)
     endif
-    trk_sumrule = trk_sumrule + oscillator_strength
-    mean_excitation = mean_excitation + oscillator_strength * LOG( eigenvalue(t_jb_global) )
+    trk_sumrule = trk_sumrule + oscillator_strength(t_jb_global)
+    mean_excitation = mean_excitation + oscillator_strength(t_jb_global) * LOG( eigenvalue(t_jb_global) )
+
+
+    if( is_triplet_currently ) then
+      symsymbol='3'
+    else
+      symsymbol='1'
+    endif
+
+    !
+    ! Test the parity in case of molecule with inversion symmetry
+
+    t_ia_global = 0
+    do t_ia=1, m_x
+      ! t_jb is zero if the proc is not in charge of this process
+      if( t_jb /=0 ) then
+        if( 0.5_dp * ABS( xpy_matrix(t_ia, t_jb) + xmy_matrix(t_ia, t_jb) ) > 0.1_dp ) then
+          t_ia_global = rowindex_local_to_global(iprow_sd, nprow_sd, t_ia)
+          exit
+        endif
+      endif
+    enddo
+    call world%max(t_ia_global)
+    if( t_ia_global == 0 ) cycle
+
+    istate = chi%transition_table(1, t_ia_global)
+    astate = chi%transition_table(2, t_ia_global)
+    iaspin = chi%transition_table(3, t_ia_global)
+    if(planar) then
+      reflectioni = wfn_reflection(nstate, basis, c_matrix, istate, iaspin)
+      reflectionj = wfn_reflection(nstate, basis, c_matrix, astate, iaspin)
+      select case(reflectioni*reflectionj)
+      case( 1)
+        symsymbol=TRIM(symsymbol)//'(A1, B2 or Ap )'
+      case(-1)
+        symsymbol=TRIM(symsymbol)//'(A2, B1 or App)'
+      end select
+    endif
+    if(inversion) then
+      parityi = wfn_parity(nstate, basis, c_matrix, istate, iaspin)
+      parityj = wfn_parity(nstate, basis, c_matrix, astate, iaspin)
+      select case(parityi*parityj)
+      case( 1)
+        symsymbol=TRIM(symsymbol)//'g'
+      case(-1)
+        symsymbol=TRIM(symsymbol)//'u'
+      end select
+    endif
+
+    if(t_jb_global <= 30) then
+      write(stdout, '(1x,a,1x,i4.4,a3,2(f18.8,2x),5x,a32)') 'Exc.', t_jb_global, ' : ', &
+                 eigenvalue(t_jb_global)*Ha_eV, oscillator_strength(t_jb_global), symsymbol
+    endif
+
+    !
+    ! Output the transition coefficients
+    coeff(:) = 0.0_dp
+    xpy_global(:) = 0.0_dp
+    do t_ia=1, m_x
+      t_ia_global = rowindex_local_to_global('S',t_ia)
+      istate = chi%transition_table(1, t_ia_global)
+      astate = chi%transition_table(2, t_ia_global)
+      if( t_jb /= 0 ) then
+        ! Resonant
+        coeff(                 t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia, t_jb) + xmy_matrix(t_ia, t_jb) ) / SQRT(2.0_dp)
+        ! Anti-Resonant
+        coeff(chi%npole_reso + t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia, t_jb) - xmy_matrix(t_ia, t_jb) ) / SQRT(2.0_dp)
+        xpy_global(            t_ia_global) = xpy_matrix(t_ia, t_jb)
+      endif
+    enddo
+    call world%sum(coeff)
+    call world%sum(xpy_global)
+
+    ! Transition densities output in cube files
+    if( t_jb_global >= cube_state_min .AND. t_jb_global <= cube_state_max .AND. nspin == 1 .AND. print_transition_density_ ) then
+      xmin =MIN(MINVAL( xatom(1, :) ), MINVAL( xbasis(1, :) )) - length
+      xmax =MAX(MAXVAL( xatom(1, :) ), MAXVAL( xbasis(1, :) )) + length
+      ymin =MIN(MINVAL( xatom(2, :) ), MINVAL( xbasis(2, :) )) - length
+      ymax =MAX(MAXVAL( xatom(2, :) ), MAXVAL( xbasis(2, :) )) + length
+      zmin =MIN(MINVAL( xatom(3, :) ), MINVAL( xbasis(3, :) )) - length
+      zmax =MAX(MAXVAL( xatom(3, :) ), MAXVAL( xbasis(3, :) )) + length
+      dx = (xmax-xmin)/REAL(cube_nx, dp)
+      dy = (ymax-ymin)/REAL(cube_ny, dp)
+      dz = (zmax-zmin)/REAL(cube_nz, dp)
+      ntot = cube_nx * cube_ny * cube_nz
+
+      if( is_iomaster ) then
+        allocate(phi(basis%nbf, nspin))
+        allocate(transdens(ntot))
+        write(file_name, '(a,i2.2,a)') 'trans-density_', t_jb_global, '.cube'
+        open(newunit=icubefile, file=file_name)
+        write(icubefile, '(a,i4)') 'cube file generated from MOLGW', t_jb_global
+        write(icubefile, '(a,i4)') 'Transition density for excitation number', t_jb_global
+        write(icubefile, '(i6,3(f12.6,2x))') natom, xmin, ymin, zmin
+        write(icubefile, '(i6,3(f12.6,2x))') cube_nx, dx, 0., 0.
+        write(icubefile, '(i6,3(f12.6,2x))') cube_ny, 0., dy, 0.
+        write(icubefile, '(i6,3(f12.6,2x))') cube_nz, 0., 0., dz
+
+        do iatom=1, natom
+          write(icubefile, '(i6,4(2x,f12.6))') NINT(zatom(iatom)), 0.0, xatom(:, iatom)
+        enddo
+
+        igrid = 0
+        do ix=1, cube_nx
+          rr(1) = xmin + (ix-1)*dx
+          do iy=1, cube_ny
+            rr(2) = ymin + (iy-1)*dy
+            do iz=1, cube_nz
+              rr(3) = zmin + (iz-1)*dz
+              igrid = igrid + 1
+
+              call calculate_basis_functions_r(basis, rr, basis_function_r)
+              phi(:, 1) = MATMUL( basis_function_r(:) , c_matrix(:, :, 1) )
+
+              transdens(igrid)= 0.0_dp
+              do t_ia_global=1, chi%npole_reso
+                istate = chi%transition_table(1, t_ia_global)
+                astate = chi%transition_table(2, t_ia_global)
+                transdens(igrid) = transdens(igrid) + xpy_global(t_ia_global) * phi(istate, 1) * phi(astate, 1)
+              enddo ! t_ia_global
+
+            enddo ! iz
+          enddo ! iy
+        enddo ! ix
+
+        do igrid=1, ntot
+          write(icubefile, '(e16.8)') SQRT(2.0_dp) * transdens(igrid)
+        enddo
+        deallocate(phi, transdens)
+
+        close(icubefile)
+      endif
+    endif
 
     if( is_iomaster .AND. print_yaml_ ) then
       write(char6, '(i6)') t_jb_global
-      write(unit_yaml, '(12x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', oscillator_strength
-    endif
-
-    if(t_jb_global<=30) then
-
-      if( is_triplet_currently ) then
-        symsymbol='3'
-      else
-        symsymbol='1'
-      endif
-
-      !
-      ! Test the parity in case of molecule with inversion symmetry
-
-      t_ia_global = 0
-      do t_ia=1, m_x
-        ! t_jb is zero if the proc is not in charge of this process
-        if( t_jb /=0 ) then
-          if( 0.5_dp * ABS( xpy_matrix(t_ia, t_jb) + xmy_matrix(t_ia, t_jb) ) > 0.1_dp ) then
-            t_ia_global = rowindex_local_to_global(iprow_sd, nprow_sd, t_ia)
-            exit
-          endif
-        endif
-      enddo
-      call world%max(t_ia_global)
-      if( t_ia_global == 0 ) cycle
-
-      istate = chi%transition_table(1, t_ia_global)
-      astate = chi%transition_table(2, t_ia_global)
-      iaspin = chi%transition_table(3, t_ia_global)
-      if(planar) then
-        reflectioni = wfn_reflection(nstate, basis, c_matrix, istate, iaspin)
-        reflectionj = wfn_reflection(nstate, basis, c_matrix, astate, iaspin)
-        select case(reflectioni*reflectionj)
-        case( 1)
-          symsymbol=TRIM(symsymbol)//'(A1, B2 or Ap )'
-        case(-1)
-          symsymbol=TRIM(symsymbol)//'(A2, B1 or App)'
-        end select
-      endif
-      if(inversion) then
-        parityi = wfn_parity(nstate, basis, c_matrix, istate, iaspin)
-        parityj = wfn_parity(nstate, basis, c_matrix, astate, iaspin)
-        select case(parityi*parityj)
-        case( 1)
-          symsymbol=TRIM(symsymbol)//'g'
-        case(-1)
-          symsymbol=TRIM(symsymbol)//'u'
-        end select
-      endif
-
-      write(stdout, '(1x,a,1x,i4.4,a3,2(f18.8,2x),5x,a32)') 'Exc.', t_jb_global, ' : ', &
-                   eigenvalue(t_jb_global)*Ha_eV, oscillator_strength, symsymbol
-
-      !
-      ! Output the transition coefficients
-      coeff(:) = 0.0_dp
-      xpy_global(:) = 0.0_dp
-      do t_ia=1, m_x
-        t_ia_global = rowindex_local_to_global('S',t_ia)
+      write(unit_yaml, '(12x,a6,a)') ADJUSTL(char6), ':'
+      do t_ia_global=1, chi%npole_reso
         istate = chi%transition_table(1, t_ia_global)
         astate = chi%transition_table(2, t_ia_global)
-        if( t_jb /= 0 ) then
-          ! Resonant
-          coeff(                 t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia, t_jb) + xmy_matrix(t_ia, t_jb) ) / SQRT(2.0_dp)
-          ! Anti-Resonant
-          coeff(chi%npole_reso + t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia, t_jb) - xmy_matrix(t_ia, t_jb) ) / SQRT(2.0_dp)
-          xpy_global(            t_ia_global) = xpy_matrix(t_ia, t_jb)
-        endif
+        if( ABS(coeff(t_ia_global)) > 0.05_dp ) &
+          write(unit_yaml, '(16x,a,i6,a,i6,a,es18.8,a,a,a)') '- [', istate, ', ', astate, ', ', &
+                  coeff(t_ia_global), ', "', TRIM(symsymbol), '" ]'
+        if( ABS(coeff(chi%npole_reso+t_ia_global)) > 0.05_dp ) &
+          write(unit_yaml, '(16x,a,i6,a,i6,a,es18.8,a,a,a)') '- [', astate, ', ', istate, ', ', &
+                  coeff(chi%npole_reso+t_ia_global), ', "', TRIM(symsymbol), '" ]'
       enddo
-      call world%sum(coeff)
-      call world%sum(xpy_global)
+    endif
 
-      ! Transition densities output in cube files
-      if( t_jb_global >= cube_state_min .AND. t_jb_global <= cube_state_max .AND. nspin == 1 .AND. print_transition_density_ ) then
-        xmin =MIN(MINVAL( xatom(1, :) ), MINVAL( xbasis(1, :) )) - length
-        xmax =MAX(MAXVAL( xatom(1, :) ), MAXVAL( xbasis(1, :) )) + length
-        ymin =MIN(MINVAL( xatom(2, :) ), MINVAL( xbasis(2, :) )) - length
-        ymax =MAX(MAXVAL( xatom(2, :) ), MAXVAL( xbasis(2, :) )) + length
-        zmin =MIN(MINVAL( xatom(3, :) ), MINVAL( xbasis(3, :) )) - length
-        zmax =MAX(MAXVAL( xatom(3, :) ), MAXVAL( xbasis(3, :) )) + length
-        dx = (xmax-xmin)/REAL(cube_nx, dp)
-        dy = (ymax-ymin)/REAL(cube_ny, dp)
-        dz = (zmax-zmin)/REAL(cube_nz, dp)
-        ntot = cube_nx * cube_ny * cube_nz
-
-        if( is_iomaster ) then
-          allocate(phi(basis%nbf, nspin))
-          allocate(transdens(ntot))
-          write(file_name, '(a,i2.2,a)') 'trans-density_', t_jb_global, '.cube'
-          open(newunit=icubefile, file=file_name)
-          write(icubefile, '(a,i4)') 'cube file generated from MOLGW', t_jb_global
-          write(icubefile, '(a,i4)') 'Transition density for excitation number', t_jb_global
-          write(icubefile, '(i6,3(f12.6,2x))') natom, xmin, ymin, zmin
-          write(icubefile, '(i6,3(f12.6,2x))') cube_nx, dx, 0., 0.
-          write(icubefile, '(i6,3(f12.6,2x))') cube_ny, 0., dy, 0.
-          write(icubefile, '(i6,3(f12.6,2x))') cube_nz, 0., 0., dz
-
-          do iatom=1, natom
-            write(icubefile, '(i6,4(2x,f12.6))') NINT(zatom(iatom)), 0.0, xatom(:, iatom)
-          enddo
-
-          igrid = 0
-          do ix=1, cube_nx
-            rr(1) = xmin + (ix-1)*dx
-            do iy=1, cube_ny
-              rr(2) = ymin + (iy-1)*dy
-              do iz=1, cube_nz
-                rr(3) = zmin + (iz-1)*dz
-                igrid = igrid + 1
-
-                call calculate_basis_functions_r(basis, rr, basis_function_r)
-                phi(:, 1) = MATMUL( basis_function_r(:) , c_matrix(:, :, 1) )
-
-                transdens(igrid)= 0.0_dp
-                do t_ia_global=1, chi%npole_reso
-                  istate = chi%transition_table(1, t_ia_global)
-                  astate = chi%transition_table(2, t_ia_global)
-                  transdens(igrid) = transdens(igrid) + xpy_global(t_ia_global) * phi(istate, 1) * phi(astate, 1)
-                enddo ! t_ia_global
-
-              enddo ! iz
-            enddo ! iy
-          enddo ! ix
-
-          do igrid=1, ntot
-            write(icubefile, '(e16.8)') SQRT(2.0_dp) * transdens(igrid)
-          enddo
-          deallocate(phi, transdens)
-
-          close(icubefile)
-        end if
-      endif
-
+    if( t_jb_global <= 30 ) then
       do t_ia_global=1, chi%npole_reso
         istate = chi%transition_table(1, t_ia_global)
         astate = chi%transition_table(2, t_ia_global)
@@ -315,12 +333,23 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
         ! Anti-Resonant
         if( ABS(coeff(chi%npole_reso+t_ia_global)) > 0.1_dp )  &
           write(stdout, '(8x,i4,a,i4,1x,f12.5)') istate, ' <- ', astate, coeff(chi%npole_reso+t_ia_global)
+
       enddo
 
       write(stdout, *)
 
     endif
   enddo
+
+  if( is_iomaster .AND. print_yaml_ ) then
+    write(unit_yaml, '(8x,a)') 'oscillator strengths:'
+    do iexc=1, nexc
+      write(char6, '(i6)') iexc
+      write(unit_yaml, '(12x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', oscillator_strength(iexc)
+    enddo
+  endif
+
+  deallocate(oscillator_strength)
 
   !
   ! For some calculation conditions, the rest of the subroutine is irrelevant
