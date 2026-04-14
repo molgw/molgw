@@ -18,8 +18,7 @@ default_input_parameters = {
       'postscf': 'g0w0',
       'basis': 'aug-cc-pVQZ',
       'auxil_basis': 'pauto',
-      'selfenergy_state_range': 3,
-      'selfenergy_state_range': 3,
+      'selfenergy_state_range': 3
               }
 
 
@@ -38,7 +37,7 @@ frozencore = {
     'P': 0,
     'Cl': 0,
     'Ne': 0,
-    'Ar': 0,
+    'Ar': 0 
 }
 
 def get_frozencore(cas):
@@ -89,6 +88,32 @@ otrsh_gamma_gw = {
     "bf": 0.441,
     "ne": 0.675
 }
+otrsh_gamma_gw_dm = {
+    "co": 0.371,
+    "cs": 0.271,
+    "licl": 0.317,
+    "c2": 0.348,
+    "sih4": 0.393,
+    "ph3": 0.343,
+    "h2o": 0.421,
+    "n2": 0.378,
+    "h2s": 0.334,
+    "bn": 0.427,
+    "ch4": 0.431,
+    "ch2o": 0.396,
+    "co2": 0.383,
+    "hf": 0.511,
+    "f2": 0.466,
+    "ar": 0.432,
+    "bh3": 0.453,
+    "hcl": 0.377,
+    "nh3": 0.371,
+    "beo": 0.331,
+    "lif": 0.401,
+    "bf": 0.361,
+    "ne": 0.647
+}
+
 
 
 ############################################
