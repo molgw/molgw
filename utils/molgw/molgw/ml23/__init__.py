@@ -11,8 +11,6 @@
 
 import numpy as np
 import json, yaml
-import pathlib
-import matplotlib.pyplot as plt
 from molgw import __version__, Molecule
 
 default_input_parameters = {
@@ -20,8 +18,7 @@ default_input_parameters = {
       'postscf': 'g0w0',
       'basis': 'aug-cc-pVQZ',
       'auxil_basis': 'pauto',
-      'selfenergy_state_range': 3,
-      'selfenergy_state_range': 3,
+      'selfenergy_state_range': 3
               }
 
 
@@ -40,7 +37,7 @@ frozencore = {
     'P': 0,
     'Cl': 0,
     'Ne': 0,
-    'Ar': 0,
+    'Ar': 0 
 }
 
 def get_frozencore(cas):
@@ -61,9 +58,62 @@ names = [ k for k in structures ]
 #
 # ml23.molecule: dictionary of molgw.Molecule objects
 #
-molecule = dict()
+molecules = dict()
 for k, v in structures.items():
-    molecule[k] = Molecule(v)
+    molecules[k] = Molecule(v)
+
+# gamma value (bohr^-1) when alpha=0.2 beta=0.8
+otrsh_gamma_gw = {
+    "co": 0.434,
+    "cs": 0.344,
+    "licl": 0.350,
+    "c2": 0.496,
+    "sih4": 0.435,
+    "ph3": 0.374,
+    "h2o": 0.454,
+    "n2": 0.434,
+    "h2s": 0.361,
+    "bn": 0.429,
+    "ch4": 0.477,
+    "ch2o": 0.441,
+    "co2": 0.440,
+    "hf": 0.537,
+    "f2": 0.511,
+    "ar": 0.461,
+    "bh3": 0.520,
+    "hcl": 0.402,
+    "nh3": 0.412,
+    "beo": 0.355,
+    "lif": 0.448,
+    "bf": 0.441,
+    "ne": 0.675
+}
+otrsh_gamma_gw_dm = {
+    "co": 0.371,
+    "cs": 0.271,
+    "licl": 0.317,
+    "c2": 0.348,
+    "sih4": 0.393,
+    "ph3": 0.343,
+    "h2o": 0.421,
+    "n2": 0.378,
+    "h2s": 0.334,
+    "bn": 0.427,
+    "ch4": 0.431,
+    "ch2o": 0.396,
+    "co2": 0.383,
+    "hf": 0.511,
+    "f2": 0.466,
+    "ar": 0.432,
+    "bh3": 0.453,
+    "hcl": 0.377,
+    "nh3": 0.371,
+    "beo": 0.331,
+    "lif": 0.401,
+    "bf": 0.361,
+    "ne": 0.647
+}
+
 
 
 ############################################
@@ -86,7 +136,7 @@ g0w0_avt_homo = {
     "data": {'ch4': -14.753, 'h2s': -10.5, 'bn': -11.752, 'licl': -9.9844, 'c2': -12.928, 'sih4': -13.214, 'co2': -14.221, 'ch2o': -11.38, 'beo': -9.7273, 'lif': -11.384, 'f2': -16.334, 'hf': -16.237, 'co': -14.777, 'n2': -16.35, 'bf': -11.325, 'ne': -21.432, 'ph3': -10.787, 'h2o': -12.884, 'hcl': -12.778, 'cs': -12.378, 'ar': -15.711, 'bh3': -13.678, 'nh3': -11.201}
 }
 
-eomccsd_atq_homo = {
+eomccsd_avt_homo = {
     "orbital": "HOMO",
     "remark": "",
     "code": "CFOUR",
@@ -100,7 +150,7 @@ eomccsd_atq_homo = {
     "data": {'ch4': -14.387, 'h2s': -10.421, 'bn': -11.971, 'licl': -9.9564, 'c2': -12.978, 'sih4': -12.844, 'co2': -13.787, 'ch2o': -10.848, 'beo': -9.875, 'lif': -11.398, 'f2': -15.616, 'hf': -16.021, 'co': -14.19, 'n2': -15.641, 'bf': -11.25, 'ne': -21.326, 'ph3': -10.623, 'h2o': -12.594, 'hcl': -12.712, 'cs': -11.553, 'ar': -15.672, 'bh3': -13.342, 'nh3': -10.862}
 }
 
-eomccsdt_atq_homo = {
+eomccsdt_avt_homo = {
     "orbital": "HOMO",
     "remark": "",
     "code": "CFOUR",
@@ -114,7 +164,7 @@ eomccsdt_atq_homo = {
     "data": {'ch4': -14.365, 'h2s': -10.39, 'bn': -11.98, 'licl': -9.8825, 'c2': -12.54, 'sih4': -12.794, 'co2': -13.716, 'ch2o': -10.84, 'beo': -9.8642, 'lif': -11.379, 'f2': -15.688, 'hf': -16.077, 'co': -13.952, 'n2': -15.517, 'bf': -11.157, 'ne': -21.398, 'ph3': -10.599, 'h2o': -12.629, 'hcl': -12.667, 'cs': -11.346, 'ar': -15.606, 'bh3': -13.304, 'nh3': -10.876}
 }
 
-eomccsdtq_atq_homo = {
+eomccsdtq_avt_homo = {
     "orbital": "HOMO",
     "remark": "",
     "code": "CFOUR",
@@ -128,7 +178,7 @@ eomccsdtq_atq_homo = {
     "data": {'ch4': -14.376, 'h2s': -10.393, 'bn': -11.966, 'licl': -9.8964, 'c2': -12.471, 'sih4': -12.795, 'co2': -13.734, 'ch2o': -10.887, 'beo': -9.9385, 'lif': -11.453, 'f2': -15.725, 'hf': -16.14, 'co': -13.935, 'n2': -15.487, 'bf': -11.15, 'ne': -21.455, 'ph3': -10.6, 'h2o': -12.673, 'hcl': -12.676, 'cs': -11.316, 'ar': -15.614, 'bh3': -13.307, 'nh3': -10.899}
 }
 
-selectedci_atq_homo = {
+selectedci_avt_homo = {
     "orbital": "HOMO",
     "remark": "",
     "code": "QUANTUM PACKAGE",
@@ -200,26 +250,3 @@ selectedci_avq_homo = {
 }
 
 
-########################################################################
-def diff(data1, data2):
-    """
-        Returns a dictionary containing data2 - data1
-    """
-    errors = dict()
-    shared_keys = set(data1.keys()) & set(data2.keys())
-    for cas in shared_keys:
-        errors[cas] = data2[cas] - data1[cas]
-    return errors
-
-########################################################################
-def mae_mse_max(data1, data2):
-    """
-        Returns MAE, MSE, Max errors with data1 being the reference
-    """
-    errors = list( diff(data1, data2).values() )
-
-    ndata = len(errors)
-    mse = np.sum(errors) / float(ndata)
-    mae = np.sum(np.abs(errors)) / float(ndata)
-    mxe = np.max(np.abs(errors))
-    return mae, mse, mxe

@@ -312,8 +312,8 @@ def parse_yaml_files(directory):
 
 
 ########################################################################
-def print_input_file(pyinput,filename="molgw.in"):
-    with open(filename,'w') as f:
+def print_input_file(pyinput, filename="molgw.in"):
+    with open(filename, 'w') as f:
         f.write('&molgw\n')
         for key, value in pyinput.items():
             if key == "xyz":

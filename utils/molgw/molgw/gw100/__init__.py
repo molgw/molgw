@@ -190,11 +190,11 @@ structures = {
 }
 
 #
-# gw100.molecule: dictionary of molgw.Molecule objects
+# gw100.molecules: dictionary of molgw.Molecule objects
 # 
-molecule = dict()
+molecules = dict()
 for k, v in structures.items():
-    molecule[k] = Molecule(v)
+    molecules[k] = Molecule(v)
 
 
 ccsdt_homo = {
@@ -585,49 +585,3 @@ def create_official_json(filename = "", data = {}, **kwargs):
     return dict_gw100
 
 
-########################################################################
-def correlation_plot(data1, data2, labels=False):
-    fig = plt.figure(figsize=(6, 6))
-    xxx = []
-    yyy = []
-    cass = []
-    shared_keys = set(data1.keys()) & set(data2.keys())
-    for cas in shared_keys:
-        xxx.append(data1[cas])
-        yyy.append(data2[cas])
-        cass.append(cas)
-    xmin = min(xxx+yyy) - 0.1
-    xmax = max(xxx+yyy) + 0.1
-    plt.plot([xmin,xmax], [xmin,xmax], '-', color='black')
-    plt.scatter(xxx, yyy, marker='o')
-    if labels:
-        delta = abs(xmax-xmin) * 0.02
-        for x, y, cas in zip(xxx,yyy,cass):
-            plt.text(x+delta, y-delta, chemical_formulas[cas])
-    plt.xlabel("HOMO (eV)")
-    plt.ylabel("HOMO (eV)")
-    return fig
-
-########################################################################
-def diff(data1, data2):
-    """
-        Returns a dictionary containing data2 - data1
-    """
-    errors = dict()
-    shared_keys = set(data1.keys()) & set(data2.keys())
-    for cas in shared_keys:
-        errors[cas] = data2[cas] - data1[cas]
-    return errors
-
-########################################################################
-def mae_mse_max(data1, data2):
-    """
-        Returns MAE, MSE, Max errors with data1 being the reference
-    """
-    errors = list( diff(data1, data2).values() )
-
-    ndata = len(errors)
-    mse = np.sum(errors) / float(ndata)
-    mae = np.sum(np.abs(errors)) / float(ndata)
-    mxe = np.max(np.abs(errors))
-    return mae, mse, mxe
