@@ -338,11 +338,11 @@ end subroutine onering_density_matrix
 
 
 !=========================================================================
-subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix, cederbaum)
+subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_matrix, cederbaum)
   implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
-  real(dp), intent(in)                :: c_matrix(:, :, :)
+  real(dp), intent(in)                :: c_matrix(:, :, :), s_matrix(:, :)
   type(spectral_function), intent(in) :: wpol
   real(dp), intent(inout)             :: p_matrix(:, :, :)
   logical, intent(in), optional       :: cederbaum
@@ -357,7 +357,7 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix, ceder
   integer  :: npole_local, spole_local
   integer  :: nstate_occ, nstate_virt
   integer  :: file_density_matrix
-  real(dp), allocatable :: p_matrix_gw(:, :, :)
+  real(dp), allocatable :: p_matrix_gw(:, :, :), p_matrix_mo(:, :, :)
   real(dp), allocatable :: w_s_occ(:, :), w_s_virt(:, :)
   real(dp), allocatable :: w_s_occ_local(:, :), w_s_virt_local(:, :)
   !=====
@@ -522,8 +522,26 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix, ceder
     write(stdout, '(/,1x,a)') &
         'Renormalization of the occupied-virtual coupling block following Cederbaum Appendix B'
     call start_clock(timing_tmp1)
+
+    ! First convert the Fock density matrix from AO -> MO
+    allocate(p_matrix_mo(nstate, nstate, nspin))
+    call p_ao_to_mo(c_matrix, s_matrix, p_matrix, p_matrix_mo)
+
+    ! Remove the mean-field part since we just want the fock correction
+    do istate=1, nhomo_G
+      p_matrix_mo(istate, istate, :) = p_matrix_mo(istate, istate, :) - occupation(istate, :)
+    enddo
+    ! Add p_matrix_mo to p_matrix_gw
+    p_matrix_gw(:, :, :) = p_matrix_gw(:, :, :) + p_matrix_mo(:, :, :)
+
+    deallocate(p_matrix_mo)
+
+    ! Set p_matrix to zero here so that it is not added again later
+    ! in "update_density_matrix" 
+    p_matrix(:, :, :) = 0.0_dp
+
     !call cederbaum_naive()
-    call cederbaum_dgemm()
+    call cederbaum_blas()
     call stop_clock(timing_tmp1)
 
   endif
@@ -554,7 +572,7 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix, ceder
 contains
 
 
-subroutine cederbaum_dgemm()
+subroutine cederbaum_blas()
   implicit none
 
   !=====
@@ -589,8 +607,12 @@ subroutine cederbaum_dgemm()
   call start_clock(timing_tmp2)
   b1(:) = 0.0_dp
   !
+  ! B₁ᵢₐ = B₁ᴴᵢₐ + B₁ˣᵢₐ
+  !
+  !
   ! Hartree term
   !
+  ! B₁ᴴᵢₐ = Σ_pq 2 (i a| p q ) γpq
   allocate(hartree_tmp(nauxil_local))
   hartree_tmp(:) = 0.0_dp
   do pstate=ncore_G+1, nvirtual_G-1
@@ -603,7 +625,7 @@ subroutine cederbaum_dgemm()
   do istate=ncore_G+1, nhomo_G
     do astate=nhomo_G+1, nvirtual_G-1
       it = it + 1
-      b1(it) = b1(it) + 2.0_dp * DOT_PRODUCT(eri_3center_mo(:, istate, astate, 1), hartree_tmp(:))
+      b1(it) = b1(it) + spin_fact * DOT_PRODUCT(eri_3center_mo(:, istate, astate, 1), hartree_tmp(:))
     enddo
   enddo
   deallocate(hartree_tmp)
@@ -611,6 +633,7 @@ subroutine cederbaum_dgemm()
   !
   ! Exchange term
   !
+  ! B₁ˣᵢₐ = -Σ_pq (i p| a q ) γpq
   allocate(eigval(nmo), eigvec(nmo, nmo))
   eigvec(:, :) = p_matrix_gw(ncore_G+1:nvirtual_G-1, ncore_G+1:nvirtual_G-1, pqspin) / spin_fact
   ! in-place diago
@@ -644,7 +667,7 @@ subroutine cederbaum_dgemm()
   call auxil%sum(b1)
 
 
-  ! naive implementation
+  ! Naive implementation
   !it = 0
   !do istate=ncore_G+1, nhomo_G
   !  do astate=nhomo_G+1, nvirtual_G-1
@@ -725,7 +748,7 @@ subroutine cederbaum_dgemm()
   enddo
   deallocate(sigma_inf1)
 
-end subroutine cederbaum_dgemm
+end subroutine cederbaum_blas
 
 
 subroutine cederbaum_naive()
@@ -1351,8 +1374,9 @@ subroutine update_density_matrix(occupation, c_matrix, p_matrix_mo, p_matrix)
   if( ALL( ABS(p_matrix(:, :, :)) < 1.0e-6_dp ) ) then
     ! Add the SCF density matrix to get to the total density matrix
     allocate(p_matrix_tmp(nstate, nstate, nspin))
+    p_matrix_tmp(:, :, :) = p_matrix_mo(:, :, :)
     do pstate=1, nstate
-      p_matrix_tmp(pstate, pstate, :) = p_matrix_mo(pstate, pstate, :) + occupation(pstate, :)
+      p_matrix_tmp(pstate, pstate, :) = p_matrix_tmp(pstate, pstate, :) + occupation(pstate, :)
     enddo
     ! Transform from MO to AO
     call p_mo_to_ao(c_matrix, p_matrix_tmp, p_matrix)

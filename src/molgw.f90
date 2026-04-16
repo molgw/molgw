@@ -209,8 +209,6 @@ program molgw
     ! SCALAPACK distribution that depends on the system specific size, parameters etc.
     call init_scalapack_other(basis%nbf, eri3_nprow, eri3_npcol)
  
-    if( print_rho_grid_ ) call dm_dump(basis)
- 
     !
     ! If an auxiliary basis is given, then set it up now
     if( has_auxil_basis .AND. .NOT. pbc_) then
@@ -236,6 +234,9 @@ program molgw
       call init_libcint(basis)
     endif
 #endif
+
+    ! Do some experimental analysis
+    if( print_rho_grid_ ) call dm_dump(basis)
 
     !
     ! PBC sets up the FFT and nx cell replication here

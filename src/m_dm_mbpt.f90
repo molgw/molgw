@@ -93,7 +93,8 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
       ! This keyword calculates the GW density matrix as it is derived in the new GW theory
       call wpol%init(nstate, occupation, 0)
       call polarizability(.TRUE., .TRUE., basis, occupation, energy, c_matrix, en_dm_corr%rpa, en_dm_corr%gw, wpol)
-      call gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix_corr, cederbaum=(TRIM(pt_density_matrix)=='GW_CEDERBAUM'))
+      call gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_matrix_corr, &
+                             cederbaum=(TRIM(pt_density_matrix)=='GW_CEDERBAUM'))
       call wpol%destroy()
     case('EVGW', 'GNWN')
       ! This keyword calculates the GW density matrix calculated with GW QP energies
@@ -105,7 +106,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
       endif
       call wpol%init(nstate, occupation, 0)
       call polarizability(.TRUE., .TRUE., basis, occupation, energy_qp, c_matrix, en_dm_corr%rpa, en_dm_corr%gw, wpol)
-      call gw_density_matrix(occupation, energy_qp, c_matrix, wpol, p_matrix_corr)
+      call gw_density_matrix(occupation, energy_qp, c_matrix, s_matrix, wpol, p_matrix_corr)
       call wpol%destroy()
       deallocate(energy_qp)
     case('GW_IMAGINARY', 'G0W0_IMAGINARY')
@@ -265,7 +266,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     ! let us include the old hartree in hamiltonian_xc and the new one in hamiltonian_exchange
     do ispin=1, nspin
       hamiltonian_fock(:, :, ispin) = hamiltonian_kinetic(:, :) + hamiltonian_nucleus(:, :) + hamiltonian_hartree_corr(:, :)  &
-                                   + hamiltonian_exx_corr(:, :, ispin)
+                                       + hamiltonian_exx_corr(:, :, ispin)
     enddo
 
   endif
