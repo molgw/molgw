@@ -187,7 +187,7 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
   case('MOLGW', 'YES')
     if( ncore_W == 0) ncore_W = atoms_core_states()
   case('GAUSSIAN')
-    if( ncore_W == 0) ncore_W = atoms_core_states()
+    if( ncore_W == 0) ncore_W = atoms_core_states_gaussian()
   end select
 
   if( ncore_W > 0 ) then

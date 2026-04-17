@@ -3913,7 +3913,7 @@ subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
   case('MOLGW', 'YES')
     if( ncore_W == 0) ncore_W = atoms_core_states()
   case('GAUSSIAN')
-    if( ncore_W == 0) ncore_W = atoms_core_states()
+    if( ncore_W == 0) ncore_W = atoms_core_states_gaussian()
   end select
   nhomo = get_number_occupied_states(occupation)
 

@@ -287,7 +287,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
   case('MOLGW', 'YES')
     if( ncore == 0) ncore = atoms_core_states()
   case('GAUSSIAN')
-    if( ncore == 0) ncore = atoms_core_states()
+    if( ncore == 0) ncore = atoms_core_states_gaussian()
   end select
 
   if(has_auxil_basis) then

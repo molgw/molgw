@@ -81,7 +81,7 @@ subroutine selfenergy_set_state_range(nstate_in, occupation, range)
   case('MOLGW', 'YES')
     if( ncore_G == 0) ncore_G = atoms_core_states()
   case('GAUSSIAN')
-    if( ncore_G == 0) ncore_G = atoms_core_states()
+    if( ncore_G == 0) ncore_G = atoms_core_states_gaussian()
   end select
 
   if( ncore_G > 0 ) then

@@ -49,7 +49,7 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
   case('MOLGW', 'YES')
     if( ncore == 0) ncore = atoms_core_states()
   case('GAUSSIAN')
-    if( ncore == 0) ncore = atoms_core_states()
+    if( ncore == 0) ncore = atoms_core_states_gaussian()
   end select
 
   call calculate_eri_3center_mo(c_matrix, ncore+1, nstate, ncore+1, nstate)
@@ -169,7 +169,7 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
   case('MOLGW', 'YES')
     if( ncore == 0) ncore = atoms_core_states()
   case('GAUSSIAN')
-    if( ncore == 0) ncore = atoms_core_states()
+    if( ncore == 0) ncore = atoms_core_states_gaussian()
   end select
 
   call calculate_eri_3center_mo_cmplx(c_matrix_cmplx, ncore+1, nstate, ncore+1, nstate)
@@ -295,7 +295,7 @@ subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
   case('MOLGW', 'YES')
     if( ncore == 0) ncore = atoms_core_states()
   case('GAUSSIAN')
-    if( ncore == 0) ncore = atoms_core_states()
+    if( ncore == 0) ncore = atoms_core_states_gaussian()
   end select
   ncore = 2*ncore
 
@@ -388,7 +388,7 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
   case('MOLGW', 'YES')
     if( ncore == 0) ncore = atoms_core_states()
   case('GAUSSIAN')
-    if( ncore == 0) ncore = atoms_core_states()
+    if( ncore == 0) ncore = atoms_core_states_gaussian()
   end select
 
   call calculate_eri_3center_mo(c_matrix, ncore+1, nstate, ncore+1, nstate)
