@@ -7,7 +7,7 @@
  auxil_basis='aug-cc-pVDZ-RI'
 
  postscf='GnWn'
- frozencore='yes'
+ frozencore='molgw'
 
  charge=-1
  natom=2

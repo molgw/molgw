@@ -2,7 +2,7 @@
  scf='hf'
  tolscf=1.0e-10
 
- frozencore='yes'
+ frozencore='molgw'
 
  pt_density_matrix='gw_cederbaum'
  use_correlated_density_matrix='yes'

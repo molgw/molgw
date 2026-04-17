@@ -9,7 +9,7 @@
 
  postscf='bse'
  print_w='no'
- frozencore='yes'
+ frozencore='molgw'
 
  natom=4
 /

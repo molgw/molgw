@@ -5,7 +5,7 @@
  postscf='td'
  basis='aug-cc-pVDZ'
  auxil_basis='aug-cc-pVDZ-RI'
- frozencore='yes'
+ frozencore='molgw'
 
  natom=5
 /

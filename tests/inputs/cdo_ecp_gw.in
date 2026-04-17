@@ -10,7 +10,7 @@
 
  postscf='gw'
  selfenergy_state_range=2
- frozencore='yes'
+ frozencore='molgw'
 
  basis='aug-cc-pVDZ'
  auxil_basis='aug-cc-pVDZ-RI'
