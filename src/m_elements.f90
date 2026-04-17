@@ -68,6 +68,39 @@ end function element_core
 
 
 !=========================================================================
+function element_core_gaussian(zval, zatom) result(element_core)
+  implicit none
+  real(dp), intent(in) :: zval
+  real(dp), intent(in) :: zatom
+  integer             :: element_core
+  !=====
+
+  !
+  ! If zval /= zatom, this is certainly an effective core potential
+  ! and no core states should be frozen.
+  if( ABS(zval - zatom) > 1.0e-3_dp ) then
+    element_core = 0
+  else
+
+    if( zval <= 2.00001 ) then  ! up to He
+      element_core = 0
+    else if( zval <= 10.00001 ) then  ! up to Ar
+      element_core = 1
+    else if( zval <= 30.00001 ) then  ! up to Zn
+      element_core = 5
+    else if( zval <= 48.00001 ) then  ! up to Cd
+      element_core = 9
+    else
+      element_core = 18
+    endif
+
+  endif
+
+
+end function element_core_gaussian
+
+
+!=========================================================================
 function element_covalent_radius(zatom)
   implicit none
   integer, intent(in) :: zatom
