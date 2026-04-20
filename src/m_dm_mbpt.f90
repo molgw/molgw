@@ -86,9 +86,10 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     case('ONE-RING')
       ! This keyword calculates the 1-ring density matrix as it is derived in PT2 theory
       call onering_density_matrix(occupation, energy, c_matrix, p_matrix_corr)
-    case('PT2')
+    case('PT2', 'MP2')
       ! This keyword calculates the PT2 density matrix as it is derived in PT2 theory (differs from MP2 density matrix)
-      call pt2_density_matrix(occupation, energy, c_matrix, p_matrix_corr)
+      call pt2_density_matrix(occupation, energy, c_matrix, s_matrix, p_matrix_corr, &
+                              cederbaum=(TRIM(pt_density_matrix)=='MP2'))
     case('GW', 'G0W0', 'GW_CEDERBAUM')
       ! This keyword calculates the GW density matrix as it is derived in the new GW theory
       call wpol%init(nstate, occupation, 0)

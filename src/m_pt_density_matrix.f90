@@ -8,6 +8,7 @@
 !=========================================================================
 #include "molgw.h"
 module m_pt_density_matrix
+
   use m_definitions
   use m_mpi
   use m_warning
@@ -21,6 +22,7 @@ module m_pt_density_matrix
   use m_spectral_function
   use m_io
 
+  implicit none
 
 
 
@@ -28,13 +30,14 @@ contains
 
 
 !=========================================================================
-subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
-  implicit none
+subroutine pt2_density_matrix(occupation, energy, c_matrix, s_matrix, p_matrix, cederbaum)
 
   real(dp), intent(in)        :: occupation(:, :), energy(:, :)
-  real(dp), intent(in)        :: c_matrix(:, :, :)
+  real(dp), intent(in)        :: c_matrix(:, :, :), s_matrix(:, :)
   real(dp), intent(inout)     :: p_matrix(:, :, :)
+  logical, intent(in), optional :: cederbaum
   !=====
+  logical :: cederbaum_
   integer              :: nstate
   integer              :: file_density_matrix
   integer              :: istate, jstate, kstate
@@ -46,6 +49,11 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
   !=====
 
   nstate = SIZE(occupation, DIM=1)
+  if( PRESENT(cederbaum) ) then
+    cederbaum_ = cederbaum
+  else
+    cederbaum_ = .FALSE.
+  endif
 
   call start_clock(timing_mbpt_dm)
 
@@ -158,6 +166,15 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
     enddo
   enddo
 
+  !
+  ! Cederbaum Appendix B
+  !
+  if( cederbaum_ ) then
+    call start_clock(timing_tmp1)
+    call prepare_cederbaum(c_matrix, s_matrix, occupation, p_matrix, p_matrix_pt2)
+    call cederbaum_blas(energy, p_matrix_pt2)
+    call stop_clock(timing_tmp1)
+  endif
 
   call update_density_matrix(occupation, c_matrix, p_matrix_pt2, p_matrix)
 
@@ -186,7 +203,6 @@ end subroutine pt2_density_matrix
 
 !=========================================================================
 subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
-  implicit none
 
   real(dp), intent(in)     :: occupation(:, :), energy(:, :)
   real(dp), intent(in)     :: c_matrix(:, :, :)
@@ -339,7 +355,6 @@ end subroutine onering_density_matrix
 
 !=========================================================================
 subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_matrix, cederbaum)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :), s_matrix(:, :)
@@ -519,28 +534,9 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_mat
   ! Cederbaum Appendix B
   !
   if( cederbaum_ ) then
-    write(stdout, '(/,1x,a)') &
-        'Renormalization of the occupied-virtual coupling block following Cederbaum Appendix B'
     call start_clock(timing_tmp1)
 
-    ! First convert the Fock density matrix from AO -> MO
-    allocate(p_matrix_mo(nstate, nstate, nspin))
-    call p_ao_to_mo(c_matrix, s_matrix, p_matrix, p_matrix_mo)
-
-    ! Remove the mean-field part since we just want the fock correction
-    do istate=1, nhomo_G
-      p_matrix_mo(istate, istate, :) = p_matrix_mo(istate, istate, :) - occupation(istate, :)
-    enddo
-    ! Add p_matrix_mo to p_matrix_gw
-    p_matrix_gw(:, :, :) = p_matrix_gw(:, :, :) + p_matrix_mo(:, :, :)
-
-    deallocate(p_matrix_mo)
-
-    ! Set p_matrix to zero here so that it is not added again later
-    ! in "update_density_matrix" 
-    p_matrix(:, :, :) = 0.0_dp
-
-    !call cederbaum_naive()
+    call prepare_cederbaum(c_matrix, s_matrix, occupation, p_matrix, p_matrix_gw)
     call cederbaum_blas(energy, p_matrix_gw)
     call stop_clock(timing_tmp1)
 
@@ -575,7 +571,6 @@ contains
 
 
 subroutine cederbaum_naive()
-  implicit none
 
   !=====
   integer :: kstate, cstate
@@ -790,7 +785,6 @@ end subroutine gw_density_matrix
 
 !=========================================================================
 subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
@@ -961,7 +955,6 @@ end subroutine gw_density_matrix_imag
 
 !=========================================================================
 subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_matrix)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
@@ -1173,7 +1166,6 @@ end subroutine gw_density_matrix_dyson_imag
 
 !=========================================================================
 subroutine update_density_matrix(occupation, c_matrix, p_matrix_mo, p_matrix)
-  implicit none
 
   real(dp), intent(in)    :: occupation(:, :)
   real(dp), intent(in)    :: c_matrix(:, :, :)
@@ -1221,8 +1213,47 @@ end subroutine update_density_matrix
 
 
 !=========================================================================
+! in input:
+!   p_matrix: Fock density-matrix in AO
+!   p_matrix_mo: correlated density-matrix correction in MO
+! 
+! in output:
+!   p_matrix: 0.0
+!   p_matrix_mo: Fock + correlated density-matrix correction in MO
+!
+subroutine prepare_cederbaum(c_matrix, s_matrix, occupation, p_matrix, p_matrix_mo)
+  real(dp), intent(in) :: c_matrix(:, :, :), s_matrix(:, :), occupation(:, :)
+  real(dp), intent(inout) :: p_matrix(:, :, :), p_matrix_mo(:, :, :)
+  !=====
+  integer :: nstate, istate
+  real(dp), allocatable :: p_matrix_mo_tmp(:, :, :)
+  !=====
+
+  nstate = SIZE(c_matrix, DIM=2)
+
+  ! First convert the Fock density matrix from AO -> MO
+  allocate(p_matrix_mo_tmp(nstate, nstate, nspin))
+  call p_ao_to_mo(c_matrix, s_matrix, p_matrix, p_matrix_mo_tmp)
+
+  ! Remove the mean-field part since we just want the fock correction
+  do istate=1, nhomo_G
+    p_matrix_mo_tmp(istate, istate, :) = p_matrix_mo_tmp(istate, istate, :) - occupation(istate, :)
+  enddo
+  ! Add p_matrix_mo_tmp to p_matrix_mo
+  p_matrix_mo(:, :, :) = p_matrix_mo(:, :, :) + p_matrix_mo_tmp(:, :, :)
+
+  deallocate(p_matrix_mo_tmp)
+
+  ! Set p_matrix to zero here so that it is not added again later
+  ! in "update_density_matrix" 
+  p_matrix(:, :, :) = 0.0_dp
+
+
+end subroutine prepare_cederbaum
+
+
+!=========================================================================
 subroutine cederbaum_blas(energy, p_matrix_mo)
-  implicit none
 
   real(dp), intent(in)    :: energy(:, :)
   real(dp), intent(inout) :: p_matrix_mo(:, :, :)
@@ -1240,6 +1271,8 @@ subroutine cederbaum_blas(energy, p_matrix_mo)
   real(dp), allocatable :: eigval(:), eigvec(:, :)
   !=====
 
+  write(stdout, '(/,1x,a)') &
+      'Renormalization of the occupied-virtual coupling block following Cederbaum Appendix B'
   pqspin=1
 
   nvirt = nvirtual_G-1 - nhomo_G
@@ -1400,6 +1433,7 @@ subroutine cederbaum_blas(energy, p_matrix_mo)
     enddo
   enddo
   deallocate(sigma_inf1)
+
 
 end subroutine cederbaum_blas
 
