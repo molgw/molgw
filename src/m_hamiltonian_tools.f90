@@ -57,7 +57,7 @@ pure function get_number_occupied_states(occupation) result(nocc)
   nocc = 0
   do ispin=1, nspin_local
     do istate=1, nstate
-      if( occupation(istate, ispin) < completely_empty )  cycle
+      if( ABS(occupation(istate, ispin)) < completely_empty )  cycle
       nocc = MAX(nocc, istate)
     enddo
   enddo
