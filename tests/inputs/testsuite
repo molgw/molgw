@@ -1362,8 +1362,17 @@ SCF Total Energy          , -187.4495378734    , 0 , 1.0e-7
 Kinetic Energy (Ha):      ,  186.9058907148    , 0 , 1.0e-7
 Nucleus Energy (Ha):      , -548.6566331109    , 0 , 1.0e-7
 Hartree Energy (Ha):      ,  142.9060274911    , 0 , 1.0e-7
-Exchange Energy (Ha):     ,   -21.1384503978   , 0 , 1.0e-7
+Exchange Energy (Ha):     ,  -21.1384503978    , 0 , 1.0e-7
 Hartree  HOMO expectation ,  291.642779        , 0 , 1.0e-4
 Exchange HOMO expectation ,  -24.839183        , 0 , 1.0e-4
 GW HOMO energy            ,  -12.015375        , 0 , 1.0e-4
+
+co2_mp2_dm.in             , CO2 MP2 density-matrix
+SCF Total Energy          , -187.4495378734    , 0 , 1.0e-7
+Kinetic Energy (Ha):      ,  187.1068985336    , 0 , 1.0e-7
+Nucleus Energy (Ha):      , -548.8749834705    , 0 , 1.0e-7
+Hartree Energy (Ha):      ,  142.9727941016    , 0 , 1.0e-7
+Exchange Energy (Ha):     ,  -21.0552706236    , 0 , 1.0e-7
+Hartree  HOMO expectation ,  291.425633        , 0 , 1.0e-4
+Exchange HOMO expectation ,  -24.426481        , 0 , 1.0e-4
 
