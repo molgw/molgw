@@ -38,52 +38,68 @@ contains
 
 
 !=========================================================================
-subroutine dm_dump(basis)
+subroutine dm_dump(basis, natural_occupation, natural_orbital)
   implicit none
 
   type(basis_set), intent(in) :: basis
+  real(dp), intent(in), optional :: natural_occupation(:, :)
+  real(dp), intent(in), optional :: natural_orbital(:, :, :)
   !=====
-  integer                 :: nstate
-  integer                 :: file_density_matrix, file_rho_grid
-  integer                 :: ispin
-  integer                 :: igrid, igrid_start, igrid_end, nr, ir
-  logical                 :: density_matrix_found
-  real(dp), allocatable    :: p_matrix_test(:, :, :)
-  real(dp), allocatable    :: c_matrix_test(:, :, :)
-  real(dp), allocatable    :: occupation_test(:, :)
-  real(dp)                :: normalization_test(nspin)
-  real(dp), allocatable    :: rhor_batch_test(:, :)
-  real(dp), allocatable    :: weight_batch(:)
-  real(dp), allocatable    :: basis_function_r_batch(:, :)
+  integer               :: nstate
+  integer               :: file_density_matrix, file_rho_grid
+  integer               :: ispin
+  integer               :: igrid, igrid_start, igrid_end, nr, ir
+  logical               :: density_matrix_found
+  real(dp), allocatable :: p_matrix_test(:, :, :)
+  real(dp), allocatable :: c_matrix_test(:, :, :)
+  real(dp), allocatable :: occupation_test(:, :)
+  real(dp)              :: normalization_test(nspin)
+  real(dp), allocatable :: rhor_batch_test(:, :)
+  real(dp), allocatable :: weight_batch(:)
+  real(dp), allocatable :: basis_function_r_batch(:, :)
   !=====
 
   write(stdout, '(/,1x,a)') 'Dump the electronic density into a file'
 
   if( grid%nproc > 1 ) call die('dm_dump: not coded in parallel. Run with 1 core only')
 
-  nstate = basis%nbf
 
+  if(PRESENT(natural_occupation)) then
+    if(PRESENT(natural_orbital)) then
+      nstate = SIZE(natural_orbital, DIM=2)
 
-  ! density matrix is tagged with suffix _test
-  call clean_allocate('Density matrix', p_matrix_test, basis%nbf, basis%nbf, nspin)
-  if( read_fchk /= 'NO') then
-    call read_gaussian_fchk(read_fchk, 'gaussian.fchk', basis, p_matrix_test)
-  else
-    inquire(file='DENSITY_MATRIX', exist=density_matrix_found)
-    if( density_matrix_found) then
-      write(stdout, '(/,1x,a)') 'Reading a MOLGW density matrix file: DENSITY_MATRIX'
-      open(newunit=file_density_matrix, file='DENSITY_MATRIX', form='unformatted', action='read')
-      do ispin=1, nspin
-        read(file_density_matrix) p_matrix_test(:, :, ispin)
-      enddo
-      close(file_density_matrix)
+      allocate(c_matrix_test, SOURCE=natural_orbital)
+      allocate(occupation_test, SOURCE=natural_occupation)
+
     else
-      call die('dm_dump: no correlated density matrix read or calculated though input file suggests you really want one')
+      call die('dm_dump: optional arguments natural_occupation and natural_orbital should be both there')
     endif
+
+  else
+    nstate = basis%nbf
+
+    ! density matrix is tagged with suffix _test
+    call clean_allocate('Density matrix', p_matrix_test, basis%nbf, basis%nbf, nspin)
+    if( read_fchk /= 'NO') then
+      call read_gaussian_fchk(read_fchk, 'gaussian.fchk', basis, p_matrix_test)
+    else
+      inquire(file='DENSITY_MATRIX', exist=density_matrix_found)
+      if( density_matrix_found) then
+        write(stdout, '(/,1x,a)') 'Reading a MOLGW density matrix file: DENSITY_MATRIX'
+        open(newunit=file_density_matrix, file='DENSITY_MATRIX', form='unformatted', action='read')
+        do ispin=1, nspin
+          read(file_density_matrix) p_matrix_test(:, :, ispin)
+        enddo
+        close(file_density_matrix)
+      else
+        call die('dm_dump: no correlated density matrix read or calculated though input file suggests you really want one')
+      endif
+    endif
+
+
+    call get_c_matrix_from_p_matrix(p_matrix_test, c_matrix_test, occupation_test)
+    call clean_deallocate('Density matrix', p_matrix_test)
   endif
-
-
-  call get_c_matrix_from_p_matrix(p_matrix_test, c_matrix_test, occupation_test)
 
 
   call init_dft_grid(basis, grid_level, .FALSE., .TRUE., BATCH_SIZE)
@@ -143,15 +159,17 @@ subroutine dm_dump(basis)
   if( print_wfn_files_ ) call print_wfn_file('MBPT', basis, occupation_test, c_matrix_test, 0.0_dp)
 
   !
-  call clean_deallocate('Density matrix', p_matrix_test)
   deallocate(occupation_test)
+  deallocate(c_matrix_test)
 
 
-  ! Cleanly exit the code
-  call stop_clock(timing_prescf)
-  call stop_clock(timing_total)
+  ! Cleanly exit the code when running it dry
+  if( .NOT. PRESENT(natural_occupation) ) then
+    call stop_clock(timing_prescf)
+    call stop_clock(timing_total)
+    call this_is_the_end()
+  endif
 
-  call this_is_the_end()
 
 end subroutine dm_dump
 

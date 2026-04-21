@@ -220,9 +220,9 @@ level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_linear_response.o
 level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o m_g3w2_selfenergy.o m_tdhf_selfenergy.o m_relativistic.o \
           m_gw_selfenergy_analytic.o
 
-level068: m_pt_selfenergy.o m_force.o
+level068: m_pt_selfenergy.o m_force.o m_dm_analysis.o
 
-level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_acfd.o m_dm_mbpt.o m_realtime_tddft.o m_noft.o m_mp2_energy.o
+level070: m_scf_loop.o m_ci.o m_selfenergy_evaluation.o m_acfd.o m_dm_mbpt.o m_realtime_tddft.o m_noft.o m_mp2_energy.o
 
 level100: molgw.o
 
@@ -314,7 +314,7 @@ m_scf_loop.o: m_definitions.o m_warning.o m_timing.o m_memory.o m_atoms.o m_inpu
 m_dm_mbpt.o: m_definitions.o m_warning.o m_timing.o m_memory.o m_inputparam.o m_scf.o \
              m_spectral_function.o m_atoms.o m_basis_set.o m_multipole.o m_hamiltonian_tools.o \
              m_hamiltonian_wrapper.o m_selfenergy_tools.o m_gw_selfenergy_grid.o m_pt_density_matrix.o \
-             m_linear_response.o m_virtual_orbital_space.o m_dm_mbpt.f90
+             m_linear_response.o m_virtual_orbital_space.o m_dm_analysis.o m_dm_mbpt.f90
 	$(FC_W_OPTS) -c m_dm_mbpt.f90 $(LIBXC_INCS)
 
 m_dm_analysis.o: m_definitions.o m_warning.o m_timing.o m_memory.o m_atoms.o m_inputparam.o m_scf.o m_scalapack.o \

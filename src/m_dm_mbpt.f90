@@ -25,6 +25,7 @@ module m_dm_mbpt
   use m_gw_selfenergy_grid
   use m_linear_response
   use m_virtual_orbital_space
+  use m_dm_analysis
 
 
 contains
@@ -54,7 +55,8 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   real(dp), allocatable       :: p_matrix_corr(:, :, :)
   real(dp), allocatable       :: hamiltonian_hartree_corr(:, :)
   real(dp), allocatable       :: hamiltonian_exx_corr(:, :, :)
-  real(dp), allocatable       :: c_matrix_tmp(:, :, :), p_matrix_mo(:, :, :), c_matrix_no_mo(:, :, :)
+  real(dp), allocatable       :: c_matrix_natorb(:, :, :), p_matrix_mo(:, :, :), c_matrix_mo_no(:, :, :)
+  real(dp), allocatable       :: c_matrix_tmp(:, :, :)
   real(dp), allocatable       :: occupation_tmp(:, :), natural_occupation(:, :)
   real(dp), allocatable       :: energy_qp(:, :)
   !=====
@@ -164,13 +166,13 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     call setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_matrix_mo)
   endif
 
-  call clean_allocate('TMP C matrix', c_matrix_tmp, basis%nbf, nstate, nspin)
+  call clean_allocate('Natural orbital C matrix', c_matrix_natorb, basis%nbf, nstate, nspin)
 
   ! Multiply by -1 so to order the eigenvalues (natural occupations) from the largest to the smallest
   p_matrix_mo(:, :, :) = -p_matrix_mo(:, :, :)
   do ispin=1, nspin
     call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, p_matrix_mo(:, :, ispin), natural_occupation(:, ispin))
-    call move_alloc(p_matrix_mo, c_matrix_no_mo)
+    call move_alloc(p_matrix_mo, c_matrix_mo_no)
     ! Restore the correct positive sign here
     natural_occupation(:, ispin) = -natural_occupation(:, ispin)
     write(stdout, '(/,1x,a,i3)')  'Natural occupations for spin: ', ispin
@@ -180,8 +182,8 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
 
     !
     ! Get the natural orbital in the AO basis
-    ! C_NO^AO = C * C_NO^MO
-    c_matrix_tmp(:, :, ispin) = MATMUL( c_matrix(:, :, ispin) , c_matrix_no_mo(:, :, ispin) )
+    ! C_AO^NO = C * C_MO^NO
+    c_matrix_natorb(:, :, ispin) = MATMUL( c_matrix(:, :, ispin) , c_matrix_mo_no(:, :, ispin) )
 
   enddo
   if( ANY(natural_occupation(:, :) < -0.1_dp) ) then
@@ -190,17 +192,19 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   endif
 
   if( print_cube_ ) then
-    call plot_cube_wfn('MBPT', basis, natural_occupation, c_matrix_tmp)
+    call plot_cube_wfn('MBPT', basis, natural_occupation, c_matrix_natorb)
   endif
   if( print_wfn_ ) then
-    call plot_rho('MBPT', basis, natural_occupation, c_matrix_tmp)
+    call plot_rho('MBPT', basis, natural_occupation, c_matrix_natorb)
   endif
   if( print_wfn_files_ ) then
-    call print_wfn_file('MBPT', basis, natural_occupation, c_matrix_tmp, en_dm_corr%total)
+    call print_wfn_file('MBPT', basis, natural_occupation, c_matrix_natorb, en_dm_corr%total)
   endif
 
+  !call dm_dump(basis, natural_occupation, c_matrix_natorb)
+
   call clean_deallocate('Density matrix P_MO', p_matrix_mo)
-  call clean_deallocate('TMP C matrix', c_matrix_tmp)
+  call clean_deallocate('Natural orbital C matrix', c_matrix_natorb)
   deallocate(natural_occupation)
 
 
