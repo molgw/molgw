@@ -53,11 +53,10 @@ pure function get_number_occupied_states(occupation) result(nocc)
   nspin_local = SIZE(occupation(:, :), DIM=2)
 
   ! Find highest occupied state
-  ! Take care of negative occupations, this can happen if C comes from P^{1/2}
   nocc = 0
   do ispin=1, nspin_local
     do istate=1, nstate
-      if( ABS(occupation(istate, ispin)) < completely_empty )  cycle
+      if( occupation(istate, ispin) < completely_empty )  cycle
       nocc = MAX(nocc, istate)
     enddo
   enddo

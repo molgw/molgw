@@ -201,7 +201,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     call print_wfn_file('MBPT', basis, natural_occupation, c_matrix_natorb, en_dm_corr%total)
   endif
 
-  !call dm_dump(basis, natural_occupation, c_matrix_natorb)
+  call dm_dump(basis, natural_occupation, c_matrix_natorb)
 
   call clean_deallocate('Density matrix P_MO', p_matrix_mo)
   call clean_deallocate('Natural orbital C matrix', c_matrix_natorb)

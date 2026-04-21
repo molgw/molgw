@@ -59,14 +59,16 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
   real(dp), allocatable :: basis_function_r_batch(:, :)
   !=====
 
-  write(stdout, '(/,1x,a)') 'Dump the electronic density into a file'
+  ! dm_dump: not coded in parallel. Run with 1 core only
+  if( grid%nproc > 1 ) return
 
-  if( grid%nproc > 1 ) call die('dm_dump: not coded in parallel. Run with 1 core only')
+  write(stdout, '(/,1x,a)') 'Dump the electronic density into a file'
 
 
   if(PRESENT(natural_occupation)) then
     if(PRESENT(natural_orbital)) then
       nstate = SIZE(natural_orbital, DIM=2)
+      write(stdout,'(1x,a)') 'Natural orbitals have been passed to the routine'
 
       allocate(c_matrix_test, SOURCE=natural_orbital)
       allocate(occupation_test, SOURCE=natural_occupation)
@@ -96,6 +98,7 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
       endif
     endif
 
+    write(stdout,'(1x,a)') 'Natural orbitals have been read from a file'
 
     call get_c_matrix_from_p_matrix(p_matrix_test, c_matrix_test, occupation_test)
     call clean_deallocate('Density matrix', p_matrix_test)
