@@ -47,9 +47,10 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
   !=====
   integer               :: nstate
   integer               :: file_density_matrix, file_rho_grid
-  integer               :: ispin
+  integer               :: ispin, jbf
   integer               :: igrid, igrid_start, igrid_end, nr, ir
   logical               :: density_matrix_found
+  real(dp), allocatable :: s_matrix(:, :), s_matrix_sqrt(:, :), s_eigval(:), p_matrix_ortho(:, :)
   real(dp), allocatable :: p_matrix_test(:, :, :)
   real(dp), allocatable :: c_matrix_test(:, :, :)
   real(dp), allocatable :: occupation_test(:, :)
@@ -63,6 +64,19 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
   if( grid%nproc > 1 ) return
 
   write(stdout, '(/,1x,a)') 'Dump the electronic density into a file'
+
+  !
+  ! Calculate S^{1/2}
+  ! in order to be able to compute S^{1/2}**T * P * S^{1/2}
+  allocate(s_matrix(basis%nbf, basis%nbf))
+  call setup_overlap(basis, s_matrix)
+  allocate(s_matrix_sqrt(basis%nbf, basis%nbf))
+  allocate(s_eigval(basis%nbf))
+  call diagonalize(' ', s_matrix, s_eigval, s_matrix_sqrt)
+  do jbf=1, basis%nbf
+    s_matrix_sqrt(:, jbf) = s_matrix_sqrt(:, jbf) * SQRT(s_eigval(jbf))
+  enddo
+  deallocate(s_eigval)
 
 
   if(PRESENT(natural_occupation)) then
@@ -101,6 +115,29 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
     write(stdout,'(1x,a)') 'Natural orbitals have been read from a file'
 
     call get_c_matrix_from_p_matrix(p_matrix_test, c_matrix_test, occupation_test)
+
+    !
+    ! Get P_ortho = S^{1/2}**T * P * S^{1/2}
+    ! Trace(P_ortho) = N electrons
+    ! eigenvalues of P_ortho are natural occupation numbers
+    !
+    allocate(p_matrix_ortho(basis%nbf, basis%nbf))
+    allocate(s_eigval(basis%nbf))
+    do ispin=1, nspin
+      p_matrix_ortho(:, :) = MATMUL( MATMUL( TRANSPOSE(s_matrix_sqrt), p_matrix_test(:, :, ispin) ), s_matrix_sqrt )
+
+      p_matrix_ortho(:, :) = -p_matrix_ortho(:, :)
+      call diagonalize(' ', p_matrix_ortho, s_eigval)
+      s_eigval(:) = -s_eigval(:)
+
+      write(stdout, '(/,1x,a,i3)')  'Natural occupations for spin: ', ispin
+      write(stdout, '(10(2x,f14.6))') s_eigval(:)
+      write(stdout, '(1x,a,f14.6)') 'Trace:', SUM(s_eigval(:))
+    enddo
+
+    deallocate(s_eigval)
+    deallocate(p_matrix_ortho)
+
     call clean_deallocate('Density matrix', p_matrix_test)
   endif
 
