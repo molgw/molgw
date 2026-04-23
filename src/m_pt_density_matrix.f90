@@ -77,9 +77,10 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, s_matrix, p_matrix, 
   ! A1 P_ij sum over k and a,b
   do istate=ncore_G+1, nhomo_G
     do jstate=ncore_G+1, nhomo_G
-      do kstate=ncore_G+1, nhomo_G
-        do astate=nhomo_G+1, nvirtual_G-1
-          do bstate=nhomo_G+1, nvirtual_G-1
+      do astate=nhomo_G+1, nvirtual_G-1
+        if( MODULO( astate - (nhomo_G+1), poorman%nproc ) /= poorman%rank ) cycle
+        do bstate=nhomo_G+1, nvirtual_G-1
+          do kstate=ncore_G+1, nhomo_G
 
             denom1 = energy(astate, pqspin) + energy(bstate, pqspin) - energy(istate, pqspin) - energy(kstate, pqspin)
             denom2 = energy(astate, pqspin) + energy(bstate, pqspin) - energy(jstate, pqspin) - energy(kstate, pqspin)
@@ -101,6 +102,7 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, s_matrix, p_matrix, 
   do astate=nhomo_G+1, nvirtual_G-1
     do bstate=nhomo_G+1, nvirtual_G-1
       do cstate=nhomo_G+1, nvirtual_G-1
+        if( MODULO( cstate - (nhomo_G+1), poorman%nproc ) /= poorman%rank ) cycle
         do istate=ncore_G+1, nhomo_G
           do jstate=ncore_G+1, nhomo_G
 
@@ -125,6 +127,7 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, s_matrix, p_matrix, 
   do cstate=nhomo_G+1, nvirtual_G-1
     do jstate=ncore_G+1, nhomo_G
       do astate=nhomo_G+1, nvirtual_G-1
+        if( MODULO( astate - (nhomo_G+1), poorman%nproc ) /= poorman%rank ) cycle
         do bstate=nhomo_G+1, nvirtual_G-1
           do istate=ncore_G+1, nhomo_G
             denom1 = energy(jstate, pqspin) + energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
@@ -148,6 +151,7 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, s_matrix, p_matrix, 
   do bstate=nhomo_G+1, nvirtual_G-1
     do kstate=ncore_G+1, nhomo_G
       do astate=nhomo_G+1, nvirtual_G-1
+        if( MODULO( astate - (nhomo_G+1), poorman%nproc ) /= poorman%rank ) cycle
         do istate=ncore_G+1, nhomo_G
           do jstate=ncore_G+1, nhomo_G
             denom1 = energy(jstate, pqspin) + energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
@@ -165,6 +169,7 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, s_matrix, p_matrix, 
       enddo
     enddo
   enddo
+  call poorman%sum(p_matrix_pt2)
 
   !
   ! Cederbaum Appendix B
