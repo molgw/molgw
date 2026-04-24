@@ -1423,6 +1423,9 @@ subroutine cederbaum_blas(energy, p_matrix_mo)
   call DGESV(nt, 1, a11, nt, ipiv, sigma_inf1, nt, info)
   deallocate(ipiv)
 
+  if(info /= 0) then
+    call die("cederbaum_blas: error in the linear system solution")
+  endif
   call clean_deallocate('A11 matrix', a11)
 
   !
