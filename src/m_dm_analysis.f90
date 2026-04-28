@@ -202,6 +202,7 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
   deallocate(occupation_test)
   deallocate(c_matrix_test)
 
+  call destroy_dft_grid()
 
   ! Cleanly exit the code when running it dry
   if( .NOT. PRESENT(natural_occupation) ) then
