@@ -1376,3 +1376,12 @@ Exchange Energy (Ha):     ,  -21.0552706236    , 0 , 1.0e-7
 Hartree  HOMO expectation ,  291.425633        , 0 , 1.0e-4
 Exchange HOMO expectation ,  -24.426481        , 0 , 1.0e-4
 
+co2_gw@pbeh_dm_cederbaum.in, CO2 GW density-matrix a la Cederbaum
+SCF Total Energy          , -188.2181587541    , 0 , 1.0e-7
+Kinetic Energy (Ha):      ,  186.8655436979    , 0 , 1.0e-7
+Nucleus Energy (Ha):      , -548.3970589999    , 0 , 1.0e-7
+Hartree Energy (Ha):      ,  142.7575597891    , 0 , 1.0e-7
+Exchange Energy (Ha):     ,  -21.0972552041    , 0 , 1.0e-7
+Hartree  HOMO expectation ,  293.645469        , 0 , 1.0e-4
+Exchange HOMO expectation ,  -23.873869        , 0 , 1.0e-4
+
