@@ -7,7 +7,7 @@
 !
 !=========================================================================
 #include "molgw.h"
-module m_dm_mbpt
+module m_dm_mbpt_driver
   use m_definitions
   use m_timing
   use m_warning
@@ -21,11 +21,13 @@ module m_dm_mbpt
   use m_hamiltonian_wrapper
   use m_scf
   use m_multipole
-  use m_pt_density_matrix
+  use m_mbpt_density_matrix
   use m_gw_selfenergy_grid
   use m_linear_response
   use m_virtual_orbital_space
   use m_dm_analysis
+
+  implicit none
 
 
 contains
@@ -34,7 +36,6 @@ contains
 !=========================================================================
 subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
                        hamiltonian_kinetic, hamiltonian_nucleus, hamiltonian_fock)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: occupation(:, :)
@@ -287,7 +288,6 @@ end subroutine get_dm_mbpt
 
 !=========================================================================
 subroutine fock_density_matrix(basis, occupation, energy, c_matrix, hfock, p_matrix)
-  implicit none
 
   type(basis_set), intent(in)         :: basis
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
@@ -342,7 +342,6 @@ end subroutine fock_density_matrix
 
 !=========================================================================
 subroutine fock_density_matrix_second_order(basis, occupation, energy, c_matrix, hfock, p_matrix)
-  implicit none
 
   type(basis_set), intent(in)         :: basis
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
@@ -447,5 +446,5 @@ end subroutine fock_density_matrix_second_order
   
 
 !=========================================================================
-end module m_dm_mbpt
+end module m_dm_mbpt_driver
 !=========================================================================

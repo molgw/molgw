@@ -54,7 +54,7 @@ program molgw
   use m_virtual_orbital_space
   use m_ci
   use m_dm_analysis
-  use m_dm_mbpt
+  use m_dm_mbpt_driver
   use m_restart
   use m_multipole
   use m_io
