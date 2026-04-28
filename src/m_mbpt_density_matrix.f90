@@ -981,10 +981,13 @@ subroutine cederbaum_blas(energy, c_matrix, hfock_ao, p_matrix_mo)
   ! < i | Σₓ - vₓ𞁞 | a > = < i | h + Σₓ - (h+vₓ𞁞) | a >
   !                      = < i | F | a > - δᵢₐ εₐ
   !                      = < i | F | a >
+  b1(:) = 0.0_dp
   it = 0
   do istate=ncore_G+1, nhomo_G
     do astate=nhomo_G+1, nvirtual_G-1
       it = it + 1
+      ! Parallelize here because auxil%sum(b1) will be performed at the end
+      if(MODULO(it - 1, auxil%nproc) /= auxil%rank) cycle
       b1(it) = hfock_mo(istate, astate, pqspin)
     enddo
   enddo
