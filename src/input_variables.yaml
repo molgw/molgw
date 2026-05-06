@@ -636,6 +636,14 @@ print_hdf5:
   default: 'no'
   comment: Prints an HDF5 file with self-consistent field data
 
+print_molden:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints an MOLDEN type file
+
 print_multipole:
   family: io
   datatype: yes/no

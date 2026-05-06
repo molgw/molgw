@@ -11,12 +11,26 @@ module m_cart_to_pure
   use m_definitions
   use m_warning
 
+  implicit none
+
   type transform
     real(dp), allocatable :: matrix(:, :)
   end type
 
+  type reorder
+    integer, allocatable :: reindex(:)
+  end type
+
   type(transform), allocatable, protected :: cart_to_pure     (:, :)
   type(transform), allocatable, protected :: cart_to_pure_norm(:, :)
+
+  ! reordering from Gaussian order to molgw/libint/libcint
+  type(reorder), allocatable, protected :: g2m_cart(:)
+  ! reordering from molgw/libint/libcint order to Gaussian
+  type(reorder), allocatable, protected :: m2g_cart(:)
+  ! reordering from molgw/libint/libcint order to MOLDEN
+  type(reorder), allocatable, protected :: m2molden_cart(:)
+  type(reorder), allocatable, protected :: molden2m_cart(:)
 
   integer, parameter :: CARTG = 1
   integer, parameter :: PUREG = 2
@@ -27,9 +41,8 @@ contains
 
 !=========================================================================
 function get_gaussian_type_tag(gaussian_type)
-  implicit none
   character(len=4), intent(in) :: gaussian_type
-  integer                     :: get_gaussian_type_tag
+  integer                      :: get_gaussian_type_tag
   !=====
 
   select case(gaussian_type)
@@ -44,10 +57,9 @@ end function get_gaussian_type_tag
 
 !=========================================================================
 pure function number_basis_function_am(gaussian_type, am)
-  implicit none
   character(len=4), intent(in) :: gaussian_type
   integer, intent(in)          :: am
-  integer                     :: number_basis_function_am
+  integer                      :: number_basis_function_am
   !=====
 
   select case(gaussian_type)
@@ -62,11 +74,10 @@ end function number_basis_function_am
 
 !==========================================
 pure function double_factorial(intin)
-  implicit none
   integer, intent(in) :: intin
-  real(dp) :: double_factorial
+  real(dp)            :: double_factorial
   !=====
-  ! just hard coded for some small integers
+  ! just hard-coded for some small integers
 
   select case (intin)
   case(-1)
@@ -140,7 +151,6 @@ end function double_factorial
 
 !=========================================================================
 subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
-  implicit none
 
   logical, intent(in) :: pypzpx_order_in
   !=====
@@ -161,11 +171,11 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
   ! First setup trivial transforms in the case of CARTESIAN gaussians
   !
   do il=0, MOLGW_LMAX
-    ni = number_basis_function_am('CART',il)
-    allocate(cart_to_pure     (il, CARTG)%matrix(ni, ni))
-    allocate(cart_to_pure_norm(il, CARTG)%matrix(ni, ni))
+    nic = number_basis_function_am('CART', il)
+    allocate(cart_to_pure     (il, CARTG)%matrix(nic, nic))
+    allocate(cart_to_pure_norm(il, CARTG)%matrix(nic, nic))
     cart_to_pure(il, CARTG)%matrix(:, :) = 0.0_dp
-    do ii=1, ni
+    do ii=1, nic
       cart_to_pure(il, CARTG)%matrix(ii, ii) = 1.0_dp
     enddo
   enddo
@@ -175,8 +185,8 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
   ! Second setup the complicated transforms in the case of PURE gaussians
   !
   do il=0, MOLGW_LMAX
-    nic = number_basis_function_am('CART',il)
-    ni  = number_basis_function_am('PURE',il)
+    nic = number_basis_function_am('CART', il)
+    ni  = number_basis_function_am('PURE', il)
     allocate(cart_to_pure(il, PUREG)%matrix(nic, ni))
     allocate(cart_to_pure_norm(il, PUREG)%matrix(nic, ni))
     cart_to_pure_norm(il, PUREG)%matrix(:, :) = 0.0_dp
@@ -269,6 +279,132 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
     enddo
   enddo
 
+  !
+  ! Store the transforms for CARTESIAN from GAUSSIAN/MOLDEN to MOLGW/LIBCINT
+  !
+  allocate(g2m_cart(0:MOLGW_LMAX))
+  allocate(m2g_cart(0:MOLGW_LMAX))
+  allocate(m2molden_cart(0:MOLGW_LMAX))
+  allocate(molden2m_cart(0:MOLGW_LMAX))
+  ! s
+  allocate(g2m_cart(0)%reindex(1))
+  allocate(m2g_cart(0)%reindex(1))
+  allocate(m2molden_cart(0)%reindex(1))
+  allocate(molden2m_cart(0)%reindex(1))
+  g2m_cart(0)%reindex(1) = 1
+  m2g_cart(0)%reindex(1) = 1
+  m2molden_cart(0)%reindex(:) = m2g_cart(0)%reindex(:)
+  molden2m_cart(0)%reindex(:) = g2m_cart(0)%reindex(:)
+  ! p
+  allocate(g2m_cart(1)%reindex(3))
+  allocate(m2g_cart(1)%reindex(3))
+  allocate(m2molden_cart(1)%reindex(3))
+  allocate(molden2m_cart(1)%reindex(3))
+  g2m_cart(1)%reindex(1) = 1
+  g2m_cart(1)%reindex(2) = 2
+  g2m_cart(1)%reindex(3) = 3
+  m2g_cart(1)%reindex(1) = 1
+  m2g_cart(1)%reindex(2) = 2
+  m2g_cart(1)%reindex(3) = 3
+  m2molden_cart(1)%reindex(:) = m2g_cart(1)%reindex(:)
+  molden2m_cart(1)%reindex(:) = g2m_cart(1)%reindex(:)
+  ! d
+  ! gaussian d orbital order is xx, yy, zz, xy, xz, yz
+  ! libint   d orbital order is xx, xy, xz, yy, yz, zz
+  allocate(g2m_cart(2)%reindex(6))
+  allocate(m2g_cart(2)%reindex(6))
+  allocate(m2molden_cart(2)%reindex(6))
+  allocate(molden2m_cart(2)%reindex(6))
+  g2m_cart(2)%reindex(1) = 1
+  g2m_cart(2)%reindex(2) = 4
+  g2m_cart(2)%reindex(3) = 5
+  g2m_cart(2)%reindex(4) = 2
+  g2m_cart(2)%reindex(5) = 6
+  g2m_cart(2)%reindex(6) = 3
+  m2g_cart(2)%reindex(1) = 1
+  m2g_cart(2)%reindex(2) = 4
+  m2g_cart(2)%reindex(3) = 6
+  m2g_cart(2)%reindex(4) = 2
+  m2g_cart(2)%reindex(5) = 3
+  m2g_cart(2)%reindex(6) = 5
+  m2molden_cart(2)%reindex(:) = m2g_cart(2)%reindex(:)
+  molden2m_cart(2)%reindex(:) = g2m_cart(2)%reindex(:)
+
+  ! f
+  ! gaussian f orbital order is XXX , YYY , ZZZ , XYY , XXY , XXZ , XZZ , YZZ , YYZ , XYZ
+  ! libint   f orbital order is xxx , xxy , xxz , xyy , xyz , xzz , yyy , yyz , yzz , zzz
+  allocate(g2m_cart(3)%reindex(10))
+  allocate(m2g_cart(3)%reindex(10))
+  allocate(m2molden_cart(3)%reindex(10))
+  allocate(molden2m_cart(3)%reindex(10))
+  g2m_cart(3)%reindex( 1) = 1
+  g2m_cart(3)%reindex( 2) = 5
+  g2m_cart(3)%reindex( 3) = 6
+  g2m_cart(3)%reindex( 4) = 4
+  g2m_cart(3)%reindex( 5) =10
+  g2m_cart(3)%reindex( 6) = 7
+  g2m_cart(3)%reindex( 7) = 2
+  g2m_cart(3)%reindex( 8) = 9
+  g2m_cart(3)%reindex( 9) = 8
+  g2m_cart(3)%reindex(10) = 3
+  m2g_cart(3)%reindex( 1) = 1
+  m2g_cart(3)%reindex( 2) = 7
+  m2g_cart(3)%reindex( 3) =10
+  m2g_cart(3)%reindex( 4) = 4
+  m2g_cart(3)%reindex( 5) = 2
+  m2g_cart(3)%reindex( 6) = 3
+  m2g_cart(3)%reindex( 7) = 6
+  m2g_cart(3)%reindex( 8) = 9
+  m2g_cart(3)%reindex( 9) = 8
+  m2g_cart(3)%reindex(10) = 5
+  m2molden_cart(3)%reindex(:) = m2g_cart(3)%reindex(:)
+  molden2m_cart(3)%reindex(:) = g2m_cart(3)%reindex(:)
+
+  ! g and following are like this:
+  ! gaussian g orbital order is ZZZZ YZZZ YYZZ YYYZ YYYY XZZZ XYZZ XYYZ XYYY XXZZ XXYZ XXYY XXXZ XXXY XXXX
+  ! libint   g orbital order is xxxx xxxy xxxz xxyy xxyz xxzz xyyy xyyz xyzz xzzz yyyy yyyz yyzz yzzz zzzz 
+  do il=4, MOLGW_LMAX
+    ni = number_basis_function_am('CART', il)
+    allocate(g2m_cart(il)%reindex(ni))
+    allocate(m2g_cart(il)%reindex(ni))
+    allocate(m2molden_cart(il)%reindex(ni))
+    do ii=1, ni
+      g2m_cart(il)%reindex(ii) = ni + 1 - ii
+      m2g_cart(il)%reindex(ii) = ni + 1 - ii
+    enddo
+  enddo
+
+  molden2m_cart(4)%reindex( 1) = 1
+  molden2m_cart(4)%reindex( 2) = 4
+  molden2m_cart(4)%reindex( 3) = 5
+  molden2m_cart(4)%reindex( 4) =10
+  molden2m_cart(4)%reindex( 5) =13
+  molden2m_cart(4)%reindex( 6) =11
+  molden2m_cart(4)%reindex( 7) = 6
+  molden2m_cart(4)%reindex( 8) =14 
+  molden2m_cart(4)%reindex( 9) =15
+  molden2m_cart(4)%reindex(10) = 8
+  molden2m_cart(4)%reindex(11) = 2
+  molden2m_cart(4)%reindex(12) = 7
+  molden2m_cart(4)%reindex(13) =12
+  molden2m_cart(4)%reindex(14) = 9
+  molden2m_cart(4)%reindex(15) = 3
+
+  m2molden_cart(4)%reindex( 1)= 1
+  m2molden_cart(4)%reindex( 2)= 11
+  m2molden_cart(4)%reindex( 3)= 15
+  m2molden_cart(4)%reindex( 4)= 2
+  m2molden_cart(4)%reindex( 5)= 3
+  m2molden_cart(4)%reindex( 6)= 7
+  m2molden_cart(4)%reindex( 7)= 12
+  m2molden_cart(4)%reindex( 8)= 10
+  m2molden_cart(4)%reindex( 9)= 14
+  m2molden_cart(4)%reindex(10)= 4
+  m2molden_cart(4)%reindex(11)= 6
+  m2molden_cart(4)%reindex(12)= 13
+  m2molden_cart(4)%reindex(13)= 5
+  m2molden_cart(4)%reindex(14)= 8
+  m2molden_cart(4)%reindex(15)= 9
 
   write(stdout, *) 'Transformations set up completed for both CARTESIAN and PURE Gaussians'
   write(stdout, *)
@@ -278,7 +414,6 @@ end subroutine setup_cart_to_pure_transforms
 
 !=========================================================================
 subroutine destroy_cart_to_pure_transforms()
-  implicit none
 
   !=====
   integer :: il
@@ -289,19 +424,26 @@ subroutine destroy_cart_to_pure_transforms()
     deallocate(cart_to_pure_norm(il, PUREG)%matrix)
     deallocate(cart_to_pure(il, CARTG)%matrix)
     deallocate(cart_to_pure(il, PUREG)%matrix)
+    deallocate(g2m_cart(il)%reindex)
+    deallocate(m2g_cart(il)%reindex)
+    deallocate(m2molden_cart(il)%reindex)
+    deallocate(molden2m_cart(il)%reindex)
   enddo
   deallocate(cart_to_pure_norm)
   deallocate(cart_to_pure)
+  deallocate(g2m_cart)
+  deallocate(m2g_cart)
+  deallocate(m2molden_cart)
+  deallocate(molden2m_cart)
 
 end subroutine destroy_cart_to_pure_transforms
 
 
 !=========================================================================
 function cnk(n, k)
-  implicit none
 
   integer, intent(in) :: n, k
-  real(dp)           :: cnk
+  real(dp)            :: cnk
   !=====
   integer  :: i
   real(dp) :: num, denom
@@ -310,8 +452,8 @@ function cnk(n, k)
   num   = 1.0_dp
   denom = 1.0_dp
   do i=0, k-1
-    num   = num   * REAL(n-i, dp)
-    denom = denom * ( REAL(i, dp) + 1.0_dp)
+    num   = num   * REAL(n-i, KIND=dp)
+    denom = denom * ( REAL(i, KIND=dp) + 1.0_dp)
   enddo
   cnk = num / denom
 
@@ -320,17 +462,16 @@ end function cnk
 
 !=========================================================================
 function ank(n, k)
-  implicit none
 
   integer, intent(in) :: n, k
-  real(dp)           :: ank
+  real(dp)            :: ank
   !=====
   integer  :: i
   !=====
 
   ank   = 1.0_dp
   do i=n, k+1, -1
-    ank   = ank   * REAL(i, dp)
+    ank   = ank   * REAL(i, KIND=dp)
   enddo
 
 end function ank

@@ -549,6 +549,9 @@ program molgw
     if( scf_has_converged .AND. print_hdf5_ ) then
       call print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy)
     endif
+    if( print_molden_ ) then
+      call write_molden_file('molgw.MOLDEN', basis, occupation, energy, c_matrix)
+    endif
    
     !
     ! If requested, evaluate the forces
