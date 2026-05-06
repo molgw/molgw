@@ -628,6 +628,14 @@ print_hartree:
   default: 'no'
   comment: Prints the Hartree potential and exchange expectation value on eigenstates.
 
+print_bare_energy:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the bare QP energy difference contribution to each excitation energy to the yaml file. Requires tda=yes.
+
 print_hdf5:
   family: io
   datatype: yes/no

@@ -51,12 +51,15 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   real(dp), allocatable      :: amb_matrix(:, :), apb_matrix(:, :)
   real(dp), allocatable      :: xpy_matrix(:, :), xmy_matrix(:, :)
   real(dp), allocatable      :: eigenvalue(:)
+  real(dp), allocatable      :: bare_eigenval(:)
   real(dp), allocatable      :: energy_qp(:, :)
   logical                   :: is_tddft, is_rpa
   logical                   :: has_manual_tdhf
+  logical                   :: do_print_bare_energy
   integer                   :: reading_status
   integer                   :: tdhffile
   integer                   :: m_apb, n_apb, m_x, n_x
+  integer                   :: t_ia, t_jb, t_ia_global, t_jb_global
   ! SCALAPACK variables
   integer                   :: desc_apb(NDEL), desc_x(NDEL)
   integer                   :: info
@@ -164,6 +167,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   !if( enforce_rpa ) alpha_local = 0.0_dp
 
   is_rpa = .NOT.(is_tddft) .AND. .NOT.(is_bse) .AND. (ABS(alpha_local)<1.0e-5_dp)
+  do_print_bare_energy = print_bare_energy_ .AND. tda_
 
   call start_clock(timing_build_h2p)
   write(stdout, '(/,1x,a)') 'Summarize the linear response calculation:'
@@ -342,6 +346,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   if( nexc == 0 ) nexc = nmat
 
   allocate(eigenvalue(nexc))
+  allocate(bare_eigenval(nexc))
 
   ! Allocate (X + Y)
   ! Allocate (X - Y) only if actually needed
@@ -373,6 +378,23 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   endif
 
 
+  ! Compute bare QP energy difference contribution to each excitation energy
+  ! bare_n = sum_{ia} xpy(ia,n) * xmy(ia,n) * (eps_a - eps_i)
+  if( do_print_bare_energy ) then
+    bare_eigenval(:) = 0.0_dp
+    do t_jb = 1, n_x
+      t_jb_global = colindex_local_to_global('S', t_jb)
+      do t_ia = 1, m_x
+        t_ia_global = rowindex_local_to_global(iprow_sd, nprow_sd, t_ia)
+        bare_eigenval(t_jb_global) = bare_eigenval(t_jb_global) &
+          + xpy_matrix(t_ia, t_jb) * xmy_matrix(t_ia, t_jb) * amb_diag_rpa(t_ia_global)
+      enddo
+    enddo
+    call world%sum(bare_eigenval)
+  else
+    bare_eigenval(:) = 0.0_dp
+  endif
+
   ! Deallocate the non-necessary matrices
   deallocate(amb_diag_rpa)
   write(stdout, *) 'Deallocate (A+B) and possibly (A-B)'
@@ -401,7 +423,8 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   ! and the dynamic dipole tensor
   !
   if( is_tdhf .OR. is_tddft .OR. is_bse ) then
-    call optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, wpol_out, xpy_matrix, xmy_matrix, eigenvalue)
+    call optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, wpol_out, xpy_matrix, xmy_matrix, eigenvalue, &
+                          bare_eigenvalue=bare_eigenval)
     select case(TRIM(lower(stopping)))
     case('spherical')
       call stopping_power(basis, c_matrix, wpol_out, xpy_matrix, eigenvalue)
@@ -409,6 +432,8 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
       call stopping_power_3d(basis, c_matrix, wpol_out, xpy_matrix, desc_x, eigenvalue)
     end select
   endif
+
+  deallocate(bare_eigenval)
 
   ! extract X and Y if requested
   if( PRESENT(x_matrix) ) then

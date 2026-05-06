@@ -73,6 +73,7 @@
     print_density_matrix,       &
     print_eri,       &
     print_hartree,       &
+    print_bare_energy,   &
     print_hdf5,       &
     print_multipole,       &
     print_pdos,       &
@@ -320,6 +321,7 @@
  print_density_matrix = 'no'
  print_eri = 'no'
  print_hartree = 'no'
+ print_bare_energy = 'no'
  print_hdf5 = 'no'
  print_multipole = 'no'
  print_pdos = 'no'

@@ -175,7 +175,8 @@
   write(stdout, '(1x,a32,6x,a)') 'print_dens_traj_tddft', print_dens_traj_tddft 
   write(stdout, '(1x,a32,6x,a)') 'print_density_matrix', print_density_matrix 
   write(stdout, '(1x,a32,6x,a)') 'print_eri', print_eri 
-  write(stdout, '(1x,a32,6x,a)') 'print_hartree', print_hartree 
+  write(stdout, '(1x,a32,6x,a)') 'print_hartree', print_hartree
+  write(stdout, '(1x,a32,6x,a)') 'print_bare_energy', print_bare_energy 
   write(stdout, '(1x,a32,6x,a)') 'print_hdf5', print_hdf5 
   write(stdout, '(1x,a32,6x,a)') 'print_line_rho_diff_tddft', print_line_rho_diff_tddft 
   write(stdout, '(1x,a32,6x,a)') 'print_line_rho_tddft', print_line_rho_tddft 

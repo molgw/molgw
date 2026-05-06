@@ -95,6 +95,8 @@
  logical, protected :: print_eri_
  character(len=3), protected :: print_hartree
  logical, protected :: print_hartree_
+ character(len=3), protected :: print_bare_energy
+ logical, protected :: print_bare_energy_
  character(len=3), protected :: print_hdf5
  logical, protected :: print_hdf5_
  character(len=3), protected :: print_multipole
