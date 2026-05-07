@@ -191,7 +191,7 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
     allocate(cart_to_pure_norm(il, PUREG)%matrix(nic, ni))
     cart_to_pure_norm(il, PUREG)%matrix(:, :) = 0.0_dp
 
-    kk=0
+    kk = 0
     do ii=0, il
       nx = il - ii
       do jj=0, ii
@@ -262,7 +262,7 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
   !
   ! Introduce the normalization coefficient part that depends on (nx,ny,nz)
   do il=0, MOLGW_LMAX
-    kk=0
+    kk = 0
     do ii=0, il
       nx = il - ii
       do jj=0, ii
@@ -368,6 +368,7 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
     allocate(g2m_cart(il)%reindex(ni))
     allocate(m2g_cart(il)%reindex(ni))
     allocate(m2molden_cart(il)%reindex(ni))
+    allocate(molden2m_cart(il)%reindex(ni))
     do ii=1, ni
       g2m_cart(il)%reindex(ii) = ni + 1 - ii
       m2g_cart(il)%reindex(ii) = ni + 1 - ii

@@ -53,7 +53,7 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
   real(dp), allocatable :: s_matrix(:, :), s_matrix_sqrt(:, :), s_eigval(:), p_matrix_ortho(:, :)
   real(dp), allocatable :: p_matrix_test(:, :, :)
   real(dp), allocatable :: c_matrix_test(:, :, :)
-  real(dp), allocatable :: occupation_test(:, :)
+  real(dp), allocatable :: occupation_test(:, :), energy_test(:, :)
   real(dp)              :: normalization_test(nspin)
   real(dp), allocatable :: rhor_batch_test(:, :)
   real(dp), allocatable :: weight_batch(:)
@@ -96,8 +96,23 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
 
     ! density matrix is tagged with suffix _test
     call clean_allocate('Density matrix', p_matrix_test, basis%nbf, basis%nbf, nspin)
+
     if( read_fchk /= 'NO') then
       call read_gaussian_fchk(read_fchk, 'gaussian.fchk', basis, p_matrix_test)
+
+      write(stdout,'(1x,a)') 'Natural orbitals have been calculated from a density-matrix in a file'
+      call get_c_matrix_from_p_matrix(p_matrix_test, c_matrix_test, occupation_test)
+
+    else if( LEN_TRIM(read_molden) > 0 ) then
+      allocate(occupation_test(nstate, nspin))
+      allocate(energy_test(nstate, nspin))
+      allocate(c_matrix_test(basis%nbf, nstate, nspin))
+      call read_molden_file(read_molden, basis, occupation_test, energy_test, c_matrix_test)
+      deallocate(energy_test)
+
+      write(stdout,'(1x,a)') 'Natural orbitals have been read from a file'
+      call setup_density_matrix(c_matrix_test, occupation_test, p_matrix_test)
+
     else
       inquire(file='DENSITY_MATRIX', exist=density_matrix_found)
       if( density_matrix_found) then
@@ -110,11 +125,12 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
       else
         call die('dm_dump: no correlated density matrix read or calculated though input file suggests you really want one')
       endif
+
+      write(stdout,'(1x,a)') 'Natural orbitals have been calculated from a density-matrix in a file'
+      call get_c_matrix_from_p_matrix(p_matrix_test, c_matrix_test, occupation_test)
     endif
 
-    write(stdout,'(1x,a)') 'Natural orbitals have been read from a file'
 
-    call get_c_matrix_from_p_matrix(p_matrix_test, c_matrix_test, occupation_test)
 
     !
     ! Get P_ortho = S^{1/2}**T * P * S^{1/2}

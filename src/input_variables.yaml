@@ -737,6 +737,15 @@ read_fchk:
     'CC' (for coupled-cluster), or 'MP2' (for MP2). Today, only works for Cartesian
     Gaussian and for spin restricted calculations.
 
+read_molden:
+  family: io
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ''
+  comment: If not empty, it contains the name of a MOLDEN file to read.
+           Useful to read a density-matrix file obtained from CFOUR and analyzed with 'print_rho_grid'.
+
 read_restart:
   family: io
   datatype: yes/no

@@ -21,7 +21,7 @@ module m_io
   use m_libint_tools, only: libint_init
   use m_libcint_tools, only: libcint_has_range_separation, check_capability_libcint, pypzpx_order
   use m_libxc_tools, only: xc_version
-  use m_linear_algebra, only: determinant_3x3_matrix
+  use m_linear_algebra, only: determinant_3x3_matrix, invert
   use m_inputparam
   use m_hamiltonian_tools, only: get_number_occupied_states, dump_out_energy
   use m_atoms
@@ -4377,15 +4377,15 @@ subroutine write_cube_file(cubefilename, n1, n2, n3, dr, data, comment)
 end subroutine write_cube_file
 
 !=========================================================================
-! Write a volumetric data in a cube format file
+! Write a MOLDEN type file
 !
 subroutine write_molden_file(moldenfilename, basis, occupation, energy, c_matrix)
   implicit none
 
   character(len=*), intent(in) :: moldenfilename
-  type(basis_set), intent(in) :: basis
-  real(dp), intent(in)        :: c_matrix(:, :, :)
-  real(dp), intent(in)        :: occupation(:, :), energy(:, :)
+  type(basis_set), intent(in)  :: basis
+  real(dp), intent(in)         :: c_matrix(:, :, :)
+  real(dp), intent(in)         :: occupation(:, :), energy(:, :)
   !=====
   integer :: fileunit, nbf, nstate, istate, ibf, ispin
   integer :: li, ni_cart, ibf1, ibf2, ibfc, gt, ibf1_cart, ishell
@@ -4396,7 +4396,8 @@ subroutine write_molden_file(moldenfilename, basis, occupation, energy, c_matrix
   nstate = SIZE(c_matrix, DIM=2)
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  open(newunit=fileunit, file=TRIM(moldenfilename))
+
+  open(newunit=fileunit, file=TRIM(moldenfilename), action='write')
 
   write(fileunit, '(a)') '[MO]'
   do ispin=1, nspin
@@ -4404,7 +4405,7 @@ subroutine write_molden_file(moldenfilename, basis, occupation, energy, c_matrix
       write(fileunit, '(a)') 'Sym= A'
       write(fileunit, '(a,f24.16)') 'Ene= ', energy(istate, ispin)
       write(fileunit, '(a)') 'Spin= Alpha'
-      write(fileunit, '(a,es14.6)') 'Occup= ', occupation(istate, ispin) / spin_fact
+      write(fileunit, '(a,es14.6)') 'Occup= ', occupation(istate, ispin)
 
       ibf = 0
       do ishell=1, basis%nshell
@@ -4427,7 +4428,107 @@ subroutine write_molden_file(moldenfilename, basis, occupation, energy, c_matrix
 
   close(fileunit)
 
+
 end subroutine write_molden_file
+
+
+!=========================================================================
+! Read a MOLDEN type file
+!
+subroutine read_molden_file(moldenfilename, basis, occupation, energy, c_matrix)
+  implicit none
+
+  character(len=*), intent(in) :: moldenfilename
+  type(basis_set), intent(in)  :: basis
+  real(dp), intent(out)        :: c_matrix(:, :, :)
+  real(dp), intent(out)        :: occupation(:, :), energy(:, :)
+  !=====
+  integer :: fileunit, ios
+  integer :: nbf, nstate, istate, ibf, ispin
+  integer :: li, ni, ni_cart, ibf1, ibf2, ibfc, gt, ibf1_cart, ishell, ii
+  real(dp), allocatable :: c_matrix_cart(:), cart_to_pure_renorm(:, :), pseudo_inv(:, :)
+  real(dp) :: nelec
+  character(len=256) :: line, dummy
+  logical :: found
+  !=====
+
+  write(stdout, '(/,1x,a,a)') 'Read MOLDEN file: ', TRIM(moldenfilename)
+
+  nbf = SIZE(c_matrix, DIM=1)
+  nstate = SIZE(c_matrix, DIM=2)
+  gt = get_gaussian_type_tag(basis%gaussian_type)
+
+  !if (gt /= CARTG) then
+  !  call die('read_molden_file: only implemented for Cartesian gaussian')
+  !endif
+
+  open(newunit=fileunit, file=TRIM(moldenfilename), action='read', form='formatted', iostat=ios)
+  if (ios /= 0) then
+    call die('read_molden_file: error opening file ' // TRIM(moldenfilename))
+    stop
+  endif
+
+  ! Looking for the keyword [MO]
+  found = .FALSE.
+  do
+    read(fileunit, '(a)', iostat=ios) line
+    if (ios /= 0) exit ! End of file reached without finding [MO]
+
+    if(INDEX(line, '[MO]') > 0) then
+      found = .true.
+      exit
+    endif
+  enddo
+  if( .NOT. found ) then
+    call die('read_molden_file: MOLDEN file does not contain [MO] tag. Is it corrupted?')
+  endif
+
+  do ispin=1, nspin
+    do istate=1, nstate
+      read(fileunit, '(a)', iostat=ios) line ! Sym line
+      read(fileunit, *) dummy, energy(istate, ispin)
+      read(fileunit, '(a)', iostat=ios) line ! spin line
+      read(fileunit, *) dummy, occupation(istate, ispin)
+
+      do ishell=1, basis%nshell
+        li        = basis%shell(ishell)%am
+        ni_cart   = number_basis_function_am('CART', li)
+        ni        = number_basis_function_am(basis%gaussian_type, li)
+        ibf1      = basis%shell(ishell)%istart
+        ibf1_cart = basis%shell(ishell)%istart_cart
+        ibf2      = basis%shell(ishell)%iend
+        allocate(c_matrix_cart(ni_cart))
+        do ibfc=1, ni_cart
+          read(fileunit, *) ibf, c_matrix_cart(m2molden_cart(li)%reindex(ibfc))
+        enddo
+
+
+        !
+        ! Calculate the pseudo inverse of cart_to_pure_norm(li, gt)%matrix(:, :)
+        !
+        allocate(cart_to_pure_renorm(ni_cart, ni))
+        allocate(pseudo_inv(ni, ni))
+        pseudo_inv(:, :) = MATMUL( TRANSPOSE(cart_to_pure_norm(li, gt)%matrix(:, :)), cart_to_pure_norm(li, gt)%matrix(:, :))
+        call invert(pseudo_inv)
+        cart_to_pure_renorm(:, :) = MATMUL( cart_to_pure_norm(li, gt)%matrix(:, :), TRANSPOSE(pseudo_inv) )
+
+        c_matrix(ibf1:ibf2, istate, ispin) = MATMUL( TRANSPOSE(cart_to_pure_renorm(:, :)), c_matrix_cart(:) )
+
+        deallocate(cart_to_pure_renorm, pseudo_inv)
+
+        deallocate(c_matrix_cart)
+      enddo
+    enddo
+  enddo
+
+  close(fileunit)
+
+  write(stdout, '(/,1x,a,i3)')  'Reading natural occupations for spin: ', 1
+  write(stdout, '(10(2x,f14.6))') occupation(:, 1)
+  write(stdout, '(1x,a,f14.6)') 'Number of electrons: ', SUM(occupation(:, :))
+
+
+end subroutine read_molden_file
 
 
 !=========================================================================
