@@ -142,3 +142,4 @@ The code should compile properly in parallel with `make -j`.
 - Meiyue Shao
 - Marc Sarraute
 - Guillaume Piris
+- Caroline McKeon
