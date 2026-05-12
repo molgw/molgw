@@ -30,7 +30,8 @@ contains
 
 
 !=========================================================================
-subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, chi, xpy_matrix, xmy_matrix, eigenvalue)
+subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, chi, xpy_matrix, xmy_matrix, eigenvalue, &
+                            bare_eigenvalue)
   implicit none
 
   logical, intent(in)                 :: is_triplet_currently
@@ -40,6 +41,7 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
   real(dp), intent(in)                :: xpy_matrix(:, :)
   real(dp), intent(in)                :: xmy_matrix(:, :)
   real(dp), intent(in)                :: eigenvalue(:)
+  real(dp), intent(in), optional      :: bare_eigenvalue(:)
   !=====
   integer                            :: nstate, m_x, n_x
   integer                            :: gt
@@ -151,6 +153,14 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
       write(char6, '(i6)') iexc
       write(unit_yaml, '(12x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', eigenvalue(iexc) * Ha_eV
     enddo
+    if( print_bare_energy_ .AND. PRESENT(bare_eigenvalue) ) then
+      write(unit_yaml, '(8x,a)') 'bare energy contribution:'
+      write(unit_yaml, '(12x,a)') 'units: eV'
+      do iexc=1, nexc
+        write(char6, '(i6)') iexc
+        write(unit_yaml, '(12x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', bare_eigenvalue(iexc) * Ha_eV
+      enddo
+    endif
   endif
 
   write(stdout, '(/,5x,a)') 'Excitation energies (eV)     Oscil. strengths   [Symmetry] '
