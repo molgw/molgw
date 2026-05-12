@@ -11,8 +11,6 @@
 
 import numpy as np
 import json, yaml
-import pathlib
-import matplotlib.pyplot as plt
 from molgw import __version__, Molecule
 
 default_input_parameters = {
@@ -20,8 +18,7 @@ default_input_parameters = {
       'postscf': 'g0w0',
       'basis': 'aug-cc-pVQZ',
       'auxil_basis': 'pauto',
-      'selfenergy_state_range': 3,
-      'selfenergy_state_range': 3,
+      'selfenergy_state_range': 3
               }
 
 
@@ -40,7 +37,7 @@ frozencore = {
     'P': 0,
     'Cl': 0,
     'Ne': 0,
-    'Ar': 0,
+    'Ar': 0
 }
 
 def get_frozencore(cas):
@@ -61,15 +58,72 @@ names = [ k for k in structures ]
 #
 # ml23.molecule: dictionary of molgw.Molecule objects
 #
-molecule = dict()
+molecules = dict()
 for k, v in structures.items():
-    molecule[k] = Molecule(v)
+    molecules[k] = Molecule(v)
+
+# gamma value (bohr^-1) when alpha=0.2 beta=0.8
+otrsh_gamma_gw = {
+    "co": 0.434,
+    "cs": 0.344,
+    "licl": 0.350,
+    "c2": 0.496,
+    "sih4": 0.435,
+    "ph3": 0.374,
+    "h2o": 0.454,
+    "n2": 0.434,
+    "h2s": 0.361,
+    "bn": 0.429,
+    "ch4": 0.477,
+    "ch2o": 0.441,
+    "co2": 0.440,
+    "hf": 0.537,
+    "f2": 0.511,
+    "ar": 0.461,
+    "bh3": 0.520,
+    "hcl": 0.402,
+    "nh3": 0.412,
+    "beo": 0.355,
+    "lif": 0.448,
+    "bf": 0.441,
+    "ne": 0.675
+}
+otrsh_gamma_gw_dm = {
+    "co": 0.371,
+    "cs": 0.271,
+    "licl": 0.317,
+    "c2": 0.348,
+    "sih4": 0.393,
+    "ph3": 0.343,
+    "h2o": 0.421,
+    "n2": 0.378,
+    "h2s": 0.334,
+    "bn": 0.427,
+    "ch4": 0.431,
+    "ch2o": 0.396,
+    "co2": 0.383,
+    "hf": 0.511,
+    "f2": 0.466,
+    "ar": 0.432,
+    "bh3": 0.453,
+    "hcl": 0.377,
+    "nh3": 0.371,
+    "beo": 0.331,
+    "lif": 0.401,
+    "bf": 0.361,
+    "ne": 0.647
+}
+
 
 
 ############################################
 # Results from Marie-Loos
 # https://doi.org/10.1021/acs.jctc.4c00216
 ############################################
+
+#
+# HOMO
+#
 #  aug-cc-pVTZ
 
 g0w0_avt_homo = {
@@ -86,7 +140,7 @@ g0w0_avt_homo = {
     "data": {'ch4': -14.753, 'h2s': -10.5, 'bn': -11.752, 'licl': -9.9844, 'c2': -12.928, 'sih4': -13.214, 'co2': -14.221, 'ch2o': -11.38, 'beo': -9.7273, 'lif': -11.384, 'f2': -16.334, 'hf': -16.237, 'co': -14.777, 'n2': -16.35, 'bf': -11.325, 'ne': -21.432, 'ph3': -10.787, 'h2o': -12.884, 'hcl': -12.778, 'cs': -12.378, 'ar': -15.711, 'bh3': -13.678, 'nh3': -11.201}
 }
 
-eomccsd_atq_homo = {
+eomccsd_avt_homo = {
     "orbital": "HOMO",
     "remark": "",
     "code": "CFOUR",
@@ -100,7 +154,7 @@ eomccsd_atq_homo = {
     "data": {'ch4': -14.387, 'h2s': -10.421, 'bn': -11.971, 'licl': -9.9564, 'c2': -12.978, 'sih4': -12.844, 'co2': -13.787, 'ch2o': -10.848, 'beo': -9.875, 'lif': -11.398, 'f2': -15.616, 'hf': -16.021, 'co': -14.19, 'n2': -15.641, 'bf': -11.25, 'ne': -21.326, 'ph3': -10.623, 'h2o': -12.594, 'hcl': -12.712, 'cs': -11.553, 'ar': -15.672, 'bh3': -13.342, 'nh3': -10.862}
 }
 
-eomccsdt_atq_homo = {
+eomccsdt_avt_homo = {
     "orbital": "HOMO",
     "remark": "",
     "code": "CFOUR",
@@ -114,7 +168,7 @@ eomccsdt_atq_homo = {
     "data": {'ch4': -14.365, 'h2s': -10.39, 'bn': -11.98, 'licl': -9.8825, 'c2': -12.54, 'sih4': -12.794, 'co2': -13.716, 'ch2o': -10.84, 'beo': -9.8642, 'lif': -11.379, 'f2': -15.688, 'hf': -16.077, 'co': -13.952, 'n2': -15.517, 'bf': -11.157, 'ne': -21.398, 'ph3': -10.599, 'h2o': -12.629, 'hcl': -12.667, 'cs': -11.346, 'ar': -15.606, 'bh3': -13.304, 'nh3': -10.876}
 }
 
-eomccsdtq_atq_homo = {
+eomccsdtq_avt_homo = {
     "orbital": "HOMO",
     "remark": "",
     "code": "CFOUR",
@@ -128,7 +182,7 @@ eomccsdtq_atq_homo = {
     "data": {'ch4': -14.376, 'h2s': -10.393, 'bn': -11.966, 'licl': -9.8964, 'c2': -12.471, 'sih4': -12.795, 'co2': -13.734, 'ch2o': -10.887, 'beo': -9.9385, 'lif': -11.453, 'f2': -15.725, 'hf': -16.14, 'co': -13.935, 'n2': -15.487, 'bf': -11.15, 'ne': -21.455, 'ph3': -10.6, 'h2o': -12.673, 'hcl': -12.676, 'cs': -11.316, 'ar': -15.614, 'bh3': -13.307, 'nh3': -10.899}
 }
 
-selectedci_atq_homo = {
+selectedci_avt_homo = {
     "orbital": "HOMO",
     "remark": "",
     "code": "QUANTUM PACKAGE",
@@ -199,27 +253,116 @@ selectedci_avq_homo = {
     "data": {'ch4': -14.407, 'h2s': -10.456, 'bn': -12.019, 'licl': -10.007, 'c2': -12.497, 'sih4': -12.818, 'co2': -13.823, 'ch2o': -10.954, 'beo': -10.018, 'lif': -11.538, 'f2': -15.808, 'hf': -16.214, 'co': -13.975, 'n2': -15.541, 'bf': -11.175, 'ne': -21.533, 'ph3': -10.628, 'h2o': -12.737, 'hcl': -12.77, 'cs': -11.355, 'ar': -15.739, 'bh3': -13.332, 'nh3': -10.945}
 }
 
+#
+# HOMO - 1
+#
+#  aug-cc-pVTZ
+g0w0_atq_homo_minus_one = {
+    "orbital": "HOMO-1",
+    "remark": "",
+    "code": "QUACK",
+    "basis_size": "3",
+    "basis": "gaussian",
+    "code_version": "",
+    "qpe": "",
+    "DOI": "https://doi.org/10.1021/acs.jctc.4c00216",
+    "basis_name": "aug-cc-pVTZ",
+    "calc_type": "G0W0@HF",
+    "data": {
+              'ch4': -23.875, 'h2s': -13.614, 'bn': -13.447, 'licl': -10.69, 'c2': None, 'sih4': -19.007, 'co2': -18.519, 'ch2o': -14.587,
+              'beo': -10.996, 'lif': -11.915, 'f2': -19.902, 'hf': -20.074, 'co': -17.083, 'n2': -17.093, 'bf': -18.743, 'ne': -47.95,
+              'ph3': -14.099, 'h2o': -15.106, 'hcl': -16.872, 'cs': -12.907, 'ar': -31.089, 'bh3': -18.685, 'nh3': -16.867
+            }
+}
 
-########################################################################
-def diff(data1, data2):
-    """
-        Returns a dictionary containing data2 - data1
-    """
-    errors = dict()
-    shared_keys = set(data1.keys()) & set(data2.keys())
-    for cas in shared_keys:
-        errors[cas] = data2[cas] - data1[cas]
-    return errors
+eomccsd_avt_homo_minus_one = {
+    "orbital": "HOMO-1",
+    "remark": "",
+    "code": "CFOUR",
+    "basis_size": "3",
+    "basis": "gaussian",
+    "code_version": "",
+    "qpe": "",
+    "DOI": "https://doi.org/10.1021/acs.jctc.4c00216",
+    "basis_name": "aug-cc-pVTZ",
+    "calc_type": "eom-CCSD",
+    "data": {
+              'ch4': -23.383, 'h2s': -13.44, 'bn': -13.697, 'licl': -10.637, 'c2': None, 'sih4': -18.483, 'co2': -17.996, 'ch2o': -14.606,
+              'beo': -11.006, 'lif': -11.874, 'f2': -18.946, 'hf': -19.946, 'co': -17.024, 'n2': -17.228, 'bf': -18.172, 'ne': -48.426,
+              'ph3': -13.784, 'h2o': -14.825, 'hcl': -16.708, 'cs': -13.0, 'ar': -29.881, 'bh3': -18.398, 'nh3': -16.588
+            }
+}
 
-########################################################################
-def mae_mse_max(data1, data2):
-    """
-        Returns MAE, MSE, Max errors with data1 being the reference
-    """
-    errors = list( diff(data1, data2).values() )
+selectedci_atq_homo_minus_one = {
+    "orbital": "HOMO-1",
+    "remark": "",
+    "code": "QUANTUM PACKAGE",
+    "basis_size": "3",
+    "basis": "gaussian",
+    "code_version": "",
+    "qpe": "",
+    "DOI": "https://doi.org/10.1021/acs.jctc.4c00216",
+    "basis_name": "aug-cc-pVTZ",
+    "calc_type": "selected CI",
+    "data": {
+              'ch4': -23.146, 'h2s': -13.411, 'bn': -13.729, 'licl': -10.577, 'c2': None, 'sih4': -18.24, 'co2': -17.513, 'ch2o': -14.578,
+              'beo': -11.056, 'lif': -11.933, 'f2': -18.874, 'hf': -20.054, 'co': -16.966, 'n2': -16.933, 'bf': -18.612, 'ne': -48.306,
+              'ph3': -13.745, 'h2o': -14.915, 'hcl': -16.657, 'cs': -12.882, 'ar': -29.188, 'bh3': -18.31, 'nh3': -16.603
+            }
+}
 
-    ndata = len(errors)
-    mse = np.sum(errors) / float(ndata)
-    mae = np.sum(np.abs(errors)) / float(ndata)
-    mxe = np.max(np.abs(errors))
-    return mae, mse, mxe
+#  aug-cc-pVQZ
+g0w0_avq_homo_minus_one = {
+    "orbital": "HOMO-1",
+    "remark": "",
+    "code": "QUACK",
+    "basis_size": "4",
+    "basis": "gaussian",
+    "code_version": "",
+    "qpe": "",
+    "DOI": "https://doi.org/10.1021/acs.jctc.4c00216",
+    "basis_name": "aug-cc-pVQZ",
+    "calc_type": "G0W0@HF",
+    "data": {
+              'ch4': -23.988, 'h2s': -13.758, 'bn': -13.59, 'licl': -10.897, 'c2': None, 'sih4': -19.097, 'co2': -18.697, 'ch2o': -14.759,
+              'beo': -11.2, 'lif': -12.139, 'f2': -20.104, 'hf': -20.259, 'co': -17.264, 'n2': -17.259, 'bf': -18.949, 'ne': -48.085,
+              'ph3': -14.214, 'h2o': -15.285, 'hcl': -17.031, 'cs': -13.063, 'ar': -31.224, 'bh3': -18.78, 'nh3': -17.007
+            }
+}
+
+eomccsd_avq_homo_minus_one = {
+    "orbital": "HOMO-1",
+    "remark": "",
+    "code": "CFOUR",
+    "basis_size": "4",
+    "basis": "gaussian",
+    "code_version": "",
+    "qpe": "",
+    "DOI": "https://doi.org/10.1021/acs.jctc.4c00216",
+    "basis_name": "aug-cc-pVQZ",
+    "calc_type": "eom-CCSD",
+    "data": {
+              'ch4': -23.426, 'h2s': -13.497, 'bn': -13.72, 'licl': -10.757, 'c2': None, 'sih4': -18.505, 'co2': -18.08, 'ch2o': -14.667,
+              'beo': -11.082, 'lif': -11.979, 'f2': -19.047, 'hf': -20.021, 'co': -17.095, 'n2': -17.287, 'bf': -18.246, 'ne': -48.494,
+              'ph3': -13.825, 'h2o': -14.895, 'hcl': -16.782, 'cs': -13.059, 'ar': -29.907, 'bh3': -18.428, 'nh3': -16.639
+            }
+}
+
+selectedci_avq_homo_minus_one = {
+    "orbital": "HOMO-1",
+    "remark": "",
+    "code": "QUANTUM PACKAGE",
+    "basis_size": "4",
+    "basis": "gaussian",
+    "code_version": "",
+    "qpe": "",
+    "DOI": "https://doi.org/10.1021/acs.jctc.4c00216",
+    "basis_name": "aug-cc-pVQZ",
+    "calc_type": "selected CI",
+    "data": {
+              'ch4': -23.148, 'h2s': -13.46, 'bn': -13.707, 'licl': -10.696, 'c2': None, 'sih4': -18.258, 'co2': -17.618, 'ch2o': -14.618,
+              'beo': -11.115, 'lif': -12.018, 'f2': -18.943, 'hf': -20.102, 'co': -17.02, 'n2': -16.981, 'bf': -18.664, 'ne': -48.34,
+              'ph3': -13.784, 'h2o': -14.962, 'hcl': -16.728, 'cs': -12.936, 'ar': -29.182, 'bh3': -18.332, 'nh3': -16.639
+            }
+}
+

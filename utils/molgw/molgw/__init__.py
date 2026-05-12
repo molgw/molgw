@@ -48,6 +48,8 @@ periodic_table = [ 'H',                                                         
                    'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt' 
                 ]
 z_element = {element: index+1 for index, element in enumerate(periodic_table)}
+def get_element_symbol(z):
+    return periodic_table[int(z)-1]
 
 molgw_rootfolder = str(pathlib.Path(__file__).resolve().parent.parent.parent.parent)
 exe  = molgw_rootfolder + "/molgw"
@@ -312,8 +314,8 @@ def parse_yaml_files(directory):
 
 
 ########################################################################
-def print_input_file(pyinput,filename="molgw.in"):
-    with open(filename,'w') as f:
+def print_input_file(pyinput, filename="molgw.in"):
+    with open(filename, 'w') as f:
         f.write('&molgw\n')
         for key, value in pyinput.items():
             if key == "xyz":

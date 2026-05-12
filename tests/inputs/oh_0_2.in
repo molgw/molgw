@@ -8,7 +8,7 @@
  auxil_basis='aug-cc-pVDZ-RI'
 
  postscf='GnW0'
- frozencore='yes'
+ frozencore='molgw'
  print_w='no'
 
  charge=0

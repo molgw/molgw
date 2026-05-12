@@ -1088,6 +1088,12 @@ SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPAx-I Energy             ,  -0.0483538239     , 0 , 1.0e-7
 RPAx-I Total Energy       ,  -8.0351082545     , 0 , 1.0e-7
 
+lih_gw_frozencore_molgw.in, test MOLGW frozencore for Li
+GW HOMO energy            ,   -8.270983        , 0 , 1.0e-4
+
+lih_gw_frozencore_gaussian.in, test GAUSSIAN frozencore for Li
+GW HOMO energy            ,   -8.265769        , 0 , 1.0e-4
+
 lih_gw.in                 , This only prepares ENERGY_QP file
 GW HOMO-LUMO gap          ,    8.053158        , 0 , 1.0e-4
 
@@ -1350,4 +1356,14 @@ diamond_gth_08_pbe.in     , 8-atom cell of diamond within PBE, need_libcint need
 SCF Total Energy          , -44.9101913413     , 0 , 1.0e-7
 gKS HOMO energy           ,   13.880276        , 0 , 1.0e-4
 gKS LUMO energy           ,   18.497151        , 0 , 1.0e-4
+
+co2_gw_dm_cederbaum.in    , CO2 GW density-matrix a la Cederbaum
+SCF Total Energy          , -187.4495378734    , 0 , 1.0e-7
+Kinetic Energy (Ha):      ,  186.9058907148    , 0 , 1.0e-7
+Nucleus Energy (Ha):      , -548.6566331109    , 0 , 1.0e-7
+Hartree Energy (Ha):      ,  142.9060274911    , 0 , 1.0e-7
+Exchange Energy (Ha):     ,   -21.1384503978   , 0 , 1.0e-7
+Hartree  HOMO expectation ,  291.642779        , 0 , 1.0e-4
+Exchange HOMO expectation ,  -24.839183        , 0 , 1.0e-4
+GW HOMO energy            ,  -12.015375        , 0 , 1.0e-4
 

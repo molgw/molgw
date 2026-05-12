@@ -6,7 +6,7 @@
  auxil_basis='cc-pVDZ-RI'
  gaussian_type='CART'
 
- frozencore='yes'
+ frozencore='molgw'
 
  pt_density_matrix='GW_IMAGINARY'
  use_correlated_density_matrix='yes'

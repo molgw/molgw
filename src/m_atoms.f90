@@ -230,6 +230,23 @@ end function atoms_core_states
 
 
 !=========================================================================
+function atoms_core_states_gaussian() result(atoms_core_states)
+  implicit none
+
+  integer :: atoms_core_states
+  !=====
+  integer :: icenter
+  !=====
+
+  atoms_core_states=0
+  do icenter=1, ncenter_nuclei
+    atoms_core_states = atoms_core_states + element_core_gaussian(zvalence(icenter), zatom(icenter))
+  enddo
+
+end function atoms_core_states_gaussian
+
+
+!=========================================================================
 subroutine get_bondcenter(ibond, xbond)
   implicit none
 

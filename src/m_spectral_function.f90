@@ -183,9 +183,13 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
   ncore_W      = ncorew
   nvirtual_W   = MIN(nvirtualw, nstate+1)
 
-  if(frozencore_) then
+  select case(TRIM(frozencore))
+  case('MOLGW', 'YES')
     if( ncore_W == 0) ncore_W = atoms_core_states()
-  endif
+  case('GAUSSIAN')
+    if( ncore_W == 0) ncore_W = atoms_core_states_gaussian()
+  end select
+
   if( ncore_W > 0 ) then
     write(stdout_, '(1x,a,i4,2x,i4)') 'frozen core approximation in W switched on up to state = ', ncore_W
   endif

@@ -145,6 +145,15 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   endif
 
   !
+  ! enforce_rpa prevails over the rest
+  !
+  if( enforce_rpa ) then
+    is_tdhf  = .FALSE.
+    is_bse   = .FALSE.
+    is_tddft = .FALSE.
+  endif
+
+  !
   ! Set up exchange content alpha_local
   ! manual_tdhf can override anything
   alpha_local = 0.0_dp

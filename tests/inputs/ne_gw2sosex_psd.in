@@ -16,7 +16,7 @@
 
  mpi_poorman='yes'
  natom=1
- frozencore='yes'
+ frozencore='molgw'
 /
 Ne  0.0 0.0 0.0
 

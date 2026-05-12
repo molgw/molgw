@@ -905,6 +905,7 @@ subroutine read_inputfile_namelist()
   pt3_a_diagrams     = capitalize(pt3_a_diagrams)
   partition_scheme   = capitalize(partition_scheme)
   w_screening        = capitalize(w_screening)
+  frozencore         = capitalize(frozencore)
 
   !
   ! The included file transforms the yes/no input variables

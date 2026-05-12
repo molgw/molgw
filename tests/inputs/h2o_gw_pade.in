@@ -8,7 +8,7 @@
  min_overlap = 5.0e-4
 
  postscf='g0w0_pade'
- frozencore='yes'
+ frozencore='molgw'
  selfenergy_state_range=1
  nomega_chi_imag = 64
 

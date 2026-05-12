@@ -3909,9 +3909,12 @@ subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
   write(stdout, '(/,1x,a)')  '==== RPA response calculation (MPI distributed)'
   ncore_W      = ncorew
   nvirtual_W   = MIN(nvirtualw, nstate+1)
-  if(frozencore_) then
+  select case(TRIM(frozencore))
+  case('MOLGW', 'YES')
     if( ncore_W == 0) ncore_W = atoms_core_states()
-  endif
+  case('GAUSSIAN')
+    if( ncore_W == 0) ncore_W = atoms_core_states_gaussian()
+  end select
   nhomo = get_number_occupied_states(occupation)
 
   write(stdout, '(5x,a)')  '== RPA response'

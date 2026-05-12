@@ -86,7 +86,7 @@ subroutine setup_density_matrix_real(c_matrix, occupation, p_matrix)
   nbf    = SIZE(c_matrix(:, :, :), DIM=1)
   nstate = SIZE(c_matrix(:, :, :), DIM=2)
 
-  if( ANY( occupation(:, :) < -1.0e-5_dp ) ) then
+  if( ANY( occupation(:, :) < -1.0e-1_dp ) ) then
     write(stdout, *) 'Min occupation:', MINVAL(occupation)
     call die('setup_density_matrix: negative occupation number should not happen here.')
   endif

@@ -13,7 +13,7 @@ module m_mp2_energy
   use m_cart_to_pure
   use m_basis_set
   use m_eri_ao_mo
-  use m_inputparam, only: nspin, spin_fact, ncoreg, nvirtualg, frozencore_, kappa_hybrid
+  use m_inputparam, only: nspin, spin_fact, ncoreg, nvirtualg, frozencore, kappa_hybrid
 
 
 contains
@@ -45,9 +45,12 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
 
 
   ncore = ncoreg
-  if(frozencore_) then
+  select case(TRIM(frozencore))
+  case('MOLGW', 'YES')
     if( ncore == 0) ncore = atoms_core_states()
-  endif
+  case('GAUSSIAN')
+    if( ncore == 0) ncore = atoms_core_states_gaussian()
+  end select
 
   call calculate_eri_3center_mo(c_matrix, ncore+1, nstate, ncore+1, nstate)
 
@@ -162,9 +165,12 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
   write(stdout, '(/,a)') ' RI-MP2 correlation calculation'
 
   ncore = ncoreg
-  if(frozencore_) then
+  select case(TRIM(frozencore))
+  case('MOLGW', 'YES')
     if( ncore == 0) ncore = atoms_core_states()
-  endif
+  case('GAUSSIAN')
+    if( ncore == 0) ncore = atoms_core_states_gaussian()
+  end select
 
   call calculate_eri_3center_mo_cmplx(c_matrix_cmplx, ncore+1, nstate, ncore+1, nstate)
 
@@ -285,9 +291,12 @@ subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
   write(stdout, '(/,a)') ' X2C RI-MP2 correlation calculation'
 
   ncore = ncoreg
-  if(frozencore_) then
+  select case(TRIM(frozencore))
+  case('MOLGW', 'YES')
     if( ncore == 0) ncore = atoms_core_states()
-  endif
+  case('GAUSSIAN')
+    if( ncore == 0) ncore = atoms_core_states_gaussian()
+  end select
   ncore = 2*ncore
 
   nstate_mp2 = MIN( 2*nvirtualg-1, nstate )
@@ -375,9 +384,12 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
   if( nspin > 1 ) call die('MP3 not implemented for unrestricted calculations')
 
   ncore = ncoreg
-  if(frozencore_) then
+  select case(TRIM(frozencore))
+  case('MOLGW', 'YES')
     if( ncore == 0) ncore = atoms_core_states()
-  endif
+  case('GAUSSIAN')
+    if( ncore == 0) ncore = atoms_core_states_gaussian()
+  end select
 
   call calculate_eri_3center_mo(c_matrix, ncore+1, nstate, ncore+1, nstate)
 

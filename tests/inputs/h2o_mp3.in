@@ -5,7 +5,7 @@
  auxil_basis='cc-pVTZ-RI'
  read_restart='no'
 
- frozencore='yes'
+ frozencore='molgw'
  postscf='mp3'
 
  natom=3
