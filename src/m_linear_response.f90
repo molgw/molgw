@@ -47,12 +47,12 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   logical                   :: is_bse, is_tdhf, eri_3center_mo_available
   integer                   :: nmat, nexc
   real(dp)                  :: alpha_local, beta_local, lambda_
-  real(dp), allocatable      :: amb_diag_rpa(:)
-  real(dp), allocatable      :: amb_matrix(:, :), apb_matrix(:, :)
-  real(dp), allocatable      :: xpy_matrix(:, :), xmy_matrix(:, :)
-  real(dp), allocatable      :: eigenvalue(:)
-  real(dp), allocatable      :: bare_eigenval(:)
-  real(dp), allocatable      :: energy_qp(:, :)
+  real(dp), allocatable     :: amb_diag_rpa(:)
+  real(dp), allocatable     :: amb_matrix(:, :), apb_matrix(:, :)
+  real(dp), allocatable     :: xpy_matrix(:, :), xmy_matrix(:, :)
+  real(dp), allocatable     :: eigenvalue(:)
+  real(dp), allocatable     :: bare_eigenval(:)
+  real(dp), allocatable     :: energy_qp(:, :)
   logical                   :: is_tddft, is_rpa
   logical                   :: has_manual_tdhf
   logical                   :: do_print_bare_energy
@@ -394,7 +394,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     do t_jb = 1, n_x
       t_jb_global = colindex_local_to_global('S', t_jb)
       do t_ia = 1, m_x
-        t_ia_global = rowindex_local_to_global(iprow_sd, nprow_sd, t_ia)
+        t_ia_global = rowindex_local_to_global('S', t_ia)
         bare_eigenval(t_jb_global) = bare_eigenval(t_jb_global) &
           + xpy_matrix(t_ia, t_jb) * xmy_matrix(t_ia, t_jb) * amb_diag_rpa(t_ia_global)
       enddo

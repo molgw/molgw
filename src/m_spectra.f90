@@ -154,13 +154,13 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
       write(unit_yaml, '(12x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', eigenvalue(iexc) * Ha_eV
     enddo
     if( print_bare_energy_ .AND. PRESENT(bare_eigenvalue) ) then
-      write(unit_yaml, '(8x,a)') 'bare energy contribution, eV:'
+      write(unit_yaml, '(8x,a)') 'bare energy contribution:'
+      write(unit_yaml, '(12x,a)') 'units: eV'
       do iexc=1, nexc
         write(char6, '(i6)') iexc
         write(unit_yaml, '(12x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', bare_eigenvalue(iexc) * Ha_eV
       enddo
     endif
-    write(unit_yaml, '(8x,a)') 'oscillator strengths:'
   endif
 
   write(stdout, '(/,5x,a)') 'Excitation energies (eV)     Oscil. strengths   [Symmetry] '
