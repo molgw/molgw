@@ -37,7 +37,7 @@ frozencore = {
     'P': 0,
     'Cl': 0,
     'Ne': 0,
-    'Ar': 0 
+    'Ar': 0
 }
 
 def get_frozencore(cas):
@@ -120,6 +120,10 @@ otrsh_gamma_gw_dm = {
 # Results from Marie-Loos
 # https://doi.org/10.1021/acs.jctc.4c00216
 ############################################
+
+#
+# HOMO
+#
 #  aug-cc-pVTZ
 
 g0w0_avt_homo = {
@@ -249,4 +253,116 @@ selectedci_avq_homo = {
     "data": {'ch4': -14.407, 'h2s': -10.456, 'bn': -12.019, 'licl': -10.007, 'c2': -12.497, 'sih4': -12.818, 'co2': -13.823, 'ch2o': -10.954, 'beo': -10.018, 'lif': -11.538, 'f2': -15.808, 'hf': -16.214, 'co': -13.975, 'n2': -15.541, 'bf': -11.175, 'ne': -21.533, 'ph3': -10.628, 'h2o': -12.737, 'hcl': -12.77, 'cs': -11.355, 'ar': -15.739, 'bh3': -13.332, 'nh3': -10.945}
 }
 
+#
+# HOMO - 1
+#
+#  aug-cc-pVTZ
+g0w0_atq_homo_minus_one = {
+    "orbital": "HOMO-1",
+    "remark": "",
+    "code": "QUACK",
+    "basis_size": "3",
+    "basis": "gaussian",
+    "code_version": "",
+    "qpe": "",
+    "DOI": "https://doi.org/10.1021/acs.jctc.4c00216",
+    "basis_name": "aug-cc-pVTZ",
+    "calc_type": "G0W0@HF",
+    "data": {
+              'ch4': -23.875, 'h2s': -13.614, 'bn': -13.447, 'licl': -10.69, 'c2': None, 'sih4': -19.007, 'co2': -18.519, 'ch2o': -14.587,
+              'beo': -10.996, 'lif': -11.915, 'f2': -19.902, 'hf': -20.074, 'co': -17.083, 'n2': -17.093, 'bf': -18.743, 'ne': -47.95,
+              'ph3': -14.099, 'h2o': -15.106, 'hcl': -16.872, 'cs': -12.907, 'ar': -31.089, 'bh3': -18.685, 'nh3': -16.867
+            }
+}
+
+eomccsd_avt_homo_minus_one = {
+    "orbital": "HOMO-1",
+    "remark": "",
+    "code": "CFOUR",
+    "basis_size": "3",
+    "basis": "gaussian",
+    "code_version": "",
+    "qpe": "",
+    "DOI": "https://doi.org/10.1021/acs.jctc.4c00216",
+    "basis_name": "aug-cc-pVTZ",
+    "calc_type": "eom-CCSD",
+    "data": {
+              'ch4': -23.383, 'h2s': -13.44, 'bn': -13.697, 'licl': -10.637, 'c2': None, 'sih4': -18.483, 'co2': -17.996, 'ch2o': -14.606,
+              'beo': -11.006, 'lif': -11.874, 'f2': -18.946, 'hf': -19.946, 'co': -17.024, 'n2': -17.228, 'bf': -18.172, 'ne': -48.426,
+              'ph3': -13.784, 'h2o': -14.825, 'hcl': -16.708, 'cs': -13.0, 'ar': -29.881, 'bh3': -18.398, 'nh3': -16.588
+            }
+}
+
+selectedci_atq_homo_minus_one = {
+    "orbital": "HOMO-1",
+    "remark": "",
+    "code": "QUANTUM PACKAGE",
+    "basis_size": "3",
+    "basis": "gaussian",
+    "code_version": "",
+    "qpe": "",
+    "DOI": "https://doi.org/10.1021/acs.jctc.4c00216",
+    "basis_name": "aug-cc-pVTZ",
+    "calc_type": "selected CI",
+    "data": {
+              'ch4': -23.146, 'h2s': -13.411, 'bn': -13.729, 'licl': -10.577, 'c2': None, 'sih4': -18.24, 'co2': -17.513, 'ch2o': -14.578,
+              'beo': -11.056, 'lif': -11.933, 'f2': -18.874, 'hf': -20.054, 'co': -16.966, 'n2': -16.933, 'bf': -18.612, 'ne': -48.306,
+              'ph3': -13.745, 'h2o': -14.915, 'hcl': -16.657, 'cs': -12.882, 'ar': -29.188, 'bh3': -18.31, 'nh3': -16.603
+            }
+}
+
+#  aug-cc-pVQZ
+g0w0_avq_homo_minus_one = {
+    "orbital": "HOMO-1",
+    "remark": "",
+    "code": "QUACK",
+    "basis_size": "4",
+    "basis": "gaussian",
+    "code_version": "",
+    "qpe": "",
+    "DOI": "https://doi.org/10.1021/acs.jctc.4c00216",
+    "basis_name": "aug-cc-pVQZ",
+    "calc_type": "G0W0@HF",
+    "data": {
+              'ch4': -23.988, 'h2s': -13.758, 'bn': -13.59, 'licl': -10.897, 'c2': None, 'sih4': -19.097, 'co2': -18.697, 'ch2o': -14.759,
+              'beo': -11.2, 'lif': -12.139, 'f2': -20.104, 'hf': -20.259, 'co': -17.264, 'n2': -17.259, 'bf': -18.949, 'ne': -48.085,
+              'ph3': -14.214, 'h2o': -15.285, 'hcl': -17.031, 'cs': -13.063, 'ar': -31.224, 'bh3': -18.78, 'nh3': -17.007
+            }
+}
+
+eomccsd_avq_homo_minus_one = {
+    "orbital": "HOMO-1",
+    "remark": "",
+    "code": "CFOUR",
+    "basis_size": "4",
+    "basis": "gaussian",
+    "code_version": "",
+    "qpe": "",
+    "DOI": "https://doi.org/10.1021/acs.jctc.4c00216",
+    "basis_name": "aug-cc-pVQZ",
+    "calc_type": "eom-CCSD",
+    "data": {
+              'ch4': -23.426, 'h2s': -13.497, 'bn': -13.72, 'licl': -10.757, 'c2': None, 'sih4': -18.505, 'co2': -18.08, 'ch2o': -14.667,
+              'beo': -11.082, 'lif': -11.979, 'f2': -19.047, 'hf': -20.021, 'co': -17.095, 'n2': -17.287, 'bf': -18.246, 'ne': -48.494,
+              'ph3': -13.825, 'h2o': -14.895, 'hcl': -16.782, 'cs': -13.059, 'ar': -29.907, 'bh3': -18.428, 'nh3': -16.639
+            }
+}
+
+selectedci_avq_homo_minus_one = {
+    "orbital": "HOMO-1",
+    "remark": "",
+    "code": "QUANTUM PACKAGE",
+    "basis_size": "4",
+    "basis": "gaussian",
+    "code_version": "",
+    "qpe": "",
+    "DOI": "https://doi.org/10.1021/acs.jctc.4c00216",
+    "basis_name": "aug-cc-pVQZ",
+    "calc_type": "selected CI",
+    "data": {
+              'ch4': -23.148, 'h2s': -13.46, 'bn': -13.707, 'licl': -10.696, 'c2': None, 'sih4': -18.258, 'co2': -17.618, 'ch2o': -14.618,
+              'beo': -11.115, 'lif': -12.018, 'f2': -18.943, 'hf': -20.102, 'co': -17.02, 'n2': -16.981, 'bf': -18.664, 'ne': -48.34,
+              'ph3': -13.784, 'h2o': -14.962, 'hcl': -16.728, 'cs': -12.936, 'ar': -29.182, 'bh3': -18.332, 'nh3': -16.639
+            }
+}
 
