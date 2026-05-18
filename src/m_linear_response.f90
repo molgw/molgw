@@ -55,7 +55,6 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   real(dp), allocatable     :: energy_qp(:, :)
   logical                   :: is_tddft, is_rpa
   logical                   :: has_manual_tdhf
-  logical                   :: do_print_bare_energy
   integer                   :: reading_status
   integer                   :: tdhffile
   integer                   :: m_apb, n_apb, m_x, n_x
@@ -176,7 +175,6 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   !if( enforce_rpa ) alpha_local = 0.0_dp
 
   is_rpa = .NOT.(is_tddft) .AND. .NOT.(is_bse) .AND. (ABS(alpha_local)<1.0e-5_dp)
-  do_print_bare_energy = print_bare_energy_ .AND. tda_
 
   call start_clock(timing_build_h2p)
   write(stdout, '(/,1x,a)') 'Summarize the linear response calculation:'
@@ -388,8 +386,9 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
 
   ! Compute bare QP energy difference contribution to each excitation energy
-  ! bare_n = sum_{ia} xpy(ia,n) * xmy(ia,n) * (eps_a - eps_i)
-  if( do_print_bare_energy ) then
+  ! bare_n = sum_{ia} xpy(ia,n) * xmy(ia,n) * (e_a - e_i)
+  ! expression is valid within and beyond TDA
+  if( print_bare_energy_ ) then
     bare_eigenval(:) = 0.0_dp
     do t_jb = 1, n_x
       t_jb_global = colindex_local_to_global('S', t_jb)
@@ -423,7 +422,10 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     write(stdout, '(/,a,f16.10)') ' RPA correlation energy (Ha): ', en_rpa
   endif
 
-  write(stdout, '(/,a,f12.6)') ' Lowest neutral excitation energy (eV):', MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
+  write(stdout, '(/,1x,a,f12.6)') 'Lowest neutral excitation energy (eV):', MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
+  if( print_bare_energy_ ) then
+    write(stdout, '(1x,a,f12.6)') '   Lowest bare excitation energy (eV):', MINVAL(ABS(bare_eigenval(1:nexc)))*Ha_eV
+  endif
 
   !if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timing_aomo_pola)
 

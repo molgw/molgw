@@ -14,6 +14,8 @@
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
 
+ print_bare_energy='yes'
+
  natom=4
 /
 H   0.000000   0.934473    -0.588078

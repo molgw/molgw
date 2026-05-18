@@ -605,6 +605,7 @@ GW LUMO energy            ,      2.494864       , 0 , 1.0e-4
 
 ch2o_bse.in               , BSE on formaldehyde , restart
 Lowest neutral excitation ,      3.389151       , 0 , 1.0e-4
+Lowest bare excitation    ,     12.492477       , 0 , 1.0e-4
 0002 :                    ,      7.92628881     , 0 , 1.0e-4
 0002 :                    ,      0.11520374     , 1 , 1.0e-4
 Sum over oscillator strengths , 12.036833       , 0 , 1.0e-4
