@@ -352,43 +352,53 @@ end subroutine dump_out_matrix_dp
 
 
 !=========================================================================
-subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, fmt)
+subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, fmt, maxcol)
   implicit none
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
   real(dp), intent(in)         :: matrix(:, :)
   character(len=*), optional, intent(in) :: fmt
+  integer, optional, intent(in) :: maxcol
   !=====
-  integer, parameter :: MAXSIZE=50
+  integer :: maxcol_ = 50
   !=====
-  real(dp) :: row(MIN(SIZE(matrix, DIM=2), MAXSIZE))
+  real(dp), allocatable :: row(:)
   integer :: imat, mmat, nmat
   character(:), allocatable :: fmt_
   !=====
 
   if( .NOT. print_matrix .AND. .NOT. debug ) return
 
+  mmat  = SIZE(matrix, DIM=1)
+  nmat  = SIZE(matrix, DIM=2)
+
   if( PRESENT(fmt) ) then
     fmt_ = fmt
   else
     fmt_ = 'f12.5'
   endif
+  if( PRESENT(maxcol) ) then
+    maxcol_ = maxcol
+  else
+    maxcol_ = MIN(50, nmat)
+  endif
+  allocate(row(maxcol_))
 
-  mmat  = SIZE(matrix, DIM=1)
-  nmat  = SIZE(matrix, DIM=2)
 
   write(stdout, '(/,1x,a)') TRIM(title)
 
-  do imat=1, MIN(mmat, MAXSIZE)
-    where( ABS(matrix(imat, 1:MIN(nmat, MAXSIZE))) > 1.0e-5_dp )
-      row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE))
+  do imat=1, MIN(mmat, maxcol_)
+    where( ABS(matrix(imat, 1:MIN(nmat, maxcol_))) > 1.0e-5_dp )
+      row(:) = matrix(imat, 1:MIN(nmat, maxcol_))
     elsewhere
       row(:) = 1.0e-6_dp
     end where
     write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
   enddo
   write(stdout, *)
+
+  deallocate(row)
 
 end subroutine dump_out_matrix_nospin_dp
 
@@ -4520,6 +4530,7 @@ subroutine read_molden_file(moldenfilename, basis, occupation, energy, c_matrix)
       enddo
     enddo
   enddo
+
 
   close(fileunit)
 
