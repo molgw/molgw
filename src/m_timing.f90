@@ -28,7 +28,7 @@ module m_timing
   integer, parameter :: TIMING_SCF     = 2
   integer, parameter :: TIMING_POSTSCF = 3
 
-  integer, private :: current_stage
+  integer, protected :: current_stage
   integer, private :: id_last_used
   integer, private :: count_rate, count_max
 
@@ -48,140 +48,140 @@ module m_timing
   end type
 
   ! Top-level stage timers
-  type(timer) :: timer_molgw
-  type(timer) :: timer_prescf
-  type(timer) :: timer_scf
-  type(timer) :: timer_postscf
+  type(timer), target :: timer_molgw
+  type(timer), target :: timer_prescf
+  type(timer), target :: timer_scf
+  type(timer), target :: timer_postscf
 
   ! Temporary timers for development use
-  type(timer) :: timer_tmp0, timer_tmp1, timer_tmp2, timer_tmp3, timer_tmp4
-  type(timer) :: timer_tmp5, timer_tmp6, timer_tmp7, timer_tmp8, timer_tmp9
+  type(timer), target :: timer_tmp0, timer_tmp1, timer_tmp2, timer_tmp3, timer_tmp4
+  type(timer), target :: timer_tmp5, timer_tmp6, timer_tmp7, timer_tmp8, timer_tmp9
 
   ! Pre-SCF: integrals
-  type(timer) :: timer_auto_auxil
-  type(timer) :: timer_eri_screening
-  type(timer) :: timer_eri_4center
-  type(timer) :: timer_eri_2center
-  type(timer) :: timer_eri_2center_ints
-  type(timer) :: timer_eri_2center_invert
-  type(timer) :: timer_eri_2center_inverse_sqrt
-  type(timer) :: timer_eri_3center
-  type(timer) :: timer_eri_3center_ints
-  type(timer) :: timer_eri_3center_matmul
-  type(timer) :: timer_eri_3center_ao2mo
-  type(timer) :: timer_eri_4center_ao2mo
+  type(timer), target :: timer_auto_auxil
+  type(timer), target :: timer_eri_screening
+  type(timer), target :: timer_eri_4center
+  type(timer), target :: timer_eri_2center
+  type(timer), target :: timer_eri_2center_ints
+  type(timer), target :: timer_eri_2center_invert
+  type(timer), target :: timer_eri_2center_inverse_sqrt
+  type(timer), target :: timer_eri_3center
+  type(timer), target :: timer_eri_3center_ints
+  type(timer), target :: timer_eri_3center_matmul
+  type(timer), target :: timer_eri_3center_ao2mo
+  type(timer), target :: timer_eri_4center_ao2mo
 
   ! Pre-SCF: Hamiltonian
-  type(timer) :: timer_overlap
-  type(timer) :: timer_overlap_grad
-  type(timer) :: timer_approx_ham
-  type(timer) :: timer_hamiltonian_kin
-  type(timer) :: timer_hamiltonian_nuc
-  type(timer) :: timer_hamiltonian_ecp
-  type(timer) :: timer_ecp
-  type(timer) :: timer_sqrt_density_matrix
-  type(timer) :: timer_relativistic
+  type(timer), target :: timer_overlap
+  type(timer), target :: timer_overlap_grad
+  type(timer), target :: timer_approx_ham
+  type(timer), target :: timer_hamiltonian_kin
+  type(timer), target :: timer_hamiltonian_nuc
+  type(timer), target :: timer_hamiltonian_ecp
+  type(timer), target :: timer_ecp
+  type(timer), target :: timer_sqrt_density_matrix
+  type(timer), target :: timer_relativistic
 
   ! SCF
-  type(timer) :: timer_grid_init
-  type(timer) :: timer_grid_generation
-  type(timer) :: timer_grid_wfn
-  type(timer) :: timer_density_matrix
-  type(timer) :: timer_rhoauxil
-  type(timer) :: timer_hartree
-  type(timer) :: timer_exchange
-  type(timer) :: timer_dft_xc
-  type(timer) :: timer_dft_density
-  type(timer) :: timer_dft_libxc
-  type(timer) :: timer_dft_vxc
-  type(timer) :: timer_diago_hamiltonian
-  type(timer) :: timer_diis
-  type(timer) :: timer_restart_file
-  type(timer) :: timer_fno
-  type(timer) :: timer_force
+  type(timer), target :: timer_grid_init
+  type(timer), target :: timer_grid_generation
+  type(timer), target :: timer_grid_wfn
+  type(timer), target :: timer_density_matrix
+  type(timer), target :: timer_rhoauxil
+  type(timer), target :: timer_hartree
+  type(timer), target :: timer_exchange
+  type(timer), target :: timer_dft_xc
+  type(timer), target :: timer_dft_density
+  type(timer), target :: timer_dft_libxc
+  type(timer), target :: timer_dft_vxc
+  type(timer), target :: timer_diago_hamiltonian
+  type(timer), target :: timer_diis
+  type(timer), target :: timer_restart_file
+  type(timer), target :: timer_fno
+  type(timer), target :: timer_force
 
   ! PBC
-  type(timer) :: timer_pbc_eval_bf
-  type(timer) :: timer_pbc_density
-  type(timer) :: timer_pbc_potential_to_hao
-  type(timer) :: timer_pbc_nuclei_density
+  type(timer), target :: timer_pbc_eval_bf
+  type(timer), target :: timer_pbc_density
+  type(timer), target :: timer_pbc_potential_to_hao
+  type(timer), target :: timer_pbc_nuclei_density
 
   ! Post-SCF: linear response
-  type(timer) :: timer_x_m_vxc
-  type(timer) :: timer_pola
-  type(timer) :: timer_rpa_dynamic
-  type(timer) :: timer_rpa_static
-  type(timer) :: timer_aomo_pola
-  type(timer) :: timer_build_h2p
-  type(timer) :: timer_build_common
-  type(timer) :: timer_build_tddft
-  type(timer) :: timer_build_bse
-  type(timer) :: timer_diago_h2p
-  type(timer) :: timer_vchiv
-  type(timer) :: timer_spectrum
-  type(timer) :: timer_stopping
-  type(timer) :: timer_read_coulombvertex
-  type(timer) :: timer_write_coulombvertex
+  type(timer), target :: timer_x_m_vxc
+  type(timer), target :: timer_pola
+  type(timer), target :: timer_rpa_dynamic
+  type(timer), target :: timer_rpa_static
+  type(timer), target :: timer_aomo_pola
+  type(timer), target :: timer_build_h2p
+  type(timer), target :: timer_build_common
+  type(timer), target :: timer_build_tddft
+  type(timer), target :: timer_build_bse
+  type(timer), target :: timer_diago_h2p
+  type(timer), target :: timer_vchiv
+  type(timer), target :: timer_spectrum
+  type(timer), target :: timer_stopping
+  type(timer), target :: timer_read_coulombvertex
+  type(timer), target :: timer_write_coulombvertex
 
   ! Post-SCF: self-energies
-  type(timer) :: timer_gw_self
-  type(timer) :: timer_aomo_gw
-  type(timer) :: timer_pt_self
-  type(timer) :: timer_vertex_selfenergy
-  type(timer) :: timer_mp2_energy
-  type(timer) :: timer_mbpt_dm
+  type(timer), target :: timer_gw_self
+  type(timer), target :: timer_aomo_gw
+  type(timer), target :: timer_pt_self
+  type(timer), target :: timer_vertex_selfenergy
+  type(timer), target :: timer_mp2_energy
+  type(timer), target :: timer_mbpt_dm
 
   ! CI
-  type(timer) :: timer_full_ci
-  type(timer) :: timer_ci_config
-  type(timer) :: timer_zeroes_ci
-  type(timer) :: timer_ham_ci
-  type(timer) :: timer_ci_diago
-  type(timer) :: timer_ci_write
-  type(timer) :: timer_ci_selfenergy
+  type(timer), target :: timer_full_ci
+  type(timer), target :: timer_ci_config
+  type(timer), target :: timer_zeroes_ci
+  type(timer), target :: timer_ham_ci
+  type(timer), target :: timer_ci_diago
+  type(timer), target :: timer_ci_write
+  type(timer), target :: timer_ci_selfenergy
 
   ! NOFT
-  type(timer) :: timer_noft_energy
+  type(timer), target :: timer_noft_energy
 
   ! RT-TDDFT
-  type(timer) :: timer_tddft_loop
-  type(timer) :: timer_tddft_one_iter
-  type(timer) :: timer_tddft_fourier
-  type(timer) :: timer_tddft_propagation
-  type(timer) :: timer_propagate_diago
-  type(timer) :: timer_propagate_matmul
-  type(timer) :: timer_propagate_inverse
-  type(timer) :: timer_update_basis_eri
-  type(timer) :: timer_tddft_eri_2center
-  type(timer) :: timer_tddft_eri_2center_ints
-  type(timer) :: timer_tddft_eri_2center_invert
-  type(timer) :: timer_tddft_eri_3center
-  type(timer) :: timer_tddft_eri_3center_ints
-  type(timer) :: timer_update_overlaps
-  type(timer) :: timer_tddft_grid_init
-  type(timer) :: timer_tddft_grid_generation
-  type(timer) :: timer_tddft_grid_wfn
-  type(timer) :: timer_tddft_frozen_core
-  type(timer) :: timer_tddft_q_matrix
-  type(timer) :: timer_tddft_hamiltonian
-  type(timer) :: timer_tddft_kin
-  type(timer) :: timer_density_matrix_cmplx
-  type(timer) :: timer_density_matrix_MO
-  type(timer) :: timer_tddft_hamiltonian_nuc
-  type(timer) :: timer_tddft_rhoauxil
-  type(timer) :: timer_tddft_hartree
-  type(timer) :: timer_tddft_exchange
-  type(timer) :: timer_tddft_xc
-  type(timer) :: timer_grad_kin
-  type(timer) :: timer_grad_nuc
-  type(timer) :: timer_tddft_densities
-  type(timer) :: timer_tddft_libxc
-  type(timer) :: timer_tddft_vxc
-  type(timer) :: timer_tddft_ham_orthobasis
-  type(timer) :: timer_restart_tddft_file
-  type(timer) :: timer_print_cube_rho_tddft
-  type(timer) :: timer_print_line_rho_tddft
-  type(timer) :: timer_calc_dens_disc
+  type(timer), target :: timer_tddft_loop
+  type(timer), target :: timer_tddft_one_iter
+  type(timer), target :: timer_tddft_fourier
+  type(timer), target :: timer_tddft_propagation
+  type(timer), target :: timer_propagate_diago
+  type(timer), target :: timer_propagate_matmul
+  type(timer), target :: timer_propagate_inverse
+  type(timer), target :: timer_update_basis_eri
+  type(timer), target :: timer_tddft_eri_2center
+  type(timer), target :: timer_tddft_eri_2center_ints
+  type(timer), target :: timer_tddft_eri_2center_invert
+  type(timer), target :: timer_tddft_eri_3center
+  type(timer), target :: timer_tddft_eri_3center_ints
+  type(timer), target :: timer_update_overlaps
+  type(timer), target :: timer_tddft_grid_init
+  type(timer), target :: timer_tddft_grid_generation
+  type(timer), target :: timer_tddft_grid_wfn
+  type(timer), target :: timer_tddft_frozen_core
+  type(timer), target :: timer_tddft_q_matrix
+  type(timer), target :: timer_tddft_hamiltonian
+  type(timer), target :: timer_tddft_kin
+  type(timer), target :: timer_density_matrix_cmplx
+  type(timer), target :: timer_density_matrix_MO
+  type(timer), target :: timer_tddft_hamiltonian_nuc
+  type(timer), target :: timer_tddft_rhoauxil
+  type(timer), target :: timer_tddft_hartree
+  type(timer), target :: timer_tddft_exchange
+  type(timer), target :: timer_tddft_xc
+  type(timer), target :: timer_grad_kin
+  type(timer), target :: timer_grad_nuc
+  type(timer), target :: timer_tddft_densities
+  type(timer), target :: timer_tddft_libxc
+  type(timer), target :: timer_tddft_vxc
+  type(timer), target :: timer_tddft_ham_orthobasis
+  type(timer), target :: timer_restart_tddft_file
+  type(timer), target :: timer_print_cube_rho_tddft
+  type(timer), target :: timer_print_line_rho_tddft
+  type(timer), target :: timer_calc_dens_disc
 
 
 contains

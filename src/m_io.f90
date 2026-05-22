@@ -61,7 +61,7 @@ subroutine this_is_the_end()
 
   call total_memory_statement()
 
-  call output_timing()
+  call output_timers()
 
   if( print_yaml_ .AND. is_iomaster ) then
     call output_all_warnings(unit_yaml)
@@ -81,10 +81,10 @@ subroutine this_is_the_end()
 
     write(unit_yaml, '(4x,a)') 'timing:'
     write(unit_yaml, '(8x,a)')           'unit: s'
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'total:  ', timer_molgw%get()
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'prescf: ', timer_prescf%get()
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'scf:    ', timer_scf%get()
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'postscf:', timer_postscf%get()
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'total:  ', timer_get(timer_molgw)
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'prescf: ', timer_get(timer_prescf)
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'scf:    ', timer_get(timer_scf)
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'postscf:', timer_get(timer_postscf)
     write(unit_yaml, '(4x,a)') 'memory:'
     write(unit_yaml, '(8x,a)')           'unit: Gb'
     write(unit_yaml, '(8x,a,1x,es18.8)') 'peak:   ', get_peak_memory()
@@ -1763,7 +1763,7 @@ subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, nu
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
   endif
   ! Find highest occupied state
@@ -1900,7 +1900,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num,
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
   endif
 
@@ -2077,7 +2077,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix,
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
   endif
 
@@ -2230,7 +2230,7 @@ subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
   endif
   ! Find highest occupied state
@@ -2249,7 +2249,7 @@ subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
 
   allocate(phi_cmplx(1:nocc_max, nspin))
-  if( .NOT. in_rt_tddft ) then
+  if( current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(a,2(2x,i4))')   ' states:   ', 1, nocc_max
   endif
 
@@ -2352,7 +2352,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupatio
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Calculate electronic density in discs'
   endif
   ! Find highest occupied state
@@ -2481,7 +2481,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
   endif
 
@@ -2501,7 +2501,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
 
 
   allocate(phi_cmplx(1:nocc_max, nspin))
-  if( .NOT. in_rt_tddft ) then
+  if( current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(a,2(2x,i4))')   ' states:   ', 1, nocc_max
   endif
 
@@ -2738,7 +2738,7 @@ subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, n
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting some selected wavefunctions along one line'
   endif
   ! Find highest occupied state
@@ -3015,7 +3015,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matr
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
   endif
   ! Find highest occupied state

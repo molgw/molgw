@@ -66,7 +66,7 @@ subroutine setup_overlap_finite(basis, s_matrix)
 #endif
   !=====
 
-  if( .not. in_rt_tddft ) call timer_overlap%start()
+  if( current_stage /= TIMING_POSTSCF ) call timer_overlap%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup overlap matrix S (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -145,7 +145,7 @@ subroutine setup_overlap_finite(basis, s_matrix)
   call dump_out_matrix(.FALSE., title, s_matrix)
 
 
-  if( .not. in_rt_tddft ) call timer_overlap%stop()
+  if( current_stage /= TIMING_POSTSCF ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_finite
@@ -178,7 +178,7 @@ subroutine setup_overlap_mixedbasis(basis1, basis2, s_matrix)
   integer :: ibf_cart, jbf_cart
   !=====
 
-  if( .not. in_rt_tddft ) call timer_overlap%start()
+  if( current_stage /= TIMING_POSTSCF ) call timer_overlap%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup mixed overlap matrix S (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -249,7 +249,7 @@ subroutine setup_overlap_mixedbasis(basis1, basis2, s_matrix)
   enddo
 
 
-  if( .not. in_rt_tddft ) call timer_overlap%stop()
+  if( current_stage /= TIMING_POSTSCF ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_mixedbasis
@@ -328,7 +328,7 @@ subroutine setup_overlap_grad(basis, s_matrix_grad)
 #endif
   !=====
 
-  if( .not. in_rt_tddft ) call timer_overlap%start()
+  if( current_stage /= TIMING_POSTSCF ) call timer_overlap%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup gradient overlap matrix S (LIBCINT)'
 #elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
@@ -410,7 +410,7 @@ subroutine setup_overlap_grad(basis, s_matrix_grad)
   title='=== Overlap grad matrix Z ==='
   call dump_out_matrix(.FALSE., title, s_matrix_grad(:, :, 3))
 
-  if( .not. in_rt_tddft ) call timer_overlap%stop()
+  if( current_stage /= TIMING_POSTSCF ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_grad
@@ -438,7 +438,7 @@ subroutine setup_overlap_hessian(basis, s_matrix_hess)
 #endif
   !=====
 
-  if( .not. in_rt_tddft ) call timer_overlap%start()
+  if( current_stage /= TIMING_POSTSCF ) call timer_overlap%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup hessian of the overlap matrix (LIBCINT)'
 #else
@@ -500,7 +500,7 @@ subroutine setup_overlap_hessian(basis, s_matrix_hess)
   title='=== Overlap hessian matrix ZZ ==='
   call dump_out_matrix(.FALSE., title, s_matrix_hess(:, :, 3, 3))
 
-  if( .not. in_rt_tddft ) call timer_overlap%stop()
+  if( current_stage /= TIMING_POSTSCF ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_hessian
@@ -663,7 +663,7 @@ subroutine setup_kinetic_finite(basis, hamiltonian_kinetic, timing)
 #endif
   !=====
 
-  if( .not. in_rt_tddft ) call timer_hamiltonian_kin%start()
+  if( current_stage /= TIMING_POSTSCF ) call timer_hamiltonian_kin%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup kinetic part of the Hamiltonian (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -735,7 +735,7 @@ subroutine setup_kinetic_finite(basis, hamiltonian_kinetic, timing)
   title='===  Kinetic energy contribution ==='
   call dump_out_matrix(.FALSE., title, hamiltonian_kinetic)
 
-  if( .not. in_rt_tddft ) call timer_hamiltonian_kin%stop()
+  if( current_stage /= TIMING_POSTSCF ) call timer_hamiltonian_kin%stop()
 
 end subroutine setup_kinetic_finite
 
@@ -767,7 +767,7 @@ subroutine recalc_kinetic(basis_t, basis_p, hamiltonian_kinetic)
   integer :: ibf_cart, jbf_cart
   !=====
 
-  if( in_rt_tddft ) then
+  if( current_stage == TIMING_POSTSCF ) then
     call timer_tddft_kin%start()
   else
     call timer_hamiltonian_kin%start()
@@ -841,7 +841,7 @@ subroutine recalc_kinetic(basis_t, basis_p, hamiltonian_kinetic)
   title='===  Kinetic energy contribution (Recalc) ==='
   call dump_out_matrix(.FALSE., title, hamiltonian_kinetic)
 
-  if( in_rt_tddft ) then
+  if( current_stage == TIMING_POSTSCF ) then
     call timer_tddft_kin%stop()
   else
     call timer_hamiltonian_kin%stop()
@@ -1004,7 +1004,7 @@ subroutine setup_nucleus(basis, hamiltonian_nucleus, atom_list)
   real(C_DOUBLE), allocatable :: env_local(:)
   !=====
 
-  if( in_rt_tddft ) then
+  if( current_stage == TIMING_POSTSCF ) then
     call timer_tddft_hamiltonian_nuc%start()
   else
     call timer_hamiltonian_nuc%start()
@@ -1120,7 +1120,7 @@ subroutine setup_nucleus(basis, hamiltonian_nucleus, atom_list)
 
   call dump_out_matrix(.FALSE., '===  Nucleus potential contribution ===', hamiltonian_nucleus)
 
-  if( in_rt_tddft ) then
+  if( current_stage == TIMING_POSTSCF ) then
     call timer_tddft_hamiltonian_nuc%stop()
   else
     call timer_hamiltonian_nuc%stop()

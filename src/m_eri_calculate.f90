@@ -645,7 +645,7 @@ subroutine calculate_eri_ri(basis, auxil_basis, rcut)
   !
   ! 2-center integrals neeeded for RI on the Coulomb metric
   !
-  if( in_rt_tddft ) then
+  if( current_stage == TIMING_POSTSCF ) then
     call timer_tddft_eri_2center%start()
   else
     call timer_eri_2center%start()
@@ -663,7 +663,7 @@ subroutine calculate_eri_ri(basis, auxil_basis, rcut)
     call calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
   endif
 
-  if( in_rt_tddft ) then
+  if( current_stage == TIMING_POSTSCF ) then
     call timer_tddft_eri_2center%stop()
   else
     call timer_eri_2center%stop()
@@ -673,7 +673,7 @@ subroutine calculate_eri_ri(basis, auxil_basis, rcut)
   !
   ! 3-center integrals neeeded for RI on the Coulomb metric
   !
-  if( in_rt_tddft ) then
+  if( current_stage == TIMING_POSTSCF ) then
     call timer_tddft_eri_3center%start()
   else
     call timer_eri_3center%start()
@@ -689,7 +689,7 @@ subroutine calculate_eri_ri(basis, auxil_basis, rcut)
     call calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
   endif
 
-  if( in_rt_tddft ) then
+  if( current_stage == TIMING_POSTSCF ) then
     call timer_tddft_eri_3center%stop()
   else
     call timer_eri_3center%stop()
@@ -735,7 +735,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
   integer(C_INT) :: shls(2)
   !=====
 
-  if( in_rt_tddft ) then
+  if( current_stage == TIMING_POSTSCF ) then
     call timer_tddft_eri_2center_ints%start()
   else
     call timer_eri_2center_ints%start()
@@ -939,7 +939,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
   endif
 
 
-  if( in_rt_tddft ) then
+  if( current_stage == TIMING_POSTSCF ) then
     call timer_tddft_eri_2center_ints%stop()
   else
     call timer_eri_2center_ints%stop()
@@ -960,7 +960,7 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
   integer                      :: mlocal, nlocal
   !=====
 
-  if( in_rt_tddft ) then
+  if( current_stage == TIMING_POSTSCF ) then
     call timer_tddft_eri_2center_invert%start()
   else
     call timer_eri_2center_invert%start()
@@ -1042,7 +1042,7 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
 
   write(stdout, '(/,1x,a)')      'All 2-center integrals have been calculated, inverted and stored'
 
-  if( in_rt_tddft ) then
+  if( current_stage == TIMING_POSTSCF ) then
     call timer_tddft_eri_2center_invert%stop()
   else
     call timer_eri_2center_invert%stop()

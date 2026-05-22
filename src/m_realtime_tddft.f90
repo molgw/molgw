@@ -128,7 +128,6 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
   real(dp), allocatable       :: p_matrix_MO_real(:, :, :)
   real(dp), allocatable       :: p_matrix_MO_block(:, :, :)
 
-  call switch_on_rt_tddft_timers()
   call timer_tddft_loop%start()
 
   write(stdout, '(/,/,1x,a)') '=================================================='
@@ -693,7 +692,6 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
   write(stdout, '(1x,a,/)') '=================================================='
 
   call timer_tddft_loop%stop()
-  call switch_off_rt_tddft_timers()
 
 end subroutine realtime_tddft_propagation
 
@@ -724,7 +722,7 @@ subroutine output_timing_one_iter()
   !=====
   !=====
 
-  time_one_iter = timer_tddft_one_iter%get()
+  time_one_iter = timer_get(timer_tddft_one_iter)
   write(stdout, '(/,1x,a)') '**********************************'
   write(stdout, "(1x,a32,2x,f14.6)") "Time of one iteration (s): ", time_one_iter
   write(stdout, "(1x,a32,2x,2(f12.2,1x))") "Estimated calculation time (s), (hrs):", time_one_iter * ntau,  &
