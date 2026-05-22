@@ -899,46 +899,6 @@ end subroutine update_density_matrix
 
 
 !=========================================================================
-! in input:
-!   p_matrix: Fock density-matrix in AO
-!   p_matrix_mo: correlated density-matrix correction in MO
-! 
-! in output:
-!   p_matrix: 0.0
-!   p_matrix_mo: Complete relaxed density-matrix in MO
-!
-subroutine prepare_cederbaum(c_matrix, s_matrix, occupation, p_matrix, p_matrix_mo)
-  real(dp), intent(in) :: c_matrix(:, :, :), s_matrix(:, :), occupation(:, :)
-  real(dp), intent(inout) :: p_matrix(:, :, :), p_matrix_mo(:, :, :)
-  !=====
-  integer :: nstate, istate
-  real(dp), allocatable :: p_matrix_mo_tmp(:, :, :)
-  !=====
-
-  nstate = SIZE(c_matrix, DIM=2)
-
-  ! First convert the Fock density matrix from AO -> MO
-  allocate(p_matrix_mo_tmp(nstate, nstate, nspin))
-  call p_ao_to_mo(c_matrix, s_matrix, p_matrix, p_matrix_mo_tmp)
-
-  ! Remove the mean-field part since we just want the Fock correction
-  do istate=1, nhomo_G
-    p_matrix_mo_tmp(istate, istate, :) = p_matrix_mo_tmp(istate, istate, :) - occupation(istate, :)
-  enddo
-  ! Add p_matrix_mo_tmp to p_matrix_mo
-  p_matrix_mo(:, :, :) = p_matrix_mo(:, :, :) + p_matrix_mo_tmp(:, :, :)
-
-  deallocate(p_matrix_mo_tmp)
-
-  ! Set p_matrix to zero here so that it is not added again later
-  ! in "update_density_matrix" 
-  p_matrix(:, :, :) = 0.0_dp
-
-
-end subroutine prepare_cederbaum
-
-
-!=========================================================================
 subroutine cederbaum_blas(energy, c_matrix, hfock_ao, p_matrix_mo)
 
   real(dp), intent(in)    :: energy(:, :)
