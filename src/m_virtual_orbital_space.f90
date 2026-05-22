@@ -283,10 +283,12 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
   endif
 
   ncore = ncoreg
-  if(frozencore_) then
+  select case(TRIM(frozencore))
+  case('MOLGW', 'YES')
     if( ncore == 0) ncore = atoms_core_states()
-  endif
-
+  case('GAUSSIAN')
+    if( ncore == 0) ncore = atoms_core_states_gaussian()
+  end select
 
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix)

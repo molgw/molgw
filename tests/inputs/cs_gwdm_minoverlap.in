@@ -6,7 +6,7 @@
   scf                            = 'HF'
   postscf                        = 'GW'
   selfenergy_state_range         = 1
-  frozencore                     = 'yes'
+  frozencore='molgw'
   auxil_basis                    = 'Auto'
   pt_density_matrix              = 'GW'
   use_correlated_density_matrix  = 'yes'

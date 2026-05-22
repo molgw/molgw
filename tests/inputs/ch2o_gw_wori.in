@@ -7,7 +7,7 @@
 
  postscf='gw'
  print_w='yes'
- frozencore='yes'
+ frozencore='molgw'
  nomega_sigma=151
 
  natom=4

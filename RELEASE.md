@@ -20,6 +20,7 @@
 - Mauricio Rodriguez-Mayorga (LCPQ, CNRS-Toulouse, France)
 - Marc Sarraute (AS+)
 - Guillaume Piris (SRMP, CEA, Université Paris-Saclay, France)
+- Caroline McKoen (UC Berkeley, USA)
 
 ### Changes affecting the usage
 
@@ -31,6 +32,7 @@
 - Possibility to rename the RESTART input file with `restart_input` input variable
 - Modern ELPA for CPU and GPU
 - RT-TDDFT with pseudopotential
+- Linear-response TDDFT and BSE output of non-interacting electron-hole pair contribution
 
 ### Changes affecting the results
 

@@ -7,7 +7,7 @@
  
  ! Post SCF add the MP2 contribution
  postscf='MP2'
- frozencore='yes'
+ frozencore='molgw'
 
  natom=3
  length_unit='au'

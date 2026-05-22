@@ -72,8 +72,8 @@
 [parabolic_conf](#parabolic_conf)
 [rwconfinement](#rwconfinement)
 [harmonium](#harmonium)
-[approx_H_x2c](#approx_H_x2c)
-[check_CdSC_x2c](#check_CdSC_x2c)
+[approx_h_x2c](#approx_h_x2c)
+[check_cdsc_x2c](#check_cdsc_x2c)
 
 
 ## Self-consistency input variables
@@ -142,6 +142,12 @@
 [selfenergy_state_max](#selfenergy_state_max)
 [selfenergy_state_min](#selfenergy_state_min)
 [selfenergy_state_range](#selfenergy_state_range)
+[selfenergy_tdhf_alpha](#selfenergy_tdhf_alpha)
+[selfenergy_tdhf_beta](#selfenergy_tdhf_beta)
+[selfenergy_tdhf_gamma](#selfenergy_tdhf_gamma)
+[selfenergy_tdhf_delta](#selfenergy_tdhf_delta)
+[selfenergy_tdhf_epsilon](#selfenergy_tdhf_epsilon)
+[selfenergy_tdhf_zeta](#selfenergy_tdhf_zeta)
 [small_basis](#small_basis)
 [step_sigma](#step_sigma)
 [step_sigma_calc](#step_sigma_calc)
@@ -163,29 +169,29 @@
 [noft_dft](#noft_dft)
 [noft_dft0](#noft_dft0)
 [noft_rsinter](#noft_rsinter)
-[noft_lowmemERI](#noft_lowmemERI)
+[noft_lowmemeri](#noft_lowmemeri)
 [noft_fcidump](#noft_fcidump)
-[noft_NOTupdateOCC](#noft_NOTupdateOCC)
-[noft_NOTupdateORB](#noft_NOTupdateORB)
-[noft_NOTvxc](#noft_NOTvxc)
+[noft_notupdateocc](#noft_notupdateocc)
+[noft_notupdateorb](#noft_notupdateorb)
+[noft_notvxc](#noft_notvxc)
 [noft_functional](#noft_functional)
 [noft_printdmn](#noft_printdmn)
 [noft_printswdmn](#noft_printswdmn)
 [noft_printints](#noft_printints)
-[noft_readCOEF](#noft_readCOEF)
-[noft_readFdiag](#noft_readFdiag)
-[noft_readGAMMAS](#noft_readGAMMAS)
-[noft_readOCC](#noft_readOCC)
-[noft_NR_OCC](#noft_NR_OCC)
-[noft_QC_ORB](#noft_QC_ORB)
+[noft_readcoef](#noft_readcoef)
+[noft_readfdiag](#noft_readfdiag)
+[noft_readgammas](#noft_readgammas)
+[noft_readocc](#noft_readocc)
+[noft_nr_occ](#noft_nr_occ)
+[noft_qc_orb](#noft_qc_orb)
 [noft_ithresh_lambda](#noft_ithresh_lambda)
-[noft_Lpower](#noft_Lpower)
+[noft_lpower](#noft_lpower)
 [noft_npairs](#noft_npairs)
 [noft_ncoupled](#noft_ncoupled)
 [noft_ndiis](#noft_ndiis)
 [noft_nscf](#noft_nscf)
 [noft_restart](#noft_restart)
-[noft_tolE](#noft_tolE)
+[noft_tole](#noft_tole)
 
 
 ## IO input variables
@@ -205,10 +211,11 @@
 [print_cube](#print_cube)
 [print_transition_density](#print_transition_density)
 [print_wfn_files](#print_wfn_files)
-[print_all_MO_wfn_file](#print_all_MO_wfn_file)
+[print_all_mo_wfn_file](#print_all_mo_wfn_file)
 [print_density_matrix](#print_density_matrix)
 [print_eri](#print_eri)
 [print_hartree](#print_hartree)
+[print_bare_energy](#print_bare_energy)
 [print_hdf5](#print_hdf5)
 [print_multipole](#print_multipole)
 [print_pdos](#print_pdos)
@@ -270,7 +277,7 @@
 [print_cube_diff_tddft](#print_cube_diff_tddft)
 [print_cube_rho_tddft](#print_cube_rho_tddft)
 [print_c_matrix_cmplx_hdf5](#print_c_matrix_cmplx_hdf5)
-[print_p_matrix_MO_block_hdf5](#print_p_matrix_MO_block_hdf5)
+[print_p_matrix_mo_block_hdf5](#print_p_matrix_mo_block_hdf5)
 [print_dens_traj](#print_dens_traj)
 [print_dens_traj_points_set](#print_dens_traj_points_set)
 [print_dens_traj_tddft](#print_dens_traj_tddft)
@@ -401,7 +408,7 @@ Calculates the spectral decomposition of the response function and then evaluate
 
 
 ---
-### approx_H_x2c
+### approx_h_x2c
 
 **experimental**
 
@@ -711,7 +718,7 @@ Sets the total charge of the system. 0 is a neutral system. -2 is a doubly charg
 
 
 ---
-### check_CdSC_x2c
+### check_cdsc_x2c
 
 **experimental**
 
@@ -1493,13 +1500,13 @@ Force the reading of the ENERGY_QP file whatever the postscf choice.
 
 **Family:** post
 
-**Type:** yes/no
+**Type:** characters
 
 **Default:** no
 
 **Description:**
 
-Triggers the neglect of core states in GW. H, He, Li, Be have no core states. B-Na have the 1s. Al-Ca have the 1s2s2p. Manual tuning could be achieved with ncoreg, ncorew.
+Triggers the neglect of core states in post scf calculations. ''molgw'' or ''yes'' convention is H, He, Li, Be have no core states. B-Na have the 1s. Al-Ca have the 1s2s2p. ''gaussian'' uses the convention of gaussian code. Manual tuning could be achieved with ncoreg, ncorew.
 
 
 ---
@@ -2021,102 +2028,6 @@ Sets the number of ghost atoms in the molecule. Used to place basis function whe
 
 
 ---
-### noft_Lpower
-
-*Optional*
-
-**Family:** noft
-
-**Type:** real
-
-**Default:** 0.53
-
-**Description:**
-
-Power functional approximation exponent used in NOFT calcs.
-
-
----
-### noft_NOTupdateOCC
-
-*Optional*
-
-**Family:** noft
-
-**Type:** yes/no
-
-**Default:** no
-
-**Description:**
-
-Do a NOFT optimization but keeping fixed the occ numbers (or GAMMAS) read.
-
-
----
-### noft_NOTupdateORB
-
-*Optional*
-
-**Family:** noft
-
-**Type:** yes/no
-
-**Default:** no
-
-**Description:**
-
-Do a NOFT optimization but keeping fixed the orbitals read.
-
-
----
-### noft_NOTvxc
-
-*Optional*
-
-**Family:** noft
-
-**Type:** yes/no
-
-**Default:** no
-
-**Description:**
-
-Do a RS-NOFT calculation without Vxc (i.e. adding a one-shot ExcDFT to the NOFT energy).
-
-
----
-### noft_NR_OCC
-
-*Optional*
-
-**Family:** noft
-
-**Type:** yes/no
-
-**Default:** no
-
-**Description:**
-
-Use quasi-Newton-Rapson method for the t and z amplitudes optimization in pCCD (default= 'no').
-
-
----
-### noft_QC_ORB
-
-*Optional*
-
-**Family:** noft
-
-**Type:** yes/no
-
-**Default:** no
-
-**Description:**
-
-Use the Quadratic Convergence method in orbital optimization by constructing the Hessian (default= 'no').
-
-
----
 ### noft_complex
 
 *Optional*
@@ -2229,7 +2140,7 @@ Threshold used to determine [Lambda_pq - Lambda_qp*] hermiticity.
 
 
 ---
-### noft_lowmemERI
+### noft_lowmemeri
 
 *Optional*
 
@@ -2242,6 +2153,22 @@ Threshold used to determine [Lambda_pq - Lambda_qp*] hermiticity.
 **Description:**
 
 Store the nat. orb. ERI as (all,occ,occ,occ) (default) or as (all,all,all,all) in NOFT module.
+
+
+---
+### noft_lpower
+
+*Optional*
+
+**Family:** noft
+
+**Type:** real
+
+**Default:** 0.53
+
+**Description:**
+
+Power functional approximation exponent used in NOFT calcs.
 
 
 ---
@@ -2293,6 +2220,54 @@ Force orbitals to be real even if noft_complex='yes' in NOFT calcs. (default=no)
 
 
 ---
+### noft_notupdateocc
+
+*Optional*
+
+**Family:** noft
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Do a NOFT optimization but keeping fixed the occ numbers (or GAMMAS) read.
+
+
+---
+### noft_notupdateorb
+
+*Optional*
+
+**Family:** noft
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Do a NOFT optimization but keeping fixed the orbitals read.
+
+
+---
+### noft_notvxc
+
+*Optional*
+
+**Family:** noft
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Do a RS-NOFT calculation without Vxc (i.e. adding a one-shot ExcDFT to the NOFT energy).
+
+
+---
 ### noft_npairs
 
 *Optional*
@@ -2306,6 +2281,22 @@ Force orbitals to be real even if noft_complex='yes' in NOFT calcs. (default=no)
 **Description:**
 
 Number of active electron pairs used in NOFT calcs. (default=1 pair).
+
+
+---
+### noft_nr_occ
+
+*Optional*
+
+**Family:** noft
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Use quasi-Newton-Rapson method for the t and z amplitudes optimization in pCCD (default= 'no').
 
 
 ---
@@ -2373,7 +2364,23 @@ Print optimized spin-with NOFT 1,2-RDMs (default= 'no').
 
 
 ---
-### noft_readCOEF
+### noft_qc_orb
+
+*Optional*
+
+**Family:** noft
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Use the Quadratic Convergence method in orbital optimization by constructing the Hessian (default= 'no').
+
+
+---
+### noft_readcoef
 
 *Optional*
 
@@ -2389,7 +2396,7 @@ Read NO_COEF file to use those coefficients as initial guess (default= 'no').
 
 
 ---
-### noft_readFdiag
+### noft_readfdiag
 
 *Optional*
 
@@ -2405,7 +2412,7 @@ Read F_pp values from F_DIAG file and use them as diag. of Fpq matrix (default= 
 
 
 ---
-### noft_readGAMMAS
+### noft_readgammas
 
 *Optional*
 
@@ -2421,7 +2428,7 @@ Read Gammas_i from GAMMAS file and use them as indep. variables in occ. optimiza
 
 
 ---
-### noft_readOCC
+### noft_readocc
 
 *Optional*
 
@@ -2469,7 +2476,7 @@ Use range-sep for the inter-subspace two-body interactions in NOFT. (default=no)
 
 
 ---
-### noft_tolE
+### noft_tole
 
 *Optional*
 
@@ -2791,7 +2798,7 @@ Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculatio
 
 
 ---
-### print_all_MO_wfn_file
+### print_all_mo_wfn_file
 
 *Optional*
 
@@ -2804,6 +2811,22 @@ Selects the LAPACK/ScaLAPACK diagonalization routines in the post SCF calculatio
 **Description:**
 
 Print all molecular orbitals to the WFN file (default=no) 
+
+
+---
+### print_bare_energy
+
+*Optional*
+
+**Family:** io
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Prints the bare QP energy difference contribution to each excitation energy to the yaml file.
 
 
 ---
@@ -3079,7 +3102,7 @@ Prints the electric multipole expansion for the electronic density and the nucle
 
 
 ---
-### print_p_matrix_MO_block_hdf5
+### print_p_matrix_mo_block_hdf5
 
 *Optional*
 
@@ -3613,6 +3636,114 @@ Sets the range of states around the HOMO level for the self-energy evaluation. F
 
 
 ---
+### selfenergy_tdhf_alpha
+
+**experimental**
+
+*Optional*
+
+**Family:** post
+
+**Type:** real
+
+**Default:** 0.0
+
+**Description:**
+
+TDHF and TDscHF self-energy parameter alpha
+
+
+---
+### selfenergy_tdhf_beta
+
+**experimental**
+
+*Optional*
+
+**Family:** post
+
+**Type:** real
+
+**Default:** 0.0
+
+**Description:**
+
+TDHF and TDscHF self-energy parameter beta
+
+
+---
+### selfenergy_tdhf_delta
+
+**experimental**
+
+*Optional*
+
+**Family:** post
+
+**Type:** real
+
+**Default:** 2.0
+
+**Description:**
+
+TDHF and TDscHF self-energy parameter gamma
+
+
+---
+### selfenergy_tdhf_epsilon
+
+**experimental**
+
+*Optional*
+
+**Family:** post
+
+**Type:** real
+
+**Default:** 0.0
+
+**Description:**
+
+TDHF and TDscHF self-energy parameter epsilon
+
+
+---
+### selfenergy_tdhf_gamma
+
+**experimental**
+
+*Optional*
+
+**Family:** post
+
+**Type:** real
+
+**Default:** 1.0
+
+**Description:**
+
+TDHF and TDscHF self-energy parameter gamma
+
+
+---
+### selfenergy_tdhf_zeta
+
+**experimental**
+
+*Optional*
+
+**Family:** post
+
+**Type:** real
+
+**Default:** 0.0
+
+**Description:**
+
+TDHF and TDscHF self-energy parameter zeta
+
+
+---
 ### small_basis
 
 **experimental**
@@ -4130,6 +4261,6 @@ Specifies a file name or path for the YAML formatted output. Default is `molgw.y
 
 
 
-*Generated by input_variables.py on 19 December 2025*
+*Generated by input_variables.py on 19 May 2026*
 
 

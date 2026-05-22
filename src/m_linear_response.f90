@@ -37,7 +37,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   real(dp), intent(in)                   :: energy(:, :), c_matrix(:, :, :)
   real(dp), intent(out)                  :: en_rpa, en_gw
   type(spectral_function), intent(inout) :: wpol_out
-  integer, intent(in), optional           :: enforce_spin_multiplicity
+  integer, intent(in), optional          :: enforce_spin_multiplicity
   real(dp), optional                     :: lambda
   real(dp), optional                     :: x_matrix(:, :), y_matrix(:, :)
   real(dp), optional                     :: a_matrix(:, :), b_matrix(:, :)
@@ -47,16 +47,18 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   logical                   :: is_bse, is_tdhf, eri_3center_mo_available
   integer                   :: nmat, nexc
   real(dp)                  :: alpha_local, beta_local, lambda_
-  real(dp), allocatable      :: amb_diag_rpa(:)
-  real(dp), allocatable      :: amb_matrix(:, :), apb_matrix(:, :)
-  real(dp), allocatable      :: xpy_matrix(:, :), xmy_matrix(:, :)
-  real(dp), allocatable      :: eigenvalue(:)
-  real(dp), allocatable      :: energy_qp(:, :)
+  real(dp), allocatable     :: amb_diag_rpa(:)
+  real(dp), allocatable     :: amb_matrix(:, :), apb_matrix(:, :)
+  real(dp), allocatable     :: xpy_matrix(:, :), xmy_matrix(:, :)
+  real(dp), allocatable     :: eigenvalue(:)
+  real(dp), allocatable     :: bare_eigenval(:)
+  real(dp), allocatable     :: energy_qp(:, :)
   logical                   :: is_tddft, is_rpa
   logical                   :: has_manual_tdhf
   integer                   :: reading_status
   integer                   :: tdhffile
   integer                   :: m_apb, n_apb, m_x, n_x
+  integer                   :: t_ia, t_jb, t_ia_global, t_jb_global
   ! SCALAPACK variables
   integer                   :: desc_apb(NDEL), desc_x(NDEL)
   integer                   :: info
@@ -139,6 +141,15 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     case default
       call die('polarizability: invalid choice for w_screening')
     end select
+  endif
+
+  !
+  ! enforce_rpa prevails over the rest
+  !
+  if( enforce_rpa ) then
+    is_tdhf  = .FALSE.
+    is_bse   = .FALSE.
+    is_tddft = .FALSE.
   endif
 
   !
@@ -342,6 +353,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   if( nexc == 0 ) nexc = nmat
 
   allocate(eigenvalue(nexc))
+  allocate(bare_eigenval(nexc))
 
   ! Allocate (X + Y)
   ! Allocate (X - Y) only if actually needed
@@ -373,6 +385,24 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   endif
 
 
+  ! Compute bare QP energy difference contribution to each excitation energy
+  ! bare_n = sum_{ia} xpy(ia,n) * xmy(ia,n) * (e_a - e_i)
+  ! expression is valid within and beyond TDA
+  if( print_bare_energy_ ) then
+    bare_eigenval(:) = 0.0_dp
+    do t_jb = 1, n_x
+      t_jb_global = colindex_local_to_global('S', t_jb)
+      do t_ia = 1, m_x
+        t_ia_global = rowindex_local_to_global('S', t_ia)
+        bare_eigenval(t_jb_global) = bare_eigenval(t_jb_global) &
+          + xpy_matrix(t_ia, t_jb) * xmy_matrix(t_ia, t_jb) * amb_diag_rpa(t_ia_global)
+      enddo
+    enddo
+    call world%sum(bare_eigenval)
+  else
+    bare_eigenval(:) = 0.0_dp
+  endif
+
   ! Deallocate the non-necessary matrices
   deallocate(amb_diag_rpa)
   write(stdout, *) 'Deallocate (A+B) and possibly (A-B)'
@@ -392,7 +422,10 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     write(stdout, '(/,a,f16.10)') ' RPA correlation energy (Ha): ', en_rpa
   endif
 
-  write(stdout, '(/,a,f12.6)') ' Lowest neutral excitation energy (eV):', MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
+  write(stdout, '(/,1x,a,f12.6)') 'Lowest neutral excitation energy (eV):', MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
+  if( print_bare_energy_ ) then
+    write(stdout, '(1x,a,f12.6)') '   Lowest bare excitation energy (eV):', MINVAL(ABS(bare_eigenval(1:nexc)))*Ha_eV
+  endif
 
   !if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timing_aomo_pola)
 
@@ -401,7 +434,8 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   ! and the dynamic dipole tensor
   !
   if( is_tdhf .OR. is_tddft .OR. is_bse ) then
-    call optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, wpol_out, xpy_matrix, xmy_matrix, eigenvalue)
+    call optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, wpol_out, xpy_matrix, xmy_matrix, eigenvalue, &
+                          bare_eigenvalue=bare_eigenval)
     select case(TRIM(lower(stopping)))
     case('spherical')
       call stopping_power(basis, c_matrix, wpol_out, xpy_matrix, eigenvalue)
@@ -409,6 +443,8 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
       call stopping_power_3d(basis, c_matrix, wpol_out, xpy_matrix, desc_x, eigenvalue)
     end select
   endif
+
+  deallocate(bare_eigenval)
 
   ! extract X and Y if requested
   if( PRESENT(x_matrix) ) then
@@ -632,7 +668,7 @@ subroutine get_energy_qp(energy, occupation, energy_qp)
   nstate = SIZE(occupation, DIM=1)
   ! If the keyword scissor is used in the input file,
   ! then use it and ignore the ENERGY_QP file
-  if( ABS(scissor) > 1.0e-5_dp ) then
+  if( ABS(scissor) > 1.0e-6_dp ) then
 
     call issue_warning('BSE: using a manual scissor to open up the fundamental gap')
 
@@ -652,7 +688,7 @@ subroutine get_energy_qp(energy, occupation, energy_qp)
     enddo
     write(stdout, *)
 
-  else if( ABS(scissor) > 1.0e-8_dp ) then
+  else if( ABS(scissor) > 1.0e-12_dp ) then
     call issue_warning('BSE: using nor a scissor, nor GW energies')
     energy_qp(:, :) = energy(:, :)
 

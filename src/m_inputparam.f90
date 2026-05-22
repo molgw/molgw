@@ -61,6 +61,8 @@ module m_inputparam
   integer, parameter :: SIGMA_TDSCHF    = 235
   integer, parameter :: GWGW0RPAG       = 236
   integer, parameter :: GW2SOSEXPSD     = 237
+  integer, parameter :: SIGMA_TDHF_PSD  = 238
+  integer, parameter :: SIGMA_TDSCHF_PSD = 239
 
   !
   ! TDDFT variables
@@ -276,6 +278,12 @@ subroutine init_calculation_type(scf, postscf)
     case('SIGMA_TDSCHF')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = SIGMA_TDSCHF
+    case('SIGMA_TDHF_PSD')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = SIGMA_TDHF_PSD
+    case('SIGMA_TDSCHF_PSD')
+      calc_type%is_gw    =.TRUE.
+      calc_type%selfenergy_approx = SIGMA_TDSCHF_PSD
     case('EVGWGAMMA', 'GNW0GAMMAN', 'GNW0SOSEX', 'EVGWSOSEX')
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
@@ -897,6 +905,7 @@ subroutine read_inputfile_namelist()
   pt3_a_diagrams     = capitalize(pt3_a_diagrams)
   partition_scheme   = capitalize(partition_scheme)
   w_screening        = capitalize(w_screening)
+  frozencore         = capitalize(frozencore)
 
   !
   ! The included file transforms the yes/no input variables

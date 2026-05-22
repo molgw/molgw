@@ -7,12 +7,14 @@
  grid_quality='medium'
  read_restart='y'
 
- frozencore='yes'
+ frozencore='molgw'
 
  postscf='bse'
 
  basis='cc-pVDZ'
  auxil_basis='cc-pVDZ-RI'
+
+ print_bare_energy='yes'
 
  natom=4
 /

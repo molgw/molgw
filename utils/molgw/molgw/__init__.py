@@ -22,6 +22,7 @@ import difflib
 import json
 import copy
 import pathlib, glob
+import hashlib
 try:
     from yaml import load, dump
 except ImportError:
@@ -47,6 +48,8 @@ periodic_table = [ 'H',                                                         
                    'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt' 
                 ]
 z_element = {element: index+1 for index, element in enumerate(periodic_table)}
+def get_element_symbol(z):
+    return periodic_table[int(z)-1]
 
 molgw_rootfolder = str(pathlib.Path(__file__).resolve().parent.parent.parent.parent)
 exe  = molgw_rootfolder + "/molgw"
@@ -64,11 +67,30 @@ except:
 
 
 ########################################################################
+# Two possibilities to feed "run"
+# by priority order
+# 1. provide a python dict `pyinput` that contains the input parameters
+# 2. provide a text file with `inputfile`
+#
 def run(inputfile="molgw.in", outputfile="", yamlfile="",
         pyinput={}, mpirun="", executable_path="", openmp=1, tmp="", keep_tmp=False, **kwargs):
 
-    if len(tmp) > 0:
-        os.makedirs(tmp, exist_ok=True)
+    if len(pyinput) > 0:
+        text = json.dumps(pyinput, sort_keys=True)
+        key = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+    else:
+        path = pathlib.Path(inputfile)
+        if not path.exists():
+            sys.exit("Input file does not exist and no dictionary was given")
+        with open(path, "rb") as f:
+            key = hashlib.sha256(f.read()).hexdigest()[:16]
+
+    # If no tmp folder imposed, create a unique one
+    if len(tmp) == 0:
+        tmp = "tmp_" + key
+    os.makedirs(tmp, exist_ok=True)
+
     if len(executable_path) > 0:
         exe_local = executable_path
     else:
@@ -199,7 +221,7 @@ class Molecule:
 
 
 ########################################################################
-def get_homo_energy(approx,calc):
+def get_homo_energy(approx, calc):
     key = approx + " energies"
     if key not in calc.keys():
         print(f"Problem reading calculation: {calc['input parameters']['comment']}")
@@ -212,6 +234,61 @@ def get_homo_energy(approx,calc):
         energies += [ float(ei) for ei in calc[key]["spin channel 2"].values()]
     energies.sort()
     return energies[int(calc["physical system"]["electrons"])-1 - 2*(min(list(calc[key]["spin channel 1"].keys()))-1) ]
+
+
+########################################################################
+def get_energy(approx, state, calc):
+    """
+      Return the MO energy
+      state can be an index or a string "HOMO" "HOMO-1", "LUMO"
+    """
+    key = approx + " energies"
+    if key not in calc.keys():
+        print(f"Problem reading calculation: {calc['input parameters']['comment']}")
+        print(f"{key} not found")
+        return None
+
+    if calc["input parameters"]["nspin"] > 1:
+        print("Spin unrestricted calculations not implemented. Sorry.")
+        return None
+
+    electron_count = int(calc["physical system"]["electrons"])
+    homo_key = int(electron_count / 2)
+
+    energies = [ float(ei) for i, ei in calc[key]["spin channel 1"].items()]
+    energies_occ = [ float(ei) for i, ei in calc[key]["spin channel 1"].items() if i <= homo_key ]
+    energies_virt = [ float(ei) for i, ei in calc[key]["spin channel 1"].items() if i > homo_key ]
+    energies_occ.sort()
+    energies_virt.sort()
+    ehomo = max(energies_occ)
+    elumo = min(energies_virt)
+
+    if isinstance(state, int):
+        try:
+            energy = calc[key]["spin channel 1"][state]
+        except KeyError:
+            energy = None
+        return energy
+    elif isinstance(state, str):
+        if state.upper() == 'HOMO':
+            return ehomo
+        elif state.upper() == 'LUMO':
+            return elumo
+        elif state.upper() == 'HOMO-1':
+            for e in reversed(energies_occ):
+                if abs(e - ehomo) > 0.001:
+                    return e
+            return None
+        elif state.upper() == 'LUMO+1':
+            for e in energies_virt:
+                if abs(e - elumo) > 0.001:
+                    return e
+            return None
+        else:
+            raise Exception("state name unknown")
+    else:
+        raise TypeError("State must be either an int or a str")
+
 
 ########################################################################
 def get_homo_nature(calc):
@@ -292,8 +369,8 @@ def parse_yaml_files(directory):
 
 
 ########################################################################
-def print_input_file(pyinput,filename="molgw.in"):
-    with open(filename,'w') as f:
+def print_input_file(pyinput, filename="molgw.in"):
+    with open(filename, 'w') as f:
         f.write('&molgw\n')
         for key, value in pyinput.items():
             if key == "xyz":
@@ -524,16 +601,21 @@ class Molgw_output:
         return self.d[key]
     def keys(self):
         return [ k for k in self.d.keys() ]
-    def homo_energy(self,approx):
-        return get_homo_energy(approx,self.d)
-    def lumo_energy(self,approx):
-        return get_lumo_energy(approx,self.d)
+
+    def energy(self, approx, state):
+        return get_energy(approx, state, self.d)
+    def homo_energy(self, approx):
+        return get_homo_energy(approx, self.d)
+    def lumo_energy(self, approx):
+        return get_lumo_energy(approx, self.d)
+
     def homo_nature(self):
         """get the nature of the HOMO based on Mulliken projection"""
         return get_homo_nature(self.d)
     def lumo_nature(self):
         """get the nature of the LUMO based on Mulliken projection"""
         return get_lumo_nature(self.d)
+
     def to_dict(self):
         return self.d
     def to_file(self, dest):

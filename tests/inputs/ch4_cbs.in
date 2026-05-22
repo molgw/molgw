@@ -10,7 +10,7 @@
   step_sigma=0.02
   nomega_sigma_calc=10
   step_sigma_calc=0.2
-  frozencore='yes'
+  frozencore='molgw'
   selfenergy_state_range=0
 
   natom = 5

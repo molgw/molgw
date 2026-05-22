@@ -605,6 +605,7 @@ GW LUMO energy            ,      2.494864       , 0 , 1.0e-4
 
 ch2o_bse.in               , BSE on formaldehyde , restart
 Lowest neutral excitation ,      3.389151       , 0 , 1.0e-4
+Lowest bare excitation    ,     12.492477       , 0 , 1.0e-4
 0002 :                    ,      7.92628881     , 0 , 1.0e-4
 0002 :                    ,      0.11520374     , 1 , 1.0e-4
 Sum over oscillator strengths , 12.036833       , 0 , 1.0e-4
@@ -1088,6 +1089,12 @@ SCF Total Energy          ,  -7.9867544306     , 0 , 1.0e-7
 RPAx-I Energy             ,  -0.0483538239     , 0 , 1.0e-7
 RPAx-I Total Energy       ,  -8.0351082545     , 0 , 1.0e-7
 
+lih_gw_frozencore_molgw.in, test MOLGW frozencore for Li
+GW HOMO energy            ,   -8.270983        , 0 , 1.0e-4
+
+lih_gw_frozencore_gaussian.in, test GAUSSIAN frozencore for Li
+GW HOMO energy            ,   -8.265769        , 0 , 1.0e-4
+
 lih_gw.in                 , This only prepares ENERGY_QP file
 GW HOMO-LUMO gap          ,    8.053158        , 0 , 1.0e-4
 
@@ -1210,7 +1217,7 @@ kr_ccECP.in               , RPA correlation Kr atom with a ccECP pseudo and basi
 SCF Total Energy          ,  -18.228067580      , 0 , 1.0e-7
 RPA correlation           ,  -0.2186444854      , 0 , 1.0e-7
 
-Si_energy_shift.in        , tests the scf_energy_shift input
+si_energy_shift.in        , tests the scf_energy_shift input
 SCF Total Energy          ,  -284.8534330027    , 0 , 1.0e-6
 
 c2h4_lc-wpbe_tddft.in     , LR-TDDFT with long-range only functional
@@ -1350,4 +1357,14 @@ diamond_gth_08_pbe.in     , 8-atom cell of diamond within PBE, need_libcint need
 SCF Total Energy          , -44.9101913413     , 0 , 1.0e-7
 gKS HOMO energy           ,   13.880276        , 0 , 1.0e-4
 gKS LUMO energy           ,   18.497151        , 0 , 1.0e-4
+
+co2_gw_dm_cederbaum.in    , CO2 GW density-matrix a la Cederbaum
+SCF Total Energy          , -187.4495378734    , 0 , 1.0e-7
+Kinetic Energy (Ha):      ,  186.9058907148    , 0 , 1.0e-7
+Nucleus Energy (Ha):      , -548.6566331109    , 0 , 1.0e-7
+Hartree Energy (Ha):      ,  142.9060274911    , 0 , 1.0e-7
+Exchange Energy (Ha):     ,   -21.1384503978   , 0 , 1.0e-7
+Hartree  HOMO expectation ,  291.642779        , 0 , 1.0e-4
+Exchange HOMO expectation ,  -24.839183        , 0 , 1.0e-4
+GW HOMO energy            ,  -12.015375        , 0 , 1.0e-4
 

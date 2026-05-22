@@ -6,11 +6,14 @@
 
  gaussian_type='cart'
 
- postscf='BSE-I'
+ postscf='GW'
 
  basis='cc-pVQZ'
  auxil_basis='cc-pVQZ-RI'
+
  frozencore='molgw'
+
+ selfenergy_state_range=1
 
  natom=2
  length_unit='bohr'

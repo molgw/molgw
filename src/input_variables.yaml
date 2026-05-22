@@ -385,7 +385,7 @@ harmonium:
   default: 'no'
   comment: Replace the -Z/r interaction with a parabolic confinement 1/2 w**2 r**2 (Harmonium atom). Default no. 
 
-approx_H_x2c:
+approx_h_x2c:
   family: general
   datatype: yes/no
   mandatory: 'no'
@@ -394,7 +394,7 @@ approx_H_x2c:
   comment: Build the X2C approximate Hamiltonian (H**new) to reproduce state energies.
     with  H = S C e C**-1, H**dagger S C e C**-1, and H**new = 1/2 ( H + H**dagger). Default yes. 
 
-check_CdSC_x2c:
+check_cdsc_x2c:
   family: general
   datatype: yes/no
   mandatory: 'no'
@@ -596,7 +596,7 @@ print_wfn_files:
   comment: 'Prints WFN files which can be used as input for post processing. WFN files contain the information about
  the electronic density and several packages use them to gather chemical information (see programs like: AIMPAC, AIMALL, among others). Setting this variable to yes will produce WFN files for ground-state calculations as well as for GW-corrected densities. Note: currently, only cartesian basis are supported.'
 
-print_all_MO_wfn_file:
+print_all_mo_wfn_file:
   family: io
   datatype: yes/no
   mandatory: 'no'
@@ -627,6 +627,14 @@ print_hartree:
   experimental: 'no'
   default: 'no'
   comment: Prints the Hartree potential and exchange expectation value on eigenstates.
+
+print_bare_energy:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the bare QP energy difference contribution to each excitation energy to the yaml file.
 
 print_hdf5:
   family: io
@@ -810,7 +818,7 @@ print_c_matrix_cmplx_hdf5:
   default: 'no'
   comment: Prints the time-dependent wave function coefficients c_matrix_cmplx in an HDF5 file called 'rt_tddft.h5'
 
-print_p_matrix_MO_block_hdf5:
+print_p_matrix_mo_block_hdf5:
   family: io_rt_tddft
   datatype: yes/no
   mandatory: 'no'
@@ -1031,12 +1039,15 @@ eta:
 
 frozencore:
   family: post
-  datatype: yes/no
+  datatype: characters
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: Triggers the neglect of core states in GW. H, He, Li, Be have no core states.
-    B-Na have the 1s. Al-Ca have the 1s2s2p. Manual tuning could be achieved with
+  comment: Triggers the neglect of core states in post scf calculations.
+    ''molgw'' or ''yes'' convention is H, He, Li, Be have no core states.
+    B-Na have the 1s. Al-Ca have the 1s2s2p.
+    ''gaussian'' uses the convention of gaussian code.
+    Manual tuning could be achieved with
     ncoreg, ncorew.
 
 g3w2_skip_vvv:
@@ -1286,6 +1297,54 @@ selfenergy_state_range:
   comment: Sets the range of states around the HOMO level for the self-energy evaluation.
     For instance, selfenergy_state_range=0 will trigger the calculation of the HOMO
     only. selfenergy_state_range=1 will trigger the evaluation of the HOMO-1, HOMO, HOMO+1. etc.
+
+selfenergy_tdhf_alpha:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 0.0
+  comment: TDHF and TDscHF self-energy parameter alpha
+
+selfenergy_tdhf_beta:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 0.0
+  comment: TDHF and TDscHF self-energy parameter beta
+
+selfenergy_tdhf_gamma:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 1.0
+  comment: TDHF and TDscHF self-energy parameter gamma
+
+selfenergy_tdhf_delta:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 2.0
+  comment: TDHF and TDscHF self-energy parameter gamma
+
+selfenergy_tdhf_epsilon:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 0.0
+  comment: TDHF and TDscHF self-energy parameter epsilon
+
+selfenergy_tdhf_zeta:
+  family: post
+  datatype: real
+  mandatory: 'no'
+  experimental: 'yes'
+  default: 0.0
+  comment: TDHF and TDscHF self-energy parameter zeta
 
 small_basis:
   family: post
@@ -1850,7 +1909,7 @@ noft_rsinter:
   default: 'no'
   comment: Use range-sep for the inter-subspace two-body interactions in NOFT. (default=no).
 
-noft_lowmemERI:
+noft_lowmemeri:
   family: noft
   datatype: yes/no
   mandatory: 'no'
@@ -1866,7 +1925,7 @@ noft_fcidump:
   default: 'no'
   comment: Print the FCIDUMP file in NOFT module.
 
-noft_NOTupdateOCC:
+noft_notupdateocc:
   family: noft
   datatype: yes/no
   mandatory: 'no'
@@ -1874,7 +1933,7 @@ noft_NOTupdateOCC:
   default: 'no'
   comment: Do a NOFT optimization but keeping fixed the occ numbers (or GAMMAS) read.
 
-noft_NOTupdateORB:
+noft_notupdateorb:
   family: noft
   datatype: yes/no
   mandatory: 'no'
@@ -1882,7 +1941,7 @@ noft_NOTupdateORB:
   default: 'no'
   comment: Do a NOFT optimization but keeping fixed the orbitals read.
 
-noft_NOTvxc:
+noft_notvxc:
   family: noft
   datatype: yes/no
   mandatory: 'no'
@@ -1922,7 +1981,7 @@ noft_printints:
   default: 'no'
   comment: Print hCORE and ERImol integrals in the optimized basis (default= 'no').
 
-noft_readCOEF:
+noft_readcoef:
   family: noft
   datatype: yes/no
   mandatory: 'no'
@@ -1930,7 +1989,7 @@ noft_readCOEF:
   default: 'no'
   comment: Read NO_COEF file to use those coefficients as initial guess (default= 'no').
 
-noft_readFdiag:
+noft_readfdiag:
   family: noft
   datatype: yes/no
   mandatory: 'no'
@@ -1938,7 +1997,7 @@ noft_readFdiag:
   default: 'no'
   comment: Read F_pp values from F_DIAG file and use them as diag. of Fpq matrix (default= 'no').
 
-noft_readGAMMAS:
+noft_readgammas:
   family: noft
   datatype: yes/no
   mandatory: 'no'
@@ -1946,7 +2005,7 @@ noft_readGAMMAS:
   default: 'no'
   comment: Read Gammas_i from GAMMAS file and use them as indep. variables in occ. optimization (default= 'no').
 
-noft_readOCC:
+noft_readocc:
   family: noft
   datatype: yes/no
   mandatory: 'no'
@@ -1954,7 +2013,7 @@ noft_readOCC:
   default: 'no'
   comment: Read occ. from DM1 file and use them to compute Gammas (the indep. variables in occ. optimization). Default= 'no'.
 
-noft_NR_OCC:
+noft_nr_occ:
   family: noft
   datatype: yes/no
   mandatory: 'no'
@@ -1962,7 +2021,7 @@ noft_NR_OCC:
   default: 'no'
   comment: Use quasi-Newton-Rapson method for the t and z amplitudes optimization in pCCD (default= 'no').
 
-noft_QC_ORB:
+noft_qc_orb:
   family: noft
   datatype: yes/no
   mandatory: 'no'
@@ -1978,7 +2037,7 @@ noft_ithresh_lambda:
   default: 5
   comment: Threshold used to determine [Lambda_pq - Lambda_qp*] hermiticity.
 
-noft_Lpower:
+noft_lpower:
   family: noft
   datatype: real
   mandatory: 'no'
@@ -2027,7 +2086,7 @@ noft_restart:
   default: 'no'
   comment: Use binary files to restart NOFT calcs. (default= 'no').
 
-noft_tolE:
+noft_tole:
   family: noft
   datatype: real
   mandatory: 'no'

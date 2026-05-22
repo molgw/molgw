@@ -6,7 +6,7 @@
 
  scf='HF'
  postscf='g0w0_contour'
- frozencore='yes'
+ frozencore='molgw'
  selfenergy_state_range=1
 
  nomega_chi_imag =  16

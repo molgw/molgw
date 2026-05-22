@@ -117,6 +117,10 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
       selfenergy_tag='SIGMA_TDHF'
     case(SIGMA_TDSCHF)
       selfenergy_tag='SIGMA_TDSCHF'
+    case(SIGMA_TDHF_PSD)
+      selfenergy_tag='SIGMA_TDHF_PSD'
+    case(SIGMA_TDSCHF_PSD)
+      selfenergy_tag='SIGMA_TDSCHF_PSD'
     case(GW2SOSEXPSD)
       selfenergy_tag='GW+2SOSEX_PSD'
     case default
@@ -322,6 +326,10 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
     if( calc_type%selfenergy_approx == SIGMA_TDHF &
         .OR. calc_type%selfenergy_approx == SIGMA_TDSCHF ) then
       call tdhf_selfenergy(basis, occupation, energy_g, c_matrix, se)
+    endif
+    if( calc_type%selfenergy_approx == SIGMA_TDHF_PSD &
+        .OR. calc_type%selfenergy_approx == SIGMA_TDSCHF_PSD ) then
+      call tdhf_selfenergy_psd(basis, occupation, energy_g, c_matrix, se)
     endif
 
     !

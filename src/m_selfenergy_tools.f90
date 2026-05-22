@@ -77,9 +77,12 @@ subroutine selfenergy_set_state_range(nstate_in, occupation, range)
   ncore_G      = ncoreg
   nvirtual_G   = MIN(nvirtualg, nstate_in+1)
 
-  if(frozencore_) then
+  select case(TRIM(frozencore))
+  case('MOLGW', 'YES')
     if( ncore_G == 0) ncore_G = atoms_core_states()
-  endif
+  case('GAUSSIAN')
+    if( ncore_G == 0) ncore_G = atoms_core_states_gaussian()
+  end select
 
   if( ncore_G > 0 ) then
     write(stdout, '(1x,a,i4,2x,i4)') 'frozen core approximation in G switched on up to state = ', ncore_G
