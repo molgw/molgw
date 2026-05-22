@@ -1,629 +1,545 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 ###################################
 # This file is part of MOLGW
 # Author: Fabien Bruneval
-
-
 ###################################
 # Running the MOLGW test suite
 ###################################
 
-
-import sys, os, time, shutil, subprocess
+import sys
+import os
+import time
+import shutil
+import subprocess
 import re
+import argparse
+from dataclasses import dataclass, field
+from pathlib import Path
 
-today = time.strftime("%Y") + '_' + time.strftime("%m") + '_' + time.strftime("%d")
-start_time = time.time()
-keeptmp = False
+# ---------------------------------------------------------------------------
+# Data structures
+# ---------------------------------------------------------------------------
 
-selected_input_files= []
-excluded_input_files= []
-input_param_selection= []
-mpirun = ''
-nprocs = 1
-ncores = 1
-debug = False
-listing = False
-verbose = False
+@dataclass
+class TestCase:
+    input_file: str
+    name: str
+    checks: list = field(default_factory=list)
+    restart: bool = False
+    parallel: bool = True
+    need_scalapack: bool = False
+    need_gradients: bool = False
+    need_forces: bool = False
+    need_libcint: bool = False
+    need_fftw3: bool = False
+    command: str = ""
 
-in_timing_section = True
-sections_separator = "--- Timings in (s) and # of calls ---"
+    @property
+    def output_file(self):
+        return self.input_file.replace('.in', '.out')
 
-def extract_between_quotes(s):
+
+@dataclass
+class RunStats:
+    success: int = 0
+    tested: int = 0
+    files_skipped: int = 0
+    files_success: int = 0
+    skipping_reasons: list = field(default_factory=list)
+
+
+# ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+TODAY = time.strftime("%Y_%m_%d")
+SECTIONS_SEPARATOR = "--- Timings in (s) and # of calls ---"
+FILES_TO_CLEAN = [
+    'RESTART', 'ENERGY_QP', 'SCREENED_COULOMB',
+    'RESTART_TDDFT', 'EIGVEC_CI_0', 'EIGVEC_CI_P', 'EIGVEC_CI_M',
+]
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def extract_between_quotes(s: str) -> str:
     match = re.search(r'"(.*?)"', s)
     return match.group(1) if match else ''
 
-###################################
-def clean_run(inp, out, restart, command=""):
-  shutil.copy('inputs/' + inp, tmpfolder + '/' + inp)
-  os.chdir(tmpfolder)
-  if not restart:
-    try:
-      os.remove('RESTART')
-    except FileNotFoundError:
-      pass
-    try:
-      os.remove('ENERGY_QP')
-    except FileNotFoundError:
-      pass
-    try:
-      os.remove('SCREENED_COULOMB')
-    except FileNotFoundError:
-      pass
-    try:
-      os.remove('RESTART_TDDFT')
-    except FileNotFoundError:
-      pass
-    try:
-      os.remove('EIGVEC_CI_0')
-    except FileNotFoundError:
-      pass
-    try:
-      os.remove('EIGVEC_CI_P')
-    except FileNotFoundError:
-      pass
-    try:
-      os.remove('EIGVEC_CI_M')
-    except FileNotFoundError:
-      pass
 
-  if len(command) > 0:
-    #result = subprocess.run(command.split(), capture_output=True, text=True)
-    result = subprocess.run(command.split())
-
-  fout = open(out, 'w')
-  if len(mpirun) < 1:
-    subprocess.call(['../../molgw', inp], stdout=fout, stderr=subprocess.STDOUT)
-  else:
-    # mpirun from openmpi may need '-oversubscribe'
-    subprocess.call(mpirun.split() + ['-n', str(nprocs), '../../molgw', inp], stdout=fout, stderr=subprocess.STDOUT)
-  fout.close()
-
-  with open(out, 'r') as fout:
-      functional = "Welcome to the fascinating world of MOLGW" in fout.read()
-
-  os.chdir('..')
-  return functional
-  
+def read_fake_out(path: Path) -> str:
+    return path.read_text(encoding='utf-8', errors='replace')
 
 
-###################################
-def check_output(out, testinfo):
-  global success, tested, test_files_skipped, test_files_success, skipping_reason
+# ---------------------------------------------------------------------------
+# Core functions
+# ---------------------------------------------------------------------------
 
-  #
-  # First check if the test was aborted because of some limitation at compilation
-  #
-  for line in open(tmpfolder + '/' + out, 'r').readlines():
-    if  'Angular momentum is too high' in line:
-      test_files_skipped += 1
-      print('LIBINT or LIBCINT installation does not have the high enough angular momenta => skip test')
-      skipping_reason.append('LIBINT or LIBCINT installation does not have high enough angular momenta')
-      return
-  #
-  # Second check if there is a memory leak
-  #
-  key = '    Memory ('
-  ref = 0.000
-  tol = 0.001
-  key_found = False
-  tested += 1
-  success_in_this_file = 0
-  for line in reversed(open(tmpfolder + '/' + out, 'r').readlines()):
-    if key in line:
-      key_found = True
-      parsing  = line.split(':')
-      parsing2 = parsing[1].split()
-      if abs( float(parsing2[0]) - ref ) < tol:
-        print('No memory leak'.rjust(30) + '[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
-        success += 1
-        success_in_this_file += 1
-        fdiff.write(str(tested).rjust(6) + "Memory leak".rjust(30) + parsing2[0].rjust(30) \
-              + str(ref).rjust(30) + str(float(parsing2[0]) - ref).rjust(30) + '  OK  \n')
-        break
-      else:
-        print('No memory leak'.rjust(30) + '[\033[91m\033[1mFAIL\033[0m]'.rjust(30))
-        fdiff.write(str(tested).rjust(6) + "Memory leak".rjust(30) + parsing2[0].rjust(30) \
-              + str(ref).rjust(30) + str(float(parsing2[0]) - ref).rjust(30) + ' FAIL \n')
-        break
+def clean_run(test: TestCase, tmpfolder: Path, mpirun: str, nprocs: int, debug: bool) -> bool:
+    """Copy input file to tmpfolder, optionally remove restart files, then run molgw."""
+    shutil.copy(Path('inputs') / test.input_file, tmpfolder / test.input_file)
 
-  if not key_found:
-    print('No memory leak'.rjust(30) + '[\033[91m\033[1mNOT FOUND\033[0m]'.rjust(30))
+    if not test.restart:
+        for fname in FILES_TO_CLEAN:
+            (tmpfolder / fname).unlink(missing_ok=True)
 
-  #
-  # Then, parse the output and perform the checks
-  #
-  for itest in range(len(testinfo)):
-    tested += 1
-    key = testinfo[itest][0].strip()
-    ref = float(testinfo[itest][1])
-    pos = int(  testinfo[itest][2])
-    tol = float(testinfo[itest][3])
+    if test.command:
+        subprocess.run(test.command.split(), check=False)
 
-    if debug:
-      print('===debug:')
-      print('open file: ' + tmpfolder + '/' + out)
-      print('===end debug')
+    out_path = tmpfolder / test.output_file
+    molgw_bin = str(Path('../../molgw'))
+    cmd = (mpirun.split() + ['-n', str(nprocs), molgw_bin, test.input_file]
+           if mpirun else [molgw_bin, test.input_file])
 
-    key_found = False
+    with out_path.open('w') as fout:
+        subprocess.run(cmd, stdout=fout, stderr=subprocess.STDOUT, cwd=tmpfolder)
 
-    in_timing_section = True
-    for line in reversed(open(tmpfolder + '/' + out, 'r').readlines()):
-      if sections_separator in line:
-        in_timing_section = False
-      if key in line and not in_timing_section:
-        key_found = True
-        parsing  = line.split(':')
+    content = out_path.read_text(encoding='utf-8', errors='replace')
+    return "Welcome to the fascinating world of MOLGW" in content
+
+
+def check_output(test: TestCase, tmpfolder: Path, stats: RunStats,
+                 fdiff, ffailed, verbose: bool, debug: bool) -> int:
+    """Parse the output file and compare against reference values."""
+    out_path = tmpfolder / test.output_file
+    lines = out_path.read_text(encoding='utf-8', errors='replace').splitlines()
+    reversed_lines = list(reversed(lines))
+
+    # --- Skip check: angular momentum ---
+    if any('Angular momentum is too high' in ln for ln in lines):
+        stats.files_skipped += 1
+        print('LIBINT or LIBCINT installation does not have the high enough angular momenta => skip test')
+        stats.skipping_reasons.append(
+            'LIBINT or LIBCINT installation does not have high enough angular momenta')
+        return 0
+
+    stats.tested += 1
+    success_in_file = 0
+
+    # --- Memory-leak check ---
+    mem_key = '    Memory ('
+    mem_ref = 0.0
+    mem_tol = 0.001
+    mem_found = False
+
+    for ln in reversed_lines:
+        if mem_key in ln:
+            mem_found = True
+            val = float(ln.split(':')[1].split()[0])
+            diff = val - mem_ref
+            if abs(diff) < mem_tol:
+                print('No memory leak'.rjust(30) + '[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
+                stats.success += 1
+                success_in_file += 1
+                fdiff.write(f"{stats.tested:6d}{'Memory leak':>30}{val:>30}{mem_ref:>30}{diff:>30}  OK  \n")
+            else:
+                print('No memory leak'.rjust(30) + '[\033[91m\033[1mFAIL\033[0m]'.rjust(30))
+                fdiff.write(f"{stats.tested:6d}{'Memory leak':>30}{val:>30}{mem_ref:>30}{diff:>30} FAIL \n")
+            break
+
+    if not mem_found:
+        print('No memory leak'.rjust(30) + '[\033[91m\033[1mNOT FOUND\033[0m]'.rjust(30))
+
+    # --- Per-quantity checks ---
+    for check in test.checks:
+        stats.tested += 1
+        key  = check[0].strip()
+        ref  = float(check[1])
+        pos  = int(check[2])
+        tol  = float(check[3])
+
         if debug:
-          print('===debug:')
-          print(parsing)
-          print('===end debug')
-        parsing2 = parsing[1].split()
-        if debug:
-          print('===debug:')
-          print(parsing2)
-          print('===end debug')
+            print(f'===debug: looking for key="{key}" in {out_path}')
+
+        key_found = False
+        in_timing  = True  # start True; becomes False once separator seen
+
+        for ln in reversed_lines:
+            if SECTIONS_SEPARATOR in ln:
+                in_timing = False
+            if key in ln and not in_timing:
+                key_found = True
+                parts = ln.split(':')[1].split()
+                if debug:
+                    print(f'===debug: parts={parts}')
+                val  = float(parts[pos])
+                diff = val - ref
+
+                if abs(diff) < tol:
+                    print(key.rjust(30) + '[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
+                    stats.success += 1
+                    success_in_file += 1
+                    fdiff.write(f"{stats.tested:6d}{key:>30}{val:>30}{ref:>30}{diff:>30}  OK  \n")
+                else:
+                    print(key.rjust(30) + '[\033[91m\033[1mFAIL\033[0m]'.rjust(30))
+                    fdiff.write(f"{stats.tested:6d}{key:>30}{val:>30}{ref:>30}{diff:>30} FAIL \n")
+                break
+
+        if not key_found:
+            print(key.rjust(30) + '[\033[91m\033[1mNOT FOUND\033[0m]'.rjust(30))
+
+    failures_in_file = len(test.checks) + 1 - success_in_file
+
+    if failures_in_file == 0:
+        stats.files_success += 1
+    else:
+        ffailed.write(test.output_file + '\n')
+        if verbose:
+            print(f"\n===== TEST failure : {test.input_file} =====")
+            print(f"----- Displaying the content of {test.output_file} -----\n")
+            print(out_path.read_text(encoding='utf-8', errors='replace'))
+            print("=================================\n")
+
+    return failures_in_file
 
 
-        if abs( float(parsing2[pos]) - ref ) < tol:
-          print(key.rjust(30) + '[ \033[92m\033[1mOK\033[0m ]'.rjust(30))
-          success += 1
-          success_in_this_file += 1
-          fdiff.write(str(tested).rjust(6) + key.rjust(30) + parsing2[pos].rjust(30) \
-                + str(ref).rjust(30) + str(float(parsing2[pos]) - ref).rjust(30) + '  OK  \n')
-          break
-        else:
-          print(key.rjust(30) + '[\033[91m\033[1mFAIL\033[0m]'.rjust(30))
-          fdiff.write(str(tested).rjust(6) + key.rjust(30) + parsing2[pos].rjust(30) \
-                + str(ref).rjust(30) + str(float(parsing2[pos]) - ref).rjust(30) + ' FAIL \n')
-          break
-    if not key_found:
-      print(key.rjust(30) + '[\033[91m\033[1mNOT FOUND\033[0m]'.rjust(30))
+# ---------------------------------------------------------------------------
+# Argument parsing
+# ---------------------------------------------------------------------------
 
-  failures_in_this_file = len(testinfo) + 1 - success_in_this_file
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='Run the complete test suite of MOLGW',
+        formatter_class=argparse.RawTextHelpFormatter,
+    )
+    parser.add_argument('-k', '--keep', action='store_true',
+                        help='Keep the temporary folder')
+    parser.add_argument('-np', '--np', type=int, default=1, metavar='N',
+                        help='Set the number of MPI processes to N')
+    parser.add_argument('-nc', '--nc', type=int, default=1, metavar='N',
+                        help='Set the number of OpenMP threads to N')
+    parser.add_argument('-mpirun', '--mpirun', default='', metavar='LAUNCHER',
+                        help='Set the MPI launcher name')
+    parser.add_argument('-i', '--input', nargs='+', default=[], metavar='FILE',
+                        help='Only run these input files')
+    parser.add_argument('-e', '--exclude', nargs='+', default=[], metavar='FILE',
+                        help='Run all input files but these ones')
+    parser.add_argument('-p', '--input-parameter', nargs='+', default=[], metavar='PARAM',
+                        help="Only run inputs that contain this parameter.\n"
+                             "Example: --input-parameter scf = 'LDA'")
+    parser.add_argument('-d', '--debug', action='store_true',
+                        help='Output debug information for this script')
+    parser.add_argument('-l', '--list', action='store_true',
+                        help='List all input files and exit')
+    parser.add_argument('-v', '--verbose', action='store_true',
+                        help='Display the output file for any failed test')
+    args = parser.parse_args()
 
-  if failures_in_this_file == 0:
-     test_files_success += 1
+    if args.input and args.exclude:
+        parser.error('--input and --exclude are mutually exclusive.')
 
-  return failures_in_this_file
-
-###################################
-# Parse the command line
-
-option_list = ['--keep', '--np', '--nc', '--mpirun', '--input', '--exclude', '--input-parameter', '--debug', '--list', '--verbose']
-
-if len(sys.argv) > 1:
-  if '--help' in sys.argv:
-    print('Run the complete test suite of MOLGW')
-    print('  --keep             Keep the temporary folder')
-    print('  --np     n         Set the number of MPI processes to n')
-    print('  --nc     n         Set the number of OPENMP threads to n')
-    print('  --mpirun launcher  Set the MPI launcher name')
-    print('  --input files      Only run these input files')
-    print('  --list             list all the input files')
-    print('  --exclude files    Run all input files but these ones')
-    print('  --input-parameter  Only run input files that contain this input parameter. Example:')
-    print('                     --input-parameter scf = \'LDA\' ')
-    print('  --debug            Output debug information for this script')
-    print('  --verbose          Displays the output file for any failed test')
-    sys.exit(0)
-
-  for argument in sys.argv:
-    if '--' in argument and  argument not in option_list:
-      print('Unknown option: ' + argument)
-      sys.exit(1)
-
-  if '--keep' in sys.argv or '-keep' in sys.argv:
-    keeptmp = True
-
-  if '--np' in sys.argv:
-    i = sys.argv.index('--np') + 1
-    nprocs = int( sys.argv[i] )
-    mpirun = 'mpirun'
-
-  if '--mpirun' in sys.argv:
-    i = sys.argv.index('--mpirun') + 1
-    mpirun = sys.argv[i]
-
-  if '--nc' in sys.argv:
-    i = sys.argv.index('--nc') + 1
-    ncores = int( sys.argv[i] )
-
-  if '--input' in sys.argv:
-    i = sys.argv.index('--input') + 1
-    for j in range(i, len(sys.argv)):
-      if '--' in sys.argv[j]:
-        break
-      selected_input_files.append(sys.argv[j])
-
-  if '--input-parameter' in sys.argv:
-    i = sys.argv.index('--input-parameter') + 1
-    for j in range(i, len(sys.argv)):
-      if '--' in sys.argv[j]:
-        break
-      input_param_selection.append(sys.argv[j])
-
-  if '--exclude' in sys.argv:
-    i = sys.argv.index('--exclude') + 1
-    for j in range(i, len(sys.argv)):
-      if '--' in sys.argv[j]:
-        break
-      excluded_input_files.append(sys.argv[j])
-
-  if '--debug' in sys.argv:
-    debug = True
-
-  if '--list' in sys.argv:
-    listing = True
-
-  if '--verbose' in sys.argv:
-    verbose = True
-
-  if len(selected_input_files) * len(excluded_input_files) > 0:
-    print('--input and --exclude options are mutually exclusive. Select the one you really want.')
-    sys.exit(1)
+    return args
 
 
+# ---------------------------------------------------------------------------
+# Testsuite file parser
+# ---------------------------------------------------------------------------
 
-print('\n===============================')
-print('Starting MOLGW test suite\n')
+def parse_testsuite(path: Path) -> list[TestCase]:
+    """Return a list of TestCase objects parsed from the testsuite file."""
+    tests: list[TestCase] = []
 
-if len(mpirun) < 1:
-  if( nprocs > 1 ):
-    print('No MPI launcher has been provided. Set the number of MPI processes back to 1')
-  nprocs = 1
+    with path.open('r') as fts:
+        for line in fts:
+            # Strip comments
+            core = line.split('#')[0]
+            parts = [p.strip() for p in core.split(', ')]
 
-if not os.path.isfile('../molgw') :
-  print('molgw executable not found!\nMay be you should compile it first? May be you moved it around?')
-  sys.exit(1)
+            if len(parts) == 2:
+                tests.append(TestCase(
+                    input_file=parts[0],
+                    name=parts[1],
+                ))
 
-if ncores > 1:
-  os.environ["OMP_NUM_THREADS"]      = str(ncores)
-  os.environ["MKL_NUM_THREADS"]      = str(ncores)
-  os.environ["OPENBLAS_NUM_THREADS"] = str(ncores)
-  os.environ["OMP_STACKSIZE"]   = "128M"
-else:
-  os.environ["OMP_NUM_THREADS"] = '1'
-  os.environ["MKL_NUM_THREADS"] = '1'
+            elif len(parts) == 3:
+                flags = parts[2].lower()
+                tests.append(TestCase(
+                    input_file=parts[0],
+                    name=parts[1],
+                    command=extract_between_quotes(parts[2]),
+                    restart='restart' in flags,
+                    parallel='noparallel' not in flags,
+                    need_scalapack='need_scalapack' in flags,
+                    need_gradients='need_gradients' in flags,
+                    need_forces='need_forces' in flags,
+                    need_libcint='need_libcint' in flags,
+                    need_fftw3='need_fftw3' in flags,
+                ))
 
-try:
-  ncores = int(os.environ['OMP_NUM_THREADS'])
-except:
-  ncores = 1
-  pass
-print('Running with \033[91m\033[1m{:3d}\033[0m MPI  processes'.format(nprocs))
-print('Running with \033[91m\033[1m{:3d}\033[0m OPENMP threads'.format(ncores))
-print()
+            elif len(parts) == 4 and tests:
+                tests[-1].checks.append(parts)
+
+    return tests
 
 
-###################################
-# Create the temporary folder
-###################################
-tmpfolder = 'tmp'
+# ---------------------------------------------------------------------------
+# Selection / exclusion helpers
+# ---------------------------------------------------------------------------
 
-try:
-  os.mkdir(tmpfolder)
-except OSError:
-  pass
+def normalize_input_name(name: str) -> str:
+    """Ensure the name ends with .in and has no directory prefix."""
+    p = Path(name)
+    stem = p.name
+    return stem if stem.endswith('.in') else stem + '.in'
 
-###################################
-# Parse molgw.h to obtain MOLGW version
-###################################
-with open('../src/molgw.h', 'r') as stream:
+
+def apply_selection(tests: list[TestCase], selected: list[str],
+                    excluded: list[str]) -> list[TestCase]:
+    all_names = {t.input_file for t in tests}
+
+    if selected:
+        normalized = [normalize_input_name(s) for s in selected]
+        for name in normalized:
+            if name not in all_names:
+                sys.exit(f'Input file name: {name} not present in the test suite')
+        return [t for t in tests if t.input_file in normalized]
+
+    if excluded:
+        normalized = {normalize_input_name(e) for e in excluded}
+        for name in normalized:
+            if name not in all_names:
+                sys.exit(f'Input file name: {name} not present in the test suite')
+        return [t for t in tests if t.input_file not in normalized]
+
+    return tests
+
+
+def resolve_restart_dependencies(selected: list[TestCase], all_tests: list[TestCase]) -> list[TestCase]:
+    """For every selected test tagged as restart=True, ensure the closest preceding
+    non-restart test in the full suite is also included (it produces the files the
+    restart test depends on).  Original testsuite order is preserved."""
+    selected_files = {t.input_file for t in selected}
+    to_add = []
+
+    for test in selected:
+        if not test.restart:
+            continue
+        idx = all_tests.index(test)
+        # Walk backwards to find the nearest preceding non-restart test
+        for predecessor in reversed(all_tests[:idx]):
+            if not predecessor.restart:
+                if predecessor.input_file not in selected_files:
+                    to_add.append(predecessor)
+                    selected_files.add(predecessor.input_file)
+                    print(f'  Adding prerequisite test "{predecessor.input_file}" '
+                          f'required by restart test "{test.input_file}"')
+                break
+
+    # Rebuild in original suite order
+    return [t for t in all_tests if t.input_file in selected_files]
+
+
+def apply_param_filter(tests: list[TestCase], param_tokens: list[str],
+                       all_tests: list[TestCase]) -> list[TestCase]:
+    """Keep only tests whose input file contains the key=value pair,
+    then pull in any prerequisite tests needed by restart-tagged entries."""
+    if not param_tokens:
+        return tests
+
+    raw = ' '.join(param_tokens)
+    key1, _, key2 = raw.partition('=')
+    key1 = key1.strip()
+    key2 = key2.strip().strip("'\"")
+    print(f'\nUser asked for a specific subset of input files containing:\n    {key1} = {key2}\n')
+
+    selected = []
+    for test in tests:
+        inp_path = Path('inputs') / test.input_file
+        content  = inp_path.read_text(encoding='utf-8', errors='replace').lower()
+        if key1.lower() in content and key2.lower() in content:
+            selected.append(test)
+
+    if not selected:
+        sys.exit('User selected an input parameter or a value that is not present in any input file')
+
+    return resolve_restart_dependencies(selected, all_tests)
+
+
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
+
+def main():
+    start_time = time.time()
+    args = parse_args()
+
+    mpirun = args.mpirun
+    nprocs = args.np
+    ncores = args.nc
+
+    # --np implies mpirun
+    if nprocs > 1 and not mpirun:
+        mpirun = 'mpirun'
+
+    print('\n===============================')
+    print('Starting MOLGW test suite\n')
+
+    if not mpirun and nprocs > 1:
+        print('No MPI launcher has been provided. Setting the number of MPI processes back to 1')
+        nprocs = 1
+
+    molgw_bin = Path('../molgw')
+    if not molgw_bin.is_file():
+        sys.exit('molgw executable not found!\nMay be you should compile it first? May be you moved it around?')
+
+    # OpenMP / MKL environment
+    if ncores > 1:
+        for var in ('OMP_NUM_THREADS', 'MKL_NUM_THREADS', 'OPENBLAS_NUM_THREADS'):
+            os.environ[var] = str(ncores)
+        os.environ['OMP_STACKSIZE'] = '128M'
+    else:
+        os.environ['OMP_NUM_THREADS'] = '1'
+        os.environ['MKL_NUM_THREADS'] = '1'
+
+    try:
+        ncores = int(os.environ['OMP_NUM_THREADS'])
+    except (KeyError, ValueError):
+        ncores = 1
+
+    print(f'Running with \033[91m\033[1m{nprocs:3d}\033[0m MPI  processes')
+    print(f'Running with \033[91m\033[1m{ncores:3d}\033[0m OPENMP threads\n')
+
+    # Temporary folder
+    tmpfolder = Path('tmp')
+    tmpfolder.mkdir(exist_ok=True)
+
+    # Read MOLGW version
     version = ''
-    for line in stream:
-        words = line.split()
-        if len(words) > 1:
-            if words[0] == '#define' and words[1] == 'MOLGW_VERSION':
-                version = words[2].replace('\"', '').replace('\'', '')
+    molgw_h = Path('../src/molgw.h')
+    with molgw_h.open('r') as fh:
+        for ln in fh:
+            words = ln.split()
+            if len(words) > 2 and words[0] == '#define' and words[1] == 'MOLGW_VERSION':
+                version = words[2].strip('"\'')
 
-###################################
-# Run the fake.in input to get MOLGW compilation options
-###################################
-molgw_executable_functional = clean_run('fake.in', 'fake.out', False)
+    # Run fake.in to detect compilation options
+    fake_test = TestCase(input_file='fake.in', name='fake')
+    molgw_ok = clean_run(fake_test, tmpfolder, mpirun, nprocs, args.debug)
+    if not molgw_ok:
+        print('MOLGW executable is not functional\nDump last output:')
+        print((tmpfolder / 'fake.out').read_text(encoding='utf-8', errors='replace'))
+        sys.exit('MOLGW executable is not functional')
 
-if not molgw_executable_functional:
-    print("MOLGW executable is not functional")
-    print("Dump last output:")
-    with open(tmpfolder + '/fake.out', 'r') as f:
-        print(f.read())
-    sys.exit("MOLGW executable is not functional")
+    fake_content = read_fake_out(tmpfolder / 'fake.out')
 
-have_openmp           = 'Running with OPENMP' in open(tmpfolder + '/fake.out').read()
-have_libxc            = 'Running with LIBXC' in open(tmpfolder + '/fake.out').read()
-have_mpi              = 'Running with MPI' in open(tmpfolder + '/fake.out').read()
-have_scalapack        = 'Running with SCALAPACK' in open(tmpfolder + '/fake.out').read()
-have_onebody          = 'Running with external LIBINT or LIBCINT calculation of the one-body operators' in open(tmpfolder + '/fake.out').read()
-have_gradients        = 'Running with external LIBINT calculation of the gradients of the one-body integrals' in open(tmpfolder + '/fake.out').read() \
-                        or 'Code compiled with LIBCINT' in open(tmpfolder + '/fake.out').read()
-#have_libint_forces    = 'Running with external LIBINT calculation of the gradients of the Coulomb integrals' in open(tmpfolder + '/fake.out').read()
-have_libint_forces    = False  # FIXME force calculation is broken as of today
-is_libcint            = 'Code compiled with LIBCINT support' in open(tmpfolder + '/fake.out').read()
-have_hdf5             = 'Running with HDF5' in open(tmpfolder + '/fake.out').read()
-have_fftw3            = 'Running with FFTW3' in open(tmpfolder + '/fake.out').read()
+    have_openmp        = 'Running with OPENMP' in fake_content
+    have_libxc         = 'Running with LIBXC' in fake_content
+    have_mpi           = 'Running with MPI' in fake_content
+    have_scalapack     = 'Running with SCALAPACK' in fake_content
+    have_onebody       = 'Running with external LIBINT or LIBCINT calculation of the one-body operators' in fake_content
+    have_gradients     = ('Running with external LIBINT calculation of the gradients of the one-body integrals' in fake_content
+                          or 'Code compiled with LIBCINT' in fake_content)
+    have_libint_forces = False  # FIXME: force calculation is broken as of today
+    is_libcint         = 'Code compiled with LIBCINT support' in fake_content
+    have_hdf5          = 'Running with HDF5' in fake_content
+    have_fftw3         = 'Running with FFTW3' in fake_content
 
-#with open(tmpfolder + '/fake.out', 'r') as ffake:
-#  for line in ffake:
-#    if 'Perform diagonalizations with (Sca)LAPACK routines' in line:
-#      lapack_diago_flavor = line.split(':')[1].strip()
+    print('MOLGW compilation details:')
+    print(f'              MOLGW version: {version}')
+    print(f'                     OPENMP: {have_openmp}')
+    print(f'                        MPI: {have_mpi}')
+    print(f'                  SCALAPACK: {have_scalapack}')
+    print(f'                      LIBXC: {have_libxc}')
+    print(f'                       HDF5: {have_hdf5}')
+    print(f'                      FFTW3: {have_fftw3}')
+    print(f'                  integrals: {"LIBCINT" if is_libcint else "LIBINT"}')
+    print(f'           1-body integrals: {have_onebody}')
+    print(f'        gradients integrals: {have_gradients}')
+    print(f' LIBINT gradients integrals: {have_libint_forces}')
+    print()
 
-print('MOLGW compilation details:')
-print('              MOLGW version: ' + version)
-print('                     OPENMP: {}'.format(have_openmp) )
-print('                        MPI: {}'.format(have_mpi) )
-print('                  SCALAPACK: {}'.format(have_scalapack) )
-print('                      LIBXC: {}'.format(have_libxc) )
-print('                       HDF5: {}'.format(have_hdf5) )
-print('                      FFTW3: {}'.format(have_fftw3) )
-if is_libcint:
-    print('                  integrals: LIBCINT' )
-else:
-    print('                  integrals: LIBINT' )
-print('           1-body integrals: {}'.format(have_onebody) )
-print('        gradients integrals: {}'.format(have_gradients) )
-print(' LIBINT gradients integrals: {}'.format(have_libint_forces) )
-#print('        (Sca)LAPACK diago: {}'.format(lapack_diago_flavor) )
-print()
+    if have_openmp:
+        os.environ['OMP_STACKSIZE'] = '32M'
 
-#os.remove(tmpfolder + '/fake.out')
+    # Parse testsuite file
+    all_tests = parse_testsuite(Path('inputs/testsuite'))
 
+    # --list
+    if args.list:
+        print('=== List of input files in the Suite ===')
+        for i, test in enumerate(all_tests, start=1):
+            print(f'{i:04d}: {test.input_file}')
+        print('========================================')
+        sys.exit(0)
 
-# The default OMP stacksize is generally too small:
-if have_openmp:
-  os.environ["OMP_STACKSIZE"]   = '32M'
+    # Apply filters
+    tests = apply_param_filter(all_tests, args.input_parameter, all_tests)
+    tests = apply_selection(tests, args.input, args.exclude)
 
-###################################
-# Parse the file testsuite
-###################################
-ninput = 0
-input_files    = []
-restarting     = []
-parallel       = []
-need_scalapack = []
-need_gradients = []
-need_forces    = []
-need_libcint   = []
-need_fftw3     = []
-test_names     = []
-testinfo       = []
-command        = []
+    print(f'Input files to be executed: {len(tests)}')
 
-ftestsuite = open('inputs/testsuite', 'r')
-for line in ftestsuite:
-  # Removing the comments
-  parsing0 = line.split('#')
-  # Find the number of comas
-  parsing  = parsing0[0].split(', ')
+    # Run tests
+    stats = RunStats()
 
-  if len(parsing) == 2:
-    ninput +=1
-    input_files.append(parsing[0].strip())
-    test_names.append(parsing[1].strip())
-    testinfo.append([])
-    restarting.append(False)
-    parallel.append(True)
-    need_scalapack.append(False)
-    need_gradients.append(False)
-    need_forces.append(False)
-    need_libcint.append(False)
-    need_fftw3.append(False)
-    command.append("")
+    with (tmpfolder / 'diff').open('w') as fdiff, \
+         (tmpfolder / 'failed_tests').open('w') as ffailed:
 
-  if len(parsing) == 3:
-    ninput +=1
-    input_files.append(parsing[0].strip())
-    test_names.append(parsing[1].strip())
-    testinfo.append([])
-    command.append(extract_between_quotes(parsing[2]))
+        fdiff.write(
+            '#   test index       property tested'
+            '                     calculated'
+            '                 reference'
+            '                 difference        test status \n'
+        )
 
-    if 'restart' in parsing[2].lower():
-      restarting.append(True)
-    else:
-      restarting.append(False)
-    if 'noparallel' in parsing[2].lower():
-      parallel.append(False)
-    else:
-      parallel.append(True)
-    need_scalapack.append( 'need_scalapack' in parsing[2].lower() )
-    need_gradients.append( 'need_gradients' in parsing[2].lower() )
-    need_forces.append( 'need_forces' in parsing[2].lower() )
-    need_libcint.append( 'need_libcint' in parsing[2].lower() )
-    need_fftw3.append( 'need_fftw3' in parsing[2].lower() )
+        for test in tests:
+            # Skip checks
+            skip_msg = None
+            if test.need_libcint and not is_libcint:
+                skip_msg = 'this compilation of MOLGW does not have LIBCINT'
+            elif test.need_fftw3 and not have_fftw3:
+                skip_msg = 'this compilation of MOLGW does not have FFTW3'
+            elif test.need_scalapack and not have_scalapack:
+                skip_msg = 'this compilation of MOLGW does not have SCALAPACK'
+            elif test.need_gradients and not have_gradients:
+                skip_msg = 'this compilation of MOLGW does not have the integral gradients'
+            elif test.need_forces and not have_libint_forces:
+                skip_msg = 'this compilation of MOLGW does not have the force integrals'
+            elif not test.parallel and nprocs > 1:
+                skip_msg = 'this test is only serial'
 
-  elif len(parsing) == 4:
-    testinfo[ninput-1].append(parsing)
+            if skip_msg:
+                stats.files_skipped += 1
+                print(f'\nSkipping test file: {test.input_file}')
+                print(f'  because {skip_msg}')
+                stats.skipping_reasons.append(skip_msg)
+                continue
 
-ftestsuite.close()
+            print(f'\nRunning test file: {test.input_file}')
+            print(test.name)
+            fdiff.write(f'# {test.input_file}\n')
 
-###################################
-# List all the input files and exit
-###################################
-if listing:
-    print('=== List of input files in the Suite ===')
-    for i, inpfile in enumerate(input_files):
-        print('{:04}: {}'.format(i + 1, inpfile))
-    print('========================================')
-    sys.exit(0)
+            clean_run(test, tmpfolder, mpirun, nprocs, args.debug)
+            check_output(test, tmpfolder, stats, fdiff, ffailed, args.verbose, args.debug)
+
+    # Summary
+    n_run = len(tests) - stats.files_skipped
+    color = '\033[92m' if stats.success == stats.tested else '\033[91m'
+    reset = '\033[0m'
+    bold  = '\033[1m'
+
+    print('\n\n===============================')
+    print('      Test Suite Summary \n')
+    print(f'      Test files tested:   {n_run:4d} / {len(tests):4d}\n')
+    print(f'     Test files success:   {color}{bold}{stats.files_success:4d} / {n_run:4d}{reset}  ')
+    print(f'       Successful tests:   {color}{bold}{stats.success:4d} / {stats.tested:4d}{reset}\n')
+    print(f'       Elapsed time (s):   {time.time() - start_time:.2f}')
+    print('===============================\n')
+
+    if stats.files_skipped > 0:
+        print(' Some tests have been skipped for the following reasons:')
+        for reason in set(stats.skipping_reasons):
+            count = stats.skipping_reasons.count(reason)
+            print(f'   * {reason:<80}  ({count:=4d} tests)')
+        print('===============================\n')
+
+    if not args.keep:
+        shutil.rmtree(tmpfolder)
+
+    sys.exit(abs(stats.success - stats.tested))
 
 
-###################################
-# Check the selection by input variable value
-###################################
-if len(input_param_selection) > 0:
-  print('\nUser asked for a specific subset of input files containing:')
-  key1 = input_param_selection[0].split('=')[0]
-  key2 = input_param_selection[-1].split('=')[-1]
-  print('    ' + key1 + ' = ' + key2 + '\n')
-
-  for iinput in range(ninput):
-    inp = input_files[iinput]
-  
-    present = False
-
-    fin = open('inputs/' + inp, 'r')
-    for line in fin:
-      if key1.lower() in line.lower() and key2.lower() in line.lower():
-        present = True
-    fin.close()
-
-    if present:
-      selected_input_files.append(inp)
-  if len(selected_input_files) == 0:
-    print('User selected an input parameter or a value that is not present in any input file')
-    sys.exit(1)
-
-
-###################################
-# Check the selection and the exclusion lists
-###################################
-if len(selected_input_files) == 0 and len(excluded_input_files) == 0:
-  ninput2 = ninput
-
-elif len(selected_input_files) > 0:
-  ninput2 = len(selected_input_files)
-
-  for i in range(len(selected_input_files)):
-    if not '.in' in selected_input_files[i]:
-      selected_input_files[i] = selected_input_files[i] + '.in'
-
-    if '/' in selected_input_files[i]:
-      parsing  = selected_input_files[i].split('/')
-      selected_input_files[i] = parsing[len(parsing)-1]
-
-    if not selected_input_files[i] in input_files:
-      print('Input file name:', selected_input_files[i], 'not present in the test suite')
-      sys.exit(1)
-
-else:
-  ninput2 = ninput - len(excluded_input_files)
-
-  for i in range(len(excluded_input_files)):
-    if not '.in' in excluded_input_files[i]:
-      excluded_input_files[i] = excluded_input_files[i] + '.in'
-
-    if '/' in excluded_input_files[i]:
-      parsing  = excluded_input_files[i].split('/')
-      excluded_input_files[i] = parsing[len(parsing)-1]
-
-    if not excluded_input_files[i] in input_files:
-      print('Input file name:', excluded_input_files[i], 'not present in the test suite')
-      sys.exit(1)
-
-
-  
-
-
-print('Input files to be executed: {}'.format(ninput2))
-
-
-###################################
-
-success            = 0
-tested             = 0
-test_files_skipped = 0
-test_files_success = 0
-skipping_reason    = []
-
-fdiff = open(tmpfolder + '/diff', 'w')
-fdiff.write('#   test index       property tested                     calculated                 reference                 difference        test status \n')
-ffailed = open(tmpfolder + '/failed_tests', 'w')
-
-for iinput in range(ninput):
-
-  if len(selected_input_files) != 0 and not input_files[iinput] in selected_input_files:
-    continue
-  if len(excluded_input_files) != 0 and input_files[iinput] in excluded_input_files:
-    continue
-
-  inp     = input_files[iinput]
-  out     = input_files[iinput].split('.in')[0] + '.out'
-  restart = restarting[iinput]
-
-  if need_libcint[iinput] and not is_libcint:
-    test_files_skipped += 1
-    print('\nSkipping test file: ' + inp)
-    print('  because this compilation of MOLGW does not have LIBCINT')
-    skipping_reason.append('this compilation of MOLGW does not have LIBCINT')
-    continue
-  if need_fftw3[iinput] and not have_fftw3:
-    test_files_skipped += 1
-    print('\nSkipping test file: ' + inp)
-    print('  because this compilation of MOLGW does not have FFTW3')
-    skipping_reason.append('this compilation of MOLGW does not have FFTW3')
-    continue
-  if need_scalapack[iinput] and not have_scalapack:
-    test_files_skipped += 1
-    print('\nSkipping test file: ' + inp)
-    print('  because this compilation of MOLGW does not have SCALAPACK')
-    skipping_reason.append('this compilation of MOLGW does not have SCALAPACK')
-    continue
-  if need_gradients[iinput] and not have_gradients:
-    test_files_skipped += 1
-    print('\nSkipping test file: ' + inp)
-    print('  because this compilation of MOLGW does not have the integral gradients')
-    skipping_reason.append('this compilation of MOLGW does not have the integral gradients')
-    continue
-  if need_forces[iinput] and not have_libint_forces:
-    test_files_skipped += 1
-    print('\nSkipping test file: ' + inp)
-    print('  because this compilation of MOLGW does not have the force integrals')
-    skipping_reason.append('this compilation of MOLGW does not have the force integrals')
-    continue
-  if not parallel[iinput] and nprocs > 1:
-    test_files_skipped += 1
-    print('\nSkipping test file: ' + inp)
-    print('  because this test is only serial')
-    skipping_reason.append('this test is only serial')
-    continue
-
-
-  print('\nRunning test file: ' + inp)
-  print(test_names[iinput])
-  fdiff.write("# " + inp + "\n")
-
-  molgw_executable_functional = clean_run(inp, out, restart, command=command[iinput])
-  
-  failures = check_output(out, testinfo[iinput])
-  if failures != 0:
-    ffailed.write(out + "\n")
-
-    # displays the content of the .out file associated with the failed test
-    if verbose :
-        output_path = os.path.join(tmpfolder, out)
-        print(f"\n===== TEST failure : {inp} =====")
-        print(f"----- Displaying the content of {out} associated with the failed test -----\n")
-        with open(output_path, "r", encoding="utf-8", errors="replace") as f:
-            print(f.read())
-        print("=================================\n")
-
-
-fdiff.close()
-ffailed.close()
-
-print('\n\n===============================')
-print('      Test Suite Summary \n')
-print('      Test files tested:   {:4d} / {:4d}\n'.format(ninput2-test_files_skipped, ninput2))
-if success == tested:
-  print('     Test files success:   \033[92m\033[1m{:4d} / {:4d}\033[0m  '.format(test_files_success, ninput2-test_files_skipped))
-  print('       Successful tests:   \033[92m\033[1m{:4d} / {:4d}\033[0m\n'.format(success, tested))
-else:
-  print('     Test files success:   \033[91m\033[1m{:4d} / {:4d}\033[0m  '.format(test_files_success, ninput2-test_files_skipped))
-  print('       Successful tests:   \033[91m\033[1m{:4d} / {:4d}\033[0m\n'.format(success, tested))
-print('       Elapsed time (s):   ', '{:.2f}'.format(time.time() - start_time) )
-print('===============================\n')
-if test_files_skipped > 0 :
-  print(' Some tests have been skipped for the following reasons:')
-  for reason in list(set(skipping_reason)):
-    ireason = skipping_reason.count(reason)
-    print('   * {:<80}  ({:=4d} tests)'.format(reason, ireason))
-  print('===============================\n')
-
-
-###################################
-# Erase the tmp folder by default
-if not keeptmp:
-  shutil.rmtree(tmpfolder)
-
-sys.exit(abs(success-tested))
-###################################
+if __name__ == '__main__':
+    main()
