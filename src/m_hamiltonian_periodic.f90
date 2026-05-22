@@ -272,7 +272,7 @@ subroutine setup_overlap_onecell(basis, shift, s_matrix)
   real(C_DOUBLE), allocatable :: cB(:)
   !=====
 
-  if( current_stage /= TIMING_POSTSCF ) call timer_overlap%start()
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_overlap%start()
 
 
   do jshell=1, basis%nshell
@@ -319,7 +319,7 @@ subroutine setup_overlap_onecell(basis, shift, s_matrix)
   enddo
 
 
-  if( current_stage /= TIMING_POSTSCF ) call timer_overlap%stop()
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_onecell
@@ -390,7 +390,7 @@ subroutine setup_kinetic_onecell(basis, shift, kin_ao)
   real(C_DOUBLE), allocatable :: cB(:)
   !=====
 
-  if( current_stage /= TIMING_POSTSCF ) call timer_hamiltonian_kin%start()
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_hamiltonian_kin%start()
 
   do jshell=1, basis%nshell
     lj      = basis%shell(jshell)%am
@@ -436,7 +436,7 @@ subroutine setup_kinetic_onecell(basis, shift, kin_ao)
   enddo
 
 
-  if( current_stage /= TIMING_POSTSCF ) call timer_hamiltonian_kin%stop()
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_hamiltonian_kin%stop()
 
 
 end subroutine setup_kinetic_onecell
@@ -461,7 +461,7 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
 #endif
 
 
-  if( current_stage == TIMING_POSTSCF ) then
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
     call timer_tddft_hamiltonian_nuc%start()
   else
     call timer_hamiltonian_nuc%start()
@@ -498,7 +498,7 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
   call dump_out_matrix(.FALSE., '=== Nuclei contribution (FFTW) ===', h_nonloc_ao)
   deallocate(h_nonloc_ao)
 
-  if( current_stage == TIMING_POSTSCF ) then
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
     call timer_tddft_hamiltonian_nuc%stop()
   else
     call timer_hamiltonian_nuc%stop()

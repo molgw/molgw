@@ -80,7 +80,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
   real(dp), allocatable :: w_grid_tmp(:)
   !=====
 
-  if( current_stage == TIMING_POSTSCF ) then
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
     call timer_tddft_grid_init%start()
     call timer_tddft_grid_generation%start()
   else
@@ -409,7 +409,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
 
   deallocate(rr_grid_tmp, w_grid_tmp)
 
-  if( current_stage == TIMING_POSTSCF ) then
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
     call timer_tddft_grid_generation%stop()
   else
     call timer_grid_generation%stop()
@@ -422,7 +422,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
   !
   if( precalculate_wfn ) then
 
-    if( current_stage == TIMING_POSTSCF ) then
+    if( TIMING_current_stage == TIMING_POSTSCF ) then
       call timer_tddft_grid_wfn%start()
     else
       call timer_grid_wfn%start()
@@ -444,7 +444,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
     if( needs_gradient ) then
       call prepare_basis_functions_gradr(basis, batch_size)
     endif
-    if( current_stage == TIMING_POSTSCF ) then
+    if( TIMING_current_stage == TIMING_POSTSCF ) then
       call timer_tddft_grid_wfn%stop()
     else
       call timer_grid_wfn%stop()
@@ -456,7 +456,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
 
   call setup_rhocore_grid()
 
-  if( current_stage == TIMING_POSTSCF ) then
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
     call timer_tddft_grid_init%stop()
   else
     call timer_grid_init%stop()

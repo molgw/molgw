@@ -28,7 +28,7 @@ module m_timing
   integer, parameter :: TIMING_SCF     = 2
   integer, parameter :: TIMING_POSTSCF = 3
 
-  integer, protected :: current_stage
+  integer, protected :: TIMING_current_stage
   integer, private :: id_last_used
   integer, private :: count_rate, count_max
 
@@ -191,7 +191,7 @@ contains
 subroutine init_timers()
 
   call system_clock(COUNT_RATE=count_rate, COUNT_MAX=count_max)
-  current_stage = TIMING_PRESCF
+  TIMING_current_stage = TIMING_PRESCF
   id_last_used  = 0
 
   ! Stage timers
@@ -345,7 +345,7 @@ end subroutine init_timers
 !=========================================================================
 subroutine timers_setstage(stage)
   integer, intent(in) :: stage
-  current_stage = stage
+  TIMING_current_stage = stage
 end subroutine timers_setstage
 
 
@@ -393,7 +393,7 @@ subroutine timer_start(t)
 
   call system_clock(COUNT=count_tmp)
   t%start_time = count_tmp
-  t%calls(current_stage) = t%calls(current_stage) + 1
+  t%calls(TIMING_current_stage) = t%calls(TIMING_current_stage) + 1
 
 end subroutine timer_start
 
@@ -417,7 +417,7 @@ subroutine timer_stop(t)
 #endif
 
   call system_clock(COUNT=count_tmp)
-  t%timing(current_stage) = t%timing(current_stage) &
+  t%timing(TIMING_current_stage) = t%timing(TIMING_current_stage) &
        + MODULO( count_tmp - NINT(t%start_time), count_max ) / REAL(count_rate, KIND=dp)
 
 end subroutine timer_stop
@@ -433,7 +433,7 @@ function timer_get(t, stage) RESULT(time)
   if( PRESENT(stage) ) then
     time = t%timing(stage)
   else
-    time = t%timing(current_stage)
+    time = t%timing(TIMING_current_stage)
   endif
 
 end function timer_get
