@@ -24,6 +24,10 @@ module m_timing
   !
   integer, parameter, private :: nstage = 3
 
+  integer, parameter :: TIMER_PRESCF  = 1
+  integer, parameter :: TIMER_SCF     = 2
+  integer, parameter :: TIMER_POSTSCF = 3
+
   integer, private :: current_stage
   integer, private :: id_last_used
   integer, private :: count_rate, count_max
@@ -312,7 +316,7 @@ contains
 subroutine init_timers()
 
   call system_clock(COUNT_RATE=count_rate, COUNT_MAX=count_max)
-  current_stage = 1
+  current_stage = TIMER_PRESCF
   id_last_used  = 0
 
   ! Stage timers

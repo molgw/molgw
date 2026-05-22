@@ -163,7 +163,7 @@ program molgw
       write(stdout, '(/,/,1x,a,i5,/)') ' === LBFGS step ', istep
     endif
  
-    call timers_setstage(1)
+    call timers_setstage(TIMER_PRESCF)
     call timer_prescf%start()
  
  
@@ -442,7 +442,7 @@ program molgw
     endif
    
     call timer_prescf%stop()
-    call timers_setstage(2)
+    call timers_setstage(TIMER_SCF)
    
    
     !
@@ -609,7 +609,7 @@ program molgw
   ! Part 3 / 3 : Post-processings
   !
   !
-  call timers_setstage(3)
+  call timers_setstage(TIMER_POSTSCF)
   call timer_postscf%start()
 
 #if defined(HAVE_LIBCINT)
