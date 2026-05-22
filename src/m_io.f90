@@ -81,10 +81,10 @@ subroutine this_is_the_end()
 
     write(unit_yaml, '(4x,a)') 'timing:'
     write(unit_yaml, '(8x,a)')           'unit: s'
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'total:  ', get_timing(timing_total)
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'prescf: ', get_timing(timing_prescf)
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'scf:    ', get_timing(timing_scf)
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'postscf:', get_timing(timing_postscf)
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'total:  ', timer_molgw%get()
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'prescf: ', timer_prescf%get()
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'scf:    ', timer_scf%get()
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'postscf:', timer_postscf%get()
     write(unit_yaml, '(4x,a)') 'memory:'
     write(unit_yaml, '(8x,a)')           'unit: Gb'
     write(unit_yaml, '(8x,a,1x,es18.8)') 'peak:   ', get_peak_memory()
@@ -1759,7 +1759,7 @@ subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, nu
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -1836,7 +1836,7 @@ subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, nu
 
   deallocate(phi)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_traj_bunch
 
@@ -1896,7 +1896,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num,
     enddo
   end do
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -2011,7 +2011,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num,
 
   deallocate(phi)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_traj_bunch_contrib
 
@@ -2073,7 +2073,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix,
     enddo
   end do
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -2186,7 +2186,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix,
 
   deallocate(phi)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_traj_points_set_contrib
 
@@ -2226,7 +2226,7 @@ subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_cube_rho_tddft)
+  call timer_print_cube_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -2308,7 +2308,7 @@ subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_cube_rho_tddft)
+  call timer_print_cube_rho_tddft%stop()
 
 end subroutine plot_cube_wfn_cmplx
 
@@ -2348,7 +2348,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupatio
   real(dp), allocatable       :: charge_layer(:)
   !=====
 
-  call start_clock(timing_calc_dens_disc)
+  call timer_calc_dens_disc%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -2442,7 +2442,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupatio
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_calc_dens_disc)
+  call timer_calc_dens_disc%stop()
 
 end subroutine calc_density_in_disc_cmplx_regular
 
@@ -2477,7 +2477,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
   real(dp), allocatable, save  :: cube_density_start(:, :)
   !=====
 
-  call start_clock(timing_print_cube_rho_tddft)
+  call timer_print_cube_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -2604,7 +2604,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
 
     do ispin=1, nspin
 
-      !call start_clock(timing_tmp0)
+      !call timer_tmp0%start()
       dens_diff(:) = 0.0_dp
 
       !$OMP PARALLEL PRIVATE(basis_function_r, phi_cmplx)
@@ -2621,18 +2621,18 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
       enddo
       !$OMP END DO
       !$OMP END PARALLEL
-      !call stop_clock(timing_tmp0)
+      !call timer_tmp0%stop()
 
-      !call start_clock(timing_tmp1)
+      !call timer_tmp1%start()
       call world%sum(dens_diff)
-      !call stop_clock(timing_tmp1)
+      !call timer_tmp1%stop()
 
       if( is_iomaster ) then
-        !call start_clock(timing_tmp2)
+        !call timer_tmp2%start()
         do ir=1, cube_nx*cube_ny*cube_nz
           write(ocuberho(ispin), '(50(e16.8,2x))') dens_diff(ir)
         end do
-        !call stop_clock(timing_tmp2)
+        !call timer_tmp2%stop()
       endif
 
     enddo !do ispin
@@ -2646,7 +2646,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
 
   endif
 
-  call stop_clock(timing_print_cube_rho_tddft)
+  call timer_print_cube_rho_tddft%stop()
 
 end subroutine plot_cube_diff_cmplx
 
@@ -2734,7 +2734,7 @@ subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, n
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -2801,7 +2801,7 @@ subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, n
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_cmplx
 
@@ -2833,7 +2833,7 @@ subroutine plot_rho_diff_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -2868,7 +2868,7 @@ subroutine plot_rho_diff_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_diff_cmplx
 
@@ -2900,7 +2900,7 @@ subroutine calc_rho_initial_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -2935,7 +2935,7 @@ subroutine calc_rho_initial_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine calc_rho_initial_cmplx
 
@@ -3011,7 +3011,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matr
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -3089,7 +3089,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matr
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_traj_bunch_cmplx
 
@@ -3955,8 +3955,8 @@ subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
   write(stdout, '(/,1x,70("="))')
 
 
-  call stop_clock(timing_prescf)
-  call stop_clock(timing_total)
+  call timer_prescf%stop()
+  call timer_molgw%stop()
   call this_is_the_end()
 
 end subroutine evaluate_memory

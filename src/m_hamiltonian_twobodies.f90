@@ -43,7 +43,7 @@ subroutine setup_hartree(p_matrix, hartree_ao, ehartree)
   real(dp)             :: fact_ij, fact_kl
   !=====
 
-  call start_clock(timing_hartree)
+  call timer_hartree%start()
   nbf = SIZE(hartree_ao, DIM=1)
 
   write(stdout, *) 'Calculate Hartree term using the 8 permutation symmetries'
@@ -109,7 +109,7 @@ subroutine setup_hartree(p_matrix, hartree_ao, ehartree)
   !$OMP END PARALLEL
 
 
-  call stop_clock(timing_hartree)
+  call timer_hartree%stop()
 
 end subroutine setup_hartree
 
@@ -138,7 +138,7 @@ subroutine setup_hartree_oneshell(basis, p_matrix, hartree_ao, ehartree)
   !=====
 
 
-  call start_clock(timing_hartree)
+  call timer_hartree%start()
 
   write(stdout, *) 'Calculate Hartree term with out-of-core integrals'
 
@@ -271,7 +271,7 @@ subroutine setup_hartree_oneshell(basis, p_matrix, hartree_ao, ehartree)
     ehartree = ehartree + 0.5_dp*SUM(hartree_ao(:, :)*p_matrix(:, :, 2))
   endif
 
-  call stop_clock(timing_hartree)
+  call timer_hartree%stop()
 
 end subroutine setup_hartree_oneshell
 
@@ -287,7 +287,7 @@ subroutine setup_hartree_ri(p_matrix, hartree_ao, ehartree)
   integer              :: ibf, kbf, lbf
   integer              :: ipair
   real(dp), allocatable :: x_vector(:)
-  integer              :: timing_xxdft_hartree
+  type(timer), pointer  :: timer_xxdft_hartree
   real(dp), allocatable :: pmat(:)
   !=====
 
@@ -295,14 +295,14 @@ subroutine setup_hartree_ri(p_matrix, hartree_ao, ehartree)
 
   select type(p_matrix)
   type is(real(dp))
-    timing_xxdft_hartree   = timing_hartree
+    timer_xxdft_hartree => timer_hartree
   type is(complex(dp))
-    timing_xxdft_hartree   = timing_tddft_hartree
+    timer_xxdft_hartree => timer_tddft_hartree
   class default
     call die("setup_hartree_ri: p_matrix is neither real nor complex")
   end select
 
-  call start_clock(timing_xxdft_hartree)
+  call timer_xxdft_hartree%start()
 
   if(.not.calc_type%is_noft) write(stdout, *) 'Calculate Hartree term with Resolution-of-Identity'
 
@@ -366,7 +366,7 @@ subroutine setup_hartree_ri(p_matrix, hartree_ao, ehartree)
   end select
 
 
-  call stop_clock(timing_xxdft_hartree)
+  call timer_xxdft_hartree%stop()
 
 end subroutine setup_hartree_ri
 
@@ -390,20 +390,20 @@ subroutine calculate_density_auxilbasis(p_matrix, rho_coeff)
   integer              :: kbf, lbf
   integer              :: ipair, ispin
   real(dp), allocatable :: x_vector(:)
-  integer              :: timing_xxdft_rhoauxil
+  type(timer), pointer  :: timer_xxdft_rhoauxil
   real(dp), allocatable :: pmat(:)
   !=====
 
   select type(p_matrix)
   type is(real(dp))
-    timing_xxdft_rhoauxil = timing_rhoauxil
+    timer_xxdft_rhoauxil => timer_rhoauxil
   type is(complex(dp))
-    timing_xxdft_rhoauxil = timing_tddft_rhoauxil
+    timer_xxdft_rhoauxil => timer_tddft_rhoauxil
   class default
     call die("calculate_density_auxilbasis: p_matrix is neither real nor complex")
   end select
 
-  call start_clock(timing_xxdft_rhoauxil)
+  call timer_xxdft_rhoauxil%start()
 
   write(stdout, *) 'Calculate Hartree term with Resolution-of-Identity'
 
@@ -443,7 +443,7 @@ subroutine calculate_density_auxilbasis(p_matrix, rho_coeff)
 
   deallocate(x_vector, pmat)
 
-  call stop_clock(timing_xxdft_rhoauxil)
+  call timer_xxdft_rhoauxil%stop()
 
 
 end subroutine calculate_density_auxilbasis
@@ -460,7 +460,7 @@ subroutine setup_hartree_genuine_ri(p_matrix, rho_coeff, hartree_ao, ehartree)
   integer              :: nbf
   integer              :: ibf, kbf, lbf
   integer              :: ipair, iauxil_local, iauxil_global
-  integer              :: timing_xxdft_hartree
+  type(timer), pointer  :: timer_xxdft_hartree
   real(dp), allocatable :: vh(:)
   real(dp), allocatable :: rho_coeff_local_nospin(:)
   !=====
@@ -471,14 +471,14 @@ subroutine setup_hartree_genuine_ri(p_matrix, rho_coeff, hartree_ao, ehartree)
 
   select type(p_matrix)
   type is(real(dp))
-    timing_xxdft_hartree   = timing_hartree
+    timer_xxdft_hartree => timer_hartree
   type is(complex(dp))
-    timing_xxdft_hartree   = timing_tddft_hartree
+    timer_xxdft_hartree => timer_tddft_hartree
   class default
     call die("setup_hartree_ri: p_matrix is neither real nor complex")
   end select
 
-  call start_clock(timing_xxdft_hartree)
+  call timer_xxdft_hartree%start()
 
   write(stdout, *) 'Calculate Hartree term with Resolution-of-Identity-expanded density'
 
@@ -526,7 +526,7 @@ subroutine setup_hartree_genuine_ri(p_matrix, rho_coeff, hartree_ao, ehartree)
   end select
 
 
-  call stop_clock(timing_xxdft_hartree)
+  call timer_xxdft_hartree%stop()
 
 
 end subroutine setup_hartree_genuine_ri
@@ -544,7 +544,7 @@ subroutine setup_exchange(p_matrix, exchange_ao, eexchange)
   integer              :: index_ik, index_lj, stride
   !=====
 
-  call start_clock(timing_exchange)
+  call timer_exchange%start()
 
   write(stdout, *) 'Calculate Exchange term using the 8 permutation symmetries'
   !$OMP PARALLEL PRIVATE(index_ik, index_lj, ibf, jbf,  kbf, lbf, stride)
@@ -615,7 +615,7 @@ subroutine setup_exchange(p_matrix, exchange_ao, eexchange)
   !$OMP END WORKSHARE
   !$OMP END PARALLEL
 
-  call stop_clock(timing_exchange)
+  call timer_exchange%stop()
 
 end subroutine setup_exchange
 
@@ -632,7 +632,7 @@ subroutine setup_exchange_longrange(p_matrix, exchange_ao, eexchange)
   integer              :: index_ik, index_lj, stride
   !=====
 
-  call start_clock(timing_exchange)
+  call timer_exchange%start()
 
   write(stdout, *) 'Calculate LR-Exchange term using the 8 permutation symmetries'
   !$OMP PARALLEL PRIVATE(index_ik, index_lj, ibf, jbf, kbf, lbf, stride)
@@ -703,7 +703,7 @@ subroutine setup_exchange_longrange(p_matrix, exchange_ao, eexchange)
   !$OMP END WORKSHARE
   !$OMP END PARALLEL
 
-  call stop_clock(timing_exchange)
+  call timer_exchange%stop()
 
 end subroutine setup_exchange_longrange
 
@@ -724,7 +724,7 @@ subroutine setup_exchange_ri(occupation, c_matrix, p_matrix, exchange_ao, eexcha
   integer              :: ipair, iauxil
   !=====
 
-  call start_clock(timing_exchange)
+  call timer_exchange%start()
 
   write(stdout, *) 'Calculate Exchange term with Resolution-of-Identity'
 
@@ -785,7 +785,7 @@ subroutine setup_exchange_ri(occupation, c_matrix, p_matrix, exchange_ao, eexcha
 
   eexchange = 0.5_dp * SUM( exchange_ao(:, :, :) * p_matrix(:, :, :) )
 
-  call stop_clock(timing_exchange)
+  call timer_exchange%stop()
 
 end subroutine setup_exchange_ri
 
@@ -806,7 +806,7 @@ subroutine setup_exchange_longrange_ri(occupation, c_matrix, p_matrix, exchange_
   integer              :: ipair, iauxil
   !=====
 
-  call start_clock(timing_exchange)
+  call timer_exchange%start()
 
   write(stdout, *) 'Calculate LR Exchange term with Resolution-of-Identity'
 
@@ -868,7 +868,7 @@ subroutine setup_exchange_longrange_ri(occupation, c_matrix, p_matrix, exchange_
 
   eexchange = 0.5_dp * SUM( exchange_ao(:, :, :) * p_matrix(:, :, :) )
 
-  call stop_clock(timing_exchange)
+  call timer_exchange%stop()
 
 end subroutine setup_exchange_longrange_ri
 
@@ -889,7 +889,7 @@ subroutine setup_exchange_ri_cmplx(occupation, c_matrix, p_matrix, exchange_ao, 
   integer                 :: ipair, iauxil
   !=====
 
-  call start_clock(timing_tddft_exchange)
+  call timer_tddft_exchange%start()
 
   write(stdout, *) 'Calculate Complex Exchange term with Resolution-of-Identity'
 
@@ -950,7 +950,7 @@ subroutine setup_exchange_ri_cmplx(occupation, c_matrix, p_matrix, exchange_ao, 
 
   eexchange = 0.5_dp * REAL( SUM( exchange_ao(:, :, :) * CONJG( p_matrix(:, :, :) ) ) , dp)
 
-  call stop_clock(timing_tddft_exchange)
+  call timer_tddft_exchange%stop()
 
 end subroutine setup_exchange_ri_cmplx
 
@@ -968,7 +968,7 @@ subroutine setup_exchange_ri_x2c_1(occupation, c_matrix, exchange_ao)
   integer                 :: ipair, iauxil
   !=====
 
-  call start_clock(timing_tddft_exchange)
+  call timer_tddft_exchange%start()
 
   write(stdout, *) 'Calculate X2C Exchange term with Resolution-of-Identity'
 
@@ -1027,7 +1027,7 @@ subroutine setup_exchange_ri_x2c_1(occupation, c_matrix, exchange_ao)
   enddo
   call world%sum(exchange_ao)
 
-  call stop_clock(timing_tddft_exchange)
+  call timer_tddft_exchange%stop()
 
 end subroutine setup_exchange_ri_x2c_1
 
@@ -1046,7 +1046,7 @@ subroutine setup_exchange_ri_x2c_2(occupation, c_matrix, exchange_ao)
   integer                 :: ipair, iauxil
   !=====
 
-  call start_clock(timing_tddft_exchange)
+  call timer_tddft_exchange%start()
 
   exchange_ao(:, :, :) = (0.0_dp, 0.0_dp)
 
@@ -1102,7 +1102,7 @@ subroutine setup_exchange_ri_x2c_2(occupation, c_matrix, exchange_ao)
 
   call world%sum(exchange_ao)
 
-  call stop_clock(timing_tddft_exchange)
+  call timer_tddft_exchange%stop()
 
 end subroutine setup_exchange_ri_x2c_2
 
@@ -1123,7 +1123,7 @@ subroutine setup_exchange_longrange_ri_cmplx(occupation, c_matrix, p_matrix, exc
   integer                 :: ipair, iauxil
   !=====
 
-  call start_clock(timing_tddft_exchange)
+  call timer_tddft_exchange%start()
 
   write(stdout, *) 'Calculate Complex LR Exchange term with Resolution-of-Identity'
 
@@ -1184,7 +1184,7 @@ subroutine setup_exchange_longrange_ri_cmplx(occupation, c_matrix, p_matrix, exc
 
   eexchange = 0.5_dp * REAL( SUM( exchange_ao(:, :, :) * CONJG( p_matrix(:, :, :) ) ) , dp)
 
-  call stop_clock(timing_tddft_exchange)
+  call timer_tddft_exchange%stop()
 
 end subroutine setup_exchange_longrange_ri_cmplx
 
@@ -1202,7 +1202,7 @@ subroutine setup_lr_exchange_ri_x2c_1(occupation, c_matrix, exchange_ao)
   integer                 :: ipair, iauxil
   !=====
 
-  call start_clock(timing_tddft_exchange)
+  call timer_tddft_exchange%start()
 
   write(stdout, *) 'Calculate X2C LR Exchange term with Resolution-of-Identity'
 
@@ -1261,7 +1261,7 @@ subroutine setup_lr_exchange_ri_x2c_1(occupation, c_matrix, exchange_ao)
   enddo
   call world%sum(exchange_ao)
 
-  call stop_clock(timing_tddft_exchange)
+  call timer_tddft_exchange%stop()
 
 end subroutine setup_lr_exchange_ri_x2c_1
 
@@ -1280,7 +1280,7 @@ subroutine setup_lr_exchange_ri_x2c_2(occupation, c_matrix, exchange_ao)
   integer                 :: ipair, iauxil
   !=====
 
-  call start_clock(timing_tddft_exchange)
+  call timer_tddft_exchange%start()
 
   exchange_ao(:, :, :) = (0.0_dp, 0.0_dp)
 
@@ -1336,7 +1336,7 @@ subroutine setup_lr_exchange_ri_x2c_2(occupation, c_matrix, exchange_ao)
 
   call world%sum(exchange_ao)
 
-  call stop_clock(timing_tddft_exchange)
+  call timer_tddft_exchange%stop()
 
 end subroutine setup_lr_exchange_ri_x2c_2
 
@@ -1357,7 +1357,7 @@ subroutine setup_exchange_genuine_ri(occupation, c_matrix, p_matrix, exchange_ao
   integer              :: ipair, iauxil_local, iauxil_global
   !=====
 
-  call start_clock(timing_exchange)
+  call timer_exchange%start()
 
   if( poorman%nproc > 1 ) call die('not coded')
 
@@ -1417,7 +1417,7 @@ subroutine setup_exchange_genuine_ri(occupation, c_matrix, p_matrix, exchange_ao
 
   deallocate(tmp, tmp2)
 
-  call stop_clock(timing_exchange)
+  call timer_exchange%stop()
 
 end subroutine setup_exchange_genuine_ri
 
@@ -1438,7 +1438,7 @@ subroutine setup_exchange_genuine_ri_cmplx(occupation, c_matrix, p_matrix, excha
   integer              :: ipair, iauxil_local, iauxil_global
   !=====
 
-  call start_clock(timing_exchange)
+  call timer_exchange%start()
 
   if( poorman%nproc > 1 ) call die('not coded')
 
@@ -1499,7 +1499,7 @@ subroutine setup_exchange_genuine_ri_cmplx(occupation, c_matrix, p_matrix, excha
 
   deallocate(tmp, tmp2)
 
-  call stop_clock(timing_exchange)
+  call timer_exchange%stop()
 
 end subroutine setup_exchange_genuine_ri_cmplx
 
@@ -1526,7 +1526,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
   integer              :: ibf, jbf, ispin, icoord
   integer              :: ixc
   integer              :: igrid_start, igrid_end, ir
-  integer              :: timing_xxdft_xc, timing_xxdft_densities, timing_xxdft_libxc, timing_xxdft_vxc
+  type(timer), pointer  :: timer_xxdft_xc, timer_xxdft_densities, timer_xxdft_libxc, timer_xxdft_vxc
   real(dp)             :: normalization(nspin)
   real(dp)             :: normalization_core
   real(dp)             :: rho_r_tot, s_rho_r, grad_rho_r_tot, factor_r
@@ -1566,20 +1566,20 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
   ! Switch the timers: complex wavefunctions imply RT-TDDFT run
   select type(c_matrix)
   type is(real(dp))
-    timing_xxdft_xc        = timing_dft_xc
-    timing_xxdft_densities = timing_dft_densities
-    timing_xxdft_libxc     = timing_dft_libxc
-    timing_xxdft_vxc       = timing_dft_vxc
+    timer_xxdft_xc        => timer_dft_xc
+    timer_xxdft_densities => timer_dft_density
+    timer_xxdft_libxc     => timer_dft_libxc
+    timer_xxdft_vxc       => timer_dft_vxc
   type is(complex(dp))
-    timing_xxdft_xc        = timing_tddft_xc
-    timing_xxdft_densities = timing_tddft_densities
-    timing_xxdft_libxc     = timing_tddft_libxc
-    timing_xxdft_vxc       = timing_tddft_vxc
+    timer_xxdft_xc        => timer_tddft_xc
+    timer_xxdft_densities => timer_tddft_densities
+    timer_xxdft_libxc     => timer_tddft_libxc
+    timer_xxdft_vxc       => timer_tddft_vxc
   class default
     call die("dft_exc_vxc_batch: c_matrix is neither real nor complex")
   end select
 
-  call start_clock(timing_xxdft_xc)
+  call timer_xxdft_xc%start()
 
   nstate = SIZE(occupation, DIM=1)
 
@@ -1600,7 +1600,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
     igrid_end = MIN(ngrid, igrid_start+batch_size-1)
     nr = igrid_end - igrid_start + 1
 
-    call start_clock(timing_xxdft_densities)
+    call timer_xxdft_densities%start()
 
     allocate(weight_batch(nr))
     allocate(rhor_batch(nspin, nr))
@@ -1721,13 +1721,13 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
       normalization_core = normalization_core + DOT_PRODUCT( rhocore(igrid_start:igrid_end), weight_batch(:) )
     endif
 
-    call stop_clock(timing_xxdft_densities)
+    call timer_xxdft_densities%stop()
 
 
     !
     ! LIBXC calls
     !
-    call start_clock(timing_xxdft_libxc)
+    call timer_xxdft_libxc%start()
 
     dedd_r_batch(:, :) = 0.0_dp
     if( dft_xc_local(1)%needs_gradient ) dedgd_r_batch(:, :, :) = 0.0_dp
@@ -1792,14 +1792,14 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
 
     enddo ! loop on the XC functional
 
-    call stop_clock(timing_xxdft_libxc)
+    call timer_xxdft_libxc%stop()
 
 
 
     !
     ! Eventually set up the vxc term
     !
-    call start_clock(timing_xxdft_vxc)
+    call timer_xxdft_vxc%start()
 
     allocate(tmp_batch(basis%nbf, nr))
     do ispin=1, nspin
@@ -1846,7 +1846,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
     enddo
     deallocate(tmp_batch)
 
-    call stop_clock(timing_xxdft_vxc)
+    call timer_xxdft_vxc%stop()
 
 
     deallocate(weight_batch)
@@ -1901,7 +1901,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
     write(stdout, '(a28,2x,f12.6,/)')    '  DFT xc energy (Ha):', exc_xc
   endif
 
-  call stop_clock(timing_xxdft_xc)
+  call timer_xxdft_xc%stop()
 
 end subroutine dft_exc_vxc_batch
 
@@ -1931,7 +1931,7 @@ subroutine dft_approximate_vhxc(basis, vhxc_ao)
   logical              :: found
   !=====
 
-  call start_clock(timing_approx_ham)
+  call timer_approx_ham%start()
 
   vhxc_ao(:, :) = 0.0_dp
 
@@ -2037,7 +2037,7 @@ subroutine dft_approximate_vhxc(basis, vhxc_ao)
   ! Temporary grid destroyed
   call destroy_dft_grid()
 
-  call stop_clock(timing_approx_ham)
+  call timer_approx_ham%stop()
 
 end subroutine dft_approximate_vhxc
 

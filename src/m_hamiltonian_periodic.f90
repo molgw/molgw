@@ -272,7 +272,7 @@ subroutine setup_overlap_onecell(basis, shift, s_matrix)
   real(C_DOUBLE), allocatable :: cB(:)
   !=====
 
-  call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_overlap%start()
 
 
   do jshell=1, basis%nshell
@@ -319,7 +319,7 @@ subroutine setup_overlap_onecell(basis, shift, s_matrix)
   enddo
 
 
-  call stop_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_onecell
@@ -390,7 +390,7 @@ subroutine setup_kinetic_onecell(basis, shift, kin_ao)
   real(C_DOUBLE), allocatable :: cB(:)
   !=====
 
-  call start_clock(MERGE(0, timing_hamiltonian_kin, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_hamiltonian_kin%start()
 
   do jshell=1, basis%nshell
     lj      = basis%shell(jshell)%am
@@ -436,7 +436,7 @@ subroutine setup_kinetic_onecell(basis, shift, kin_ao)
   enddo
 
 
-  call stop_clock(MERGE(0, timing_hamiltonian_kin, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_hamiltonian_kin%stop()
 
 
 end subroutine setup_kinetic_onecell
@@ -462,9 +462,9 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
 
 
   if( in_rt_tddft ) then
-    call start_clock(timing_tddft_hamiltonian_nuc)
+    call timer_tddft_hamiltonian_nuc%start()
   else
-    call start_clock(timing_hamiltonian_nuc)
+    call timer_hamiltonian_nuc%start()
   endif
 
   write(stdout, '(/,1x,a)') 'Calculate periodic nucleus term'
@@ -499,9 +499,9 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
   deallocate(h_nonloc_ao)
 
   if( in_rt_tddft ) then
-    call stop_clock(timing_tddft_hamiltonian_nuc)
+    call timer_tddft_hamiltonian_nuc%stop()
   else
-    call stop_clock(timing_hamiltonian_nuc)
+    call timer_hamiltonian_nuc%stop()
   endif
 
 
@@ -528,9 +528,9 @@ subroutine setup_hxc_periodic(basis, p_matrix, h_ao, ehartree, exc)
     call setup_vxc_periodic(basis, vloc, exc)
   endif
 
-  call start_clock(timing_pbc_potential_to_hao)
+  call timer_pbc_potential_to_hao%start()
   call calculate_hao_periodic(basis, vloc, h_ao)
-  call stop_clock(timing_pbc_potential_to_hao)
+  call timer_pbc_potential_to_hao%stop()
 
   deallocate(vloc)
 
@@ -548,7 +548,8 @@ subroutine setup_hartree_periodic(basis, p_matrix, vloc, ehartree, h_ao)
   !=====
   logical, save         :: first_step = .TRUE.
   logical               :: rhoelecr_was_read
-  integer               :: timing_xxdft_hartree, rhofile
+  type(timer), pointer  :: timer_xxdft_hartree
+  integer               :: rhofile
   integer               :: ispin
   real(dp), allocatable :: p_matrix_local(:, :, :)
   real(dp)              :: vhartreegrid(nfft_local)
@@ -562,14 +563,14 @@ subroutine setup_hartree_periodic(basis, p_matrix, vloc, ehartree, h_ao)
 
   select type(p_matrix)
   type is(real(dp))
-    timing_xxdft_hartree   = timing_hartree
+    timer_xxdft_hartree => timer_hartree
   type is(complex(dp))
-    timing_xxdft_hartree   = timing_tddft_hartree
+    timer_xxdft_hartree => timer_tddft_hartree
   class default
     call die("setup_hartree_periodic: p_matrix is neither real nor complex")
   end select
 
-  call start_clock(timing_xxdft_hartree)
+  call timer_xxdft_hartree%start()
 
   write(stdout, '(/,1x,a)') 'Calculate periodic Hartree term'
 
@@ -621,7 +622,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, vloc, ehartree, h_ao)
     call dump_out_matrix(.FALSE., '=== Hartree contribution (FFTW) ===', h_ao)
   endif
 
-  call stop_clock(timing_xxdft_hartree)
+  call timer_xxdft_hartree%stop()
 
 
 end subroutine setup_hartree_periodic
@@ -642,7 +643,7 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
   integer              :: ispin
   integer              :: ixc
   integer              :: ifft_local
-  integer              :: timing_xxdft_xc, timing_xxdft_densities, timing_xxdft_libxc, timing_xxdft_vxc
+  type(timer), pointer  :: timer_xxdft_xc, timer_xxdft_libxc, timer_xxdft_vxc
   real(dp), allocatable :: gradrhor(:, :, :), divergence(:, :)
   real(C_DOUBLE), allocatable :: rhor(:, :)
   real(C_DOUBLE), allocatable :: sigma(:, :)
@@ -672,11 +673,11 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
   vxcgrid(:, :) = 0.0_dp
 
 
-  timing_xxdft_xc    = timing_dft_xc
-  timing_xxdft_libxc = timing_dft_libxc
-  timing_xxdft_vxc   = timing_dft_vxc
+  timer_xxdft_xc    => timer_dft_xc
+  timer_xxdft_libxc => timer_dft_libxc
+  timer_xxdft_vxc   => timer_dft_vxc
 
-  call start_clock(timing_xxdft_xc)
+  call timer_xxdft_xc%start()
   write(stdout, '(/,1x,a)') 'Calculate DFT XC periodic potential'
 
 
@@ -708,7 +709,7 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
   endif
 
 
-  call start_clock(timing_xxdft_libxc)
+  call timer_xxdft_libxc%start()
   do ixc=1, dft_xc_local(1)%nxc
     if( ABS(dft_xc_local(ixc)%coeff) < 1.0e-6_dp ) cycle
 
@@ -762,7 +763,7 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
 
   deallocate(vrho)
   deallocate(excgrid)
-  call stop_clock(timing_xxdft_libxc)
+  call timer_xxdft_libxc%stop()
 
   write(stdout, '(1x,a,f14.8)') 'Exc LDA (Ha): ', exc_xc
 
@@ -779,7 +780,7 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
     call calculate_hao_periodic(basis, vxcgrid, vxc_ao)
   endif
 
-  call stop_clock(timing_xxdft_xc)
+  call timer_xxdft_xc%stop()
 
 
 end subroutine setup_vxc_periodic
@@ -1007,7 +1008,7 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
   integer :: first, last, current_batch_size, batch_max
   !=====
 
-  call start_clock(timing_pbc_density)
+  call timer_pbc_density%start()
 
   batch_max = MIN(nfft_local, fft_batch_size)
   write(stdout,'(1x,a,i9)') 'Calculate density on FFT grid with batch size: ', batch_max
@@ -1047,7 +1048,7 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
 
   call clean_deallocate('P * phi', tmp)
 
-  call stop_clock(timing_pbc_density)
+  call timer_pbc_density%stop()
 
 end subroutine calculate_density_periodic
 
@@ -1080,7 +1081,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   integer :: desct(NDEL), desc1(NDEL), desc2(NDEL)
   !=====
 
-  call start_clock(timing_exchange)
+  call timer_exchange%start()
 
   write(stdout, '(/,1x,a)') 'Calculate Exchange term with PBC'
 
@@ -1135,17 +1136,17 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
 
     do istate=1, nocc
       write(stdout, '(1x,a,i6,a,i6)') 'Loop over occupied states: ', istate, ' / ', nocc
-      call start_clock(timing_tmp0)
+      call timer_tmp0%start()
       !TODO use DGEMM?
-      call start_clock(timing_tmp1)
+      call timer_tmp1%start()
       phi_i(:) = MATMUL( c_matrix(:, istate, ispin), bfr(:, :) )
-      call stop_clock(timing_tmp1)
+      call timer_tmp1%stop()
 
       !
       ! Communication here
-      call start_clock(timing_tmp2)
+      call timer_tmp2%start()
       phi_i_global = rho_local_to_global(phi_i)
-      call stop_clock(timing_tmp2)
+      call timer_tmp2%stop()
 
       ! Parallelization over basis functions
       ! Loop over local basis index
@@ -1156,12 +1157,12 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
 
         phiphir_fftw(:, :, :) = RESHAPE(phiphir_global(:), [nfft1, nfft2, nfft3] )
 
-        call start_clock(timing_tmp4)
+        call timer_tmp4%start()
         ! Perform FFT phi_i(r) * phi_α(r) -> M_{iα}(G)
         plan = fftw_plan_dft_r2c_3d(nfft3, nfft2, nfft1, phiphir_fftw, phiphig_fftw, FFTW_ESTIMATE)
         call fftw_execute_dft_r2c(plan, phiphir_fftw, phiphig_fftw)
         call fftw_destroy_plan(plan)
-        call stop_clock(timing_tmp4)
+        call timer_tmp4%stop()
 
         phiphig_fftw(:, :, :) = phiphig_fftw(:, :, :) * volume / REAL(nfft_global, KIND=dp)
 
@@ -1179,7 +1180,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
       enddo ! loop over ibf_local
 
 
-      call start_clock(timing_tmp8)
+      call timer_tmp8%start()
 #if defined(HAVE_SCALAPACK)
       !
       ! Communication here
@@ -1194,16 +1195,16 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
 #if defined(HAVE_SCALAPACK)
       endif
 #endif
-      call stop_clock(timing_tmp8)
+      call timer_tmp8%stop()
 
-      call start_clock(timing_tmp9)
+      call timer_tmp9%start()
 
       ! Σ_x = - ∑_i f_i/spin_fact ∑_G M_{iα}(G) M_{iα}(G)
       ! NOTE: ordering with 'T' is faster than 'N'
       call DSYRK('L', 'T', basis%nbf, ng_local, -occupation(istate, ispin) / spin_fact, phiphig, ng_local, &
                  1.0_dp, h_ao(:, :, ispin), basis%nbf)
-      call stop_clock(timing_tmp9)
-      call stop_clock(timing_tmp0)
+      call timer_tmp9%stop()
+      call timer_tmp0%stop()
 
     enddo
     call matrix_lower_to_full(h_ao(:, :, ispin))
@@ -1224,7 +1225,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
 
   ex = 0.5_dp * SUM( p_matrix(:, :, :) * h_ao(:, :, :) )
 
-  call stop_clock(timing_exchange)
+  call timer_exchange%stop()
 #else
   ex = 0.0_dp
   h_ao(:, :, :) = 0.0_dp
@@ -1291,7 +1292,7 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
   real(dp) :: rtmp
   !=====
 
-  !call start_clock(timing_exchange)
+  !call timer_exchange%start()
 
   write(stdout, '(/,1x,a)') 'Calculate Coulomb vertices with PBC'
   nbf    = SIZE(c_matrix, DIM=1)
@@ -1437,7 +1438,7 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
   call fftw_free(pg)
 
 
-  !call stop_clock(timing_exchange)
+  !call timer_exchange%stop()
 
 #else
   call die('calculate_coulombvertex_periodic: requires FFTW3 activation')
@@ -2006,7 +2007,7 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
   logical :: element_has_ecp
   !=====
 
-  call start_clock(timing_pbc_nuclei_density)
+  call timer_pbc_nuclei_density%start()
 
   write(stdout, '(/,1x,a)') 'Set up nuclei density on FFT grid (GTH pseudos)'
 
@@ -2093,7 +2094,7 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
 
   write(stdout,'(1x,a,es16.8)') 'Total nucleus selfenergy (Ha): ', selfenergy
 
-  call stop_clock(timing_pbc_nuclei_density)
+  call timer_pbc_nuclei_density%stop()
 
 contains
 
@@ -2294,7 +2295,7 @@ subroutine calculate_basis_functions_periodic(basis)
   real(dp), allocatable :: dr(:, :), dr_shifted(:, :)
   !=====
 
-  call start_clock(timing_pbc_eval_bf)
+  call timer_pbc_eval_bf%start()
   write(stdout,'(/,1x,a)') 'Evaluate and store basis functions on real-space grid'
 
   call clean_allocate('PBC basis functions on grid', bfr, basis%nbf, nfft_local)
@@ -2401,7 +2402,7 @@ subroutine calculate_basis_functions_periodic(basis)
   enddo
 
 
-  call stop_clock(timing_pbc_eval_bf)
+  call timer_pbc_eval_bf%stop()
 
 end subroutine calculate_basis_functions_periodic
 

@@ -37,7 +37,7 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
   integer                    :: ncore, nstate_mp2
   !=====
 
-  call start_clock(timing_mp2_energy)
+  call timer_mp2_energy%start()
 
   nstate = SIZE(energy, DIM=1)
 
@@ -135,7 +135,7 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
   write(stdout, '(a,f16.10,/)') ' MP2 correlation :', emp2
 
   call destroy_eri_3center_mo()
-  call stop_clock(timing_mp2_energy)
+  call timer_mp2_energy%stop()
 
 end subroutine mp2_energy_ri
 
@@ -158,7 +158,7 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
   integer                    :: ncore, nstate_mp2
   !=====
 
-  call start_clock(timing_mp2_energy)
+  call timer_mp2_energy%start()
 
   nstate = SIZE(energy, DIM=1)
 
@@ -251,7 +251,7 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
   write(stdout, '(a,f16.10,/)') ' MP2 correlation :', emp2
 
   call destroy_eri_3center_mo_cmplx()
-  call stop_clock(timing_mp2_energy)
+  call timer_mp2_energy%stop()
 
 end subroutine mp2_energy_ri_cmplx
 
@@ -273,7 +273,7 @@ subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
   real(dp), allocatable       :: energy_vec(:)
   !=====
 
-  call start_clock(timing_mp2_energy)
+  call timer_mp2_energy%start()
 
 
   !call calculate_eri_x2c(c_matrix_rel,nstate,nstate_min=1,nstate_max=nocc,mstate_min=1,mstate_max=nocc) ! only occ states for exx
@@ -353,7 +353,7 @@ subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
 
   deallocate(energy_vec)
   call destroy_eri_3center_mo_x2c()
-  call stop_clock(timing_mp2_energy)
+  call timer_mp2_energy%stop()
 
 end subroutine mp2_energy_ri_x2c
 
@@ -375,7 +375,7 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
   real(dp)                   :: t_ijab_tilde, x_ijab, t_ijcd, t_klab, t_kjac, t_kiac, t_ikac
   !=====
 
-  call start_clock(timing_mp2_energy)
+  call timer_mp2_energy%start()
 
   nstate = SIZE(energy, DIM=1)
 
@@ -505,7 +505,7 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
   ! write(stdout,'(a,f16.10,/)') ' MP3 correlation :',emp3
 
   call destroy_eri_3center_mo()
-  call stop_clock(timing_mp2_energy)
+  call timer_mp2_energy%stop()
 
 end subroutine mp3_energy_ri
 
@@ -530,7 +530,7 @@ subroutine mp2_energy(occupation, c_matrix, energy, emp2)
   integer                    :: nocc
   !=====
 
-  call start_clock(timing_mp2_energy)
+  call timer_mp2_energy%start()
 
   nstate = SIZE(energy, DIM=1)
   nbf = SIZE(c_matrix(:, :, :), DIM=1)
@@ -657,7 +657,7 @@ subroutine mp2_energy(occupation, c_matrix, energy, emp2)
   write(stdout, '(a,f16.10)')   ' SOX diagram     :', contrib2
   write(stdout, '(a,f16.10,/)') ' MP2 correlation :', emp2
 
-  call stop_clock(timing_mp2_energy)
+  call timer_mp2_energy%stop()
 
 end subroutine mp2_energy
 

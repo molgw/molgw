@@ -129,7 +129,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
   real(dp), allocatable       :: p_matrix_MO_block(:, :, :)
 
   call switch_on_rt_tddft_timers()
-  call start_clock(timing_tddft_loop)
+  call timer_tddft_loop%start()
 
   write(stdout, '(/,/,1x,a)') '=================================================='
   write(stdout, '(1x,a,/)')    'RT-TDDFT simulation'
@@ -492,7 +492,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
 
   do while ( (time_cur - time_sim) < 1.0e-10 )
     if ( itau == 3 ) then
-      call start_clock(timing_tddft_one_iter)
+      call timer_tddft_one_iter%start()
     end if
 
     !
@@ -604,7 +604,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
     !
     !--TIMING of one iteration--
     if ( itau == 3 ) then
-      call stop_clock(timing_tddft_one_iter)
+      call timer_tddft_one_iter%stop()
       call output_timing_one_iter()
     end if
 
@@ -692,7 +692,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
   write(stdout, '(/,1x,a)') "End of RT-TDDFT simulation"
   write(stdout, '(1x,a,/)') '=================================================='
 
-  call stop_clock(timing_tddft_loop)
+  call timer_tddft_loop%stop()
   call switch_off_rt_tddft_timers()
 
 end subroutine realtime_tddft_propagation
@@ -724,7 +724,7 @@ subroutine output_timing_one_iter()
   !=====
   !=====
 
-  time_one_iter = get_timing(timing_tddft_one_iter)
+  time_one_iter = timer_tddft_one_iter%get()
   write(stdout, '(/,1x,a)') '**********************************'
   write(stdout, "(1x,a32,2x,f14.6)") "Time of one iteration (s): ", time_one_iter
   write(stdout, "(1x,a32,2x,2(f12.2,1x))") "Estimated calculation time (s), (hrs):", time_one_iter * ntau,  &
@@ -1143,7 +1143,7 @@ subroutine mb_related_updates(basis,                &
   !=====
   !=====
 
-  call start_clock(timing_update_basis_eri)
+  call timer_update_basis_eri%start()
 
   ! Update projectile position and its basis center to t+dt/n
   call change_position_one_atom(ncenter_nuclei, xatom_start(:, ncenter_nuclei) &
@@ -1165,16 +1165,16 @@ subroutine mb_related_updates(basis,                &
   call destroy_libcint(basis_t)
   call init_libcint(basis_t, basis_p)
   call init_libcint(basis_p)
-  call stop_clock(timing_update_basis_eri)
+  call timer_update_basis_eri%stop()
 
-  call start_clock(timing_update_overlaps)
+  call timer_update_overlaps%start()
   ! Update S matrix
   !call setup_overlap(basis,s_matrix)
   call recalc_overlap(basis_t, basis_p, s_matrix)
 
   ! Analytic evaluation of D(t+dt/n)
   call setup_d_matrix(basis, d_matrix, .TRUE.)
-  call stop_clock(timing_update_overlaps)
+  call timer_update_overlaps%stop()
 
   ! Update DFT grids for H_xc evaluation
   if( need_grid ) then
@@ -1961,7 +1961,7 @@ subroutine calculate_q_matrix(occupation, c_matrix_orth_start_complete_cmplx, c_
   real(dp), allocatable     :: q_occ(:)
   !=====
 
-  call start_clock(timing_tddft_q_matrix)
+  call timer_tddft_q_matrix%start()
 
   nstate = SIZE(occupation(:, :), DIM=1)
   ncut = SIZE(istate_cut, DIM=1)
@@ -1997,7 +1997,7 @@ subroutine calculate_q_matrix(occupation, c_matrix_orth_start_complete_cmplx, c_
 
   call clean_deallocate('q_matrix for TDDFT', q_matrix_cmplx)
 
-  call stop_clock(timing_tddft_q_matrix)
+  call timer_tddft_q_matrix%stop()
 
 end subroutine calculate_q_matrix
 
@@ -2016,7 +2016,7 @@ subroutine write_restart_tddft(nstate, time_cur, occupation, c_matrix_tddft)
 
   if( .NOT. is_iomaster) return
 
-  call start_clock(timing_restart_tddft_file)
+  call timer_restart_tddft_file%start()
 
   write(stdout, '(/,a,f19.10)') ' Writing a RESTART_TDDFT file, time_cur= ', time_cur
 
@@ -2044,7 +2044,7 @@ subroutine write_restart_tddft(nstate, time_cur, occupation, c_matrix_tddft)
 
   close(restartfile)
 
-  call stop_clock(timing_restart_tddft_file)
+  call timer_restart_tddft_file%stop()
 
 end subroutine write_restart_tddft
 
@@ -2366,7 +2366,7 @@ subroutine propagate_nonortho(time_step_cur, s_matrix, d_matrix, c_matrix_cmplx,
   nbf = SIZE(s_matrix, DIM=1)
   nocc = SIZE(c_matrix_cmplx, DIM=2)
 
-  call start_clock(timing_tddft_propagation)
+  call timer_tddft_propagation%start()
 
   do ispin=1, nspin
 
@@ -2385,12 +2385,12 @@ subroutine propagate_nonortho(time_step_cur, s_matrix, d_matrix, c_matrix_cmplx,
       l_matrix_cmplx(:, :) = l_matrix_cmplx(:, :) + s_matrix(:, :)
       b_matrix_cmplx(:, :) = b_matrix_cmplx(:, :) + s_matrix(:, :)
 
-      call start_clock(timing_propagate_inverse)
+      call timer_propagate_inverse%start()
       call invert(l_matrix_cmplx)
-      call stop_clock(timing_propagate_inverse)
+      call timer_propagate_inverse%stop()
 
       allocate(u_matrix_cmplx, MOLD=h_cmplx(:, :, 1))
-      call start_clock(timing_propagate_matmul)
+      call timer_propagate_matmul%start()
       !U_matrix(:, :)              = MATMUL( l_matrix_cmplx(:, :), b_matrix_cmplx(:, :))
       call ZGEMM('N', 'N', nbf, nbf, nbf, (1.0d0, 0.0d0), l_matrix_cmplx, nbf, &
                         b_matrix_cmplx, nbf, (0.0d0, 0.0d0), u_matrix_cmplx, nbf)
@@ -2420,7 +2420,7 @@ subroutine propagate_nonortho(time_step_cur, s_matrix, d_matrix, c_matrix_cmplx,
       !call dump_out_matrix(.TRUE., '===  U*U**H REAL ===', REAL(MATMUL(b_matrix_cmplx(:, :), CONJG(TRANSPOSE(b_matrix_cmplx(:, :))))))
       !call dump_out_matrix(.TRUE., '===  U*U**H AIMAG ===', AIMAG(MATMUL(b_matrix_cmplx(:, :), CONJG(TRANSPOSE(b_matrix_cmplx(:, :))))))
 
-      call start_clock(timing_propagate_matmul)
+      call timer_propagate_matmul%start()
       c_matrix_cmplx(:, :, ispin)  = MATMUL( b_matrix_cmplx(:, :), c_matrix_cmplx(:, :, ispin) )
 
       deallocate(b_matrix_cmplx)
@@ -2433,11 +2433,11 @@ subroutine propagate_nonortho(time_step_cur, s_matrix, d_matrix, c_matrix_cmplx,
 
     end select
 
-    call stop_clock(timing_propagate_matmul)
+    call timer_propagate_matmul%stop()
 
   end do
 
-  call stop_clock(timing_tddft_propagation)
+  call timer_tddft_propagation%stop()
 
 
 end subroutine propagate_nonortho
@@ -2476,7 +2476,7 @@ subroutine propagate_orth_ham_1(nstate, basis, time_step_cur, c_matrix_orth_cmpl
   complex(dp), allocatable    :: tmp_conjg_transpose(:, :)
   !=====
 
-  call start_clock(timing_tddft_propagation)
+  call timer_tddft_propagation%start()
 
   do ispin=1, nspin
     select case(tddft_propagator)
@@ -2494,7 +2494,7 @@ subroutine propagate_orth_ham_1(nstate, basis, time_step_cur, c_matrix_orth_cmpl
       end do
       call invert(l_matrix_cmplx)
 
-      call start_clock(timing_propagate_matmul)
+      call timer_propagate_matmul%start()
       b_matrix_cmplx(:, :)            = MATMUL( l_matrix_cmplx(:, :), b_matrix_cmplx(:, :))
       c_matrix_orth_cmplx(:, :, ispin) = MATMUL( b_matrix_cmplx(:, :), c_matrix_orth_cmplx(:, :, ispin))
 
@@ -2510,7 +2510,7 @@ subroutine propagate_orth_ham_1(nstate, basis, time_step_cur, c_matrix_orth_cmpl
       ! Frozen core
       if(ncore_tddft > 0) then
 
-        call start_clock(timing_tddft_frozen_core)
+        call timer_tddft_frozen_core%start()
 
         call clean_allocate('h_initial_basis_orth_cmplx for the frozen core', h_initial_basis_orth_cmplx, nstate, nstate)
         call clean_allocate('tmp_conjg_transpose for the frozen core', tmp_conjg_transpose, nstate, nstate)
@@ -2537,7 +2537,7 @@ subroutine propagate_orth_ham_1(nstate, basis, time_step_cur, c_matrix_orth_cmpl
         call clean_deallocate('h_initial_basis_orth_cmplx for the frozen core', h_initial_basis_orth_cmplx)
         call clean_deallocate('tmp_conjg_transpose for the frozen core', tmp_conjg_transpose)
 
-        call stop_clock(timing_tddft_frozen_core)
+        call timer_tddft_frozen_core%stop()
 
       end if
 
@@ -2548,7 +2548,7 @@ subroutine propagate_orth_ham_1(nstate, basis, time_step_cur, c_matrix_orth_cmpl
 
       !
       ! Second part, multiply matrices
-      call start_clock(timing_propagate_matmul)
+      call timer_propagate_matmul%start()
 
       allocate(m_tmp_1(nstate, nstate))
       allocate(m_tmp_2(nstate, nstate))
@@ -2603,11 +2603,11 @@ subroutine propagate_orth_ham_1(nstate, basis, time_step_cur, c_matrix_orth_cmpl
     endif
 
 
-    call stop_clock(timing_propagate_matmul)
+    call timer_propagate_matmul%stop()
 
   end do
 
-  call stop_clock(timing_tddft_propagation)
+  call timer_tddft_propagation%stop()
 
 
 end subroutine propagate_orth_ham_1
@@ -2634,7 +2634,7 @@ subroutine propagate_orth_ham_2(nstate, basis, time_step_cur, c_matrix_orth_cmpl
   complex(dp)         :: propagator_eigen(nstate, nstate, 2)
   !=====
 
-  call start_clock(timing_tddft_propagation)
+  call timer_tddft_propagation%start()
   !a_matrix_cmplx(:, 1:nstate) = MATMUL( x_matrix(:, :) , a_matrix_cmplx(:, :) )
 
   do ispin =1, nspin
@@ -2661,7 +2661,7 @@ subroutine propagate_orth_ham_2(nstate, basis, time_step_cur, c_matrix_orth_cmpl
     c_matrix_cmplx(:, :, ispin) = MATMUL( x_matrix(:, :) , c_matrix_orth_cmplx(:, :, ispin) )
   end do
 
-  call stop_clock(timing_tddft_propagation)
+  call timer_tddft_propagation%stop()
 
 end subroutine propagate_orth_ham_2
 
@@ -2707,7 +2707,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
   real(dp), allocatable :: hamiltonian_projectile(:, :)
   !=====
 
-  call start_clock(timing_tddft_hamiltonian)
+  call timer_tddft_hamiltonian%start()
 
   call setup_density_matrix_cmplx(c_matrix_cmplx, occupation, p_matrix_cmplx)
   if( PRESENT(p_matrix_cmplx_out) ) then
@@ -2828,7 +2828,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
   en_tddft%kinetic = REAL( SUM( hamiltonian_kinetic(:, :) * SUM(p_matrix_cmplx(:, :, :), DIM=3) ), dp)
   en_tddft%nucleus = REAL( SUM( hamiltonian_nucleus(:, :) * SUM(p_matrix_cmplx(:, :, :), DIM=3) ), dp)
 
-  call stop_clock(timing_tddft_hamiltonian)
+  call timer_tddft_hamiltonian%stop()
 
 end subroutine setup_hamiltonian_cmplx
 
@@ -2846,7 +2846,7 @@ subroutine diagonalize_hamiltonian_ortho(h_small_cmplx, a_matrix_orth_cmplx, ene
   real(dp), allocatable    :: m_tmpr(:, :)
   !=====
 
-  call start_clock(timing_propagate_diago)
+  call timer_propagate_diago%start()
   algo_cmplx = ANY( ABS(h_small_cmplx(:, :)%im) > 1.0e-12_dp )
   nstate = SIZE(h_small_cmplx(:, :), DIM=1)
 
@@ -2871,7 +2871,7 @@ subroutine diagonalize_hamiltonian_ortho(h_small_cmplx, a_matrix_orth_cmplx, ene
     deallocate(m_tmpr)
   endif
 
-  call stop_clock(timing_propagate_diago)
+  call timer_propagate_diago%stop()
 
 end subroutine diagonalize_hamiltonian_ortho
 
@@ -2890,7 +2890,7 @@ subroutine transform_hamiltonian_ortho(x_matrix, h_cmplx, h_small_cmplx)
   complex(dp), allocatable :: m_tmp(:, :), x_matrix_cmplx(:, :)
   !=====
 
-  call start_clock(timing_tddft_ham_orthobasis)
+  call timer_tddft_ham_orthobasis%start()
 
   ! If any coefficient of H has an imaginary part, use the former (and slower) algo
   algo_cmplx = ANY( ABS(h_cmplx(:, :, :)%im ) > 1.0e-12_dp )
@@ -2975,7 +2975,7 @@ subroutine transform_hamiltonian_ortho(x_matrix, h_cmplx, h_small_cmplx)
     endif
   end do ! spin loop
 
-  call stop_clock(timing_tddft_ham_orthobasis)
+  call timer_tddft_ham_orthobasis%stop()
 
 
 end subroutine transform_hamiltonian_ortho

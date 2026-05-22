@@ -280,7 +280,7 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
 #endif
   !=====
 
-  call start_clock(timing_diis)
+  call timer_diis%start()
 
 
   write(stdout, '(/,1x,a)') 'Pulay DIIS mixing'
@@ -452,7 +452,7 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
   deallocate(a_matrix)
   deallocate(a_matrix_inv)
 
-  call stop_clock(timing_diis)
+  call timer_diis%stop()
 
 end subroutine diis_prediction
 
@@ -482,7 +482,7 @@ subroutine xdiis_prediction(p_matrix, ham)
   real(dp), parameter :: alpha_max=0.60_dp
   !=====
 
-  call start_clock(timing_diis)
+  call timer_diis%start()
 
 
   write(stdout, '(/,1x,a)') TRIM(mixing_scheme)//' mixing'
@@ -655,7 +655,7 @@ subroutine xdiis_prediction(p_matrix, ham)
   deallocate(alpha_diis_mc)
   deallocate(half_ph)
 
-  call stop_clock(timing_diis)
+  call timer_diis%stop()
 
 
 contains

@@ -66,7 +66,7 @@ subroutine setup_overlap_finite(basis, s_matrix)
 #endif
   !=====
 
-  call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_overlap%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup overlap matrix S (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -145,7 +145,7 @@ subroutine setup_overlap_finite(basis, s_matrix)
   call dump_out_matrix(.FALSE., title, s_matrix)
 
 
-  call stop_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_finite
@@ -178,7 +178,7 @@ subroutine setup_overlap_mixedbasis(basis1, basis2, s_matrix)
   integer :: ibf_cart, jbf_cart
   !=====
 
-  call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_overlap%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup mixed overlap matrix S (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -249,7 +249,7 @@ subroutine setup_overlap_mixedbasis(basis1, basis2, s_matrix)
   enddo
 
 
-  call stop_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_mixedbasis
@@ -328,7 +328,7 @@ subroutine setup_overlap_grad(basis, s_matrix_grad)
 #endif
   !=====
 
-  call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_overlap%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup gradient overlap matrix S (LIBCINT)'
 #elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
@@ -410,7 +410,7 @@ subroutine setup_overlap_grad(basis, s_matrix_grad)
   title='=== Overlap grad matrix Z ==='
   call dump_out_matrix(.FALSE., title, s_matrix_grad(:, :, 3))
 
-  call stop_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_grad
@@ -438,7 +438,7 @@ subroutine setup_overlap_hessian(basis, s_matrix_hess)
 #endif
   !=====
 
-  call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_overlap%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup hessian of the overlap matrix (LIBCINT)'
 #else
@@ -500,7 +500,7 @@ subroutine setup_overlap_hessian(basis, s_matrix_hess)
   title='=== Overlap hessian matrix ZZ ==='
   call dump_out_matrix(.FALSE., title, s_matrix_hess(:, :, 3, 3))
 
-  call stop_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_hessian
@@ -540,7 +540,7 @@ subroutine recalc_overlap_grad(basis_t, basis_p, s_matrix_grad)
   !! We only need to calculate < grad P | T > here since we'll transpose
   !! S_grad to get D => only < T | grad P > needs recalc in D
 
-  call start_clock(timing_overlap_grad)
+  call timer_overlap_grad%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,1x,a)') 'Recalculate gradient of the overlap matrix S (LIBCINT)'
 #elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
@@ -624,7 +624,7 @@ subroutine recalc_overlap_grad(basis_t, basis_p, s_matrix_grad)
   title='=== Overlap grad matrix S_Z ==='
   call dump_out_matrix(.FALSE., title, s_matrix_grad(:, :, 3))
 
-  call stop_clock(timing_overlap_grad)
+  call timer_overlap_grad%stop()
 
 
 end subroutine recalc_overlap_grad
@@ -663,7 +663,7 @@ subroutine setup_kinetic_finite(basis, hamiltonian_kinetic, timing)
 #endif
   !=====
 
-  call start_clock(MERGE(0, timing_hamiltonian_kin, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_hamiltonian_kin%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup kinetic part of the Hamiltonian (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -735,7 +735,7 @@ subroutine setup_kinetic_finite(basis, hamiltonian_kinetic, timing)
   title='===  Kinetic energy contribution ==='
   call dump_out_matrix(.FALSE., title, hamiltonian_kinetic)
 
-  call stop_clock(MERGE(0, timing_hamiltonian_kin, in_rt_tddft))
+  if( .not. in_rt_tddft ) call timer_hamiltonian_kin%stop()
 
 end subroutine setup_kinetic_finite
 
@@ -767,7 +767,11 @@ subroutine recalc_kinetic(basis_t, basis_p, hamiltonian_kinetic)
   integer :: ibf_cart, jbf_cart
   !=====
 
-  call start_clock(MERGE(timing_tddft_kin, timing_hamiltonian_kin, in_rt_tddft))
+  if( in_rt_tddft ) then
+    call timer_tddft_kin%start()
+  else
+    call timer_hamiltonian_kin%start()
+  endif
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,1x,a)') 'Recalculate kinetic part of the Hamiltonian (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -837,7 +841,11 @@ subroutine recalc_kinetic(basis_t, basis_p, hamiltonian_kinetic)
   title='===  Kinetic energy contribution (Recalc) ==='
   call dump_out_matrix(.FALSE., title, hamiltonian_kinetic)
 
-  call stop_clock(MERGE(timing_tddft_kin, timing_hamiltonian_kin, in_rt_tddft))
+  if( in_rt_tddft ) then
+    call timer_tddft_kin%stop()
+  else
+    call timer_hamiltonian_kin%stop()
+  endif
 
 end subroutine recalc_kinetic
 
@@ -874,7 +882,7 @@ subroutine setup_kinetic_grad(basis, hamiltonian_kinetic_grad)
 #endif
   !=====
 
-  call start_clock(timing_grad_kin)
+  call timer_grad_kin%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup gradient of the kinetic part of the Hamiltonian (LIBCINT)'
 #elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
@@ -958,7 +966,7 @@ subroutine setup_kinetic_grad(basis, hamiltonian_kinetic_grad)
   title='===  Kinetic energy contribution (LIBINT) Z ==='
   call dump_out_matrix(.FALSE., title, hamiltonian_kinetic_grad(:, :, 3))
 
-  call stop_clock(timing_grad_kin)
+  call timer_grad_kin%stop()
 
 end subroutine setup_kinetic_grad
 
@@ -997,9 +1005,9 @@ subroutine setup_nucleus(basis, hamiltonian_nucleus, atom_list)
   !=====
 
   if( in_rt_tddft ) then
-    call start_clock(timing_tddft_hamiltonian_nuc)
+    call timer_tddft_hamiltonian_nuc%start()
   else
-    call start_clock(timing_hamiltonian_nuc)
+    call timer_hamiltonian_nuc%start()
   end if
 
 #if defined(HAVE_LIBCINT)
@@ -1113,9 +1121,9 @@ subroutine setup_nucleus(basis, hamiltonian_nucleus, atom_list)
   call dump_out_matrix(.FALSE., '===  Nucleus potential contribution ===', hamiltonian_nucleus)
 
   if( in_rt_tddft ) then
-    call stop_clock(timing_tddft_hamiltonian_nuc)
+    call timer_tddft_hamiltonian_nuc%stop()
   else
-    call stop_clock(timing_hamiltonian_nuc)
+    call timer_hamiltonian_nuc%stop()
   endif
 
 end subroutine setup_nucleus
@@ -1195,7 +1203,7 @@ subroutine recalc_nucleus(basis_t, basis_p, hamiltonian_nucleus)
   real(dp) :: nucleus
   !=====
 
-  call start_clock(timing_tddft_hamiltonian_nuc)
+  call timer_tddft_hamiltonian_nuc%start()
 
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,1x,a)') 'Recalculate nucleus-electron part of the Hamiltonian (LIBCINT)'
@@ -1349,7 +1357,7 @@ subroutine recalc_nucleus(basis_t, basis_p, hamiltonian_nucleus)
 
   call dump_out_matrix(.FALSE., '===  Nucleus potential contribution (Recalc) ===', hamiltonian_nucleus)
 
-  call stop_clock(timing_tddft_hamiltonian_nuc)
+  call timer_tddft_hamiltonian_nuc%stop()
 
 end subroutine recalc_nucleus
 
@@ -1389,7 +1397,7 @@ subroutine setup_nucleus_grad(basis, hamiltonian_nucleus_grad, atom_list, verbos
     verbose_ = .FALSE.
   endif
 
-  call start_clock(timing_grad_nuc)
+  call timer_grad_nuc%start()
 
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup nucleus-electron part of the Hamiltonian gradient (LIBCINT)'
@@ -1514,7 +1522,7 @@ subroutine setup_nucleus_grad(basis, hamiltonian_nucleus_grad, atom_list, verbos
   enddo
 
 
-  call stop_clock(timing_grad_nuc)
+  call timer_grad_nuc%stop()
 
 end subroutine setup_nucleus_grad
 
@@ -2092,7 +2100,7 @@ subroutine setup_nucleus_ecp(basis, hamiltonian_nucleus, atom_list)
   if( nelement_ecp == 0 ) return
 
 
-  call start_clock(timing_ecp)
+  call timer_ecp%start()
 
   select case(ecp(1)%ecp_format)
   case(ECP_GTH)
@@ -2112,7 +2120,7 @@ subroutine setup_nucleus_ecp(basis, hamiltonian_nucleus, atom_list)
   call dump_out_matrix(.FALSE., '=== ECP Nucleus potential contribution ===', hamiltonian_nucleus)
 
 
-  call stop_clock(timing_ecp)
+  call timer_ecp%stop()
 
 end subroutine setup_nucleus_ecp
 
@@ -2819,7 +2827,7 @@ subroutine recalc_nucleus_ecp(basis, basis_t, basis_p, hamiltonian_nucleus, atom
   if( nelement_ecp == 0 ) return
 
 
-  call start_clock(timing_ecp)
+  call timer_ecp%start()
 
   select case(ecp(1)%ecp_format)
   case(ECP_GTH)
@@ -2831,7 +2839,7 @@ subroutine recalc_nucleus_ecp(basis, basis_t, basis_p, hamiltonian_nucleus, atom
   call dump_out_matrix(.FALSE., '=== ECP Nucleus potential contribution ===', hamiltonian_nucleus)
 
 
-  call stop_clock(timing_ecp)
+  call timer_ecp%stop()
 
 end subroutine recalc_nucleus_ecp
 

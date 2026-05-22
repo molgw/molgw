@@ -55,7 +55,7 @@ subroutine write_restart(restart_type, restart_filename, basis, occupation, c_ma
   ! Only the proc iomaster writes down the RESTART file
   if( .NOT. is_iomaster) return
 
-  call start_clock(timing_restart_file)
+  call timer_restart_file%start()
 
   nstate = SIZE(occupation,DIM=1)
   if( nstate /= SIZE(energy,DIM=1) ) then
@@ -129,7 +129,7 @@ subroutine write_restart(restart_type, restart_filename, basis, occupation, c_ma
   endif
 
   close(restartfile)
-  call stop_clock(timing_restart_file)
+  call timer_restart_file%stop()
 
 end subroutine write_restart
 

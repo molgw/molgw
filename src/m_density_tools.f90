@@ -482,7 +482,7 @@ subroutine calc_density_in_disc_cmplx_dft_grid(basis, occupation, c_matrix_cmplx
   integer              :: imanual
   !=====
 
-  call start_clock(timing_calc_dens_disc)
+  call timer_calc_dens_disc%start()
 
   nocc = SIZE(c_matrix_cmplx(:, :, :), DIM=2)
 
@@ -588,7 +588,7 @@ subroutine calc_density_in_disc_cmplx_dft_grid(basis, occupation, c_matrix_cmplx
 
   deallocate(charge_disc)
 
-  call stop_clock(timing_calc_dens_disc)
+  call timer_calc_dens_disc%stop()
 
 end subroutine calc_density_in_disc_cmplx_dft_grid
 
