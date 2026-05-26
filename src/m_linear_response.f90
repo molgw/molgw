@@ -25,6 +25,7 @@ module m_linear_response
 
   implicit none
 
+
 contains
 
 
@@ -39,9 +40,9 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   real(dp), intent(out)                  :: en_rpa, en_gw
   type(spectral_function), intent(inout) :: wpol_out
   integer, intent(in), optional          :: enforce_spin_multiplicity
-  real(dp), optional                     :: lambda
-  real(dp), optional                     :: x_matrix(:, :), y_matrix(:, :)
-  real(dp), optional                     :: a_matrix(:, :), b_matrix(:, :)
+  real(dp), intent(in), optional         :: lambda
+  real(dp), intent(out), optional        :: x_matrix(:, :), y_matrix(:, :)
+  real(dp), intent(out), optional        :: a_matrix(:, :), b_matrix(:, :)
   !=====
   integer                   :: nstate
   type(spectral_function)   :: wpol_static
@@ -90,7 +91,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   else
     is_triplet_currently = triplet_
   endif
-  if(is_triplet_currently) then
+  if( is_triplet_currently ) then
     write(stdout, '(a)') ' Triplet final state'
   else
     write(stdout, '(a)') ' Singlet final state'
@@ -158,7 +159,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   ! manual_tdhf can override anything
   alpha_local = 0.0_dp
   inquire(file='manual_tdhf', exist=has_manual_tdhf)
-  if(has_manual_tdhf) then
+  if( has_manual_tdhf ) then
     open(newunit=tdhffile, file='manual_tdhf', status='old')
     read(tdhffile, *) alpha_local
     close(tdhffile)
@@ -173,7 +174,6 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
       alpha_local = 0.0_dp
     endif
   endif
-  !if( enforce_rpa ) alpha_local = 0.0_dp
 
   is_rpa = .NOT.(is_tddft) .AND. .NOT.(is_bse) .AND. (ABS(alpha_local)<1.0e-5_dp)
 
@@ -229,8 +229,8 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   m_apb = NUMROC(nmat, block_row, iprow_sd, first_row, nprow_sd)
   n_apb = NUMROC(nmat, block_col, ipcol_sd, first_col, npcol_sd)
   call DESCINIT(desc_apb, nmat, nmat, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, m_apb), info)
-  call clean_allocate('A+B', apb_matrix, m_apb,n_apb)
-  call clean_allocate('A-B', amb_matrix, m_apb,n_apb)
+  call clean_allocate('A+B', apb_matrix, m_apb, n_apb)
+  call clean_allocate('A-B', amb_matrix, m_apb, n_apb)
   allocate(amb_diag_rpa(nmat))
 
 
@@ -260,7 +260,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
     !
     ! Step 2
-    if(is_tddft) then
+    if( is_tddft ) then
        call build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, &
                             wpol_out, m_apb, n_apb, apb_matrix)
     endif
@@ -291,7 +291,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
     !
     ! Step 2
-    if(is_tddft) then
+    if( is_tddft ) then
       call build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, &
                            wpol_out, m_apb, n_apb, apb_matrix)
     endif
@@ -309,7 +309,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
 
   ! Warning if Tamm-Dancoff flag is on
-  if(tda_) then
+  if( tda_ ) then
     msg='Tamm-Dancoff approximation is switched on'
     call issue_warning(msg)
     ! Tamm-Dancoff approximation consists in setting B matrix to zero
@@ -318,7 +318,6 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     amb_matrix(:, :) = apb_matrix(:, :)
   endif
   ! Construction done!
-  !if(has_auxil_basis) call destroy_eri_3center_mo()
 
   call timer_build_h2p%stop()
 
@@ -337,7 +336,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   if( PRESENT(a_matrix) .AND. PRESENT(b_matrix) .AND. .NOT. PRESENT(x_matrix) .AND. .NOT. PRESENT(y_matrix) ) then
     call clean_deallocate('A+B', apb_matrix)
     call clean_deallocate('A-B', amb_matrix)
-    if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
+    if( has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
       call destroy_eri_3center_mo(long_range=(beta_local>1.0e-6_dp))
     endif
     deallocate(amb_diag_rpa, energy_qp)
@@ -428,10 +427,9 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     write(stdout, '(1x,a,f12.6)') '   Lowest bare excitation energy (eV):', MINVAL(ABS(bare_eigenval(1:nexc)))*Ha_eV
   endif
 
-  !if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timer_aomo_pola)
 
   !
-  ! Calculate the optical sprectrum
+  ! Calculate the optical spectrum
   ! and the dynamic dipole tensor
   !
   if( is_tdhf .OR. is_tddft .OR. is_bse ) then
@@ -491,7 +489,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     call destroy_eri_3center_mo(long_range=(beta_local>1.0e-6_dp))
   endif
 
-  if(ALLOCATED(eigenvalue)) deallocate(eigenvalue)
+  if( ALLOCATED(eigenvalue) ) deallocate(eigenvalue)
   deallocate(energy_qp)
 
   call timer_pola%stop()
@@ -733,7 +731,7 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
   nstate = SIZE(c_matrix, DIM=2)
 
   write(stdout, '(/,a)') ' Build Wp = v * chi * v'
-  if(has_auxil_basis) then
+  if( has_auxil_basis ) then
     call die('you should not be here')
   endif
 
@@ -793,7 +791,7 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
   !$OMP END PARALLEL WORKSHARE
 
 
-  if(ALLOCATED(eri_mo_klmin)) deallocate(eri_mo_klmin)
+  if( ALLOCATED(eri_mo_klmin) ) deallocate(eri_mo_klmin)
 
   call timer_vchiv%stop()
 
@@ -843,7 +841,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol, ener
   ! and the block structure of eigenvector | X  Y |
   !                                        | Y  X |
   ! => only needs (X+Y)
-  !wpol%w_s(:,:) = MATMUL( eri_3tmp , xpy_matrix(:,:) ) * SQRT(spin_fact)
+  ! w_s = √(spin_fact) · eri_3tmp · (X + Y)
   call DGEMM('N', 'N', nauxil_local, nmat, nmat, DSQRT(spin_fact), eri_3tmp,nauxil_local, &
                                                              xpy_matrix, nmat, &
                                                        0.0d0, wpol%w_s, nauxil_local)
