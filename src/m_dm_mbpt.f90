@@ -27,13 +27,14 @@ module m_dm_mbpt
   use m_virtual_orbital_space
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
                        hamiltonian_kinetic, hamiltonian_nucleus, hamiltonian_fock)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: occupation(:, :)
@@ -282,7 +283,6 @@ end subroutine get_dm_mbpt
 
 !=========================================================================
 subroutine fock_density_matrix(basis, occupation, energy, c_matrix, hfock, p_matrix)
-  implicit none
 
   type(basis_set), intent(in)         :: basis
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
@@ -337,7 +337,6 @@ end subroutine fock_density_matrix
 
 !=========================================================================
 subroutine fock_density_matrix_second_order(basis, occupation, energy, c_matrix, hfock, p_matrix)
-  implicit none
 
   type(basis_set), intent(in)         :: basis
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)

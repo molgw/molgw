@@ -22,6 +22,8 @@ module m_dft_grid
   use m_ecp
   use m_numerical_tools, only: coeffs_gausslegint
 
+  implicit none
+
   integer, parameter :: BATCH_SIZE = 128
   !
   ! Grid definition
@@ -56,7 +58,6 @@ contains
 
 !=========================================================================
 subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn, batch_size)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: grid_level_in
@@ -467,7 +468,6 @@ end subroutine init_dft_grid
 
 !=========================================================================
 subroutine setup_rhocore_grid()
-  implicit none
 
   !=====
   integer :: ie, icenter, ir, irad
@@ -535,7 +535,6 @@ end subroutine setup_rhocore_grid
 
 !=========================================================================
 subroutine destroy_dft_grid()
-  implicit none
 
   deallocate(rr_grid)
   deallocate(w_grid)
@@ -575,7 +574,6 @@ end function smooth_step
 
 !=========================================================================
 subroutine prepare_basis_functions_r(basis, batch_size)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: batch_size
@@ -596,7 +594,6 @@ end subroutine prepare_basis_functions_r
 
 !=========================================================================
 subroutine prepare_basis_functions_gradr(basis, batch_size)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: batch_size
@@ -620,7 +617,6 @@ end subroutine prepare_basis_functions_gradr
 
 !=========================================================================
 subroutine get_basis_functions_r_batch(basis, igrid, basis_function_r)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: igrid
@@ -644,7 +640,6 @@ end subroutine get_basis_functions_r_batch
 
 !=========================================================================
 subroutine get_basis_functions_gradr_batch(basis, igrid, bf_gradx, bf_grady, bf_gradz)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: igrid
@@ -671,7 +666,6 @@ end subroutine get_basis_functions_gradr_batch
 
 !=========================================================================
 subroutine calculate_basis_functions_r(basis, rr, basis_function_r)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(3)
@@ -715,7 +709,6 @@ end subroutine calculate_basis_functions_r
 
 !=========================================================================
 subroutine calculate_basis_functions_r_batch(basis, rr, basis_function_r)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(:, :)
@@ -763,7 +756,6 @@ end subroutine calculate_basis_functions_r_batch
 
 !=========================================================================
 subroutine calculate_basis_functions_gradr(basis, rr, basis_function_gradr)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(3)
@@ -807,7 +799,6 @@ end subroutine calculate_basis_functions_gradr
 
 !=========================================================================
 subroutine calculate_basis_functions_gradr_batch(basis, rr, bf_gradx, bf_grady, bf_gradz)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(:, :)
@@ -859,7 +850,6 @@ end subroutine calculate_basis_functions_gradr_batch
 
 !=========================================================================
 subroutine calculate_basis_functions_laplr(basis, rr, basis_function_gradr, basis_function_laplr)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(3)

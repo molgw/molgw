@@ -25,6 +25,8 @@ module m_inputparam
 #include <xc_funcs.h>
 #endif
 
+  implicit none
+
   !
   ! Self-energy evaluation technique
   integer, parameter :: one_shot                = 101
@@ -144,7 +146,6 @@ contains
 
 !=========================================================================
 subroutine init_calculation_type(scf, postscf)
-  implicit none
 
   character(len=*), intent(in) :: scf, postscf
   !=====
@@ -399,7 +400,6 @@ end subroutine init_calculation_type
 
 !=========================================================================
 subroutine init_excitation_type()
-  implicit none
   !=====
 
   excit_type%name  = excit_name
@@ -430,7 +430,6 @@ end subroutine init_excitation_type
 
 !=========================================================================
 subroutine init_dft_type(key)
-  implicit none
 
   character(len=*), intent(in)          :: key
   !=====
@@ -742,7 +741,6 @@ end subroutine init_dft_type
 
 !=========================================================================
 subroutine summary_input()
-  implicit none
 
   !=====
 
@@ -795,7 +793,6 @@ end subroutine summary_input
 
 !=========================================================================
 subroutine read_inputfile_namelist()
-  implicit none
 
   !=====
   integer              :: idot, ichart, ninput_argument
@@ -1098,7 +1095,6 @@ end subroutine read_inputfile_namelist
 
 !=========================================================================
 function interpret_quality(quality) result(quality_level)
-  implicit none
 
   character(len=*), intent(in) :: quality
   integer                     :: quality_level
@@ -1123,7 +1119,6 @@ end function interpret_quality
 
 !=========================================================================
 function standardize_basis_name(basis_name_in) result(basis_name_out)
-  implicit none
 
   character(len=*), intent(in)       :: basis_name_in
   character(len=LEN(basis_name_in)) :: basis_name_out
@@ -1150,7 +1145,6 @@ end function standardize_basis_name
 
 !=========================================================================
 subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, ecp_auxil_basis, ecp_small_basis)
-  implicit none
 
   integer, intent(in)          :: inputfile
   character(len=*), intent(in) :: basis, auxil_basis, small_basis

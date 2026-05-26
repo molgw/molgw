@@ -26,13 +26,14 @@ module m_spectra
 
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, chi, xpy_matrix, xmy_matrix, eigenvalue, &
                             bare_eigenvalue)
-  implicit none
 
   logical, intent(in)                 :: is_triplet_currently
   type(basis_set), intent(in)         :: basis
@@ -462,7 +463,6 @@ end subroutine optical_spectrum
 
 !=========================================================================
 subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
-  implicit none
 
   type(basis_set), intent(in)         :: basis
   real(dp), intent(in)                :: c_matrix(:, :, :)
@@ -675,7 +675,6 @@ end subroutine stopping_power
 
 !=========================================================================
 subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalue)
-  implicit none
 
   integer, intent(in)                 :: desc_x(NDEL)
   type(basis_set), intent(in)         :: basis

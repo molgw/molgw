@@ -24,6 +24,9 @@ module m_restart
 
   !
   ! Restart file types
+
+  implicit none
+
   integer, parameter ::           NO_RESTART = 0
   integer, parameter ::        SMALL_RESTART = 1
   integer, parameter ::          BIG_RESTART = 2
@@ -36,7 +39,6 @@ contains
 
 !=========================================================================
 subroutine write_restart(restart_type, restart_filename, basis, occupation, c_matrix, energy, hamiltonian_fock)
-  implicit none
 
   integer, intent(in)           :: restart_type
   character(len=*), intent(in)  :: restart_filename
@@ -137,7 +139,6 @@ end subroutine write_restart
 !=========================================================================
 subroutine read_restart(restart_type, restart_filename, basis, &
                         occupation, c_matrix, energy, hamiltonian_fock)
-  implicit none
 
   integer, intent(out)           :: restart_type
   character(len=*), intent(in)   :: restart_filename

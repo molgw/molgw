@@ -23,13 +23,14 @@ module m_linear_response
   use m_spectra
   use m_build_bse
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c_matrix, en_rpa, en_gw, wpol_out, &
                           enforce_spin_multiplicity, lambda, x_matrix, y_matrix, a_matrix, b_matrix)
-  implicit none
 
   logical, intent(in)                    :: enforce_rpa, calculate_w
   type(basis_set), intent(in)            :: basis
@@ -501,7 +502,6 @@ end subroutine polarizability
 
 !=========================================================================
 subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
-  implicit none
 
   type(basis_set), intent(in)            :: basis
   real(dp), intent(in)                   :: occupation(:, :)
@@ -620,7 +620,6 @@ end subroutine coupled_perturbed
 
 !=========================================================================
 subroutine polarizability_onering(basis, energy, c_matrix, vchi0v)
-  implicit none
 
   type(basis_set), intent(in)            :: basis
   real(dp), intent(in)                   :: energy(:, :), c_matrix(:, :, :)
@@ -654,7 +653,6 @@ end subroutine polarizability_onering
 
 !=========================================================================
 subroutine get_energy_qp(energy, occupation, energy_qp)
-  implicit none
 
   real(dp), intent(in)                 :: energy(:, :)
   real(dp), intent(in)                 :: occupation(:, :)
@@ -714,7 +712,6 @@ end subroutine get_energy_qp
 
 !=========================================================================
 subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
-  implicit none
 
   real(dp), intent(in)                   :: c_matrix(:, :, :)
   type(spectral_function), intent(inout) :: wpol
@@ -805,7 +802,6 @@ end subroutine chi_to_vchiv
 
 !=========================================================================
 subroutine chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol, energy_gm)
-  implicit none
 
   integer, intent(in)                    :: desc_x(NDEL)
   real(dp), intent(inout)                :: xpy_matrix(:, :)
@@ -930,7 +926,6 @@ end subroutine chi_to_sqrtvchisqrtv_auxil
 
 !=========================================================================
 subroutine static_polarizability(occupation, energy, wpol_out)
-  implicit none
 
   real(dp), intent(in)                   :: occupation(:, :)
   real(dp), intent(in)                   :: energy(:, :)

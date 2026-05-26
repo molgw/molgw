@@ -24,6 +24,8 @@ module m_virtual_orbital_space
   use m_io
   use m_restart
 
+  implicit none
+
   real(dp), allocatable, private :: energy_ref(:, :)
   real(dp), allocatable, private :: c_matrix_ref(:, :, :)
 
@@ -35,7 +37,6 @@ contains
 
 !=========================================================================
 subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c_matrix, nstate_small)
-  implicit none
 
   type(basis_set), intent(in)            :: basis
   integer, intent(in)                    :: nstate
@@ -244,7 +245,6 @@ end subroutine setup_virtual_smallbasis
 
 !=========================================================================
 subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_matrix)
-  implicit none
 
   type(basis_set), intent(in)            :: basis
   integer, intent(in)                    :: nstate, nsemax
@@ -426,7 +426,6 @@ end subroutine calculate_virtual_fno
 
 !=========================================================================
 subroutine destroy_fno(basis, nstate, energy, c_matrix)
-  implicit none
 
   type(basis_set), intent(in)           :: basis
   integer, intent(in)                   :: nstate
@@ -465,7 +464,6 @@ end subroutine destroy_fno
 
 !=========================================================================
 subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_matrix_mo)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in) :: occupation(:, :), energy(:, :)

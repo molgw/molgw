@@ -21,12 +21,13 @@ module m_g3w2_selfenergy
   use m_linear_response
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
-  implicit none
 
   type(basis_set)                    :: basis
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
@@ -411,7 +412,6 @@ end subroutine sosex_selfenergy
 
 !=========================================================================
 subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, se)
-  implicit none
 
   type(basis_set)                    :: basis
   real(dp), intent(in)               :: occupation(:, :), energy(:, :)
@@ -1055,7 +1055,6 @@ end subroutine sosex_selfenergy_analyzed
 
 !=========================================================================
 subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
@@ -1501,7 +1500,6 @@ end subroutine gwgw0g_selfenergy
 
 !=========================================================================
 subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
@@ -1876,7 +1874,6 @@ end subroutine g3w2_selfenergy
 
 !=========================================================================
 subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
-  implicit none
 
   type(basis_set), intent(in)          :: basis
   real(dp), intent(in)                 :: energy(:, :), occupation(:, :)
@@ -2019,7 +2016,6 @@ end subroutine g3w2_selfenergy_real_grid
 
 !=========================================================================
 subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
-  implicit none
 
   type(basis_set), intent(in)          :: basis
   real(dp), intent(in)                 :: energy(:, :), occupation(:, :)
@@ -2202,7 +2198,6 @@ end subroutine g3w2_selfenergy_imag_grid
 
 !=========================================================================
 subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
-  implicit none
 
   type(basis_set), intent(in)          :: basis
   real(dp), intent(in)                 :: energy(:, :), occupation(:, :)
@@ -2485,7 +2480,6 @@ end subroutine sosex_selfenergy_imag_grid
 
 !=========================================================================
 subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
@@ -2599,7 +2593,6 @@ end subroutine sox_selfenergy_imag_grid
 
 !=========================================================================
 subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se, p_matrix)
-  implicit none
 
   real(dp), intent(in)                 :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :)
@@ -2973,7 +2966,6 @@ end subroutine psd_gw2sosex_selfenergy
 
 !=========================================================================
 subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol, exchange_m_vxc, ecorr, p_matrix)
-  implicit none
 
   real(dp), intent(in)                 :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :), exchange_m_vxc(:, :, :)

@@ -16,12 +16,13 @@ module m_mp2_energy
   use m_inputparam, only: nspin, spin_fact, ncoreg, nvirtualg, frozencore, kappa_hybrid
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
-  implicit none
 
   real(dp), intent(in)          :: occupation(:, :), energy(:, :)
   real(dp), intent(in)          :: c_matrix(:, :, :)
@@ -142,7 +143,6 @@ end subroutine mp2_energy_ri
 
 !=========================================================================
 subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
-  implicit none
 
   real(dp), intent(in)          :: occupation(:, :), energy(:, :)
   complex(dp), intent(in)       :: c_matrix_cmplx(:, :, :)
@@ -258,7 +258,6 @@ end subroutine mp2_energy_ri_cmplx
 
 !=========================================================================
 subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
-  implicit none
 
   integer, intent(in)           :: nstate, nocc
   real(dp), intent(in)          :: energy(:, :)
@@ -360,7 +359,6 @@ end subroutine mp2_energy_ri_x2c
 
 !=========================================================================
 subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
-  implicit none
 
   real(dp), intent(in)        :: occupation(:, :), energy(:, :)
   real(dp), intent(in)        :: c_matrix(:, :, :)
@@ -512,7 +510,6 @@ end subroutine mp3_energy_ri
 
 !==================================================================
 subroutine mp2_energy(occupation, c_matrix, energy, emp2)
-  implicit none
 
   real(dp), intent(in)          :: occupation(:, :), energy(:, :)
   real(dp), intent(in)          :: c_matrix(:, :, :)

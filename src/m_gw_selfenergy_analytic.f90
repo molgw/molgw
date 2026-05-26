@@ -20,12 +20,13 @@ module m_gw_selfenergy_analytic
   use m_linear_algebra, only: diagonalize
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, se)
-  implicit none
 
   integer, intent(in)                  :: selfenergy_approx
   real(dp), intent(in)                 :: occupation(:, :), energy(:, :)
@@ -197,7 +198,6 @@ end subroutine gw_selfenergy
 
 !=========================================================================
 subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matrix, wpol, exchange_m_vxc)
-  implicit none
 
   integer, intent(in)                  :: selfenergy_approx
   real(dp), intent(in)                 :: occupation(:, :), energy(:, :)
@@ -472,7 +472,6 @@ end subroutine gw_selfenergy_upfolding
 
 !=========================================================================
 subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matrix, wpol, se)
-  implicit none
 
   integer, intent(in)                  :: selfenergy_approx
   real(dp), intent(in)                 :: occupation(:, :), energy(:, :)
@@ -652,7 +651,6 @@ end subroutine gw_selfenergy_scalapack
 
 !=========================================================================
 subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfenergy_ao)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
@@ -801,7 +799,6 @@ end subroutine gw_selfenergy_qs
 
 !=========================================================================
 subroutine dump_gw_ingredients(energy, c_matrix, wpol)
-  implicit none
 
   real(dp), intent(in)                 :: energy(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :)

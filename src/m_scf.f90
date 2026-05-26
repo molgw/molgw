@@ -18,6 +18,8 @@ module m_scf
   use m_linear_algebra, only: invert
 
 
+  implicit none
+
   integer, private              :: nhistmax
   integer, private              :: nhist_current
 
@@ -77,7 +79,6 @@ contains
 
 !=========================================================================
 subroutine init_scf(nbf_in, nstate_in)
-  implicit none
   integer, intent(in)  :: nbf_in, nstate_in
   !=====
   integer :: info
@@ -147,7 +148,6 @@ end subroutine init_scf
 
 !=========================================================================
 subroutine destroy_scf()
-  implicit none
   !=====
   !=====
 
@@ -164,7 +164,6 @@ end subroutine destroy_scf
 
 !=========================================================================
 subroutine hamiltonian_prediction(s_matrix, x_matrix, p_matrix, ham, etot)
-  implicit none
   real(dp), intent(in)    :: s_matrix(:, :)
   real(dp), intent(in)    :: x_matrix(:, :)
   real(dp), intent(inout) :: p_matrix(:, :, :)
@@ -235,7 +234,6 @@ end subroutine hamiltonian_prediction
 
 !=========================================================================
 subroutine simple_prediction(p_matrix, ham)
-  implicit none
   real(dp), intent(inout) :: p_matrix(:, :, :)
   real(dp), intent(inout) :: ham(:, :, :)
   !=====
@@ -258,7 +256,6 @@ end subroutine simple_prediction
 
 !=========================================================================
 subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
-  implicit none
   real(dp), intent(in)    :: s_matrix(:, :)
   real(dp), intent(in)    :: x_matrix(:, :)
   real(dp), intent(inout) :: p_matrix(:, :, :)
@@ -460,7 +457,6 @@ end subroutine diis_prediction
 !=========================================================================
 subroutine xdiis_prediction(p_matrix, ham)
   use m_lbfgs
-  implicit none
   real(dp), intent(out)   :: p_matrix(:, :, :)
   real(dp), intent(out)   :: ham(:, :, :)
   !=====
@@ -708,7 +704,6 @@ end subroutine xdiis_prediction
 
 !=========================================================================
 subroutine density_matrix_preconditioning(hkin, s_matrix, p_matrix_new)
-  implicit none
 
   real(dp), intent(in)      :: hkin(:, :)
   real(dp), intent(in)      :: s_matrix(:, :)
@@ -822,7 +817,6 @@ end subroutine density_matrix_preconditioning
 
 !=========================================================================
 function check_converged(p_matrix_new)
-  implicit none
 
   logical               :: check_converged
   real(dp), intent(in)   :: p_matrix_new(:, :, :)
@@ -882,7 +876,6 @@ end function check_converged
 
 !=========================================================================
 subroutine print_energy_yaml(name, en)
-  implicit none
   character(len=*), intent(in)           :: name
   type(energy_contributions), intent(in) :: en
   !=====

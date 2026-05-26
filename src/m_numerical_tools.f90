@@ -12,6 +12,8 @@ module m_numerical_tools
   use m_warning, only: die
 
 
+  implicit none
+
 contains
 
 
@@ -32,7 +34,6 @@ contains
 !
 subroutine coeffs_gausslegint(xmin, xmax, x, weights, n)
 
-  implicit none
 
   integer, intent(in) :: n
   real(dp), intent(in) :: xmin, xmax
@@ -83,7 +84,6 @@ end subroutine coeffs_gausslegint
 
 !=========================================================================
 function pade(z_in, f_in, z_out) RESULT(f_out)
-  implicit none
 
   complex(dp), intent(in) :: z_in(:), f_in(:)
   complex(dp), intent(in) :: z_out
@@ -118,7 +118,6 @@ end function pade
 
 !=========================================================================
 subroutine calculate_pade_a(aa, z_in, f_in)
-  implicit none
 
   complex(dp), intent(in)  :: z_in(:), f_in(:)
   complex(dp), intent(out) :: aa(:)

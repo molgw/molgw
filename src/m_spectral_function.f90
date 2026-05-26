@@ -21,6 +21,8 @@ module m_spectral_function
   use m_basis_set
   use m_eri_ao_mo
 
+  implicit none
+
   integer, parameter :: NO_GRID        = 0
   integer, parameter :: IMAGINARY_QUAD = 1
   integer, parameter :: REAL_LINEAR    = 2
@@ -110,7 +112,6 @@ contains
 
 !=========================================================================
 pure function index_prodstate(istate, jstate)
-  implicit none
   integer, intent(in)  :: istate, jstate
   integer             :: index_prodstate
   !=====
@@ -136,7 +137,6 @@ end function index_prodstate
 
 !=========================================================================
 subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verbose)
-  implicit none
   class(spectral_function), intent(out)  :: sf
   integer, intent(in)                    :: nstate
   real(dp), intent(in)                   :: occupation(:, :)
@@ -339,7 +339,6 @@ end subroutine sf_init
 
 !=========================================================================
 subroutine allocate_spectral_function(nprodbasis, sf)
-  implicit none
   integer, intent(in)                    :: nprodbasis
   type(spectral_function), intent(inout) :: sf
   !=====
@@ -358,7 +357,6 @@ end subroutine allocate_spectral_function
 
 !=========================================================================
 pure function skip_transition(ib1, ib2, occ1, occ2)
-  implicit none
   logical             :: skip_transition
   integer, intent(in)  :: ib1, ib2
   real(dp), intent(in) :: occ1, occ2
@@ -382,7 +380,6 @@ end function skip_transition
 
 !=========================================================================
 subroutine sf_destroy(sf, verbose)
-  implicit none
   class(spectral_function), intent(inout) :: sf
   logical, optional, intent(in)            :: verbose
   !=====
@@ -415,7 +412,6 @@ end subroutine sf_destroy
 
 !=========================================================================
 subroutine write_spectral_function(sf)
-  implicit none
   type(spectral_function), intent(in) :: sf
   !=====
   integer              :: wfile
@@ -510,7 +506,6 @@ end subroutine write_spectral_function
 
 !=========================================================================
 subroutine read_spectral_function(sf, reading_status)
-  implicit none
   type(spectral_function), intent(inout) :: sf
   integer, intent(out)                   :: reading_status
   !=====
@@ -627,7 +622,6 @@ end subroutine read_spectral_function
 
 !=========================================================================
 subroutine sf_evaluate_several_omegas(sf, omega_cmplx, chi)
-  implicit none
 
   class(spectral_function), intent(in) :: sf
   complex(dp), intent(in) :: omega_cmplx(:)
@@ -686,7 +680,6 @@ end subroutine sf_evaluate_several_omegas
 
 !=========================================================================
 subroutine sf_evaluate_one_real_omega(sf, omega_real, chi)
-  implicit none
 
   class(spectral_function), intent(in) :: sf
   real(dp), intent(in) :: omega_real
@@ -720,7 +713,6 @@ end subroutine sf_evaluate_one_real_omega
 
 !=========================================================================
 subroutine sf_evaluate_one_omega(sf, omega_cmplx, chi)
-  implicit none
 
   class(spectral_function), intent(in) :: sf
   complex(dp), intent(in) :: omega_cmplx
@@ -774,7 +766,6 @@ end subroutine sf_evaluate_one_omega
 
 !=========================================================================
 subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, verbose)
-  implicit none
 
   class(spectral_function), intent(inout) :: sf
   real(dp), intent(in)                    :: occupation(:, :)
@@ -960,7 +951,6 @@ end subroutine sf_vsqrt_chi_vsqrt_rpa
 
 !=========================================================================
 subroutine sf_interpolate_vsqrt_chi_vsqrt(sf, omega, vchiv_sqrt_omega)
-  implicit none
 
   class(spectral_function), intent(in) :: sf
   real(dp), intent(in)                 :: omega
@@ -993,7 +983,6 @@ end subroutine sf_interpolate_vsqrt_chi_vsqrt
 
 !=========================================================================
 subroutine ct_destroy(chi)
-  implicit none
   !=====
   class(chi_type), intent(inout) :: chi
   !=====

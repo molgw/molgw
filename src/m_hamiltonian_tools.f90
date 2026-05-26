@@ -20,6 +20,8 @@ module m_hamiltonian_tools
   use m_inputparam
 
 
+  implicit none
+
   interface setup_density_matrix
     module procedure setup_density_matrix_real
     module procedure setup_density_matrix_cmplx
@@ -41,7 +43,6 @@ contains
 
 !=========================================================================
 pure function get_number_occupied_states(occupation) result(nocc)
-  implicit none
 
   real(dp), intent(in) :: occupation(:, :)
   integer             :: nocc
@@ -68,7 +69,6 @@ end function get_number_occupied_states
 
 !=========================================================================
 subroutine setup_density_matrix_real(c_matrix, occupation, p_matrix)
-  implicit none
   real(dp), intent(in)  :: c_matrix(:, :, :)
   real(dp), intent(in)  :: occupation(:, :)
   real(dp), intent(out) :: p_matrix(:, :, :)
@@ -122,7 +122,6 @@ end subroutine setup_density_matrix_real
 
 !=========================================================================
 subroutine setup_density_matrix_cmplx(c_matrix_cmplx, occupation, p_matrix_cmplx)
-  implicit none
 
   complex(dp), intent(in)  :: c_matrix_cmplx(:, :, :)
   real(dp), intent(in)     :: occupation(:, :)
@@ -171,7 +170,6 @@ end subroutine setup_density_matrix_cmplx
 
 !=========================================================================
 subroutine setup_energy_density_matrix(c_matrix, occupation, energy, q_matrix)
-  implicit none
   real(dp), intent(in)  :: c_matrix(:, :, :)
   real(dp), intent(in)  :: occupation(:, :)
   real(dp), intent(in)  :: energy(:, :)
@@ -213,7 +211,6 @@ end subroutine setup_energy_density_matrix
 
 !=========================================================================
 subroutine setup_anomalous_density_matrix_real(c_matrix, sqrt_occ_hole, p_annom_matrix)
-  implicit none
   real(dp), intent(in)  :: c_matrix(:, :, :)
   real(dp), intent(in)  :: sqrt_occ_hole(:, :)
   real(dp), intent(out) :: p_annom_matrix(:, :, :)
@@ -267,7 +264,6 @@ end subroutine setup_anomalous_density_matrix_real
 
 !=========================================================================
 subroutine test_density_matrix(p_matrix, s_matrix)
-  implicit none
   real(dp), intent(in)  :: p_matrix(:, :, :)
   real(dp), intent(in)  :: s_matrix(:, :)
   !=====
@@ -301,7 +297,6 @@ end subroutine test_density_matrix
 
 !=========================================================================
 subroutine set_occupation(temperature, electrons_in, magnetization, energy, occupation, chem_pot)
-  implicit none
   real(dp), intent(in)  :: electrons_in, magnetization, temperature
   real(dp), intent(in)  :: energy(:, :)
   real(dp), intent(out) :: occupation(:, :)
@@ -407,7 +402,6 @@ subroutine set_occupation(temperature, electrons_in, magnetization, energy, occu
 contains
 
 function fermi_dirac(energy_in, mu_in)
-  implicit none
   real(dp), intent(in) :: energy_in(nstate, nspin)
   real(dp), intent(in) :: mu_in
   real(dp)            :: fermi_dirac(nstate, nspin)
@@ -422,7 +416,6 @@ end subroutine set_occupation
 
 !=========================================================================
 subroutine dump_out_occupation(title, occupation)
-  implicit none
   character(len=*), intent(in) :: title
   real(dp), intent(in)         :: occupation(:, :)
   !=====
@@ -459,7 +452,6 @@ end subroutine dump_out_occupation
 
 !=========================================================================
 subroutine dump_out_energy(title, occupation, energy, is_x2c, is_ksb)
-  implicit none
   character(len=*), intent(in) :: title
   real(dp), intent(in)         :: occupation(:, :), energy(:, :)
   logical, intent(in), optional :: is_x2c
@@ -539,7 +531,6 @@ end subroutine dump_out_energy
 
 !=========================================================================
 subroutine dump_out_energy_yaml(title, energy, lb, ub)
-  implicit none
   character(len=*), intent(in) :: title
   real(dp), intent(in)         :: energy(:, :)
   integer, intent(in), optional :: lb, ub
@@ -572,7 +563,6 @@ end subroutine dump_out_energy_yaml
 
 !=========================================================================
 subroutine output_homolumo(calculation_name, occupation, energy, istate_min, istate_max)
-  implicit none
 
   character(len=*), intent(in) :: calculation_name
   integer, intent(in)          :: istate_min, istate_max
@@ -628,7 +618,6 @@ end subroutine output_homolumo
 ! Get the MO diagonal from the hamiltonian-like matrix in AO basis
 !
 subroutine h_ao_to_mo_diag(c_matrix, h_ao, diag_mo)
-  implicit none
   real(dp), intent(in)  :: c_matrix(:, :, :)
   real(dp), intent(in)  :: h_ao(..)
   real(dp), intent(out) :: diag_mo(:, :)
@@ -678,7 +667,6 @@ end subroutine h_ao_to_mo_diag
 !   H_MO = C**T * H_AO * C
 !
 subroutine h_ao_to_mo(c_matrix, h_ao, h_mo)
-  implicit none
   real(dp), intent(in)  :: c_matrix(:, :, :)
   real(dp), intent(in)  :: h_ao(..)
   real(dp), intent(out) :: h_mo(:, :, :)
@@ -734,7 +722,6 @@ end subroutine h_ao_to_mo
 !   H_AO = S * C * H_MO * (S * C)**T
 !
 subroutine h_mo_to_ao(c_matrix, s_matrix, h_mo, h_ao)
-  implicit none
 
   real(dp), intent(in) :: c_matrix(:, :, :)
   real(dp), intent(in) :: s_matrix(:, :)
@@ -809,7 +796,6 @@ end subroutine h_mo_to_ao
 !   P_AO = C**T * P_MO * C
 !
 subroutine p_mo_to_ao(c_matrix, p_mo, p_ao)
-  implicit none
   real(dp), intent(in)  :: c_matrix(:, :, :)
   real(dp), intent(in)  :: p_mo(:, :, :)
   real(dp), intent(out) :: p_ao(:, :, :)
@@ -857,7 +843,6 @@ end subroutine p_mo_to_ao
 !   P_MO = (S * C)**T * P_AO * S * C
 !
 subroutine p_ao_to_mo_real(c_matrix, s_matrix, p_ao, p_mo)
-  implicit none
 
   real(dp), intent(in) :: c_matrix(:, :, :)
   real(dp), intent(in) :: s_matrix(:, :)
@@ -930,7 +915,6 @@ end subroutine p_ao_to_mo_real
 !   P_MO = (S * C)**T * P_AO * S * C
 !
 subroutine p_ao_to_mo_cmplx(c_matrix, s_matrix, p_ao, p_mo)
-  implicit none
 
   real(dp), intent(in) :: c_matrix(:, :, :)
   real(dp), intent(in) :: s_matrix(:, :)
@@ -1004,7 +988,6 @@ end subroutine p_ao_to_mo_cmplx
 
 !=========================================================================
 subroutine evaluate_s2_operator(occupation, c_matrix, s_matrix)
-  implicit none
   real(dp), intent(in)     :: occupation(:, :)
   real(dp), intent(in)     :: c_matrix(:, :, :)
   real(dp), intent(in)     :: s_matrix(:, :)
@@ -1065,7 +1048,6 @@ end subroutine evaluate_s2_operator
 
 !=========================================================================
 subroutine level_shifting_up(s_matrix, c_matrix, occupation, level_shifting_energy, hamiltonian)
-  implicit none
   real(dp), intent(in)    :: s_matrix(:, :)
   real(dp), intent(in)    :: c_matrix(:, :, :)
   real(dp), intent(in)    :: occupation(:, :)
@@ -1123,7 +1105,6 @@ end subroutine level_shifting_up
 
 !=========================================================================
 subroutine level_shifting_down(s_matrix, c_matrix, occupation, level_shifting_energy, energy, hamiltonian)
-  implicit none
   real(dp), intent(in)    :: s_matrix(:, :)
   real(dp), intent(in)    :: c_matrix(:, :, :)
   real(dp), intent(in)    :: occupation(:, :)
@@ -1189,7 +1170,6 @@ end subroutine level_shifting_down
 
 !=========================================================================
 subroutine setup_x_matrix(TOL_OVERLAP, s_matrix, nstate, x_matrix)
-  implicit none
 
   real(dp), intent(in)                :: TOL_OVERLAP
   real(dp), intent(in)                :: s_matrix(:, :)
@@ -1242,7 +1222,6 @@ end subroutine setup_x_matrix
 
 !=========================================================================
 subroutine setup_sqrt_overlap(s_matrix, s_matrix_sqrt)
-  implicit none
 
   real(dp), intent(in)                 :: s_matrix(:, :)
   real(dp), allocatable, intent(inout) :: s_matrix_sqrt(:, :)
@@ -1281,7 +1260,6 @@ end subroutine setup_sqrt_overlap
 ! Orthogonalize C coefficients
 ! in output C verify C**T S C = I
 subroutine orthogonalize_c_matrix(s_matrix, c_matrix)
-  implicit none
 
   real(dp), intent(in)    :: s_matrix(:, :)
   real(dp), intent(inout) :: c_matrix(:, :, :)
@@ -1341,7 +1319,6 @@ end subroutine orthogonalize_c_matrix
 
 !=========================================================================
 subroutine setup_sqrt_density_matrix(p_matrix, p_matrix_sqrt, p_matrix_occ)
-  implicit none
 
   real(dp), intent(in)  :: p_matrix(:, :, :)
   real(dp), intent(out) :: p_matrix_sqrt(:, :, :)
@@ -1378,7 +1355,6 @@ end subroutine setup_sqrt_density_matrix
 
 !=========================================================================
 subroutine get_c_matrix_from_p_matrix(p_matrix, c_matrix, occupation)
-  implicit none
 
   real(dp), intent(in)              :: p_matrix(:, :, :)
   real(dp), allocatable, intent(out) :: c_matrix(:, :, :)
@@ -1439,7 +1415,6 @@ end subroutine get_c_matrix_from_p_matrix
 
 !=========================================================================
 subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_matrix)
-  implicit none
 
   real(dp), intent(in)  :: hamiltonian(:, :, :)
   real(dp), intent(in)  :: x_matrix(:, :)
@@ -1643,7 +1618,6 @@ end subroutine diagonalize_hamiltonian_scalapack
 
 !=========================================================================
 subroutine compute_KSB_dm1_and_trace(nstate,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
-  implicit none
 
   integer,  intent(in)  :: nstate
   real(dp), intent(in)  :: chem_pot
@@ -1680,7 +1654,6 @@ end subroutine compute_KSB_dm1_and_trace
     
 !=========================================================================
 subroutine adjust_chem_pot_ksb(nstate,nelectrons,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
-  implicit none
 
   integer,  intent(in)    :: nstate
   real(dp), intent(in)    :: nelectrons

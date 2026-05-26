@@ -34,6 +34,8 @@ module m_scf_loop
 
 
 
+  implicit none
+
 contains
 
 
@@ -46,7 +48,6 @@ subroutine scf_loop(is_restart, &
                     energy, &
                     hamiltonian_fock, &
                     c_matrix, en_gks, scf_has_converged, temperature_in)
-  implicit none
 
   !=====
   logical, intent(in)                 :: is_restart
@@ -476,7 +477,6 @@ subroutine scf_loop_cmplx(is_restart, &
                     occupation, &
                     energy, &
                     c_matrix, c_matrix_cmplx, en_gks, scf_has_converged)
-  implicit none
 
   !=====
   logical, intent(in)                 :: is_restart
@@ -758,7 +758,6 @@ subroutine scf_loop_x2c(basis, &
                     occupation, &
                     energy, &
                     c_matrix_rel, c_matrix, en_gks, scf_has_converged)
-  implicit none
 
   !=====
   type(basis_set), intent(inout)         :: basis
@@ -1129,7 +1128,6 @@ subroutine scf_loop_bogoliubov(is_restart, &
                     energy, &
                     hamiltonian_fock, &
                     c_matrix, en_gks, scf_has_converged)
-  implicit none
 
   !=====
   logical, intent(in)                 :: is_restart
@@ -1595,7 +1593,6 @@ end subroutine scf_loop_bogoliubov
 !=========================================================================
 subroutine get_fock_operator(basis, p_matrix, c_matrix, occupation, en, &
                              hamiltonian, hamiltonian_xc, hamiltonian_exx, hamiltonian_fock)
-  implicit none
 
   type(basis_set), intent(in)               :: basis
   type(energy_contributions), intent(inout) :: en
@@ -1623,7 +1620,6 @@ end subroutine get_fock_operator
 !=========================================================================
 ! Print out the Hartree and exchange diagonal expectation values if requested
 subroutine print_hartee_expectation(basis, p_matrix, c_matrix, occupation, hamiltonian_hartree, hamiltonian_exx)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: p_matrix(:, :, :), c_matrix(:, :, :)
@@ -1681,7 +1677,6 @@ end subroutine print_hartee_expectation
 
 !=========================================================================
 subroutine print_expectations(basis, c_matrix, hkin)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: c_matrix(:, :, :)

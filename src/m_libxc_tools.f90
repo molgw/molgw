@@ -18,6 +18,8 @@ module m_libxc_tools
 #include <xc_version.h>
 #endif
 
+  implicit none
+
   integer(C_INT), parameter :: XC_FAMILY_UNKNOWN  = -1
   integer(C_INT), parameter :: XC_FAMILY_LDA      =  1
   integer(C_INT), parameter :: XC_FAMILY_GGA      =  2
@@ -222,7 +224,6 @@ contains
 
 !=========================================================================
 subroutine init_libxc_info(dft_xc)
-  implicit none
 
   type(dft_xc_info), allocatable, intent(inout) :: dft_xc(:)
   !=====
@@ -298,7 +299,6 @@ end subroutine init_libxc_info
 
 !=========================================================================
 subroutine copy_libxc_info(dft_xc_in, dft_xc_out)
-  implicit none
 
   type(dft_xc_info), intent(in)                :: dft_xc_in(:)
   type(dft_xc_info), allocatable, intent(inout) :: dft_xc_out(:)
@@ -325,7 +325,6 @@ end subroutine copy_libxc_info
 
 !=========================================================================
 subroutine destroy_libxc_info(dft_xc)
-  implicit none
 
   type(dft_xc_info), allocatable, intent(inout) :: dft_xc(:)
   !=====

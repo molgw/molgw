@@ -21,6 +21,8 @@ module m_eri_calculate
   use m_libint_tools
 
 
+  implicit none
+
   real(dp), protected, allocatable :: eri_2center(:, :)
   real(dp), protected, allocatable :: eri_2center_inv(:, :)
   real(dp), protected, allocatable :: eri_2center_sqrtinv(:, :)
@@ -40,7 +42,6 @@ contains
 
 !=========================================================================
 subroutine destroy_eri_3center()
-  implicit none
   !=====
 
   if(ALLOCATED(eri_2center)) then
@@ -71,7 +72,6 @@ end subroutine destroy_eri_3center
 
 !=========================================================================
 subroutine calculate_eri(print_eri_, basis, rcut)
-  implicit none
   logical, intent(in)            :: print_eri_
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: rcut
@@ -123,7 +123,6 @@ end subroutine calculate_eri
 
 !=========================================================================
 subroutine calculate_eri_4center(basis, rcut)
-  implicit none
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: rcut
   !=====
@@ -310,7 +309,6 @@ end subroutine calculate_eri_4center
 !=========================================================================
 subroutine calculate_eri_4center_shell(basis, rcut, ijshellpair, klshellpair, &
                                        shellABCD)
-  implicit none
   type(basis_set), intent(inout)    :: basis
   real(dp), intent(in)              :: rcut
   integer, intent(in)               :: ijshellpair, klshellpair
@@ -436,7 +434,6 @@ end subroutine calculate_eri_4center_shell
 !=========================================================================
 subroutine calculate_eri_4center_shell_grad(basis, rcut, ijshellpair, klshellpair, &
                                             shell_gradA, shell_gradB, shell_gradC, shell_gradD)
-  implicit none
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: rcut
   integer, intent(in)            :: ijshellpair, klshellpair
@@ -610,7 +607,6 @@ end subroutine calculate_eri_4center_shell_grad
 
 !=========================================================================
 subroutine calculate_eri_ri(basis, auxil_basis, rcut)
-  implicit none
 
   type(basis_set), intent(inout) :: basis, auxil_basis
   real(dp), intent(in)           :: rcut
@@ -705,7 +701,6 @@ end subroutine calculate_eri_ri
 
 !=========================================================================
 subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_auxil)
-  implicit none
   type(basis_set), intent(inout) :: auxil_basis
   real(dp), intent(in)           :: rcut
   logical, intent(in), optional   :: mask_auxil(:)
@@ -950,7 +945,6 @@ end subroutine calculate_integrals_eri_2center_scalapack
 
 !=========================================================================
 subroutine calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
-  implicit none
   type(basis_set), intent(inout) :: auxil_basis
   real(dp), intent(in)           :: rcut
   !=====
@@ -1053,7 +1047,6 @@ end subroutine calculate_inverse_eri_2center_scalapack
 
 !=========================================================================
 subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
-  implicit none
   type(basis_set), intent(inout) :: auxil_basis
   real(dp), intent(in)           :: rcut
   !=====
@@ -1271,7 +1264,6 @@ end subroutine calculate_inverse_sqrt_eri_2center_scalapack
 
 !=========================================================================
 subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, mask, mask_auxil)
-  implicit none
   type(basis_set), intent(inout) :: basis
   type(basis_set), intent(inout) :: auxil_basis
   real(dp), intent(in)           :: rcut
@@ -1590,7 +1582,6 @@ end subroutine calculate_integrals_eri_3center_scalapack
 
 !=========================================================================
 subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
-  implicit none
   type(basis_set), intent(inout) :: basis
   type(basis_set), intent(inout) :: auxil_basis
   real(dp), intent(in)          :: rcut
@@ -1961,7 +1952,6 @@ end subroutine calculate_eri_3center_scalapack
 
 !=========================================================================
 subroutine calculate_eri_approximate_hartree(basis, x0_rho, coeff_rho, alpha_rho, vhrho)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: x0_rho(3)
   real(dp), intent(in)        :: coeff_rho(:), alpha_rho(:)

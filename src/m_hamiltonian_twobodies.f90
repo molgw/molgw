@@ -26,12 +26,13 @@ module m_hamiltonian_twobodies
   use m_hamiltonian_tools, only: diagonalize_hamiltonian_scalapack
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine setup_hartree(p_matrix, hartree_ao, ehartree)
-  implicit none
   real(dp), intent(in)  :: p_matrix(:, :, :)
   real(dp), intent(out) :: hartree_ao(:, :)
   real(dp), intent(out) :: ehartree
@@ -116,7 +117,6 @@ end subroutine setup_hartree
 
 !=========================================================================
 subroutine setup_hartree_oneshell(basis, p_matrix, hartree_ao, ehartree)
-  implicit none
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: p_matrix(:, :, :)
   real(dp), intent(out)          :: hartree_ao(:, :)
@@ -278,7 +278,6 @@ end subroutine setup_hartree_oneshell
 
 !=========================================================================
 subroutine setup_hartree_ri(p_matrix, hartree_ao, ehartree)
-  implicit none
   class(*), intent(in)  :: p_matrix(:, :, :)
   real(dp), intent(out) :: hartree_ao(:, :)
   real(dp), intent(out) :: ehartree
@@ -382,7 +381,6 @@ end subroutine setup_hartree_ri
 !
 !=========================================================================
 subroutine calculate_density_auxilbasis(p_matrix, rho_coeff)
-  implicit none
 
   class(*), intent(in)              :: p_matrix(:, :, :)
   real(dp), allocatable, intent(out) :: rho_coeff(:, :)
@@ -451,7 +449,6 @@ end subroutine calculate_density_auxilbasis
 
 !=========================================================================
 subroutine setup_hartree_genuine_ri(p_matrix, rho_coeff, hartree_ao, ehartree)
-  implicit none
   class(*), intent(in)  :: p_matrix(:, :, :)
   real(dp), intent(in)  :: rho_coeff(:, :)
   real(dp), intent(out) :: hartree_ao(:, :)
@@ -534,7 +531,6 @@ end subroutine setup_hartree_genuine_ri
 
 !=========================================================================
 subroutine setup_exchange(p_matrix, exchange_ao, eexchange)
-  implicit none
   real(dp), intent(in)  :: p_matrix(:, :, :)
   real(dp), intent(out) :: exchange_ao(:, :, :)
   real(dp), intent(out) :: eexchange
@@ -622,7 +618,6 @@ end subroutine setup_exchange
 
 !=========================================================================
 subroutine setup_exchange_longrange(p_matrix, exchange_ao, eexchange)
-  implicit none
   real(dp), intent(in)  :: p_matrix(:, :, :)
   real(dp), intent(out) :: exchange_ao(:, :, :)
   real(dp), intent(out) :: eexchange
@@ -710,7 +705,6 @@ end subroutine setup_exchange_longrange
 
 !=========================================================================
 subroutine setup_exchange_ri(occupation, c_matrix, p_matrix, exchange_ao, eexchange)
-  implicit none
   real(dp), intent(in)  :: occupation(:, :)
   real(dp), intent(in)  :: c_matrix(:, :, :)
   real(dp), intent(in)  :: p_matrix(:, :, :)
@@ -792,7 +786,6 @@ end subroutine setup_exchange_ri
 
 !=========================================================================
 subroutine setup_exchange_longrange_ri(occupation, c_matrix, p_matrix, exchange_ao, eexchange)
-  implicit none
   real(dp), intent(in)  :: occupation(:, :)
   real(dp), intent(in)  :: c_matrix(:, :, :)
   real(dp), intent(in)  :: p_matrix(:, :, :)
@@ -875,7 +868,6 @@ end subroutine setup_exchange_longrange_ri
 
 !=========================================================================
 subroutine setup_exchange_ri_cmplx(occupation, c_matrix, p_matrix, exchange_ao, eexchange)
-  implicit none
   real(dp), intent(in)     :: occupation(:, :)
   complex(dp), intent(in)  :: c_matrix(:, :, :)
   complex(dp), intent(in)  :: p_matrix(:, :, :)
@@ -956,7 +948,6 @@ end subroutine setup_exchange_ri_cmplx
 
 !=========================================================================
 subroutine setup_exchange_ri_x2c_1(occupation, c_matrix, exchange_ao)
-  implicit none
   real(dp), intent(in)     :: occupation(:, :)
   complex(dp), intent(in)  :: c_matrix(:, :, :)
   complex(dp), intent(out) :: exchange_ao(:, :, :)
@@ -1033,7 +1024,6 @@ end subroutine setup_exchange_ri_x2c_1
 
 !=========================================================================
 subroutine setup_exchange_ri_x2c_2(occupation, c_matrix, exchange_ao)
-  implicit none
   real(dp), intent(in)     :: occupation(:, :)
   complex(dp), intent(in)  :: c_matrix(:, :, :)
   complex(dp), intent(out) :: exchange_ao(:, :, :)
@@ -1109,7 +1099,6 @@ end subroutine setup_exchange_ri_x2c_2
 
 !=========================================================================
 subroutine setup_exchange_longrange_ri_cmplx(occupation, c_matrix, p_matrix, exchange_ao, eexchange)
-  implicit none
   real(dp), intent(in)     :: occupation(:, :)
   complex(dp), intent(in)  :: c_matrix(:, :, :)
   complex(dp), intent(in)  :: p_matrix(:, :, :)
@@ -1190,7 +1179,6 @@ end subroutine setup_exchange_longrange_ri_cmplx
 
 !=========================================================================
 subroutine setup_lr_exchange_ri_x2c_1(occupation, c_matrix, exchange_ao)
-  implicit none
   real(dp), intent(in)     :: occupation(:, :)
   complex(dp), intent(in)  :: c_matrix(:, :, :)
   complex(dp), intent(out) :: exchange_ao(:, :, :)
@@ -1267,7 +1255,6 @@ end subroutine setup_lr_exchange_ri_x2c_1
 
 !=========================================================================
 subroutine setup_lr_exchange_ri_x2c_2(occupation, c_matrix, exchange_ao)
-  implicit none
   real(dp), intent(in)     :: occupation(:, :)
   complex(dp), intent(in)  :: c_matrix(:, :, :)
   complex(dp), intent(out) :: exchange_ao(:, :, :)
@@ -1343,7 +1330,6 @@ end subroutine setup_lr_exchange_ri_x2c_2
 
 !=========================================================================
 subroutine setup_exchange_genuine_ri(occupation, c_matrix, p_matrix, exchange_ao, eexchange)
-  implicit none
   real(dp), intent(in)  :: occupation(:, :)
   real(dp), intent(in)  :: c_matrix(:, :, :)
   real(dp), intent(in)  :: p_matrix(:, :, :)
@@ -1424,7 +1410,6 @@ end subroutine setup_exchange_genuine_ri
 
 !=========================================================================
 subroutine setup_exchange_genuine_ri_cmplx(occupation, c_matrix, p_matrix, exchange_ao, eexchange)
-  implicit none
   real(dp), intent(in)  :: occupation(:, :)
   complex(dp), intent(in)  :: c_matrix(:, :, :)
   complex(dp), intent(in)  :: p_matrix(:, :, :)
@@ -1509,7 +1494,6 @@ end subroutine setup_exchange_genuine_ri_cmplx
 ! * subroutine works for both real and complex wavefunctions c_matrix
 !   using "class" syntax of Fortran2003
 subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, exc_xc, dft_xc_in, dm2_JK)
-  implicit none
 
   integer, intent(in)         :: batch_size
   type(basis_set), intent(in) :: basis
@@ -1910,7 +1894,6 @@ end subroutine dft_exc_vxc_batch
 subroutine dft_approximate_vhxc(basis, vhxc_ao)
   use m_dft_grid
   use m_eri_calculate
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: vhxc_ao(basis%nbf, basis%nbf)
@@ -2044,7 +2027,6 @@ end subroutine dft_approximate_vhxc
 
 !=========================================================================
 subroutine setup_hartree_mo(occupation, vhartree_mo, ehartree)
-  implicit none
 
   real(dp), intent(in) :: occupation(:, :)
   real(dp), intent(out) :: vhartree_mo(:, :, :)
@@ -2093,7 +2075,6 @@ end subroutine setup_hartree_mo
 
 !=========================================================================
 subroutine setup_exchange_mo(occupation, sigx_mo, eexchange)
-  implicit none
 
   real(dp), intent(in) :: occupation(:, :)
   real(dp), intent(out) :: sigx_mo(:, :, :)
@@ -2136,7 +2117,6 @@ end subroutine setup_exchange_mo
 !                         or by reading a Gaussian fchk
 !                         or ...
 subroutine init_c_matrix(basis, occupation, x_matrix, hkin, hnuc, c_matrix)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(:, :)
@@ -2250,7 +2230,6 @@ end subroutine init_c_matrix
 
 !=========================================================================
 subroutine init_c_matrix_cmplx(c_matrix, c_matrix_cmplx)
-  implicit none
 
   real(dp), intent(in)     :: c_matrix(:, :, :)
   complex(dp), intent(out) :: c_matrix_cmplx(:, :, :)
@@ -2286,7 +2265,6 @@ end subroutine init_c_matrix_cmplx
 
 !=========================================================================
 subroutine init_c_matrix_x2c(basis, c_matrix_rel, x_matrix_rel, hamiltonian_kin_nuc_rel)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   complex(dp), intent(in)     :: hamiltonian_kin_nuc_rel(:, :)
@@ -2324,7 +2302,6 @@ end subroutine init_c_matrix_x2c
 !=========================================================================
 ! Calculate the H-F total energy from MO integrals
 subroutine setup_hartreefock_totalenergy_mo(occupation, energy)
-  implicit none
   real(dp), intent(in) :: occupation(:, :), energy(:, :)
   !=====
   integer :: nocc, nmo

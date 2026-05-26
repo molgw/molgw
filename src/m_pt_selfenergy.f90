@@ -21,12 +21,13 @@ module m_pt_selfenergy
   use m_linear_response
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix, se, emp2)
-  implicit none
 
   integer, intent(in)         :: selfenergy_approx
   type(basis_set), intent(in) :: basis
@@ -219,7 +220,6 @@ end subroutine pt2_selfenergy
 
 !=========================================================================
 subroutine onering_selfenergy(basis, occupation, energy, c_matrix, se, emp2)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(:, :), energy(:, :)
@@ -271,7 +271,6 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
   use m_eri_ao_mo
   use m_inputparam
   use m_selfenergy_tools
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(:, :), energy(:, :)
@@ -454,7 +453,6 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
   use m_eri_ao_mo
   use m_inputparam
   use m_selfenergy_tools
-  implicit none
 
   integer, intent(in)         :: selfenergy_approx, selfenergy_technique
   type(basis_set), intent(in) :: basis

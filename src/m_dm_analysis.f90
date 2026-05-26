@@ -34,12 +34,13 @@ module m_dm_analysis
   use m_io
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine dm_dump(basis)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   !=====

@@ -107,7 +107,6 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
      &             NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,ERImolJsr_cmplx,ERImolLsr_cmplx,all_ERIs,&
      &             Edft_xc,do_xc_dft)
   use m_definitions
-  implicit none
 
   logical,optional,intent(in)     :: all_ERIs,do_xc_dft
   integer,intent(in)              :: nbf,nstate_occ,nstate_kji

@@ -21,6 +21,8 @@ module m_tdhf_selfenergy
   use m_linear_response
 
 
+  implicit none
+
 contains
 
 
@@ -28,7 +30,6 @@ contains
 !
 !
 subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
-  implicit none
 
   type(basis_set)                    :: basis
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
@@ -476,7 +477,6 @@ end subroutine tdhf_selfenergy
 !
 !
 subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
-  implicit none
 
   type(basis_set)                      :: basis
   real(dp), intent(in)                 :: occupation(:, :), energy(:, :)

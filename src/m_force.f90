@@ -20,12 +20,13 @@ module m_force
   use m_hamiltonian_onebody
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine calculate_force(basis, occupation, energy, c_matrix)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: occupation(:, :)

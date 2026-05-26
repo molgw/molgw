@@ -12,6 +12,8 @@ module m_libcint_tools
   use m_basis_set
   use m_atoms
 
+  implicit none
+
   type(C_PTR), protected :: LIBCINT_opt = C_NULL_PTR
 
   logical, protected :: pypzpx_order = .TRUE.
@@ -275,7 +277,6 @@ contains
 ! Check with a known integral whether LIBCINT considers LIBCINT_PTR_RANGE_OMEGA
 !
 subroutine check_capability_libcint(lmax)
-  implicit none
 
   integer, intent(inout) :: lmax
   !=====
@@ -432,7 +433,6 @@ end subroutine check_capability_libcint
 
 !=========================================================================
 subroutine set_rinv_origin_libcint(x0, env_local)
-  implicit none
   real(dp), intent(in)          :: x0(3)
   real(C_DOUBLE), intent(inout) :: env_local(:)
   !=====
@@ -445,7 +445,6 @@ end subroutine set_rinv_origin_libcint
 
 !=========================================================================
 subroutine set_erf_screening_length_libcint(basis, rcut)
-  implicit none
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: rcut
   !=====
@@ -467,7 +466,6 @@ end subroutine set_erf_screening_length_libcint
 
 !=========================================================================
 subroutine init_libcint(basis1, basis2)
-  implicit none
   type(basis_set), intent(inout)       :: basis1
   type(basis_set), optional, intent(in) :: basis2
   !=====
@@ -554,7 +552,6 @@ end subroutine init_libcint
 
 !=========================================================================
 subroutine destroy_libcint(basis)
-  implicit none
   type(basis_set), intent(inout) :: basis
   !=====
   !=====
@@ -574,7 +571,6 @@ subroutine libcint_3center(amA, contrdepthA, A, alphaA, cA, &
                            amC, contrdepthC, C, alphaC, cC, &
                            amD, contrdepthD, D, alphaD, cD, &
                            rcut, eriACD)
-  implicit none
 
   integer(C_INT), intent(in)    :: amA, contrdepthA
   real(C_DOUBLE), intent(in)    :: A(:)
@@ -690,7 +686,6 @@ subroutine libcint_overlap(gaussian_type, &
                            amA, contrdepthA, A, alphaA, cA, &
                            amC, contrdepthC, C, alphaC, cC, &
                            ovlpAC)
-  implicit none
 
   character(len=4), intent(in)  :: gaussian_type
   integer(C_INT), intent(in)    :: amA, contrdepthA
@@ -780,7 +775,6 @@ end subroutine libcint_overlap
 subroutine libcint_kinetic(amA, contrdepthA, A, alphaA, cA, &
                            amC, contrdepthC, C, alphaC, cC, &
                            kinAC)
-  implicit none
 
   integer(C_INT), intent(in)    :: amA, contrdepthA
   real(C_DOUBLE), intent(in)    :: A(:)
@@ -863,7 +857,6 @@ end subroutine libcint_kinetic
 subroutine libcint_elecpot(amA, contrdepthA, A, alphaA, cA, &
                            amC, contrdepthC, C, alphaC, cC, &
                            D, elecpotAC)
-  implicit none
 
   integer(C_INT), intent(in)    :: amA, contrdepthA
   real(C_DOUBLE), intent(in)    :: A(:)
@@ -948,7 +941,6 @@ end subroutine libcint_elecpot
 subroutine libcint_elecpot_grad(amA, contrdepthA, A, alphaA, cA, &
                                 amC, contrdepthC, C, alphaC, cC, &
                                 D, elecpotAC_grad)
-  implicit none
 
   integer(C_INT), intent(in)    :: amA, contrdepthA
   real(C_DOUBLE), intent(in)    :: A(:)
@@ -1034,7 +1026,6 @@ subroutine libcint_overlap_3center(amA, contrdepthA, A, alphaA, cA, &
                            amC, contrdepthC, C, alphaC, cC, &
                            amD, contrdepthD, D, alphaD, cD, &
                            ovlpACD)
-  implicit none
 
   integer(C_INT), intent(in)    :: amA, contrdepthA
   real(C_DOUBLE), intent(in)    :: A(:)
@@ -1149,7 +1140,6 @@ end subroutine libcint_overlap_3center
 subroutine libcint_gth_projector(amA, contrdepthA, A, alphaA, cA, &
                                  amC, contrdepthC, C, alphaC, cC, &
                                  iproj, ovlpAC)
-  implicit none
 
   integer(C_INT), intent(in)    :: amA, contrdepthA
   real(C_DOUBLE), intent(in)    :: A(:)
@@ -1234,7 +1224,6 @@ end subroutine libcint_gth_projector
 
 !=========================================================================
 subroutine transform_libcint_to_molgw_2d(gaussian_type, am1, am2, array_in, matrix_out)
-  implicit none
   character(len=4), intent(in)      :: gaussian_type
   integer, intent(in)               :: am1, am2
   real(C_DOUBLE), intent(in)        :: array_in(:)
@@ -1295,7 +1284,6 @@ end subroutine transform_libcint_to_molgw_2d
 
 !=========================================================================
 subroutine transform_libcint_to_molgw_3d(gaussian_type_left, am1, gaussian_type_right, am2, am3, array_in, matrix_out)
-  implicit none
   character(len=4), intent(in)      :: gaussian_type_left, gaussian_type_right
   integer, intent(in)               :: am1, am2, am3
   real(C_DOUBLE), intent(in)        :: array_in(:)

@@ -18,13 +18,14 @@ module m_multipole
 
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 ! Many optional arguments however not all combinations are possible (be careful!)
 subroutine static_dipole(basis, occupation, c_matrix_in, p_matrix_in, dipole_ao_in, dipole_out)
-  implicit none
 
   type(basis_set), intent(in)       :: basis
   real(dp), optional, intent(in)     :: occupation(:, :)
@@ -93,7 +94,6 @@ end subroutine static_dipole
 
 !=========================================================================
 subroutine static_quadrupole(basis, occupation, c_matrix)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(:, :), c_matrix(:, :, :)
@@ -160,7 +160,6 @@ end subroutine static_quadrupole
 
 !=========================================================================
 subroutine spatial_extension(basis, c_matrix)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: c_matrix(:, :, :)

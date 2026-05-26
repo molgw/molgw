@@ -20,6 +20,8 @@ module m_eri_ao_mo
   use m_io, only: yaml_search_keyword
 
 
+  implicit none
+
   logical, protected :: eri_3center_mo_stay_in_memory = .FALSE.
 
 
@@ -39,7 +41,6 @@ contains
 
 !=========================================================================
 function evaluate_eri_mo(istate, jstate, ijspin, kstate, lstate, klspin)
-  implicit none
   integer, intent(in) :: ijspin, klspin
   integer, intent(in) :: istate, jstate, kstate, lstate
   real(dp)           :: evaluate_eri_mo
@@ -58,7 +59,6 @@ end function evaluate_eri_mo
 
 !=========================================================================
 function evaluate_eri_mo_ri(istate, jstate, ijspin, kstate, lstate, klspin)
-  implicit none
   integer, intent(in) :: ijspin, klspin
   integer, intent(in) :: istate, jstate, kstate, lstate
   real(dp)           :: evaluate_eri_mo_ri
@@ -73,7 +73,6 @@ end function evaluate_eri_mo_ri
 
 !=========================================================================
 function evaluate_eri_mo_ri_lr(istate, jstate, ijspin, kstate, lstate, klspin)
-  implicit none
   integer, intent(in) :: ijspin, klspin
   integer, intent(in) :: istate, jstate, kstate, lstate
   real(dp)           :: evaluate_eri_mo_ri_lr
@@ -88,7 +87,6 @@ end function evaluate_eri_mo_ri_lr
 
 !=========================================================================
 function evaluate_eri_mo_ri_cmplx(istate, jstate, ijspin, kstate, lstate, klspin)
-  implicit none
   integer, intent(in) :: ijspin, klspin
   integer, intent(in) :: istate, jstate, kstate, lstate
   complex(dp)        :: evaluate_eri_mo_ri_cmplx
@@ -104,7 +102,6 @@ end function evaluate_eri_mo_ri_cmplx
 
 !=========================================================================
 function evaluate_eri_mo_ri_lr_cmplx(istate, jstate, ijspin, kstate, lstate, klspin)
-  implicit none
   integer, intent(in) :: ijspin, klspin
   integer, intent(in) :: istate, jstate, kstate, lstate
   complex(dp)        :: evaluate_eri_mo_ri_lr_cmplx
@@ -120,7 +117,6 @@ end function evaluate_eri_mo_ri_lr_cmplx
 
 !=========================================================================
 function evaluate_eri_mo_ri_x2c(istate, jstate, kstate, lstate)
-  implicit none
   integer, intent(in) :: istate, jstate, kstate, lstate
   complex(dp)        :: evaluate_eri_mo_ri_x2c
   !=====
@@ -139,7 +135,6 @@ end function evaluate_eri_mo_ri_x2c
 
 !=========================================================================
 pure function evaluate_eri_mo_ri_paral(istate, jstate, ijspin, kstate, lstate, klspin)
-  implicit none
   integer, intent(in) :: ijspin, klspin
   integer, intent(in) :: istate, jstate, kstate, lstate
   real(dp)           :: evaluate_eri_mo_ri_paral
@@ -152,7 +147,6 @@ end function evaluate_eri_mo_ri_paral
 
 !=================================================================
 subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_mo_i)
-  implicit none
 
   integer, intent(in)     :: istate, ijspin
   real(dp), intent(in)    :: c_matrix(:, :, :)
@@ -284,7 +278,6 @@ end subroutine calculate_eri_4center_mo
 
 !=================================================================
 subroutine calculate_eri_4center_mo_uks(c_matrix, nstate_min, nstate_max)
-  implicit none
 
   real(dp), intent(in)    :: c_matrix(:, :, :)
   integer, intent(in)     :: nstate_min, nstate_max
@@ -411,7 +404,6 @@ end subroutine calculate_eri_4center_mo_uks
 
 !=================================================================
 subroutine destroy_eri_4center_mo_uks()
-  implicit none
   !=====
   !=====
 
@@ -423,7 +415,6 @@ end subroutine destroy_eri_4center_mo_uks
 !=================================================================
 subroutine calculate_eri_3center_mo(c_matrix, mstate_min, mstate_max, nstate_min, nstate_max, timing, verbose, long_range, &
                                     only_one_spin)
-  implicit none
   real(dp), intent(in)         :: c_matrix(:, :, :)
   integer, optional, intent(in) :: mstate_min, mstate_max, nstate_min, nstate_max
   type(timer), optional, intent(inout) :: timing
@@ -594,7 +585,6 @@ end subroutine calculate_eri_3center_mo
 !=================================================================
 ! Calculate LR Coulomb integrals and place them in eri_3center_mo
 subroutine calculate_eri_3center_mo_lr(c_matrix, mstate_min, mstate_max, nstate_min, nstate_max, timing, verbose)
-  implicit none
   real(dp), intent(in)         :: c_matrix(:, :, :)
   integer, optional, intent(in) :: mstate_min, mstate_max, nstate_min, nstate_max
   type(timer), optional, intent(inout) :: timing
@@ -721,7 +711,6 @@ end subroutine calculate_eri_3center_mo_lr
 !=================================================================
 subroutine calculate_eri_3center_mo_cmplx(c_matrix_cmplx, mstate_min, mstate_max, nstate_min, nstate_max, timing, verbose, &
                                           long_range, only_one_spin)
-  implicit none
   complex(dp), intent(in)         :: c_matrix_cmplx(:, :, :)
   integer, optional, intent(in) :: mstate_min, mstate_max, nstate_min, nstate_max
   type(timer), optional, intent(inout) :: timing
@@ -891,7 +880,6 @@ end subroutine calculate_eri_3center_mo_cmplx
 
 !=================================================================
 subroutine calculate_eri_3center_mo_no(c_matrix_mo_no, eri_3center_no, timing, verbose)
-  implicit none
   real(dp), intent(in)          :: c_matrix_mo_no(:, :, :)
   real(dp), allocatable         :: eri_3center_no(:, :, :, :)
   type(timer), optional, intent(inout) :: timing
@@ -991,7 +979,6 @@ end subroutine calculate_eri_3center_mo_no
 
 !=================================================================
 subroutine calculate_eri_x2c(c_matrix_rel, nstate, nstate_min, nstate_max, mstate_min, mstate_max)
-  implicit none
   complex(dp), intent(in)      :: c_matrix_rel(:, :)
   integer, intent(in)          :: nstate
   integer, optional, intent(in) :: nstate_min, nstate_max, mstate_min, mstate_max
@@ -1029,7 +1016,6 @@ end subroutine calculate_eri_x2c
 
 !=================================================================
 subroutine destroy_eri_3center_mo(verbose, long_range, force)
-  implicit none
 
   logical, optional, intent(in) :: verbose, long_range, force
   !=====
@@ -1062,7 +1048,6 @@ end subroutine destroy_eri_3center_mo
 
 !=================================================================
 subroutine destroy_eri_3center_mo_cmplx(verbose, long_range)
-  implicit none
 
   logical, optional, intent(in) :: verbose, long_range
   !=====
@@ -1089,7 +1074,6 @@ end subroutine destroy_eri_3center_mo_cmplx
 
 !=================================================================
 subroutine destroy_eri_3center_mo_x2c()
-  implicit none
 
   !=====
   logical :: x2c_verbose=.FALSE.
@@ -1102,7 +1086,6 @@ end subroutine destroy_eri_3center_mo_x2c
 
 !=================================================================
 subroutine form_erimol(nbf, nstate_tot, nstate_jkl, c_matrix, c_matrix_cmplx, ERImol, ERImol_cmplx)
-  implicit none
 
   integer, intent(in)            :: nbf, nstate_tot, nstate_jkl
   real(dp), optional, intent(in)  :: c_matrix(nbf, nstate_tot, nspin)
@@ -1207,7 +1190,6 @@ end subroutine form_erimol
 
 !=========================================================================
 subroutine read_cc4s_coulombvertex(rootname)
-  implicit none
 
   character(len=*), intent(in), optional :: rootname
   !=====
@@ -1351,7 +1333,6 @@ end subroutine read_cc4s_coulombvertex
 
 !=========================================================================
 subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootname)
-  implicit none
 
   integer, intent(in) :: nauxil_in
   real(dp), intent(in) :: eri_3center_updated(:, :, :, :)

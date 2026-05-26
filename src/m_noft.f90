@@ -20,6 +20,8 @@ module m_noft
   use m_noft_driver
 
 
+  implicit none
+
   logical, parameter, private     :: noft_verbose=.FALSE., noft_1_spin=.TRUE.
   logical                         :: noft_edft=.FALSE., noft_fcidump_in=.FALSE.
   integer, private                :: nstate_noft, nstate_frozen, irs_noft
@@ -33,7 +35,6 @@ contains
 
 !=========================================================================
 subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matrix_rel, hkin, hnuc, hkin_nuc_rel)
-  implicit none
 
   type(basis_set), intent(in), target :: basis
   real(dp), intent(inout)    :: occupation(:, :)
@@ -477,7 +478,6 @@ end subroutine noft_energy
 subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERImol, ERImolJsr, ERImolLsr, &
      &             NO_COEF_cmplx, hCORE_cmplx, ERImol_cmplx, ERImolJsr_cmplx, ERImolLsr_cmplx, all_ERIs, &
      &             Edft_xc, do_xc_dft)
-  implicit none
 
   logical, optional, intent(in)     :: all_ERIs, do_xc_dft
   integer, intent(in)              :: nbf, nstate_occ, nstate_kji
@@ -768,7 +768,6 @@ end subroutine mo_ints
 
 !==================================================================
 subroutine mo_ints_x2c(nstate_occ, nstate_kji, NO_COEF_x2c, hCORE_x2c, ERImol_x2c)
-  implicit none
 
   integer, intent(in)        :: nstate_occ, nstate_kji
   complex(dp), intent(in)    :: NO_COEF_x2c(nstate_noft, nstate_noft)

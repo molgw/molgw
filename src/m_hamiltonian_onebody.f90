@@ -31,6 +31,8 @@ module m_hamiltonian_onebody
 
 
 
+  implicit none
+
 contains
 
 
@@ -38,7 +40,6 @@ contains
 ! Calculate ( \alpha | \beta )
 !
 subroutine setup_overlap_finite(basis, s_matrix)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: s_matrix(:, :)
   !=====
@@ -155,7 +156,6 @@ end subroutine setup_overlap_finite
 ! Calculate ( \alpha | \beta ) when \alpha and \beta belong to 2 different basis sets
 !
 subroutine setup_overlap_mixedbasis(basis1, basis2, s_matrix)
-  implicit none
   type(basis_set), intent(in) :: basis1, basis2
   real(dp), intent(out)       :: s_matrix(basis1%nbf, basis2%nbf)
   !=====
@@ -257,7 +257,6 @@ end subroutine setup_overlap_mixedbasis
 
 !=========================================================================
 subroutine recalc_overlap(basis_t, basis_p, s_matrix)
-  implicit none
   type(basis_set), intent(in) :: basis_t, basis_p
   real(dp), intent(inout)       :: s_matrix(:, :)
   !=====
@@ -299,7 +298,6 @@ end subroutine recalc_overlap
 !                 =   ( \alpha | \nabla_r \beta )            <-> LIBCINT integral
 !
 subroutine setup_overlap_grad(basis, s_matrix_grad)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: s_matrix_grad(basis%nbf, basis%nbf, 3)
   !=====
@@ -421,7 +419,6 @@ end subroutine setup_overlap_grad
 !                 = ( \nabla_r \alpha | \nabla_r \beta )            <-> LIBCINT integral
 !
 subroutine setup_overlap_hessian(basis, s_matrix_hess)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: s_matrix_hess(basis%nbf, basis%nbf, 3, 3)
   !=====
@@ -508,7 +505,6 @@ end subroutine setup_overlap_hessian
 
 !=========================================================================
 subroutine recalc_overlap_grad(basis_t, basis_p, s_matrix_grad)
-  implicit none
   type(basis_set), intent(in)   :: basis_t, basis_p
   real(dp), intent(out)         :: s_matrix_grad(:, :, :)
   !=====
@@ -634,7 +630,6 @@ end subroutine recalc_overlap_grad
 ! Calculate  ( \alpha | p**2 / 2 | \beta )
 !
 subroutine setup_kinetic_finite(basis, hamiltonian_kinetic, timing)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: hamiltonian_kinetic(:, :)
   integer, intent(in), optional  :: timing
@@ -742,7 +737,6 @@ end subroutine setup_kinetic_finite
 
 !=========================================================================
 subroutine recalc_kinetic(basis_t, basis_p, hamiltonian_kinetic)
-  implicit none
 
   type(basis_set), intent(in) :: basis_t, basis_p
   real(dp), intent(inout)     :: hamiltonian_kinetic(:, :)
@@ -853,7 +847,6 @@ end subroutine recalc_kinetic
 !=========================================================================
 ! calculate  ( \nabla_{R_\alpha} \alpha | p**2 /2 | \beta) 
 subroutine setup_kinetic_grad(basis, hamiltonian_kinetic_grad)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: hamiltonian_kinetic_grad(basis%nbf, basis%nbf, 3)
   !=====
@@ -975,7 +968,6 @@ end subroutine setup_kinetic_grad
 ! Calculate \sum_C ( \alpha | -Z_C / |r - R_C| | \beta )
 !
 subroutine setup_nucleus(basis, hamiltonian_nucleus, atom_list)
-  implicit none
   type(basis_set), intent(in)  :: basis
   real(dp), intent(out)        :: hamiltonian_nucleus(basis%nbf, basis%nbf)
   integer, intent(in), optional :: atom_list(:)
@@ -1133,7 +1125,6 @@ end subroutine setup_nucleus
 ! Calculate  1/2 ( \alpha | w**2 r**2 | \beta ) and add it to hamiltonian_nucleus
 !
 subroutine setup_para_conf(basis, hamiltonian_nucleus)
-  implicit none
   type(basis_set), intent(in)  :: basis
   real(dp), intent(inout)      :: hamiltonian_nucleus(basis%nbf, basis%nbf)
   !=====
@@ -1178,7 +1169,6 @@ end subroutine setup_para_conf
 !=========================================================================
 subroutine recalc_nucleus(basis_t, basis_p, hamiltonian_nucleus)
   use m_atoms
-  implicit none
   type(basis_set), intent(in)  :: basis_t, basis_p
   real(dp), intent(inout)        :: hamiltonian_nucleus(:, :)
   !=====
@@ -1367,7 +1357,6 @@ end subroutine recalc_nucleus
 !       and              ( \nabla_{R_\alpha} \alpha | \sum_C -Z_C/|r-R_C| | \beta)  -> index= ncenter_nuclei+1
 !
 subroutine setup_nucleus_grad(basis, hamiltonian_nucleus_grad, atom_list, verbose)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: hamiltonian_nucleus_grad(:, :, :, :)
   integer, intent(in), optional :: atom_list(:)
@@ -1531,7 +1520,6 @@ end subroutine setup_nucleus_grad
 ! Calculate  ( \alpha | r x p | \beta )
 !
 subroutine setup_rxp_ao(basis, rxp_ao)
-  implicit none
   type(basis_set), intent(in)         :: basis
   real(dp), allocatable, intent(out)   :: rxp_ao(:, :, :)
   !=====
@@ -1599,7 +1587,6 @@ end subroutine setup_rxp_ao
 ! Calculate  GIAO ( \alpha | r x p | \beta )
 ! gauge-independent atomic orbital
 subroutine setup_giao_rxp_ao(basis, giao_rxp_ao)
-  implicit none
   type(basis_set), intent(in)         :: basis
   real(dp), allocatable, intent(out)   :: giao_rxp_ao(:, :, :)
   !=====
@@ -1666,7 +1653,6 @@ end subroutine setup_giao_rxp_ao
 !=========================================================================
 ! Calculate the Hamiltonian and the energy contributions induced by an external electric field
 subroutine setup_electric_field(basis, hext, eext)
-  implicit none
   type(basis_set), intent(in)         :: basis
   real(dp), intent(out)               :: eext
   real(dp), allocatable, intent(inout) :: hext(:, :)
@@ -1712,7 +1698,6 @@ end subroutine setup_electric_field
 ! Calculate  ( \alpha | r | \beta )
 !
 subroutine setup_dipole_ao(basis, dipole_ao)
-  implicit none
   type(basis_set), intent(in)         :: basis
   real(dp), allocatable, intent(out)   :: dipole_ao(:, :, :)
   !=====
@@ -1802,7 +1787,6 @@ end subroutine setup_dipole_ao
 ! Calculate  ( \alpha | \nabla_r | \beta )
 !
 subroutine setup_nabla_ao(basis, nabla_ao)
-  implicit none
   type(basis_set), intent(in)         :: basis
   real(dp), allocatable, intent(out)   :: nabla_ao(:, :, :)
   !=====
@@ -1877,7 +1861,6 @@ end subroutine setup_nabla_ao
 
 !=========================================================================
 subroutine calculate_gos_ao_mb(basis, gos_ao)
-  implicit none
   type(basis_set), intent(in)          :: basis
   complex(dp), allocatable, intent(out) :: gos_ao(:, :)
   !=====
@@ -1936,7 +1919,6 @@ end subroutine calculate_gos_ao_mb
 ! Calculate  ( \alpha | x*y | \beta ) tensor
 !
 subroutine setup_quadrupole_ao(basis, quadrupole_ao)
-  implicit none
   type(basis_set), intent(in)         :: basis
   real(dp), allocatable, intent(out)   :: quadrupole_ao(:, :, :, :)
   !=====
@@ -2030,7 +2012,6 @@ end subroutine setup_quadrupole_ao
 ! Calculate  ( \alpha | e^{i q.r} | \beta )
 !
 subroutine setup_gos_ao(basis, qvec, gos_ao)
-  implicit none
   type(basis_set), intent(in)          :: basis
   real(dp), intent(in)                 :: qvec(3)
   complex(dp), allocatable, intent(out) :: gos_ao(:, :)
@@ -2089,7 +2070,6 @@ end subroutine setup_gos_ao
 ! Calculate ( \alpha | V_ecp - Z/r | \beta )
 !
 subroutine setup_nucleus_ecp(basis, hamiltonian_nucleus, atom_list)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(inout)     :: hamiltonian_nucleus(:, :)
   integer, intent(in), optional :: atom_list(:)
@@ -2129,7 +2109,6 @@ end subroutine setup_nucleus_ecp
 ! Calculate ( \alpha | V_ecp - Z/r | \beta ) with a real space quadrature
 !
 subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus, atom_list)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(inout)     :: hamiltonian_nucleus(:, :)
   integer, intent(in), optional :: atom_list(:)
@@ -2428,7 +2407,6 @@ end subroutine setup_nucleus_ecp_quadrature
 ! Calculate ( \alpha | V_ecp - Z/r | \beta ) with an analytic formula for GTH pseudos
 !
 subroutine setup_nucleus_gth_analytic(basis, hamiltonian_nucleus, atom_list)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(inout)     :: hamiltonian_nucleus(:, :)
   integer, intent(in), optional :: atom_list(:)
@@ -2479,7 +2457,6 @@ end subroutine setup_nucleus_gth_analytic
 ! NB: we need to remove the bare Coulomb potential, since it is added in the regular nucleus part
 !
 subroutine setup_nucleus_gth_local(basis, h_ecp, atom_list)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: h_ecp(:, :)
@@ -2676,7 +2653,6 @@ end subroutine setup_nucleus_gth_local
 ! Non-local part of the GTH pseudopotentials
 !
 subroutine setup_nucleus_gth_nonlocal(basis, h_ecp, atom_list)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: h_ecp(:, :)
@@ -2816,7 +2792,6 @@ end subroutine setup_nucleus_gth_nonlocal
 ! Calculate ( \alpha | V_ecp - Z/r | \beta )
 !
 subroutine recalc_nucleus_ecp(basis, basis_t, basis_p, hamiltonian_nucleus, atom_list)
-  implicit none
   type(basis_set), intent(in) :: basis, basis_t, basis_p
   real(dp), intent(inout)     :: hamiltonian_nucleus(basis%nbf, basis%nbf)
   integer, intent(in), optional :: atom_list(:)
@@ -2847,7 +2822,6 @@ end subroutine recalc_nucleus_ecp
 ! Calculate ( \alpha | V_ecp - Z/r | \beta ) with a real space quadrature
 !
 subroutine recalc_nucleus_ecp_quadrature(basis, basis_t, basis_p, hamiltonian_nucleus)
-  implicit none
   type(basis_set), intent(in) :: basis, basis_t, basis_p
   real(dp), intent(inout)     :: hamiltonian_nucleus(basis%nbf, basis%nbf)
   !=====
@@ -3177,7 +3151,6 @@ end subroutine recalc_nucleus_ecp_quadrature
 ! Calculate ( \alpha | V_ecp - Z/r | \beta ) with an analytic formula for GTH pseudos
 !
 subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucleus)
-  implicit none
   type(basis_set), intent(in) :: basis, basis_t, basis_p
   real(dp), intent(inout)     :: hamiltonian_nucleus(basis%nbf, basis%nbf)
   !=====
@@ -3732,7 +3705,6 @@ end subroutine recalc_nucleus_ecp_analytic
 ! Warning: Hard-coded for Germanium
 !
 subroutine setup_pbe_plus_alpha(basis, h_pbea)
-  implicit none
   type(basis_set), intent(in)  :: basis
   real(dp), intent(out)        :: h_pbea(:, :)
   !=====

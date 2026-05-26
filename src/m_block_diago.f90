@@ -21,12 +21,13 @@ module m_block_diago
   use m_elpa
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, bigomega, xpy_matrix, xmy_matrix, desc_x)
-  implicit none
 
   integer, intent(in)     :: desc_apb(NDEL), desc_x(NDEL)
   real(dp), intent(inout) :: amb_matrix(:, :), apb_matrix(:, :)
@@ -139,7 +140,6 @@ end subroutine diago_4blocks_chol
 
 !=========================================================================
 subroutine diago_4blocks_rpa_sca(amb_diag_rpa, apb_matrix, desc_apb, bigomega, xpy_matrix, desc_x)
-  implicit none
 
   integer, intent(in)     :: desc_apb(NDEL), desc_x(NDEL)
   real(dp), intent(in)    :: amb_diag_rpa(:)
@@ -208,7 +208,6 @@ end subroutine diago_4blocks_rpa_sca
 subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
                                   amb_matrix, apb_matrix, desc_apb, &
                                   bigomega, xpy_matrix, xmy_matrix, desc_x)
-  implicit none
 
   real(dp), intent(in)    :: toldav
   integer, intent(in)     :: nstep

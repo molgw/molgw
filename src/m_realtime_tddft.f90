@@ -28,6 +28,8 @@ module m_realtime_tddft
   use m_io
   use m_hdf5_tools
 
+  implicit none
+
   interface propagate_orth
     module procedure propagate_orth_ham_1
     module procedure propagate_orth_ham_2
@@ -74,7 +76,6 @@ contains
 
 !=========================================================================
 subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, restart_tddft_is_correct)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   type(basis_set), intent(inout) :: auxil_basis
@@ -698,7 +699,6 @@ end subroutine realtime_tddft_propagation
 
 !=========================================================================
 subroutine echo_tddft_variables()
-  implicit none
 
   write(stdout, '(/,1x,a)') 'The most important variables of this section:'
   write(stdout, '(2x,a32,2x,es16.8)') 'Simulation time:', time_sim
@@ -717,7 +717,6 @@ end subroutine echo_tddft_variables
 
 !=========================================================================
 subroutine output_timing_one_iter()
-  implicit none
   real(dp)           :: time_one_iter
   !=====
   !=====
@@ -748,7 +747,6 @@ subroutine stationary_c_matrix(basis,               &
                                h_cmplx,             &
                                h_small_cmplx,       &
                                en_tddft)
-  implicit none
 
   type(basis_set), intent(inout)   :: basis
   real(dp), intent(in)             :: time_min
@@ -878,7 +876,6 @@ end subroutine stationary_c_matrix
 !=========================================================================
 subroutine update_basis_eri(basis, auxil_basis)
 
-  implicit none
   type(basis_set), intent(inout)      :: basis
   type(basis_set), intent(inout)      :: auxil_basis
   !=====
@@ -907,7 +904,6 @@ end subroutine update_basis_eri
 
 !=========================================================================
 subroutine setup_d_matrix(basis, d_matrix, recalc)
-  implicit none
   type(basis_set), intent(in)          :: basis
   real(dp), intent(inout)              :: d_matrix(:, :)
   logical, intent(in)                  :: recalc
@@ -958,7 +954,6 @@ end subroutine setup_d_matrix
 !=========================================================================
 ! Calculate force on the projectile in fixed basis
 subroutine setup_fixed_basis_force(basis, p_matrix_cmplx)
-  implicit none
   type(basis_set), intent(in)          :: basis
   complex(dp), intent(in)              :: p_matrix_cmplx(:, :, :)
   !=====
@@ -984,7 +979,6 @@ end subroutine setup_fixed_basis_force
 
 !=========================================================================
 subroutine setup_mb_force(basis, s_matrix, c_matrix_cmplx, h_cmplx, occupation, p_matrix_cmplx, recalc)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: s_matrix(:, :)
   complex(dp), intent(in)     :: c_matrix_cmplx(:, :, :)
@@ -1130,7 +1124,6 @@ subroutine mb_related_updates(basis,                &
                               d_matrix,             &
                               need_grid)
 
-  implicit none
   type(basis_set), intent(inout)      :: basis
   type(basis_set), intent(inout)      :: auxil_basis
   real(dp), intent(inout)             :: s_matrix(:, :)
@@ -1201,7 +1194,6 @@ subroutine predictor_corrector(basis,                  &
                                hamiltonian_kinetic,    &
                                hamiltonian_nucleus,    &
                                dipole_ao)
-  implicit none
 
   type(basis_set), intent(inout)      :: basis
   type(basis_set), intent(inout)      :: auxil_basis
@@ -1686,7 +1678,6 @@ end subroutine predictor_corrector
 
 !=========================================================================
 subroutine initialize_extrap_coefs(c_matrix_orth_cmplx, h_small_cmplx, c_matrix_cmplx, h_cmplx)
-  implicit none
 
   complex(dp), intent(in)    :: c_matrix_orth_cmplx(:, :, :)
   complex(dp), intent(in)    :: h_small_cmplx(:, :, :)
@@ -1765,7 +1756,6 @@ end subroutine initialize_extrap_coefs
 
 !=========================================================================
 subroutine print_in_tddft_files(time_cur, itau)
-  implicit none
 
   real(dp), intent(in)   :: time_cur
   integer, intent(in)    :: itau
@@ -1808,7 +1798,6 @@ end subroutine print_in_tddft_files
 
 !=========================================================================
 subroutine open_tddft_files()
-  implicit none
   !=====
   !=====
 
@@ -1849,7 +1838,6 @@ end subroutine open_tddft_files
 
 !=========================================================================
 subroutine close_tddft_files()
-  implicit none
   !=====
   !=====
 
@@ -1869,7 +1857,6 @@ end subroutine close_tddft_files
 
 !=========================================================================
 subroutine initialize_q(nstate, nocc, nspin, c_matrix_orth_start_complete_cmplx, h_small_cmplx, istate_cut, file_q_matrix)
-  implicit none
 
   integer, intent(in)                    :: nstate, nocc, nspin
   integer, allocatable, intent(out)       :: istate_cut(:, :)
@@ -1946,7 +1933,6 @@ end subroutine initialize_q
 !=========================================================================
 subroutine calculate_q_matrix(occupation, c_matrix_orth_start_complete_cmplx, c_matrix_orth_cmplx, &
                               istate_cut, file_q_matrix, time_cur)
-  implicit none
   real(dp), intent(in)      :: occupation(:, :)
   complex(dp), intent(in)   :: c_matrix_orth_start_complete_cmplx(:, :, :)
   complex(dp), intent(in)   :: c_matrix_orth_cmplx(:, :, :)
@@ -2002,7 +1988,6 @@ end subroutine calculate_q_matrix
 
 !=========================================================================
 subroutine write_restart_tddft(nstate, time_cur, occupation, c_matrix_tddft)
-  implicit none
   integer, intent(in)         :: nstate
   real(dp), intent(in)        :: time_cur
   real(dp), intent(in)        :: occupation(:, :)
@@ -2049,7 +2034,6 @@ end subroutine write_restart_tddft
 
 !=========================================================================
 subroutine check_restart_tddft(nstate, occupation, restart_is_correct)
-  implicit none
   logical, intent(out)        :: restart_is_correct
   integer, intent(in)         :: nstate
   real(dp), intent(in)        :: occupation(nstate, nspin)
@@ -2153,7 +2137,6 @@ end subroutine check_restart_tddft
 
 !=========================================================================
 subroutine read_restart_tddft(nstate, time_min, occupation, c_matrix_tddft)
-  implicit none
   complex(dp), intent(inout)  :: c_matrix_tddft(:, :, :)
   real(dp), intent(inout)     :: time_min
   real(dp), intent(inout)     :: occupation(:, :)
@@ -2229,7 +2212,6 @@ end subroutine read_restart_tddft
 
 !=========================================================================
 function get_nocc_from_restart() result(nocc_read)
-  implicit none
   !=====
   integer                    :: nocc_read
   !=====
@@ -2270,7 +2252,6 @@ end function get_nocc_from_restart
 
 !=========================================================================
 subroutine get_extrap_coefs_lagr(m_nodes, x_pred, extrap_coefs, n_hist_cur)
-  implicit none
   integer, intent(in)          :: n_hist_cur
   real(dp), intent(in)          :: m_nodes(n_hist_cur)
   real(dp), intent(in)          :: x_pred
@@ -2292,7 +2273,6 @@ end subroutine get_extrap_coefs_lagr
 
 !=========================================================================
 subroutine get_extrap_coefs_aspc(extrap_coefs, n_hist_cur)
-  implicit none
   integer, intent(in)          :: n_hist_cur!
   real(dp), intent(inout)       :: extrap_coefs(n_hist_cur)
   !=====
@@ -2343,7 +2323,6 @@ end subroutine get_extrap_coefs_aspc
 
 !=========================================================================
 subroutine propagate_nonortho(time_step_cur, s_matrix, d_matrix, c_matrix_cmplx, h_cmplx, tddft_propagator)
-  implicit none
   real(dp), intent(in)         :: time_step_cur
   complex(dp), intent(inout)   :: c_matrix_cmplx(:, :, :)
   complex(dp), intent(in)      :: h_cmplx(:, :, :)
@@ -2444,7 +2423,6 @@ end subroutine propagate_nonortho
 !=========================================================================
 subroutine propagate_orth_ham_1(nstate, basis, time_step_cur, c_matrix_orth_cmplx, c_matrix_cmplx, &
                                 h_small_cmplx, x_matrix, tddft_propagator)
-  implicit none
 
   integer, intent(in)          :: nstate
   type(basis_set), intent(in)  :: basis
@@ -2614,7 +2592,6 @@ end subroutine propagate_orth_ham_1
 !=========================================================================
 subroutine propagate_orth_ham_2(nstate, basis, time_step_cur, c_matrix_orth_cmplx, c_matrix_cmplx, &
                                 h_small_hist2_cmplx, x_matrix, tddft_propagator)
-  implicit none
 
   integer, intent(in)          :: nstate
   type(basis_set), intent(in)  :: basis
@@ -2680,7 +2657,6 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
                                    hamiltonian_cmplx,       &
                                    en, p_matrix_cmplx_out)
 
-  implicit none
 
   type(basis_set), intent(inout)   :: basis
   integer, intent(in)              :: nstate
@@ -2833,7 +2809,6 @@ end subroutine setup_hamiltonian_cmplx
 
 !=========================================================================
 subroutine diagonalize_hamiltonian_ortho(h_small_cmplx, a_matrix_orth_cmplx, energy_tddft)
-  implicit none
 
   complex(dp), intent(in)  :: h_small_cmplx(:, :)
   complex(dp), intent(out) :: a_matrix_orth_cmplx(:, :)
@@ -2876,7 +2851,6 @@ end subroutine diagonalize_hamiltonian_ortho
 
 !=========================================================================
 subroutine transform_hamiltonian_ortho(x_matrix, h_cmplx, h_small_cmplx)
-  implicit none
 
   real(dp), intent(in)     :: x_matrix(:, :)
   complex(dp), intent(in)  :: h_cmplx(:, :, :)
@@ -2981,7 +2955,6 @@ end subroutine transform_hamiltonian_ortho
 
 !=========================================================================
 subroutine calculate_excit_field(time_cur, excit_field)
-  implicit none
   real(dp), intent(in)      :: time_cur       ! time in au
   real(dp), intent(inout)   :: excit_field(3) ! electric field in 3 dimensions
   !=====

@@ -22,6 +22,8 @@ module m_eri
   use m_inputparam, only: integral_level
 
 
+  implicit none
+
   real(dp), parameter, public :: TOO_LOW_EIGENVAL=1.0e-6_dp
 
   !
@@ -79,7 +81,6 @@ contains
 
 !=========================================================================
 subroutine prepare_eri(basis)
-  implicit none
   !=====
   type(basis_set), intent(inout) :: basis
   !=====
@@ -122,7 +123,6 @@ end subroutine prepare_eri
 
 !=========================================================================
 subroutine deallocate_eri_4center()
-  implicit none
   !=====
 
   if(ALLOCATED(eri_4center)) then
@@ -134,7 +134,6 @@ end subroutine deallocate_eri_4center
 
 !=========================================================================
 subroutine deallocate_eri_4center_lr()
-  implicit none
   !=====
 
   if(ALLOCATED(eri_4center_lr)) then
@@ -146,7 +145,6 @@ end subroutine deallocate_eri_4center_lr
 
 !=========================================================================
 subroutine deallocate_eri()
-  implicit none
 
   !=====
 
@@ -169,7 +167,6 @@ end subroutine deallocate_eri
 
 !=========================================================================
 pure function index_eri(ibf, jbf, kbf, lbf)
-  implicit none
 
   integer, intent(in) :: ibf, jbf, kbf, lbf
   integer(kind=int8) :: index_eri
@@ -192,7 +189,6 @@ end function index_eri
 
 !=========================================================================
 pure function index_pair(ibf, jbf)
-  implicit none
 
   integer, intent(in) :: ibf, jbf
   integer            :: index_pair
@@ -211,7 +207,6 @@ end function index_pair
 
 !=========================================================================
 elemental function eri(ibf, jbf, kbf, lbf)
-implicit none
 integer, intent(in) :: ibf, jbf, kbf, lbf
 real(dp)           :: eri
 !=====
@@ -227,7 +222,6 @@ end function eri
 
 !=========================================================================
 function eri_lr(ibf, jbf, kbf, lbf)
-  implicit none
   integer, intent(in) :: ibf, jbf, kbf, lbf
   real(dp)           :: eri_lr
   !=====
@@ -243,7 +237,6 @@ end function eri_lr
 
 !=========================================================================
 subroutine setup_shell_index(basis)
-  implicit none
 
   type(basis_set), intent(in)   :: basis
   !=====
@@ -257,7 +250,6 @@ end subroutine setup_shell_index
 
 !=========================================================================
 subroutine setup_basispair(basis)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   !=====
@@ -330,7 +322,6 @@ end subroutine setup_basispair
 
 !=========================================================================
 pure function negligible_basispair(ibf, jbf)
-  implicit none
 
   integer, intent(in) :: ibf, jbf
   logical :: negligible_basispair
@@ -355,7 +346,6 @@ end function negligible_basispair
 !
 !=========================================================================
 subroutine identify_negligible_shellpair(basis)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   !=====
@@ -499,7 +489,6 @@ end subroutine identify_negligible_shellpair
 
 !=========================================================================
 subroutine setup_shellpair(basis)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   !=====
@@ -568,7 +557,6 @@ end subroutine setup_shellpair
 
 !=================================================================
 subroutine destroy_eri_3center_lowerlevel()
-  implicit none
   !=====
 
   if(ALLOCATED(iproc_ibf_auxil)) then
@@ -589,7 +577,6 @@ end subroutine destroy_eri_3center_lowerlevel
 
 !=================================================================
 subroutine destroy_eri_3center_lr()
-  implicit none
   !=====
 
   if(ALLOCATED(iproc_ibf_auxil_lr)) then
@@ -610,7 +597,6 @@ end subroutine destroy_eri_3center_lr
 
 !=========================================================================
 subroutine dump_out_eri(rcut)
-  implicit none
   real(dp), intent(in) :: rcut
   !=====
   character(len=50)  :: filename
@@ -648,7 +634,6 @@ end subroutine dump_out_eri
 
 !=========================================================================
 logical function read_eri(rcut)
-implicit none
 real(dp), intent(in) :: rcut
 !=====
 character(len=50)  :: filename
@@ -703,7 +688,6 @@ end function read_eri
 !
 !=========================================================================
 function cost_function_eri(am)
-  implicit none
   integer, intent(in)  :: am
   real(dp)            :: cost_function_eri
   !=====
@@ -715,7 +699,6 @@ end function cost_function_eri
 
 !=========================================================================
 subroutine distribute_auxil_basis(nbf_auxil_basis)
-  implicit none
 
   integer, intent(in)  :: nbf_auxil_basis
   !=====
@@ -755,7 +738,6 @@ end subroutine distribute_auxil_basis
 
 !=========================================================================
 subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
-  implicit none
 
   integer, intent(in)  :: nbf_auxil_basis
   !=====
@@ -799,7 +781,6 @@ end subroutine distribute_auxil_basis_lr
 
 !=========================================================================
 subroutine reshuffle_distribution_3center()
-  implicit none
 
   !=====
 #if defined(HAVE_SCALAPACK)

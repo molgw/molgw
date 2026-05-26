@@ -24,12 +24,13 @@ module m_pt_density_matrix
 
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
-  implicit none
 
   real(dp), intent(in)        :: occupation(:, :), energy(:, :)
   real(dp), intent(in)        :: c_matrix(:, :, :)
@@ -186,7 +187,6 @@ end subroutine pt2_density_matrix
 
 !=========================================================================
 subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
-  implicit none
 
   real(dp), intent(in)     :: occupation(:, :), energy(:, :)
   real(dp), intent(in)     :: c_matrix(:, :, :)
@@ -339,7 +339,6 @@ end subroutine onering_density_matrix
 
 !=========================================================================
 subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_matrix, cederbaum)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :), s_matrix(:, :)
@@ -573,7 +572,6 @@ contains
 
 
 subroutine cederbaum_blas()
-  implicit none
 
   !=====
   integer :: kstate, cstate
@@ -752,7 +750,6 @@ end subroutine cederbaum_blas
 
 
 subroutine cederbaum_naive()
-  implicit none
 
   !=====
   integer :: kstate, cstate
@@ -967,7 +964,6 @@ end subroutine gw_density_matrix
 
 !=========================================================================
 subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
@@ -1138,7 +1134,6 @@ end subroutine gw_density_matrix_imag
 
 !=========================================================================
 subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_matrix)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
@@ -1350,7 +1345,6 @@ end subroutine gw_density_matrix_dyson_imag
 
 !=========================================================================
 subroutine update_density_matrix(occupation, c_matrix, p_matrix_mo, p_matrix)
-  implicit none
 
   real(dp), intent(in)    :: occupation(:, :)
   real(dp), intent(in)    :: c_matrix(:, :, :)

@@ -25,6 +25,8 @@ module m_relativistic
   use m_hamiltonian_wrapper
   use m_libcint_tools
 
+  implicit none
+
  public::relativistic_init, check_CdaggerSC_I
 
  private::shuffle_real, shuffle_complex, H4c_me, MpSqL_me

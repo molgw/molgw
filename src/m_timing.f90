@@ -345,10 +345,11 @@ end subroutine init_timers
 !=========================================================================
 subroutine timers_setstage(stage)
   integer, intent(in) :: stage
+  !=====
+
   TIMING_current_stage = stage
+
 end subroutine timers_setstage
-
-
 
 
 !=========================================================================

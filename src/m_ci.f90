@@ -21,6 +21,8 @@ module m_ci
   use m_inputparam
   use m_selfenergy_tools
 
+  implicit none
+
   integer, parameter, private     :: key_int=8
 
 
@@ -78,7 +80,6 @@ contains
 ! as defined in Hellgaker's book (chapter 1 box 1)
 !==================================================================
 pure function gamma_sign_keyud(keyud, istate, ispin)
-  implicit none
 
   integer(key_int), intent(in) :: keyud(2)
   integer, intent(in) :: istate, ispin
@@ -97,7 +98,6 @@ end function gamma_sign_keyud
 
 !==================================================================
 pure function get_keyud(sporbup, sporbdown) result(keyud)
-  implicit none
 
   integer, intent(in)    :: sporbup(:), sporbdown(:)
   integer(kind=key_int) :: keyud(2)
@@ -118,7 +118,6 @@ end function get_keyud
 
 !==================================================================
 subroutine increment_sporb(sporb)
-  implicit none
 
   integer, intent(inout) :: sporb(:)
   !=====
@@ -151,7 +150,6 @@ end subroutine increment_sporb
 
 !==================================================================
 pure function get_spinz_from_keyud(keyud) result(spinz)
-  implicit none
 
   integer(kind=key_int), intent(in) :: keyud(2)
   integer :: spinz
@@ -166,7 +164,6 @@ end function get_spinz_from_keyud
 !==================================================================
 ! From key, get the spins = 1 or 2
 subroutine get_spins_from_keyud(keyud, ispin)
-  implicit none
 
   integer(kind=key_int), intent(in) :: keyud(2)
   integer, intent(out)              :: ispin(:)
@@ -185,7 +182,6 @@ end subroutine get_spins_from_keyud
 !==================================================================
 ! From key, get the states
 subroutine get_states_from_keyud(keyud, istate)
-  implicit none
 
   integer(kind=key_int), intent(in) :: keyud(2)
   integer, intent(out)              :: istate(:)
@@ -213,7 +209,6 @@ end subroutine get_states_from_keyud
 !==================================================================
 subroutine prepare_ci(basis, nstate_in, nfrozen_in, c_matrix)
   use m_hamiltonian_onebody
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: nstate_in, nfrozen_in
@@ -248,7 +243,6 @@ end subroutine prepare_ci
 
 !==================================================================
 subroutine destroy_ci()
-  implicit none
   !=====
   !=====
 
@@ -273,7 +267,6 @@ end subroutine destroy_ci
 
 !==================================================================
 subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
-  implicit none
 
   integer, intent(in)               :: nelec
   integer, intent(in)               :: spinstate
@@ -532,7 +525,6 @@ end subroutine setup_configurations_ci
 
 !==================================================================
 subroutine build_1e_hamiltonian(c_matrix, h_1e)
-  implicit none
 
   real(dp), intent(in) :: c_matrix(:, :, :)
   real(dp), intent(in) :: h_1e(:, :)
@@ -557,7 +549,6 @@ end subroutine build_1e_hamiltonian
 
 !==================================================================
 function keyud_diff_order(keyud1, keyud2) RESULT(order)
-  implicit none
 
   integer(kind=key_int), intent(in) :: keyud1(2), keyud2(2)
   integer                          :: order
@@ -571,7 +562,6 @@ end function keyud_diff_order
 
 !==================================================================
 function key_diff_order(key1, key2) RESULT(order)
-  implicit none
 
   integer(kind=key_int), intent(in) :: key1, key2
   integer                          :: order
@@ -585,7 +575,6 @@ end function key_diff_order
 
 !==================================================================
 function keysud_diff_order(keyud1, keysud2) RESULT(order)
-  implicit none
 
   integer(kind=key_int), intent(in) :: keyud1(2), keysud2(:, :)
   integer                          :: order
@@ -603,7 +592,6 @@ end function keysud_diff_order
 
 !==================================================================
 function keys_diff_order(key1, keys2) RESULT(order)
-  implicit none
 
   integer(kind=key_int), intent(in) :: key1, keys2(:)
   integer                          :: order
@@ -621,7 +609,6 @@ end function keys_diff_order
 
 !==================================================================
 function hamiltonian_ci(keyudi, keyudj) RESULT(h_ci_ij)
-  implicit none
 
   integer(kind=key_int), intent(in) :: keyudi(2), keyudj(2)
   real(dp)           :: h_ci_ij
@@ -824,7 +811,6 @@ end function hamiltonian_ci
 
 !==================================================================
 subroutine build_ci_hamiltonian(conf, desc_hci, h_ci)
-  implicit none
 
   type(configurations), intent(in) :: conf
   integer, intent(in)              :: desc_hci(NDEL)
@@ -860,7 +846,6 @@ end subroutine build_ci_hamiltonian
 
 !==================================================================
 subroutine build_ci_hamiltonian_sparse(conf, desc, h)
-  implicit none
 
   type(configurations), intent(in)   :: conf
   integer, intent(in)                :: desc(NDEL)
@@ -946,7 +931,6 @@ end subroutine build_ci_hamiltonian_sparse
 
 !==================================================================
 subroutine full_ci_nelectrons_selfenergy(energy_gks)
-  implicit none
 
   real(dp), intent(in)   :: energy_gks(:, :)
   !=====
@@ -1195,7 +1179,6 @@ end subroutine full_ci_nelectrons_selfenergy
 
 !==================================================================
 subroutine full_ci_nelectrons(save_coefficients, nelectron, spinstate, nuc_nuc)
-  implicit none
 
   integer, intent(in)         :: save_coefficients
   integer, intent(in)         :: nelectron, spinstate
@@ -1388,7 +1371,6 @@ end subroutine full_ci_nelectrons
 
 !=========================================================================
 subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval, desc_vec, eigvec, h)
-  implicit none
 
   real(dp), intent(in)             :: tolerance
   character(len=*), intent(in)     :: filename
@@ -1615,7 +1597,6 @@ subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval,
 contains
 
 subroutine get_ab()
-  implicit none
 
   !=====
   integer              :: iconf_min, iconf_max
@@ -1716,7 +1697,6 @@ end subroutine diagonalize_davidson_ci
 
 !==================================================================
 subroutine translate_eigvec_ci(conf_in, desc_vec_in, eigvec_in, conf_out, desc_vec_out, eigvec_out)
-  implicit none
 
   type(configurations), intent(in) :: conf_in, conf_out
   integer, intent(in)              :: desc_vec_in(NDEL), desc_vec_out(NDEL)
@@ -1778,7 +1758,6 @@ end subroutine translate_eigvec_ci
 
 !==================================================================
 subroutine write_eigvec_ci(filename, conf, desc_vec, eigvec, eigval, residual_norm)
-  implicit none
 
   character(len=*), intent(in)     :: filename
   type(configurations), intent(in) :: conf
@@ -1833,7 +1812,6 @@ end subroutine write_eigvec_ci
 
 !==================================================================
 subroutine read_eigvec_ci(filename, conf, desc_vec, eigvec, eigval, nstate_read, residual_norm, read_status)
-  implicit none
 
   character(len=*), intent(in)     :: filename
   type(configurations), intent(in) :: conf

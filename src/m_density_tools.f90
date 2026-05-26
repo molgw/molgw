@@ -18,12 +18,13 @@ module m_density_tools
   use m_dft_grid
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine setup_atomic_density(basis, rr, rhor)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(3)
@@ -65,7 +66,6 @@ end subroutine setup_atomic_density
 ! Calculate the density on a batch for both real and complex wavefunctions
 !
 subroutine calc_density_r_batch(occupation, c_matrix, basis_function_r, rhor)
-  implicit none
 
   real(dp), intent(in)        :: occupation(:, :)
   class(*), intent(in)        :: c_matrix(:, :, :)
@@ -143,7 +143,6 @@ end subroutine calc_density_r_batch
 !
 subroutine calc_PI_dens_grad_r_batch(occupation, dm2_JK, c_matrix, bfr, PIr, &
  &                                  bf_gradx, bf_grady, bf_gradz, rhor, grad_rhor)
-  implicit none
 
   real(dp), intent(in)        :: occupation(:, :)
   real(dp), intent(in)        :: dm2_JK(:, :, :)
@@ -278,7 +277,6 @@ end subroutine calc_PI_dens_grad_r_batch
 ! Calculate the density and its gradient on a batch for both real and complex wavefunctions
 !
 subroutine calc_density_gradr_batch(occupation, c_matrix, bfr, bf_gradx, bf_grady, bf_gradz, rhor, grad_rhor)
-  implicit none
 
   real(dp), intent(in)        :: occupation(:, :)
   class(*), intent(in)        :: c_matrix(:, :, :)
@@ -397,7 +395,6 @@ end subroutine calc_density_gradr_batch
 
 !========================================================================
 subroutine calc_density_current_rr_cmplx(occupation, c_matrix_cmplx, basis_function_r, basis_function_gradr, jcurdens)
-  implicit none
 
   complex(dp), intent(in)     :: c_matrix_cmplx(:, :, :)
   real(dp), intent(in)        :: occupation(:, :)
@@ -451,7 +448,6 @@ end subroutine calc_density_current_rr_cmplx
 
 !=========================================================================
 subroutine calc_density_in_disc_cmplx_dft_grid(basis, occupation, c_matrix_cmplx, num, time_cur)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(:, :)
@@ -596,7 +592,6 @@ end subroutine calc_density_in_disc_cmplx_dft_grid
 !=========================================================================
 subroutine calc_density_gradr_laplr(nspin, nbf, p_matrix, basis_function_r, basis_function_gradr, basis_function_laplr, &
  grad_rhor, tau, lapl_rhor)
-  implicit none
   integer, intent(in)   :: nspin, nbf
   real(dp), intent(in)  :: p_matrix(nbf, nbf, nspin)
   real(dp), intent(in)  :: basis_function_r(nbf)
@@ -638,7 +633,6 @@ end subroutine calc_density_gradr_laplr
 
 !=========================================================================
 subroutine teter_lda_vxc_exc(nr, rhor, vxc, exc)
-  implicit none
 
   integer, intent(in)   :: nr
   real(dp), intent(in)  :: rhor(nr)
@@ -684,7 +678,6 @@ end subroutine teter_lda_vxc_exc
 
 !=========================================================================
 subroutine my_lda_exc_vxc(nspin, ixc, rhor, exc, vxc)
-  implicit none
 
   integer, intent(in)  :: nspin, ixc
   real(dp), intent(in) :: rhor(nspin)
@@ -906,7 +899,6 @@ end subroutine my_lda_exc_vxc
 
 !=========================================================================
 subroutine my_lda_exc_vxc_mu(mu, rhor, exc, vxc)
-  implicit none
 
   real(dp), intent(in) :: mu
   integer, parameter :: npt=1
@@ -952,7 +944,6 @@ end subroutine my_lda_exc_vxc_mu
 
 !=========================================================================
 subroutine HSE08Fx(omega, ipol, rho, s, Fxhse, d10Fxhse, d01Fxhse)
-  implicit none
 
   ! HSE evaluates the Heyd et al. Screened Coulomb
   ! Exchange Functional

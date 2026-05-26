@@ -24,12 +24,13 @@ module m_gw_selfenergy_grid
   use m_linear_response
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw, wpol)
-  implicit none
 
   real(dp), intent(in)                   :: occupation(:, :)
   real(dp), intent(in)                   :: energy(:, :)
@@ -210,7 +211,6 @@ end subroutine polarizability_grid_scalapack
 
 !=========================================================================
 subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
-  implicit none
 
   real(dp), intent(in)                 :: energy(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :)
@@ -340,7 +340,6 @@ end subroutine gw_selfenergy_imag_scalapack
 
 !=========================================================================
 subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
-  implicit none
 
   real(dp), intent(in)                 :: energy(:, :), occupation(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :)
@@ -554,7 +553,6 @@ end subroutine gw_selfenergy_contour
 
 !=========================================================================
 subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
-  implicit none
 
   type(basis_set), intent(in)          :: basis
   real(dp), intent(in)                 :: energy(:, :), occupation(:, :)
@@ -675,7 +673,6 @@ end subroutine gw_selfenergy_grid
 
 !=========================================================================
 subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
-  implicit none
 
   type(basis_set), intent(in)          :: basis
   real(dp), intent(in)                 :: energy(:, :), occupation(:, :)
