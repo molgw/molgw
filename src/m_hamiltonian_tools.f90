@@ -79,7 +79,7 @@ subroutine setup_density_matrix_real(c_matrix, occupation, p_matrix)
   real(dp), allocatable :: c_matrix_sqrtocc(:, :)
   !=====
 
-  call start_clock(timing_density_matrix)
+  call timer_density_matrix%start()
 
   if(.not.calc_type%is_noft) write(stdout, '(1x,a)') 'Build density matrix'
 
@@ -114,7 +114,7 @@ subroutine setup_density_matrix_real(c_matrix, occupation, p_matrix)
 
   deallocate(c_matrix_sqrtocc)
 
-  call stop_clock(timing_density_matrix)
+  call timer_density_matrix%stop()
 
 
 end subroutine setup_density_matrix_real
@@ -134,7 +134,7 @@ subroutine setup_density_matrix_cmplx(c_matrix_cmplx, occupation, p_matrix_cmplx
   complex(dp), allocatable :: c_matrix_sqrtocc(:, :)
   !=====
 
-  call start_clock(timing_density_matrix_cmplx)
+  call timer_density_matrix_cmplx%start()
 
   nbf    = SIZE(c_matrix_cmplx(:, :, :), DIM=1)
   nocc   = SIZE(c_matrix_cmplx(:, :, :), DIM=2)
@@ -163,7 +163,7 @@ subroutine setup_density_matrix_cmplx(c_matrix_cmplx, occupation, p_matrix_cmplx
 
   deallocate(c_matrix_sqrtocc)
 
-  call stop_clock(timing_density_matrix_cmplx)
+  call timer_density_matrix_cmplx%stop()
 
 
 end subroutine setup_density_matrix_cmplx
@@ -182,7 +182,7 @@ subroutine setup_energy_density_matrix(c_matrix, occupation, energy, q_matrix)
   integer :: istate
   !=====
 
-  call start_clock(timing_density_matrix)
+  call timer_density_matrix%start()
 
   write(stdout, '(1x,a)') 'Build energy-density matrix'
 
@@ -205,7 +205,7 @@ subroutine setup_energy_density_matrix(c_matrix, occupation, energy, q_matrix)
     enddo
   enddo
 
-  call stop_clock(timing_density_matrix)
+  call timer_density_matrix%stop()
 
 
 end subroutine setup_energy_density_matrix
@@ -224,7 +224,7 @@ subroutine setup_anomalous_density_matrix_real(c_matrix, sqrt_occ_hole, p_annom_
   real(dp), allocatable :: c_matrix_sqrtsqrtocchole(:, :)
   !=====
 
-  call start_clock(timing_density_matrix)
+  call timer_density_matrix%start()
 
   if(.not.calc_type%is_noft) write(stdout, '(1x,a)') 'Build anomalous density matrix'
 
@@ -259,7 +259,7 @@ subroutine setup_anomalous_density_matrix_real(c_matrix, sqrt_occ_hole, p_annom_
 
   deallocate(c_matrix_sqrtsqrtocchole)
 
-  call stop_clock(timing_density_matrix)
+  call timer_density_matrix%stop()
 
 
 end subroutine setup_anomalous_density_matrix_real
@@ -870,7 +870,7 @@ subroutine p_ao_to_mo_real(c_matrix, s_matrix, p_ao, p_mo)
   real(dp), allocatable :: tmp_matrix_real(:, :)
   !=====
 
-  call start_clock(timing_density_matrix_MO)
+  call timer_density_matrix_MO%start()
 
   ! P_MO = C**T * S * P_AO * S * C
   ! P_MO: nstate x nstate
@@ -918,7 +918,7 @@ subroutine p_ao_to_mo_real(c_matrix, s_matrix, p_ao, p_mo)
   deallocate(SC_matrix_real)
   deallocate(tmp_matrix_real)
 
-  call stop_clock(timing_density_matrix_MO)
+  call timer_density_matrix_MO%stop()
 
 
 end subroutine p_ao_to_mo_real
@@ -944,7 +944,7 @@ subroutine p_ao_to_mo_cmplx(c_matrix, s_matrix, p_ao, p_mo)
   complex(dp), allocatable :: tmp_matrix_cmplx(:, :)
   !=====
 
-  call start_clock(timing_density_matrix_MO)
+  call timer_density_matrix_MO%start()
 
   ! P_MO = C**T * S * P_AO * S * C
   ! P_MO: nstate x nstate
@@ -996,7 +996,7 @@ subroutine p_ao_to_mo_cmplx(c_matrix, s_matrix, p_ao, p_mo)
   deallocate(SC_matrix_cmplx)
   deallocate(tmp_matrix_cmplx)
 
-  call stop_clock(timing_density_matrix_MO)
+  call timer_density_matrix_MO%stop()
 
 
 end subroutine p_ao_to_mo_cmplx
@@ -1354,7 +1354,7 @@ subroutine setup_sqrt_density_matrix(p_matrix, p_matrix_sqrt, p_matrix_occ)
   nbf = SIZE( p_matrix(:, :, :), DIM=1 )
 
   write(stdout, *) 'Calculate the square root of the density matrix'
-  call start_clock(timing_sqrt_density_matrix)
+  call timer_sqrt_density_matrix%start()
 
   do ispin=1, nspin
     p_matrix_sqrt(:, :, ispin) = p_matrix(:, :, ispin)
@@ -1371,7 +1371,7 @@ subroutine setup_sqrt_density_matrix(p_matrix, p_matrix_sqrt, p_matrix_occ)
     enddo
   enddo
 
-  call stop_clock(timing_sqrt_density_matrix)
+  call timer_sqrt_density_matrix%stop()
 
 end subroutine setup_sqrt_density_matrix
 
@@ -1394,7 +1394,7 @@ subroutine get_c_matrix_from_p_matrix(p_matrix, c_matrix, occupation)
   allocate(occupation_tmp(nbf, nspin))
 
   write(stdout, *) 'Calculate the square root of the density matrix to obtain the C matrix'
-  call start_clock(timing_sqrt_density_matrix)
+  call timer_sqrt_density_matrix%start()
 
   ! Minus the p_matrix so that the eigenvalues are ordered from the largest to the lowest
   p_matrix_sqrt(:, :, :) = -p_matrix(:, :, :)
@@ -1432,7 +1432,7 @@ subroutine get_c_matrix_from_p_matrix(p_matrix, c_matrix, occupation)
   deallocate(p_matrix_sqrt, occupation_tmp)
 
 
-  call stop_clock(timing_sqrt_density_matrix)
+  call timer_sqrt_density_matrix%stop()
 
 end subroutine get_c_matrix_from_p_matrix
 
@@ -1521,7 +1521,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
 
       do ispin=1, nspin_local
         write(stdout, '(a,i3)') ' Diagonalization for spin: ', ispin
-        call start_clock(timing_diago_hamiltonian)
+        call timer_diago_hamiltonian%start()
 
         !
         ! Set up the local copy of hamiltonian
@@ -1578,7 +1578,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
         if( rank_sca /= 0 ) energy(:, ispin) = 0.0_dp
 
 
-        call stop_clock(timing_diago_hamiltonian)
+        call timer_diago_hamiltonian%stop()
       enddo
 
       deallocate(ham_local, c_matrix_local, s_matrix_local, h_small)
@@ -1601,7 +1601,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
 
     do ispin=1, nspin_local
       write(stdout, '(1x,a,i3)') 'Generalized diagonalization for spin: ', ispin
-      call start_clock(timing_diago_hamiltonian)
+      call timer_diago_hamiltonian%start()
 
       !! h_small(:, :) = MATMUL( TRANSPOSE(x_matrix(:, :)) , &
       !!                          MATMUL( hamiltonian(:, :, ispin) , x_matrix(:, :) ) )
@@ -1629,7 +1629,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
                                            0.0d0, c_matrix(1, 1, ispin), nbf)
 
 
-      call stop_clock(timing_diago_hamiltonian)
+      call timer_diago_hamiltonian%stop()
     enddo
 
     deallocate(h_small2)

@@ -65,7 +65,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   logical                   :: is_triplet_currently
   !=====
 
-  call start_clock(timing_pola)
+  call timer_pola%start()
   nstate = SIZE(occupation, DIM=1)
   allocate(energy_qp(nstate, nspin))
   en_rpa = 0.0_dp
@@ -98,19 +98,19 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   beta_local = 0.0_dp
   if( has_auxil_basis ) then
     if( calc_type%is_lr_mbpt ) then
-      call calculate_eri_3center_mo_lr(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola)
+      call calculate_eri_3center_mo_lr(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola)
     else
       if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' ) ) then
         eri_3center_mo_available = ( ALLOCATED(eri_3center_mo) .AND. ALLOCATED(eri_3center_mo_lr) )
         if( .NOT. eri_3center_mo_available ) then
-          call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola, &
+          call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola, &
                   long_range=.TRUE.)
         endif
         beta_local = beta_hybrid
       else
         eri_3center_mo_available = ALLOCATED(eri_3center_mo)
         if( .NOT. eri_3center_mo_available ) then
-          call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timing_aomo_pola)
+          call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola)
         endif
       endif
     endif
@@ -176,7 +176,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
   is_rpa = .NOT.(is_tddft) .AND. .NOT.(is_bse) .AND. (ABS(alpha_local)<1.0e-5_dp)
 
-  call start_clock(timing_build_h2p)
+  call timer_build_h2p%start()
   write(stdout, '(/,1x,a)') 'Summarize the linear response calculation:'
   write(stdout, '(1x,a16,l1)')       'RPA:          ', is_rpa
   write(stdout, '(1x,a16,l1)')       'BSE:          ', is_bse
@@ -319,7 +319,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   ! Construction done!
   !if(has_auxil_basis) call destroy_eri_3center_mo()
 
-  call stop_clock(timing_build_h2p)
+  call timer_build_h2p%stop()
 
 
   !
@@ -341,7 +341,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     endif
     deallocate(amb_diag_rpa, energy_qp)
     write(stdout, *) ' Skipping diagonalization after building A and B matrices'
-    call stop_clock(timing_pola)
+    call timer_pola%stop()
     return
   endif
 
@@ -427,7 +427,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     write(stdout, '(1x,a,f12.6)') '   Lowest bare excitation energy (eV):', MINVAL(ABS(bare_eigenval(1:nexc)))*Ha_eV
   endif
 
-  !if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timing_aomo_pola)
+  !if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix,ncore_W+1,nhomo_W,nlumo_W,nvirtual_W-1,timing=timer_aomo_pola)
 
   !
   ! Calculate the optical sprectrum
@@ -493,7 +493,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   if(ALLOCATED(eigenvalue)) deallocate(eigenvalue)
   deallocate(energy_qp)
 
-  call stop_clock(timing_pola)
+  call timer_pola%stop()
 
 
 end subroutine polarizability
@@ -634,7 +634,7 @@ subroutine polarizability_onering(basis, energy, c_matrix, vchi0v)
   nstate = SIZE(energy, DIM=1)
   call allocate_spectral_function(nauxil_local, vchi0v)
 
-  call calculate_eri_3center_mo(c_matrix, ncore_W+1, nhomo_W, nlumo_W, nvirtual_W-1, timing=timing_aomo_pola)
+  call calculate_eri_3center_mo(c_matrix, ncore_W+1, nhomo_W, nlumo_W, nvirtual_W-1, timing=timer_aomo_pola)
 
 
   do t_jb=1, vchi0v%npole_reso
@@ -731,7 +731,7 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
   real(dp), allocatable                 :: eri_mo_klmin(:, :, :, :)
   !=====
 
-  call start_clock(timing_vchiv)
+  call timer_vchiv%start()
   nbf    = SIZE(c_matrix, DIM=1)
   nstate = SIZE(c_matrix, DIM=2)
 
@@ -798,7 +798,7 @@ subroutine chi_to_vchiv(c_matrix, xpy_matrix, eigenvalue, wpol)
 
   if(ALLOCATED(eri_mo_klmin)) deallocate(eri_mo_klmin)
 
-  call stop_clock(timing_vchiv)
+  call timer_vchiv%stop()
 
 end subroutine chi_to_vchiv
 
@@ -824,7 +824,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol, ener
   integer                               :: info
   !=====
 
-  call start_clock(timing_vchiv)
+  call timer_vchiv%start()
 
   write(stdout, '(/,a)') ' Build v^{1/2} * chi * v^{1/2}'
 
@@ -923,7 +923,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol, ener
 
 
 
-  call stop_clock(timing_vchiv)
+  call timer_vchiv%stop()
 
 end subroutine chi_to_sqrtvchisqrtv_auxil
 
@@ -945,7 +945,7 @@ subroutine static_polarizability(occupation, energy, wpol_out)
   real(dp)             :: docc, denom
   !=====
 
-  call start_clock(timing_rpa_static)
+  call timer_rpa_static%start()
 
   nstate = SIZE(energy, DIM=1)
 
@@ -1013,7 +1013,7 @@ subroutine static_polarizability(occupation, energy, wpol_out)
   call clean_deallocate('temp chi0 matrix', vsqchi0vsq)
 
 
-  call stop_clock(timing_rpa_static)
+  call timer_rpa_static%stop()
 
 end subroutine static_polarizability
 

@@ -64,7 +64,7 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
   basis_pointer => basis
 
   ! Init clock
-  call start_clock(timing_noft_energy)
+  call timer_noft_energy%start()
 
   ! Write hearder and set name for $name.noft file
   write(ofile_name, '(2a)') trim(output_name), 'noft'
@@ -468,7 +468,7 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
   write(stdout, '(/,a)') ' '
 
   ! Stop clock
-  call stop_clock(timing_noft_energy)
+  call timer_noft_energy%stop()
 
 end subroutine noft_energy
 

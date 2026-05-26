@@ -56,7 +56,7 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
     return
   endif
 
-  call start_clock(timing_force)
+  call timer_force%start()
 
   nstate = SIZE(energy, DIM=1)
 
@@ -464,7 +464,7 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   deallocate(p_matrix)
   deallocate(r_matrix)
 
-  call stop_clock(timing_force)
+  call timer_force%stop()
 
 
 end subroutine calculate_force

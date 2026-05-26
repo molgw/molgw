@@ -797,7 +797,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
   real(dp)             :: eigval(nauxil_global)
   !=====
 
-  call start_clock(timing_rpa_dynamic)
+  call timer_rpa_dynamic%start()
 
   stdout_  = stdout
   verbose_ = .TRUE.
@@ -830,7 +830,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
   !   if not, then calculate them
   eri_3center_mo_available = ALLOCATED(eri_3center_mo)
   if( .NOT. eri_3center_mo_available ) then
-    call calculate_eri_3center_mo(c_matrix, ncore_W+1, nhomo_W, nlumo_W, nvirtual_W-1, timing=timing_aomo_pola)
+    call calculate_eri_3center_mo(c_matrix, ncore_W+1, nhomo_W, nlumo_W, nvirtual_W-1, timing=timer_aomo_pola)
   else
     ! eri_3center_mo is already available
     ! check if it has the correct dimensions
@@ -953,7 +953,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
     endif
   endif
 
-  call stop_clock(timing_rpa_dynamic)
+  call timer_rpa_dynamic%stop()
 
 end subroutine sf_vsqrt_chi_vsqrt_rpa
 

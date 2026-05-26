@@ -148,8 +148,8 @@ subroutine dm_dump(basis)
 
 
   ! Cleanly exit the code
-  call stop_clock(timing_prescf)
-  call stop_clock(timing_total)
+  call timer_prescf%stop()
+  call timer_molgw%stop()
 
   call this_is_the_end()
 

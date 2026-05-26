@@ -80,8 +80,13 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
   real(dp), allocatable :: w_grid_tmp(:)
   !=====
 
-  call start_clock(MERGE(timing_tddft_grid_init, timing_grid_init, in_rt_tddft))
-  call start_clock(MERGE(timing_tddft_grid_generation, timing_grid_generation, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_grid_init%start()
+    call timer_tddft_grid_generation%start()
+  else
+    call timer_grid_init%start()
+    call timer_grid_generation%start()
+  endif
 
 
   ngrid_stored = 0
@@ -404,7 +409,11 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
 
   deallocate(rr_grid_tmp, w_grid_tmp)
 
-  call stop_clock(MERGE(timing_tddft_grid_generation, timing_grid_generation, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_grid_generation%stop()
+  else
+    call timer_grid_generation%stop()
+  endif
 
 
   !
@@ -413,7 +422,11 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
   !
   if( precalculate_wfn ) then
 
-    call start_clock(MERGE(timing_tddft_grid_wfn, timing_grid_wfn, in_rt_tddft))
+    if( TIMING_current_stage == TIMING_POSTSCF ) then
+      call timer_tddft_grid_wfn%start()
+    else
+      call timer_grid_wfn%start()
+    endif
     !
     ! grid_memory is given in Megabytes
     ! If gradient is needed, the storage is 4 times larger
@@ -431,7 +444,11 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
     if( needs_gradient ) then
       call prepare_basis_functions_gradr(basis, batch_size)
     endif
-    call stop_clock(MERGE(timing_tddft_grid_wfn, timing_grid_wfn, in_rt_tddft))
+    if( TIMING_current_stage == TIMING_POSTSCF ) then
+      call timer_tddft_grid_wfn%stop()
+    else
+      call timer_grid_wfn%stop()
+    endif
 
   else
     ngrid_stored = 0
@@ -439,7 +456,11 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
 
   call setup_rhocore_grid()
 
-  call stop_clock(MERGE(timing_tddft_grid_init, timing_grid_init, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_grid_init%stop()
+  else
+    call timer_grid_init%stop()
+  endif
 
 end subroutine init_dft_grid
 

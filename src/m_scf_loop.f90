@@ -81,7 +81,7 @@ subroutine scf_loop(is_restart, &
   !=====
 
 
-  call start_clock(timing_scf)
+  call timer_scf%start()
 
   nstate = SIZE(x_matrix, DIM=2)
   temperature_ = temperature
@@ -463,7 +463,7 @@ subroutine scf_loop(is_restart, &
     call dump_out_energy_yaml('gks energies', energy)
   endif
 
-  call stop_clock(timing_scf)
+  call timer_scf%stop()
 
 end subroutine scf_loop
 
@@ -507,7 +507,7 @@ subroutine scf_loop_cmplx(is_restart, &
   !=====
 
 
-  call start_clock(timing_scf)
+  call timer_scf%start()
 
   rms = 1000.0
   nstate = SIZE(x_matrix, DIM=2)
@@ -746,7 +746,7 @@ subroutine scf_loop_cmplx(is_restart, &
     call dump_out_energy_yaml('gks energies', energy)
   endif
 
-  call stop_clock(timing_scf)
+  call timer_scf%stop()
 
 end subroutine scf_loop_cmplx
 
@@ -793,7 +793,7 @@ subroutine scf_loop_x2c(basis, &
   !=====
 
 
-  call start_clock(timing_scf)
+  call timer_scf%start()
 
   is_x2c = .TRUE.
   rms = 1000.0
@@ -1116,7 +1116,7 @@ subroutine scf_loop_x2c(basis, &
     call dump_out_energy_yaml('gks energies', energy)
   endif
 
-  call stop_clock(timing_scf)
+  call timer_scf%stop()
 
 end subroutine scf_loop_x2c
 
@@ -1174,7 +1174,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
   !=====
 
   
-  call start_clock(timing_scf)
+  call timer_scf%start()
 
   is_ksb = .TRUE.
   first_history = .TRUE.
@@ -1587,7 +1587,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
     call dump_out_energy_yaml('gks energies', energy)
   endif
 
-  call stop_clock(timing_scf)
+  call timer_scf%stop()
 
 end subroutine scf_loop_bogoliubov
 

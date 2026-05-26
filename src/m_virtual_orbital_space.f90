@@ -65,7 +65,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
   integer                               :: nocc, nfrozen
   !=====
 
-  call start_clock(timing_fno)
+  call timer_fno%start()
 
   write(stdout, '(/,1x,a)') 'Prepare optimized empty states using a smaller basis set'
 
@@ -237,7 +237,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
 
   write(stdout, '(1x,a)') 'Optimized empty states with a smaller basis set'
 
-  call stop_clock(timing_fno)
+  call timer_fno%stop()
 
 end subroutine setup_virtual_smallbasis
 
@@ -263,7 +263,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
   real(dp), allocatable                  :: eri_ci_i(:)
   !=====
 
-  call start_clock(timing_fno)
+  call timer_fno%start()
 
   write(stdout, '(/,1x,a)') 'Prepare optimized empty states with Frozen Natural Orbitals'
 
@@ -419,7 +419,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
 
   write(stdout, '(1x,a)') 'Optimized empty states with Frozen Natural Orbitals'
 
-  call stop_clock(timing_fno)
+  call timer_fno%stop()
 
 end subroutine calculate_virtual_fno
 

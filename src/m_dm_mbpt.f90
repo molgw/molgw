@@ -299,7 +299,7 @@ subroutine fock_density_matrix(basis, occupation, energy, c_matrix, hfock, p_mat
   real(dp), allocatable :: hfock_mo(:, :, :)
   !=====
 
-  call start_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%start()
   write(stdout, '(/,1x,a)') 'Calculate the perturbative Fock density matrix'
 
   nstate = SIZE(occupation, DIM=1)
@@ -330,7 +330,7 @@ subroutine fock_density_matrix(basis, occupation, energy, c_matrix, hfock, p_mat
   call clean_deallocate('Density matrix P_MO', p_matrix_mo)
   call clean_deallocate('Fock matrix F_MO', hfock_mo)
 
-  call stop_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%stop()
 
 end subroutine fock_density_matrix
 
@@ -354,7 +354,7 @@ subroutine fock_density_matrix_second_order(basis, occupation, energy, c_matrix,
   real(dp), allocatable :: delta_sigma_mo(:, :, :)
   !=====
 
-  call start_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%start()
   write(stdout, '(/,1x,a)') 'Calculate the perturbative Fock density matrix'
 
   nstate = SIZE(occupation, DIM=1)
@@ -436,7 +436,7 @@ subroutine fock_density_matrix_second_order(basis, occupation, energy, c_matrix,
   call clean_deallocate('Density matrix P_AO', p_matrix_ao)
   call clean_deallocate('Delta Sigma F_MO', delta_sigma_mo)
 
-  call stop_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%stop()
 
 end subroutine fock_density_matrix_second_order
   

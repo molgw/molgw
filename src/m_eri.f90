@@ -386,7 +386,7 @@ subroutine identify_negligible_shellpair(basis)
     return
   endif
 
-  call start_clock(timing_eri_screening)
+  call timer_eri_screening%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)')    ' Cauchy-Schwartz screening of the 3- or 4-center integrals (LIBCINT)'
   call set_erf_screening_length_libcint(basis, 0.0_dp)
@@ -491,7 +491,7 @@ subroutine identify_negligible_shellpair(basis)
   !do ishell=1, basis%nshell
   !  write(stdout, *) negligible_shellpair(:, ishell)
   !end do
-  call stop_clock(timing_eri_screening)
+  call timer_eri_screening%stop()
 
 
 end subroutine identify_negligible_shellpair
