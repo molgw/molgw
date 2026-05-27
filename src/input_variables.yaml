@@ -699,6 +699,15 @@ print_spatial_extension:
   default: 'no'
   comment: 'Prints the wavefunction extension calculated as &lt;r<sup>2</sup>&gt; - &lt;r&gt;<sup>2</sup>'
 
+print_transition_dipole:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints the dipole \sum_ia (X_ia^n+Y_ia^n) <i|r|a> of each neutral excitation n in the YAML output file. This is quite some writing.
+           To be used with care.
+
 print_w:
   family: io
   datatype: yes/no
