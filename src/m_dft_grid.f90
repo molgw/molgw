@@ -22,6 +22,8 @@ module m_dft_grid
   use m_ecp
   use m_numerical_tools, only: coeffs_gausslegint
 
+  implicit none
+
   integer, parameter :: BATCH_SIZE = 128
   !
   ! Grid definition
@@ -56,7 +58,6 @@ contains
 
 !=========================================================================
 subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn, batch_size)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: grid_level_in
@@ -80,8 +81,13 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
   real(dp), allocatable :: w_grid_tmp(:)
   !=====
 
-  call start_clock(MERGE(timing_tddft_grid_init, timing_grid_init, in_rt_tddft))
-  call start_clock(MERGE(timing_tddft_grid_generation, timing_grid_generation, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_grid_init%start()
+    call timer_tddft_grid_generation%start()
+  else
+    call timer_grid_init%start()
+    call timer_grid_generation%start()
+  endif
 
 
   ngrid_stored = 0
@@ -404,7 +410,11 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
 
   deallocate(rr_grid_tmp, w_grid_tmp)
 
-  call stop_clock(MERGE(timing_tddft_grid_generation, timing_grid_generation, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_grid_generation%stop()
+  else
+    call timer_grid_generation%stop()
+  endif
 
 
   !
@@ -413,7 +423,11 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
   !
   if( precalculate_wfn ) then
 
-    call start_clock(MERGE(timing_tddft_grid_wfn, timing_grid_wfn, in_rt_tddft))
+    if( TIMING_current_stage == TIMING_POSTSCF ) then
+      call timer_tddft_grid_wfn%start()
+    else
+      call timer_grid_wfn%start()
+    endif
     !
     ! grid_memory is given in Megabytes
     ! If gradient is needed, the storage is 4 times larger
@@ -431,7 +445,11 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
     if( needs_gradient ) then
       call prepare_basis_functions_gradr(basis, batch_size)
     endif
-    call stop_clock(MERGE(timing_tddft_grid_wfn, timing_grid_wfn, in_rt_tddft))
+    if( TIMING_current_stage == TIMING_POSTSCF ) then
+      call timer_tddft_grid_wfn%stop()
+    else
+      call timer_grid_wfn%stop()
+    endif
 
   else
     ngrid_stored = 0
@@ -439,14 +457,17 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
 
   call setup_rhocore_grid()
 
-  call stop_clock(MERGE(timing_tddft_grid_init, timing_grid_init, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_grid_init%stop()
+  else
+    call timer_grid_init%stop()
+  endif
 
 end subroutine init_dft_grid
 
 
 !=========================================================================
 subroutine setup_rhocore_grid()
-  implicit none
 
   !=====
   integer :: ie, icenter, ir, irad
@@ -514,7 +535,6 @@ end subroutine setup_rhocore_grid
 
 !=========================================================================
 subroutine destroy_dft_grid()
-  implicit none
 
   deallocate(rr_grid)
   deallocate(w_grid)
@@ -554,7 +574,6 @@ end function smooth_step
 
 !=========================================================================
 subroutine prepare_basis_functions_r(basis, batch_size)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: batch_size
@@ -575,7 +594,6 @@ end subroutine prepare_basis_functions_r
 
 !=========================================================================
 subroutine prepare_basis_functions_gradr(basis, batch_size)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: batch_size
@@ -599,7 +617,6 @@ end subroutine prepare_basis_functions_gradr
 
 !=========================================================================
 subroutine get_basis_functions_r_batch(basis, igrid, basis_function_r)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: igrid
@@ -623,7 +640,6 @@ end subroutine get_basis_functions_r_batch
 
 !=========================================================================
 subroutine get_basis_functions_gradr_batch(basis, igrid, bf_gradx, bf_grady, bf_gradz)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: igrid
@@ -650,7 +666,6 @@ end subroutine get_basis_functions_gradr_batch
 
 !=========================================================================
 subroutine calculate_basis_functions_r(basis, rr, basis_function_r)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(3)
@@ -694,7 +709,6 @@ end subroutine calculate_basis_functions_r
 
 !=========================================================================
 subroutine calculate_basis_functions_r_batch(basis, rr, basis_function_r)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(:, :)
@@ -742,7 +756,6 @@ end subroutine calculate_basis_functions_r_batch
 
 !=========================================================================
 subroutine calculate_basis_functions_gradr(basis, rr, basis_function_gradr)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(3)
@@ -786,7 +799,6 @@ end subroutine calculate_basis_functions_gradr
 
 !=========================================================================
 subroutine calculate_basis_functions_gradr_batch(basis, rr, bf_gradx, bf_grady, bf_gradz)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(:, :)
@@ -838,7 +850,6 @@ end subroutine calculate_basis_functions_gradr_batch
 
 !=========================================================================
 subroutine calculate_basis_functions_laplr(basis, rr, basis_function_gradr, basis_function_laplr)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(3)

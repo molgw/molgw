@@ -21,6 +21,8 @@ module m_eri_calculate
   use m_libint_tools
 
 
+  implicit none
+
   real(dp), protected, allocatable :: eri_2center(:, :)
   real(dp), protected, allocatable :: eri_2center_inv(:, :)
   real(dp), protected, allocatable :: eri_2center_sqrtinv(:, :)
@@ -40,7 +42,6 @@ contains
 
 !=========================================================================
 subroutine destroy_eri_3center()
-  implicit none
   !=====
 
   if(ALLOCATED(eri_2center)) then
@@ -71,7 +72,6 @@ end subroutine destroy_eri_3center
 
 !=========================================================================
 subroutine calculate_eri(print_eri_, basis, rcut)
-  implicit none
   logical, intent(in)            :: print_eri_
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: rcut
@@ -79,7 +79,7 @@ subroutine calculate_eri(print_eri_, basis, rcut)
   integer(int8)                 :: iint
   !=====
 
-  call start_clock(timing_eri_4center)
+  call timer_eri_4center%start()
 
   if( incore_ ) then
     ! From now on, the array index for 4-center Coulomb integrals can be greater than 2^32.
@@ -116,14 +116,13 @@ subroutine calculate_eri(print_eri_, basis, rcut)
     write(stdout, '(/,1x,a)') 'Out of core option: no 4-center integrals ever stored'
   endif
 
-  call stop_clock(timing_eri_4center)
+  call timer_eri_4center%stop()
 
 end subroutine calculate_eri
 
 
 !=========================================================================
 subroutine calculate_eri_4center(basis, rcut)
-  implicit none
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: rcut
   !=====
@@ -310,7 +309,6 @@ end subroutine calculate_eri_4center
 !=========================================================================
 subroutine calculate_eri_4center_shell(basis, rcut, ijshellpair, klshellpair, &
                                        shellABCD)
-  implicit none
   type(basis_set), intent(inout)    :: basis
   real(dp), intent(in)              :: rcut
   integer, intent(in)               :: ijshellpair, klshellpair
@@ -436,7 +434,6 @@ end subroutine calculate_eri_4center_shell
 !=========================================================================
 subroutine calculate_eri_4center_shell_grad(basis, rcut, ijshellpair, klshellpair, &
                                             shell_gradA, shell_gradB, shell_gradC, shell_gradD)
-  implicit none
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: rcut
   integer, intent(in)            :: ijshellpair, klshellpair
@@ -610,7 +607,6 @@ end subroutine calculate_eri_4center_shell_grad
 
 !=========================================================================
 subroutine calculate_eri_ri(basis, auxil_basis, rcut)
-  implicit none
 
   type(basis_set), intent(inout) :: basis, auxil_basis
   real(dp), intent(in)           :: rcut
@@ -645,7 +641,11 @@ subroutine calculate_eri_ri(basis, auxil_basis, rcut)
   !
   ! 2-center integrals neeeded for RI on the Coulomb metric
   !
-  call start_clock(MERGE(timing_tddft_eri_2center, timing_eri_2center, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_eri_2center%start()
+  else
+    call timer_eri_2center%start()
+  endif
 
   if( recalculation ) then
     call calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_auxil)
@@ -659,13 +659,21 @@ subroutine calculate_eri_ri(basis, auxil_basis, rcut)
     call calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
   endif
 
-  call stop_clock(MERGE(timing_tddft_eri_2center, timing_eri_2center, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_eri_2center%stop()
+  else
+    call timer_eri_2center%stop()
+  endif
 
 
   !
   ! 3-center integrals neeeded for RI on the Coulomb metric
   !
-  call start_clock(MERGE(timing_tddft_eri_3center, timing_eri_3center, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_eri_3center%start()
+  else
+    call timer_eri_3center%start()
+  endif
 
   if( eri3_genuine_ ) then
     if( recalculation ) then
@@ -677,7 +685,11 @@ subroutine calculate_eri_ri(basis, auxil_basis, rcut)
     call calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
   endif
 
-  call stop_clock(MERGE(timing_tddft_eri_3center, timing_eri_3center, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_eri_3center%stop()
+  else
+    call timer_eri_3center%stop()
+  endif
 
 
   if( ALLOCATED(mask) )       deallocate(mask)
@@ -689,7 +701,6 @@ end subroutine calculate_eri_ri
 
 !=========================================================================
 subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_auxil)
-  implicit none
   type(basis_set), intent(inout) :: auxil_basis
   real(dp), intent(in)           :: rcut
   logical, intent(in), optional   :: mask_auxil(:)
@@ -719,7 +730,11 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
   integer(C_INT) :: shls(2)
   !=====
 
-  call start_clock(MERGE(timing_tddft_eri_2center_ints, timing_eri_2center_ints, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_eri_2center_ints%start()
+  else
+    call timer_eri_2center_ints%start()
+  endif
 
 
   is_longrange = (rcut > 1.0e-12_dp)
@@ -919,14 +934,17 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
   endif
 
 
-  call stop_clock(MERGE(timing_tddft_eri_2center_ints, timing_eri_2center_ints, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_eri_2center_ints%stop()
+  else
+    call timer_eri_2center_ints%stop()
+  endif
 
 end subroutine calculate_integrals_eri_2center_scalapack
 
 
 !=========================================================================
 subroutine calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
-  implicit none
   type(basis_set), intent(inout) :: auxil_basis
   real(dp), intent(in)           :: rcut
   !=====
@@ -936,7 +954,11 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
   integer                      :: mlocal, nlocal
   !=====
 
-  call start_clock(MERGE(timing_tddft_eri_2center_invert, timing_eri_2center_invert, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_eri_2center_invert%start()
+  else
+    call timer_eri_2center_invert%start()
+  endif
 
   is_longrange = (rcut > 1.0e-12_dp)
 
@@ -1014,14 +1036,17 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
 
   write(stdout, '(/,1x,a)')      'All 2-center integrals have been calculated, inverted and stored'
 
-  call stop_clock(MERGE(timing_tddft_eri_2center_invert, timing_eri_2center_invert, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_eri_2center_invert%stop()
+  else
+    call timer_eri_2center_invert%stop()
+  endif
 
 end subroutine calculate_inverse_eri_2center_scalapack
 
 
 !=========================================================================
 subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
-  implicit none
   type(basis_set), intent(inout) :: auxil_basis
   real(dp), intent(in)           :: rcut
   !=====
@@ -1039,7 +1064,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
   logical                      :: store_eri_2center_sqrt
   !=====
 
-  call start_clock(timing_eri_2center_inverse_sqrt)
+  call timer_eri_2center_inverse_sqrt%start()
 
   is_longrange = (rcut > 1.0e-12_dp)
 
@@ -1138,7 +1163,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
   !
 
   if( cntxt_3center < 0 ) then
-    call stop_clock(timing_eri_2center_inverse_sqrt)
+    call timer_eri_2center_inverse_sqrt%stop()
     return
   endif
 
@@ -1232,14 +1257,13 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
   call clean_deallocate('2-center integrals eigenvectors', eri_2center_eigvec)
   call clean_deallocate('2-center integrals', eri_2center)
 
-  call stop_clock(timing_eri_2center_inverse_sqrt)
+  call timer_eri_2center_inverse_sqrt%stop()
 
 end subroutine calculate_inverse_sqrt_eri_2center_scalapack
 
 
 !=========================================================================
 subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, mask, mask_auxil)
-  implicit none
   type(basis_set), intent(inout) :: basis
   type(basis_set), intent(inout) :: auxil_basis
   real(dp), intent(in)           :: rcut
@@ -1361,9 +1385,9 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
   libint_calls = 0
 
   if( .NOT. recalculation ) then
-    call start_clock(timing_eri_3center_ints)
+    call timer_eri_3center_ints%start()
   else
-    call start_clock(timing_tddft_eri_3center_ints)
+    call timer_tddft_eri_3center_ints%start()
   endif
 
   !
@@ -1547,9 +1571,9 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
 
 
   if( .NOT. recalculation ) then
-    call stop_clock(timing_eri_3center_ints)
+    call timer_eri_3center_ints%stop()
   else
-    call stop_clock(timing_tddft_eri_3center_ints)
+    call timer_tddft_eri_3center_ints%stop()
   endif
 
 
@@ -1558,7 +1582,6 @@ end subroutine calculate_integrals_eri_3center_scalapack
 
 !=========================================================================
 subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
-  implicit none
   type(basis_set), intent(inout) :: basis
   type(basis_set), intent(inout) :: auxil_basis
   real(dp), intent(in)          :: rcut
@@ -1689,7 +1712,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
     !
     ! First part: calls to LIBINT
     !
-    call start_clock(timing_eri_3center_ints)
+    call timer_eri_3center_ints%start()
 
     !
     ! Skip section for procs that do not participate to the distribution (ortho paral)
@@ -1848,12 +1871,12 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
     endif
 
 
-    call stop_clock(timing_eri_3center_ints)
+    call timer_eri_3center_ints%stop()
 
     !
     ! Second part: perform  \sum_Q (\alpha\beta|Q) (Q|P)^{-1/2}
     !
-    call start_clock(timing_eri_3center_matmul)
+    call timer_eri_3center_matmul%start()
 
     if( cntxt_3center > 0 ) then
       if( .NOT. is_longrange ) then
@@ -1883,7 +1906,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
       endif
     endif
 
-    call stop_clock(timing_eri_3center_matmul)
+    call timer_eri_3center_matmul%stop()
 
     call clean_deallocate('TMP 3-center integrals', eri_3center_tmp)
 
@@ -1929,7 +1952,6 @@ end subroutine calculate_eri_3center_scalapack
 
 !=========================================================================
 subroutine calculate_eri_approximate_hartree(basis, x0_rho, coeff_rho, alpha_rho, vhrho)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: x0_rho(3)
   real(dp), intent(in)        :: coeff_rho(:), alpha_rho(:)

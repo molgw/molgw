@@ -12,6 +12,8 @@ module m_elements
   use m_warning, only: die
 
 
+  implicit none
+
   integer, parameter          :: nelement_max = 103
   character(len=2), parameter :: element_list(nelement_max) =                                    &
     (/' H',                                                                                'He', &  !   2
@@ -36,7 +38,6 @@ contains
 
 !=========================================================================
 function element_core(zval, zatom)
-  implicit none
   real(dp), intent(in) :: zval
   real(dp), intent(in) :: zatom
   integer             :: element_core
@@ -69,7 +70,6 @@ end function element_core
 
 !=========================================================================
 function element_core_gaussian(zval, zatom) result(element_core)
-  implicit none
   real(dp), intent(in) :: zval
   real(dp), intent(in) :: zatom
   integer             :: element_core
@@ -102,7 +102,6 @@ end function element_core_gaussian
 
 !=========================================================================
 function element_covalent_radius(zatom)
-  implicit none
   integer, intent(in) :: zatom
   real(dp)           :: element_covalent_radius
   !=====
@@ -198,7 +197,6 @@ end function element_covalent_radius
 
 !=========================================================================
 function element_number(element_name)
-  implicit none
   character(len=*), intent(in) :: element_name
   integer                     :: element_number
   !=====
@@ -224,7 +222,6 @@ end function element_number
 !=========================================================================
 ! Return the element symbol from the Z number (be it integer or real)
 function element_name(zatom)
-  implicit none
 
   class(*), intent(in) :: zatom
   character(len=2)  :: element_name
@@ -258,7 +255,6 @@ end function element_name
 !=========================================================================
 ! Return the element symbol from the Z number (be it integer or real)
 function element_name_long(zatom)
-  implicit none
 
   class(*), intent(in) :: zatom
   character(len=8)  :: element_name_long
@@ -293,7 +289,6 @@ end function element_name_long
 
 !=========================================================================
 subroutine element_atomicdensity(zval, zatom, coeff, alpha)
-  implicit none
   real(dp), intent(in)  :: zval
   real(dp), intent(in)   :: zatom
   real(dp), intent(out) :: coeff(4)

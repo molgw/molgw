@@ -11,6 +11,8 @@ module m_cart_to_pure
   use m_definitions
   use m_warning
 
+  implicit none
+
   type transform
     real(dp), allocatable :: matrix(:, :)
   end type
@@ -27,7 +29,6 @@ contains
 
 !=========================================================================
 function get_gaussian_type_tag(gaussian_type)
-  implicit none
   character(len=4), intent(in) :: gaussian_type
   integer                     :: get_gaussian_type_tag
   !=====
@@ -44,7 +45,6 @@ end function get_gaussian_type_tag
 
 !=========================================================================
 pure function number_basis_function_am(gaussian_type, am)
-  implicit none
   character(len=4), intent(in) :: gaussian_type
   integer, intent(in)          :: am
   integer                     :: number_basis_function_am
@@ -62,7 +62,6 @@ end function number_basis_function_am
 
 !==========================================
 pure function double_factorial(intin)
-  implicit none
   integer, intent(in) :: intin
   real(dp) :: double_factorial
   !=====
@@ -140,7 +139,6 @@ end function double_factorial
 
 !=========================================================================
 subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
-  implicit none
 
   logical, intent(in) :: pypzpx_order_in
   !=====
@@ -278,7 +276,6 @@ end subroutine setup_cart_to_pure_transforms
 
 !=========================================================================
 subroutine destroy_cart_to_pure_transforms()
-  implicit none
 
   !=====
   integer :: il
@@ -298,7 +295,6 @@ end subroutine destroy_cart_to_pure_transforms
 
 !=========================================================================
 function cnk(n, k)
-  implicit none
 
   integer, intent(in) :: n, k
   real(dp)           :: cnk
@@ -320,7 +316,6 @@ end function cnk
 
 !=========================================================================
 function ank(n, k)
-  implicit none
 
   integer, intent(in) :: n, k
   real(dp)           :: ank

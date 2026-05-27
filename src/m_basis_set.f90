@@ -21,6 +21,8 @@ module m_basis_set
   use m_cart_to_pure
 
 
+  implicit none
+
   type basis_function
     integer                      :: shell_index                ! This basis function belongs to a shell of basis functions
                                                                ! with the same exponents and angular momentum
@@ -87,7 +89,6 @@ contains
 !=========================================================================
 subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type, &
                           even_tempered_alpha, even_tempered_beta, even_tempered_n_list, basis)
-  implicit none
 
   character(len=*), intent(in) :: basis_path
   character(len=100), intent(in) :: basis_name(:)
@@ -365,7 +366,6 @@ end subroutine init_basis_set
 
 !=========================================================================
 subroutine split_basis_set(basis, basis_t, basis_p)
-  implicit none
 
   type(basis_set), intent(in)    :: basis
   type(basis_set), intent(out)   :: basis_t, basis_p
@@ -473,7 +473,6 @@ end subroutine split_basis_set
 
 !=========================================================================
 subroutine moving_basis_set(new_basis)
-  implicit none
 
   type(basis_set), intent(inout) :: new_basis
   !=====
@@ -602,7 +601,6 @@ end subroutine form_n_list
 
 !=========================================================================
 subroutine echo_basis_summary(basis)
-  implicit none
 
   type(basis_set), intent(in)    :: basis
   !=====
@@ -643,7 +641,6 @@ end subroutine echo_basis_summary
 !=========================================================================
 !Build a system specific auxiliary basis based the 'Auto' recipe in Gaussian
 subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, auto_auxil_fsam, auto_auxil_lmaxinc, auxil_basis)
-  implicit none
 
   character(len=100), intent(in) :: auxil_basis_name(:)
   character(len=4), intent(in)   :: gaussian_type
@@ -671,7 +668,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
   logical, parameter :: normalized=.TRUE.
   !=====
 
-  call start_clock(timing_auto_auxil)
+  call timer_auto_auxil%start()
 
   pauto = TRIM( capitalize(auxil_basis_name(1)) ) == 'PAUTO'
 
@@ -928,7 +925,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
 
   deallocate(shell_tmp)
 
-  call stop_clock(timing_auto_auxil)
+  call timer_auto_auxil%stop()
 
 
 contains
@@ -957,7 +954,6 @@ end subroutine init_auxil_basis_set_auto
 
 !=========================================================================
 subroutine destroy_basis_set(basis)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   !=====
@@ -983,7 +979,6 @@ end subroutine destroy_basis_set
 
 !=========================================================================
 function compare_basis_set(basis1, basis2) result(same_basis_set)
-  implicit none
 
   logical                    :: same_basis_set
   type(basis_set), intent(in) :: basis1, basis2
@@ -1012,7 +1007,6 @@ end function compare_basis_set
 
 !=========================================================================
 function compare_basis_function(bf1, bf2) result(same_basis_function)
-  implicit none
 
   logical                         :: same_basis_function
   type(basis_function), intent(in) :: bf1, bf2
@@ -1048,7 +1042,6 @@ end function compare_basis_function
 
 !=========================================================================
 subroutine write_basis_set(unitfile, basis)
-  implicit none
 
   integer, intent(in)         :: unitfile
   type(basis_set), intent(in) :: basis
@@ -1074,7 +1067,6 @@ end subroutine write_basis_set
 
 !=========================================================================
 subroutine read_basis_set(unitfile, basis)
-  implicit none
 
   integer, intent(in)          :: unitfile
   type(basis_set), intent(out) :: basis
@@ -1102,7 +1094,6 @@ end subroutine read_basis_set
 
 !=========================================================================
 subroutine write_basis_function(unitfile, bf)
-  implicit none
 
   integer, intent(in)              :: unitfile
   type(basis_function), intent(in) :: bf
@@ -1128,7 +1119,6 @@ end subroutine write_basis_function
 
 !=========================================================================
 subroutine read_basis_function(unitfile, bf)
-  implicit none
 
   integer, intent(in)               :: unitfile
   type(basis_function), intent(out) :: bf
@@ -1155,7 +1145,6 @@ end subroutine read_basis_function
 
 !=========================================================================
 subroutine write_basis_shell(unitfile, shell)
-  implicit none
 
   integer, intent(in)          :: unitfile
   type(shell_type), intent(in) :: shell
@@ -1177,7 +1166,6 @@ end subroutine write_basis_shell
 
 !=========================================================================
 subroutine read_basis_shell(unitfile, shell)
-  implicit none
 
   integer, intent(in)           :: unitfile
   type(shell_type), intent(out) :: shell
@@ -1201,7 +1189,6 @@ end subroutine read_basis_shell
 
 !=========================================================================
 subroutine init_basis_function(normalized, ng, nx, ny, nz, icenter, x0, v0, alpha, coeff, shell_index, index_in_shell, bf)
-  implicit none
   logical, intent(in)               :: normalized
   integer, intent(in)               :: ng, nx, ny, nz, shell_index, icenter, index_in_shell
   real(dp), intent(in)              :: x0(3), alpha(ng), v0(3)
@@ -1253,7 +1240,6 @@ end subroutine init_basis_function
 
 !=========================================================================
 subroutine init_basis_function_pure(normalized, ng, am, mm, icenter, x0, v0, alpha, coeff, shell_index, index_in_shell, bf)
-  implicit none
   logical, intent(in)               :: normalized
   integer, intent(in)               :: ng, am, mm, shell_index, icenter, index_in_shell
   real(dp), intent(in)              :: x0(3), alpha(ng), v0(3)
@@ -1306,7 +1292,6 @@ end subroutine init_basis_function_pure
 
 !=========================================================================
 subroutine destroy_basis_function(bf)
-  implicit none
   type(basis_function), intent(inout) :: bf
   !=====
 
@@ -1317,7 +1302,6 @@ end subroutine destroy_basis_function
 
 !=========================================================================
 subroutine print_basis_function(bf)
-  implicit none
   type(basis_function), intent(in) :: bf
   !=====
   integer :: ig
@@ -1346,7 +1330,6 @@ end subroutine print_basis_function
 ! NOT TESTED
 ! normalization is not correct for sure
 pure function eval_basis_function_pure_shell(shell, rr) RESULT(shellr)
-  implicit none
 
   type(shell_type), intent(in) :: shell
   real(dp), intent(in)         :: rr(:, :)     ! 3 x nr
@@ -1401,7 +1384,6 @@ end function eval_basis_function_pure_shell
 
 !=========================================================================
 pure function eval_basis_function2(bf, x) result(eval_basis_function)
-  implicit none
   type(basis_function), intent(in) :: bf
   real(dp), intent(in)             :: x(3)
   real(dp)                         :: eval_basis_function
@@ -1429,7 +1411,6 @@ end function eval_basis_function2
 
 !=========================================================================
 pure function eval_basis_function(bf, x)
-  implicit none
   type(basis_function), intent(in) :: bf
   real(dp), intent(in)             :: x(3)
   real(dp)                        :: eval_basis_function
@@ -1447,7 +1428,6 @@ end function eval_basis_function
 
 !=========================================================================
 function eval_basis_function_grad(bf, x)
-  implicit none
   type(basis_function), intent(in) :: bf
   real(dp), intent(in)             :: x(3)
   real(dp)                        :: eval_basis_function_grad(3)
@@ -1465,7 +1445,6 @@ end function eval_basis_function_grad
 
 !=========================================================================
 function eval_basis_function_lapl(bf, x)
-  implicit none
   type(basis_function), intent(in) :: bf
   real(dp), intent(in)             :: x(3)
   real(dp)                        :: eval_basis_function_lapl(3)
@@ -1483,7 +1462,6 @@ end function eval_basis_function_lapl
 
 !=========================================================================
 subroutine overlap_basis_function(bf1, bf2, overlap)
-  implicit none
   type(basis_function), intent(in) :: bf1, bf2
   real(dp), intent(out)            :: overlap
   !=====
@@ -1505,7 +1483,6 @@ end subroutine overlap_basis_function
 
 !=========================================================================
 subroutine kinetic_basis_function(bf1, bf2, kinetic)
-  implicit none
   type(basis_function), intent(in) :: bf1, bf2
   real(dp), intent(out)            :: kinetic
   !=====
@@ -1527,7 +1504,6 @@ end subroutine kinetic_basis_function
 
 !=========================================================================
 subroutine nucleus_basis_function(bf1, bf2, zatom, x, nucleus_pot)
-  implicit none
   type(basis_function), intent(in) :: bf1, bf2
   real(dp), intent(in)             :: zatom, x(3)
   real(dp), intent(out)            :: nucleus_pot
@@ -1550,7 +1526,6 @@ end subroutine nucleus_basis_function
 
 !=========================================================================
 subroutine basis_function_prod(bf1, bf2, bfprod)
-  implicit none
   type(basis_function), intent(in)              :: bf1, bf2
   type(basis_function), allocatable, intent(out) :: bfprod(:)
   !=====
@@ -1609,7 +1584,6 @@ subroutine basis_function_prod(bf1, bf2, bfprod)
 contains
 
 function c_1d(ix, nx1, nx2, xi, xj, xk)
-  implicit none
   integer, intent(in)  :: ix, nx1, nx2
   real(dp), intent(in) :: xi, xj, xk
   real(dp)            :: c_1d
@@ -1631,7 +1605,6 @@ end subroutine basis_function_prod
 
 !=========================================================================
 subroutine basis_function_dipole(bf1, bf2, dipole)
-  implicit none
   type(basis_function), intent(in)  :: bf1, bf2
   real(dp), intent(out)             :: dipole(3)
   !=====
@@ -1708,7 +1681,6 @@ end subroutine basis_function_dipole
 
 !=========================================================================
 subroutine basis_function_quadrupole(bf1, bf2, quad)
-  implicit none
   type(basis_function), intent(in)  :: bf1, bf2
   real(dp), intent(out)             :: quad(3, 3)
   !=====
@@ -1948,7 +1920,6 @@ end subroutine basis_function_quadrupole
 !=========================================================================
 ! Calculate < ϕ_α | exp(i 𝐪·𝐫) | ϕ_β >
 subroutine basis_function_gos(bf1, bf2, qvec, gos_bf1bf2)
-  implicit none
   type(basis_function), intent(in)  :: bf1, bf2
   real(dp), intent(in)              :: qvec(3)
   complex(dp), intent(out)          :: gos_bf1bf2
@@ -1970,7 +1941,6 @@ end subroutine basis_function_gos
 
 !=========================================================================
 function basis_function_fourier(bf, qvec) RESULT(fourier_bf)
-  implicit none
   type(basis_function), intent(in)  :: bf
   real(dp), intent(in)              :: qvec(3)
   complex(dp)                      :: fourier_bf

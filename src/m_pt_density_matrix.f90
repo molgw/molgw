@@ -24,12 +24,13 @@ module m_pt_density_matrix
 
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
-  implicit none
 
   real(dp), intent(in)        :: occupation(:, :), energy(:, :)
   real(dp), intent(in)        :: c_matrix(:, :, :)
@@ -47,7 +48,7 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
 
   nstate = SIZE(occupation, DIM=1)
 
-  call start_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%start()
 
   write(stdout, '(/,a)') ' Calculate the PT2 density matrix'
 
@@ -179,14 +180,13 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
     call destroy_eri_4center_mo_uks()
   endif
 
-  call stop_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%stop()
 
 end subroutine pt2_density_matrix
 
 
 !=========================================================================
 subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
-  implicit none
 
   real(dp), intent(in)     :: occupation(:, :), energy(:, :)
   real(dp), intent(in)     :: c_matrix(:, :, :)
@@ -202,7 +202,7 @@ subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
   real(dp), allocatable :: p_matrix_pt2(:, :, :)
   !=====
 
-  call start_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%start()
 
   nstate = SIZE(occupation, DIM=1)
 
@@ -332,14 +332,13 @@ subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
     call destroy_eri_4center_mo_uks()
   endif
 
-  call stop_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%stop()
 
 end subroutine onering_density_matrix
 
 
 !=========================================================================
 subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_matrix, cederbaum)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :), s_matrix(:, :)
@@ -362,7 +361,7 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_mat
   real(dp), allocatable :: w_s_occ_local(:, :), w_s_virt_local(:, :)
   !=====
 
-  call start_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%start()
 
   nstate = SIZE(occupation, DIM=1)
   if( PRESENT(cederbaum) ) then
@@ -521,7 +520,7 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_mat
   if( cederbaum_ ) then
     write(stdout, '(/,1x,a)') &
         'Renormalization of the occupied-virtual coupling block following Cederbaum Appendix B'
-    call start_clock(timing_tmp1)
+    call timer_tmp1%start()
 
     ! First convert the Fock density matrix from AO -> MO
     allocate(p_matrix_mo(nstate, nstate, nspin))
@@ -542,7 +541,7 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_mat
 
     !call cederbaum_naive()
     call cederbaum_blas()
-    call stop_clock(timing_tmp1)
+    call timer_tmp1%stop()
 
   endif
 
@@ -566,14 +565,13 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_mat
     call destroy_eri_4center_mo_uks()
   endif
 
-  call stop_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%stop()
 
 
 contains
 
 
 subroutine cederbaum_blas()
-  implicit none
 
   !=====
   integer :: kstate, cstate
@@ -604,7 +602,7 @@ subroutine cederbaum_blas()
   ! Block 2: occ-occ and then virt-virt block
   ! Equation B2.b
   !
-  call start_clock(timing_tmp2)
+  call timer_tmp2%start()
   b1(:) = 0.0_dp
   !
   ! B₁ᵢₐ = B₁ᴴᵢₐ + B₁ˣᵢₐ
@@ -681,7 +679,7 @@ subroutine cederbaum_blas()
   !  enddo
   !enddo
 
-  call stop_clock(timing_tmp2)
+  call timer_tmp2%stop()
 
   !
   ! Step 2: Build A = ( A₁₁  0 )
@@ -693,7 +691,7 @@ subroutine cederbaum_blas()
 
   ! Step 2.1: do (1 - A₁₁)
   ! Block 11: indices  (ia, jb)
-  call start_clock(timing_tmp3)
+  call timer_tmp3%start()
   call clean_allocate('A11 matrix', a11, nt, nt)
 
   it = 0
@@ -713,7 +711,7 @@ subroutine cederbaum_blas()
       enddo
     enddo
   enddo
-  call stop_clock(timing_tmp3)
+  call timer_tmp3%stop()
   call auxil%sum(a11)
   a11(:, :) = -a11(:, :)
   do it=1, nt
@@ -752,7 +750,6 @@ end subroutine cederbaum_blas
 
 
 subroutine cederbaum_naive()
-  implicit none
 
   !=====
   integer :: kstate, cstate
@@ -785,7 +782,7 @@ subroutine cederbaum_naive()
     ! Block 2: occ-occ and then virt-virt block
     ! Equation B2.b
     !
-    call start_clock(timing_tmp2)
+    call timer_tmp2%start()
     b1(:) = 0.0_dp
     it = 0
     do istate=ncore_G+1, nhomo_G
@@ -800,7 +797,7 @@ subroutine cederbaum_naive()
         enddo
       enddo
     enddo
-    call stop_clock(timing_tmp2)
+    call timer_tmp2%stop()
 
 #if defined(BLOCK2)
     b2(:) = 0.0_dp
@@ -967,7 +964,6 @@ end subroutine gw_density_matrix
 
 !=========================================================================
 subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
@@ -998,7 +994,7 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
     call die('gw_density_matrix_imag: requires an auxiliary basis')
   endif
 
-  call start_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%start()
 
   nstate = SIZE(occupation, DIM=1)
 
@@ -1131,14 +1127,13 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%stop()
 
 end subroutine gw_density_matrix_imag
 
 
 !=========================================================================
 subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_matrix)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
@@ -1170,7 +1165,7 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
     call die('gw_density_matrix_imag: requires an auxiliary basis')
   endif
 
-  call start_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%start()
 
   nstate = SIZE(occupation, DIM=1)
 
@@ -1343,14 +1338,13 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_mbpt_dm)
+  call timer_mbpt_dm%stop()
 
 end subroutine gw_density_matrix_dyson_imag
 
 
 !=========================================================================
 subroutine update_density_matrix(occupation, c_matrix, p_matrix_mo, p_matrix)
-  implicit none
 
   real(dp), intent(in)    :: occupation(:, :)
   real(dp), intent(in)    :: c_matrix(:, :, :)

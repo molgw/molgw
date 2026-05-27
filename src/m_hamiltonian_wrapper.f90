@@ -22,6 +22,8 @@ module m_hamiltonian_wrapper
   use m_scf
   use m_atoms
 
+  implicit none
+
   interface calculate_exchange
     module procedure calculate_exchange_real
   end interface
@@ -30,7 +32,6 @@ contains
 
 !=========================================================================
 subroutine setup_overlap(basis, s_matrix)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: s_matrix(:, :)
@@ -47,7 +48,6 @@ end subroutine setup_overlap
 
 !=========================================================================
 subroutine setup_kinetic(basis, hkin_ao)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: hkin_ao(:, :)
@@ -64,7 +64,6 @@ end subroutine setup_kinetic
 
 !=========================================================================
 subroutine calculate_hartree(basis, p_matrix, hhartree, eh)
-  implicit none
   type(basis_set), intent(inout)  :: basis
   class(*), intent(in)            :: p_matrix(:, :, :)
   real(dp), intent(out)           :: hhartree(:, :)
@@ -107,7 +106,6 @@ end subroutine calculate_hartree
 
 !=========================================================================
 subroutine calculate_exchange_real(basis, p_matrix, hexx, ex, occupation, c_matrix)
-  implicit none
   type(basis_set), intent(in)    :: basis
   real(dp), intent(in)           :: p_matrix(:, :, :)
   real(dp), intent(out)          :: hexx(:, :, :)
@@ -161,7 +159,6 @@ end subroutine calculate_exchange_real
 
 !=========================================================================
 subroutine calculate_exchange_lr(basis, p_matrix, hexx, ex, occupation, c_matrix)
-  implicit none
   type(basis_set), intent(in)    :: basis
   real(dp), intent(in)           :: p_matrix(:, :, :)
   real(dp), intent(out)          :: hexx(:, :, :)
@@ -198,7 +195,6 @@ end subroutine calculate_exchange_lr
 
 !=========================================================================
 subroutine calculate_hamiltonian_hxc(basis, nstate, occupation, c_matrix, p_matrix, hamiltonian_hxc, en_inout)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   integer, intent(in)            :: nstate
@@ -296,7 +292,6 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
                                               p_matrix_cmplx,         &
                                               hamiltonian_hxc_cmplx,  &
                                               en_inout)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: occupation(:, :)
@@ -395,7 +390,6 @@ subroutine calculate_hamiltonian_hartree_x2c(basis,                  &
                                              p_matrix_cmplx,         &
                                              hamiltonian_hxc_cmplx,  &
                                              en_inout)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: occupation(:, :)
@@ -444,7 +438,6 @@ subroutine calculate_hamiltonian_xc_x2c(basis,                  &
                                         c_matrix_cmplx,         &
                                         hamiltonian_hxc_cmplx,  &
                                         en_inout)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: occupation(:, :)

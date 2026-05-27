@@ -20,12 +20,13 @@ module m_force
   use m_hamiltonian_onebody
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine calculate_force(basis, occupation, energy, c_matrix)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: occupation(:, :)
@@ -56,7 +57,7 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
     return
   endif
 
-  call start_clock(timing_force)
+  call timer_force%start()
 
   nstate = SIZE(energy, DIM=1)
 
@@ -464,7 +465,7 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   deallocate(p_matrix)
   deallocate(r_matrix)
 
-  call stop_clock(timing_force)
+  call timer_force%stop()
 
 
 end subroutine calculate_force

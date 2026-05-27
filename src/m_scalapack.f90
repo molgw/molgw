@@ -24,6 +24,8 @@ module m_scalapack
   use mpi
 #endif
 
+  implicit none
+
   !
   ! SCALAPACK variables
   !
@@ -231,7 +233,6 @@ contains
 !
 !=========================================================================
 function NUMROC(n_in, idum1, idum2, idum3, idum4)
-  implicit none
   integer, intent(in) :: n_in
   integer, intent(in) :: idum1, idum2, idum3, idum4
   integer            :: NUMROC
@@ -244,7 +245,6 @@ end function NUMROC
 
 !=========================================================================
 function INDXL2G(indxloc, nb, iproc, isrcproc, nprocs )
-  implicit none
   integer, intent(in)  :: indxloc, iproc, isrcproc, nb, nprocs
   integer             :: INDXL2G
   !=====
@@ -258,7 +258,6 @@ end function INDXL2G
 
 !=========================================================================
 subroutine DESCINIT(desc, mmat, nmat, idum3, idum4, idum5, idum6, cntxtdum, idum7, info)
-  implicit none
   integer, intent(inout) :: desc(NDEL)
   integer, intent(in)    :: mmat, nmat, idum3, idum4, idum5, idum6, idum7
   integer, intent(in)    :: cntxtdum
@@ -282,7 +281,6 @@ end subroutine DESCINIT
 
 !=========================================================================
 function INDXG2L(iglobal, idum1, idum2, idum3, idum4)
-  implicit none
   integer, intent(in)  :: iglobal
   integer, intent(in)  :: idum1, idum2, idum3, idum4
   integer             :: INDXG2L
@@ -295,7 +293,6 @@ end function INDXG2L
 
 !=========================================================================
 function INDXG2P(iglobal, idum1, idum2, idum3, idum4)
-  implicit none
   integer, intent(in)  :: iglobal
   integer, intent(in)  :: idum1, idum2, idum3, idum4
   integer             :: INDXG2P
@@ -308,7 +305,6 @@ end function INDXG2P
 
 !=========================================================================
 subroutine BLACS_GRIDINFO(icntxt, nprow, npcol, iprow, ipcol)
-  implicit none
   integer, intent(in)  :: icntxt
   integer, intent(out) :: nprow, npcol, iprow, ipcol
   !=====
@@ -333,7 +329,6 @@ end subroutine BLACS_GRIDINFO
 !
 !=========================================================================
 pure function indxl2g_pure(indxloc, nb, iproc, isrcproc, nprocs ) RESULT(indxl2g)
-  implicit none
   integer, intent(in)  :: indxloc, iproc, isrcproc, nb, nprocs
   integer             :: indxl2g
   !=====
@@ -349,7 +344,6 @@ end function indxl2g_pure
 !
 !=========================================================================
 subroutine create_distributed_copy_nospin_dp(matrix_global, desc, matrix)
-  implicit none
   integer, intent(in)   :: desc(NDEL)
   real(dp), intent(in)  :: matrix_global(:, :)
   real(dp), intent(out) :: matrix(:, :)
@@ -383,7 +377,6 @@ end subroutine create_distributed_copy_nospin_dp
 ! with spin
 !=========================================================================
 subroutine create_distributed_copy_spin_dp(matrix_global, desc, matrix)
-  implicit none
   integer, intent(in)   :: desc(NDEL)
   real(dp), intent(in)  :: matrix_global(:, :, :)
   real(dp), intent(out) :: matrix(:, :, :)
@@ -421,7 +414,6 @@ end subroutine create_distributed_copy_spin_dp
 !
 !=========================================================================
 subroutine create_distributed_copy_nospin_cdp(matrix_global, desc, matrix)
-  implicit none
   integer, intent(in)      :: desc(NDEL)
   complex(dp), intent(in)  :: matrix_global(:, :)
   complex(dp), intent(out) :: matrix(:, :)
@@ -455,7 +447,6 @@ end subroutine create_distributed_copy_nospin_cdp
 !
 !=========================================================================
 subroutine gather_distributed_copy_nospin_dp(desc, matrix, matrix_global)
-  implicit none
   integer, intent(in)   :: desc(NDEL)
   real(dp), intent(in)  :: matrix(:, :)
   real(dp), intent(out) :: matrix_global(:, :)
@@ -516,7 +507,6 @@ end subroutine gather_distributed_copy_nospin_dp
 !
 !=========================================================================
 subroutine gather_distributed_copy_spin_dp(desc, matrix, matrix_global)
-  implicit none
   integer, intent(in)   :: desc(NDEL)
   real(dp), intent(in)  :: matrix(:, :, :)
   real(dp), intent(out) :: matrix_global(:, :, :)
@@ -577,7 +567,6 @@ end subroutine gather_distributed_copy_spin_dp
 !
 !=========================================================================
 subroutine gather_distributed_copy_nospin_cdp(desc, matrix, matrix_global)
-  implicit none
   integer, intent(in)                  :: desc(NDEL)
   complex(dp), allocatable, intent(in)  :: matrix(:, :)
   complex(dp), intent(out)             :: matrix_global(:, :)
@@ -637,7 +626,6 @@ end subroutine gather_distributed_copy_nospin_cdp
 ! with a non-distributed diagonal
 !=========================================================================
 subroutine matmul_diag_sca(side, diag, desc, matrix)
-  implicit none
   character(len=1), intent(in) :: side
   integer, intent(in)          :: desc(NDEL)
   real(dp), intent(in)         :: diag(:)
@@ -703,7 +691,6 @@ end subroutine matmul_diag_sca
 !
 !=========================================================================
 subroutine diagonalize_eigval_sca(flavor, matrix, desc, eigval)
-  implicit none
   character(len=1), intent(in) :: flavor
   integer, intent(in)     :: desc(NDEL)
   real(dp), intent(inout) :: matrix(:, :)
@@ -765,7 +752,6 @@ end subroutine diagonalize_eigval_sca
 !
 !=========================================================================
 subroutine diagonalize_inplace_sca_dp(flavor, matrix, desc, eigval)
-  implicit none
   character(len=1), intent(in) :: flavor
   integer, intent(in)          :: desc(NDEL)
   real(dp), intent(inout)      :: matrix(:, :)
@@ -877,7 +863,6 @@ end subroutine diagonalize_inplace_sca_dp
 !
 !=========================================================================
 subroutine diagonalize_inplace_sca_cdp(flavor, matrix, desc, eigval)
-  implicit none
   character(len=1), intent(in) :: flavor
   integer, intent(in)          :: desc(NDEL)
   complex(dp), intent(inout)   :: matrix(:, :)
@@ -955,7 +940,6 @@ end subroutine diagonalize_inplace_sca_cdp
 !
 !=========================================================================
 subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, desc_eigvec)
-  implicit none
   character(len=1), intent(in) :: flavor
   integer, intent(in)          :: desc(NDEL)
   integer, intent(in)          :: desc_eigvec(NDEL)
@@ -1198,7 +1182,6 @@ end subroutine diagonalize_outofplace_sca_dp
 !
 !=========================================================================
 subroutine diagonalize_scalapack_dp(flavor, scalapack_block_min, matrix_global, eigval)
-  implicit none
   character(len=1), intent(in) :: flavor
   integer, intent(in)          :: scalapack_block_min
   real(dp), intent(inout)      :: matrix_global(:, :)
@@ -1282,7 +1265,6 @@ end subroutine diagonalize_scalapack_dp
 !
 !=========================================================================
 subroutine diagonalize_scalapack_cdp(flavor, scalapack_block_min, matrix_global, eigval)
-  implicit none
   character(len=1), intent(in) :: flavor
   integer, intent(in)          :: scalapack_block_min
   complex(dp), intent(inout)   :: matrix_global(:, :)
@@ -1366,7 +1348,6 @@ end subroutine diagonalize_scalapack_cdp
 !
 !=========================================================================
 subroutine matmul_ab_scalapack_dp(scalapack_block_min, a_matrix, b_matrix, c_matrix)
-  implicit none
   integer, intent(in)     :: scalapack_block_min
   real(dp), intent(in)    :: a_matrix(:, :)
   real(dp), intent(in)    :: b_matrix(:, :)
@@ -1476,7 +1457,6 @@ end subroutine matmul_ab_scalapack_dp
 !
 !=========================================================================
 subroutine matmul_ab_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix, c_matrix)
-  implicit none
   integer, intent(in)      :: scalapack_block_min
   complex(dp), intent(in)  :: a_matrix(:, :)
   complex(dp), intent(in)  :: b_matrix(:, :)
@@ -1588,7 +1568,6 @@ end subroutine matmul_ab_scalapack_cdp
 !
 !=========================================================================
 subroutine matmul_abc_scalapack_dp(scalapack_block_min, a_matrix, b_matrix, c_matrix, d_matrix)
-  implicit none
   integer, intent(in)     :: scalapack_block_min
   real(dp), intent(in)    :: a_matrix(:, :)
   real(dp), intent(in)    :: b_matrix(:, :)
@@ -1740,7 +1719,6 @@ end subroutine matmul_abc_scalapack_dp
 !
 !=========================================================================
 subroutine matmul_abc_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix, c_matrix, d_matrix)
-  implicit none
   integer, intent(in)      :: scalapack_block_min
   complex(dp), intent(in)  :: a_matrix(:, :)
   complex(dp), intent(in)  :: b_matrix(:, :)
@@ -1894,7 +1872,6 @@ end subroutine matmul_abc_scalapack_cdp
 !
 !=========================================================================
 subroutine matmul_transaba_scalapack_dp(scalapack_block_min, a_matrix, b_matrix, c_matrix)
-  implicit none
   integer, intent(in)     :: scalapack_block_min
   real(dp), intent(in)    :: a_matrix(:, :)
   real(dp), intent(in)    :: b_matrix(:, :)
@@ -2044,7 +2021,6 @@ end subroutine matmul_transaba_scalapack_dp
 !
 !=========================================================================
 subroutine matmul_transaba_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix, c_matrix)
-  implicit none
   integer, intent(in)      :: scalapack_block_min
   complex(dp), intent(in)  :: a_matrix(:, :)
   complex(dp), intent(in)  :: b_matrix(:, :)
@@ -2196,7 +2172,6 @@ end subroutine matmul_transaba_scalapack_cdp
 !
 !=========================================================================
 subroutine trace_transab_scalapack(scalapack_block_min, a_matrix, b_matrix, ab_trace)
-  implicit none
   integer, intent(in)     :: scalapack_block_min
   real(dp), intent(in)    :: a_matrix(:, :)
   real(dp), intent(in)    :: b_matrix(:, :)
@@ -2326,7 +2301,6 @@ end subroutine trace_transab_scalapack
 !
 !=========================================================================
 subroutine matmul_abc_sca(desca, a_matrix_local, descb, b_matrix_local, descc, c_matrix_local, descd, d_matrix_local)
-  implicit none
   integer , intent(in)  :: desca(NDEL), descb(NDEL), descc(NDEL), descd(NDEL)
   real(dp), intent(in)  :: a_matrix_local(:, :)
   real(dp), intent(in)  :: b_matrix_local(:, :)
@@ -2402,7 +2376,6 @@ end subroutine matmul_abc_sca
 !
 !=========================================================================
 subroutine matmul_transaba_sca(desca, a_matrix_local, descb, b_matrix_local, descc, c_matrix_local)
-  implicit none
   integer, intent(in)     :: desca(NDEL), descb(NDEL), descc(NDEL)
   real(dp), intent(in)    :: a_matrix_local(:, :)
   real(dp), intent(in)    :: b_matrix_local(:, :)
@@ -2486,7 +2459,6 @@ end subroutine matmul_transaba_sca
 !
 !=========================================================================
 subroutine symmetrize_matrix_sca(uplo, nglobal, desc, matrix, desc_tmp, matrix_tmp)
-  implicit none
   character(len=1)       :: uplo
   integer, intent(in)     :: nglobal
   integer, intent(in)     :: desc(NDEL), desc_tmp(NDEL)
@@ -2581,7 +2553,6 @@ end subroutine symmetrize_matrix_sca
 
 !=========================================================================
 subroutine invert_sca(desc, matrix, matrix_inv)
-  implicit none
 
   integer, intent(in)   :: desc(NDEL)
   real(dp), intent(in)  :: matrix(:, :)
@@ -2651,7 +2622,6 @@ end subroutine invert_sca
 
 !=========================================================================
 subroutine invert_chol_sca(desc, matrix)
-  implicit none
 
   integer, intent(in)     :: desc(NDEL)
   real(dp), intent(inout) :: matrix(:, :)
@@ -2698,7 +2668,6 @@ end subroutine invert_chol_sca
 
 !=========================================================================
 subroutine init_scalapack()
-  implicit none
 
   !=====
   !=====
@@ -2761,7 +2730,6 @@ end subroutine init_scalapack
 
 !=========================================================================
 subroutine init_scalapack_other(nbf, eri3_nprow, eri3_npcol)
-  implicit none
 
   integer, intent(in)  :: nbf
   integer, intent(in)  :: eri3_nprow, eri3_npcol
@@ -2858,7 +2826,6 @@ end subroutine init_scalapack_other
 
 !=========================================================================
 function row_block_size(mglobal, iprow, nprow)
-  implicit none
 
   integer, intent(in) :: mglobal, iprow, nprow
   integer            :: row_block_size
@@ -2875,7 +2842,6 @@ end function row_block_size
 
 !=========================================================================
 function col_block_size(nglobal, ipcol, npcol)
-  implicit none
 
   integer, intent(in) :: nglobal, ipcol, npcol
   integer            :: col_block_size
@@ -2892,7 +2858,6 @@ end function col_block_size
 
 !=========================================================================
 function rowindex_global_to_local_distrib(distribution, iglobal) result(ilocal)
-  implicit none
   character(len=1), intent(in) :: distribution
   integer, intent(in)          :: iglobal
   integer                     :: ilocal
@@ -2935,7 +2900,6 @@ end function rowindex_global_to_local_distrib
 
 !=========================================================================
 function colindex_global_to_local_distrib(distribution, jglobal) result(jlocal)
-  implicit none
   character(len=1), intent(in) :: distribution
   integer, intent(in)          :: jglobal
   integer                     :: jlocal
@@ -2978,7 +2942,6 @@ end function colindex_global_to_local_distrib
 
 !=========================================================================
 function rowindex_local_to_global_distrib(distribution, ilocal) result(iglobal)
-  implicit none
   character(len=1), intent(in) :: distribution
   integer, intent(in)          :: ilocal
   integer                     :: iglobal
@@ -3006,7 +2969,6 @@ end function rowindex_local_to_global_distrib
 
 !=========================================================================
 function rowindex_local_to_global_procindex(iprow, nprow, ilocal) result(iglobal)
-  implicit none
   integer, intent(in)          :: iprow, nprow, ilocal
   integer                     :: iglobal
   !=====
@@ -3023,7 +2985,6 @@ end function rowindex_local_to_global_procindex
 
 !=========================================================================
 function rowindex_local_to_global_descriptor(desc, ilocal) result(iglobal)
-  implicit none
   integer, intent(in)          :: desc(NDEL), ilocal
   integer                     :: iglobal
   !=====
@@ -3044,7 +3005,6 @@ end function rowindex_local_to_global_descriptor
 
 !=========================================================================
 function rowindex_global_to_local_descriptor(desc, iglobal) result(ilocal)
-  implicit none
   integer, intent(in)          :: desc(NDEL), iglobal
   integer                     :: ilocal
   !=====
@@ -3069,7 +3029,6 @@ end function rowindex_global_to_local_descriptor
 
 !=========================================================================
 function colindex_local_to_global_distrib(distribution, jlocal) result(jglobal)
-  implicit none
   character(len=1), intent(in) :: distribution
   integer, intent(in)          :: jlocal
   integer                     :: jglobal
@@ -3097,7 +3056,6 @@ end function colindex_local_to_global_distrib
 
 !=========================================================================
 function colindex_local_to_global_procindex(ipcol, npcol, jlocal) result(jglobal)
-  implicit none
   integer, intent(in)          :: ipcol, npcol, jlocal
   integer                     :: jglobal
   !=====
@@ -3114,7 +3072,6 @@ end function colindex_local_to_global_procindex
 
 !=========================================================================
 function colindex_local_to_global_descriptor(desc, jlocal) result(jglobal)
-  implicit none
   integer, intent(in)          :: desc(NDEL), jlocal
   integer                     :: jglobal
   !=====
@@ -3135,7 +3092,6 @@ end function colindex_local_to_global_descriptor
 
 !=========================================================================
 function colindex_global_to_local_descriptor(desc, jglobal) result(jlocal)
-  implicit none
   integer, intent(in)          :: desc(NDEL), jglobal
   integer                     :: jlocal
   !=====
@@ -3160,7 +3116,6 @@ end function colindex_global_to_local_descriptor
 
 !=========================================================================
 subroutine set_auxil_block_size(block_size_max)
-  implicit none
   integer, intent(in) :: block_size_max
   !=====
   !=====
@@ -3190,7 +3145,6 @@ end subroutine set_auxil_block_size
 
 !=========================================================================
 subroutine finish_scalapack()
-  implicit none
   !=====
 
 #if defined(HAVE_SCALAPACK)
@@ -3208,7 +3162,6 @@ end subroutine finish_scalapack
 
 !=========================================================================
 subroutine diagonalize_davidson_sca(tolerance, desch, ham, neig, eigval, desc_vec, eigvec)
-  implicit none
 
   real(dp), intent(in)  :: tolerance
   real(dp), intent(in)  :: ham(:, :)
@@ -3404,7 +3357,6 @@ end subroutine diagonalize_davidson_sca
 
 !=========================================================================
 subroutine orthogonalize_sca(desc_vec, mvec_ortho, nvec_ortho, vec)
-  implicit none
   !=====
   integer, intent(in)     :: desc_vec(NDEL)
   integer, intent(in)     :: mvec_ortho, nvec_ortho
@@ -3444,7 +3396,6 @@ end subroutine orthogonalize_sca
 
 !=========================================================================
 subroutine select_nprow_npcol(scalapack_block_min, mmat, nmat, nprow, npcol)
-  implicit none
 
   integer, intent(in)  :: scalapack_block_min, mmat, nmat
   integer, intent(out) :: nprow, npcol

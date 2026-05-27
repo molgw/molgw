@@ -11,6 +11,8 @@ module m_linear_algebra
   use m_definitions
   use m_warning, only: die, issue_warning
 
+  implicit none
+
   real(kind=real32), parameter :: blas_sp_zero     = 0.0_real32
   real(kind=real64), parameter :: blas_dp_zero     = 0.0_real64
   complex(kind=real64), parameter :: blas_cdp_zero = (0.0_real64, 0.0_real64)
@@ -65,7 +67,6 @@ contains
 ! Override the upper part of a matrix with its lower part
 ! Final matrix is symmetric
 subroutine matrix_lower_to_full_dp(matrix)
-  implicit none
   real(dp), intent(inout)  :: matrix(:, :)
   !=====
   integer :: imat, jmat, nmat
@@ -84,7 +85,6 @@ end subroutine matrix_lower_to_full_dp
 ! Override the upper part of a matrix with its lower part
 ! Final matrix is hermitian
 subroutine matrix_lower_to_full_cdp(matrix)
-  implicit none
   complex(dp), intent(inout)  :: matrix(:, :)
   !=====
   integer :: imat, jmat, nmat
@@ -102,7 +102,6 @@ end subroutine matrix_lower_to_full_cdp
 !=========================================================================
 ! Calculate the trace of a real matrix
 function matrix_trace(matrix)
-  implicit none
   real(dp), intent(in) :: matrix(:, :)
   real(dp)            :: matrix_trace
   !=====
@@ -123,7 +122,6 @@ end function matrix_trace
 !=========================================================================
 ! Calculate the trace of a complex matrix
 function matrix_trace_cmplx(matrix)
-  implicit none
   complex(dp), intent(in) :: matrix(:, :)
   complex(dp)            :: matrix_trace_cmplx
   !=====
@@ -143,7 +141,6 @@ end function matrix_trace_cmplx
 
 !=========================================================================
 function matrix_is_symmetric(matrix)
-  implicit none
   logical             :: matrix_is_symmetric
   real(dp), intent(in) :: matrix(:, :)
   !=====
@@ -165,7 +162,6 @@ end function matrix_is_symmetric
 
 !=========================================================================
 subroutine invert_dp(matrix, matrix_inv)
-  implicit none
 
   real(dp), intent(in)  :: matrix(:, :)
   real(dp), intent(out) :: matrix_inv(:, :)
@@ -181,7 +177,6 @@ end subroutine invert_dp
 
 !=========================================================================
 subroutine invert_inplace_dp(matrix)
-  implicit none
 
   real(dp), intent(inout) :: matrix(:, :)
   !=====
@@ -215,7 +210,6 @@ end subroutine invert_inplace_dp
 
 !=========================================================================
 subroutine invert_cdp(matrix, matrix_inv)
-  implicit none
 
   complex(dp), intent(in)  :: matrix(:, :)
   complex(dp), intent(out) :: matrix_inv(:, :)
@@ -231,7 +225,6 @@ end subroutine invert_cdp
 
 !=========================================================================
 subroutine invert_inplace_cdp(matrix)
-  implicit none
   complex(dp), intent(in) :: matrix(:, :)
   !=====
   integer                 :: nmat
@@ -264,7 +257,6 @@ end subroutine invert_inplace_cdp
 
 !=========================================================================
 subroutine invert_symmetric_inplace_dp(matrix)
-  implicit none
 
   real(dp), intent(inout) :: matrix(:, :)
   !=====
@@ -298,7 +290,6 @@ end subroutine invert_symmetric_inplace_dp
 
 !=========================================================================
 subroutine diagonalize_wo_vectors_dp(flavor, matrix, eigval)
-  implicit none
   character(len=1), intent(in) :: flavor
   real(dp), intent(inout)      :: matrix(:, :)
   real(dp), intent(out)        :: eigval(:)
@@ -321,7 +312,6 @@ end subroutine diagonalize_wo_vectors_dp
 
 !=========================================================================
 subroutine diagonalize_dp(flavor, matrix, eigval, eigvec)
-  implicit none
   character(len=1), intent(in) :: flavor
   real(dp), intent(in)         :: matrix(:, :)
   real(dp), intent(out)        :: eigval(:)
@@ -464,7 +454,6 @@ end subroutine diagonalize_dp
 
 !=========================================================================
 subroutine diagonalize_sp(flavor, matrix, eigval, eigvec)
-  implicit none
   character(len=1), intent(in) :: flavor
   real(sp), intent(in)         :: matrix(:, :)
   real(sp), intent(out)        :: eigval(:)
@@ -491,7 +480,6 @@ end subroutine diagonalize_sp
 
 !=========================================================================
 subroutine diagonalize_inplace_dp(flavor, matrix, eigval)
-  implicit none
   character(len=1), intent(in) :: flavor
   real(dp), intent(inout)      :: matrix(:, :)
   real(dp), intent(out)        :: eigval(:)
@@ -562,7 +550,6 @@ end subroutine diagonalize_inplace_dp
 
 !=========================================================================
 subroutine diagonalize_inplace_sp(flavor, matrix, eigval)
-  implicit none
   character(len=1), intent(in) :: flavor
   real(sp), intent(inout) :: matrix(:, :)
   real(sp), intent(out)   :: eigval(:)
@@ -593,7 +580,6 @@ end subroutine diagonalize_inplace_sp
 
 !=========================================================================
 subroutine diagonalize_cdp(flavor, matrix, eigval, eigvec)
-  implicit none
   character(len=1), intent(in) :: flavor
   complex(dp), intent(in)      :: matrix(:, :)
   real(dp), intent(out)        :: eigval(:)
@@ -675,7 +661,6 @@ end subroutine diagonalize_cdp
 
 !=========================================================================
 subroutine diagonalize_inplace_cdp(flavor, matrix, eigval)
-  implicit none
   character(len=1), intent(in) :: flavor
   complex(dp), intent(inout) :: matrix(:, :)
   real(dp), intent(out)      :: eigval(:)
@@ -757,7 +742,6 @@ end subroutine diagonalize_inplace_cdp
 ! SVD
 ! be careful A is destroyed
 subroutine svd_dp(A, U, S, VT)
-  implicit none
 
   real(dp), intent(inout) :: A(:,:)    ! m x n
   real(dp), intent(out)   :: U(:,:)   ! m x m
@@ -802,7 +786,6 @@ end subroutine svd_dp
 
 !=========================================================================
 subroutine diagonalize_davidson(tolerance, nstep, ham, neig, eigval, eigvec)
-  implicit none
 
   real(dp), intent(in)  :: tolerance
   integer, intent(inout) :: nstep
@@ -910,7 +893,6 @@ end subroutine diagonalize_davidson
 !=========================================================================
 ! Gram-Schmidt algorithm
 subroutine orthogonalize(vec)
-  implicit none
 
   real(dp), intent(inout) :: vec(:, :)
   !=====
@@ -934,7 +916,6 @@ end subroutine orthogonalize
 
 !=========================================================================
 subroutine check_unitarity(cmat)
-  implicit none
 
   complex(dp), intent(in) :: cmat(:, :)
   !=====
@@ -985,7 +966,6 @@ end subroutine check_unitarity
 
 !=========================================================================
 subroutine cross_product(u1, u2, u3)
-  implicit none
 
   real(dp), intent(in)  :: u1(3), u2(3)
   real(dp), intent(out) :: u3(3)
@@ -1001,7 +981,6 @@ end subroutine cross_product
 
 !=========================================================================
 pure function determinant_3x3_matrix(mat) RESULT(det)
-  implicit none
 
   real(dp) :: det
   real(dp), intent(in) :: mat(3, 3)
@@ -1020,7 +999,6 @@ end function determinant_3x3_matrix
 !=========================================================================
 function inverse_3x3_matrix(mat) RESULT(minv)
   ! Simple 3x3 matrix inverse using cofactors
-  implicit none
 
   real(dp), intent(in) :: mat(3, 3)
   !=====
@@ -1055,7 +1033,6 @@ end function inverse_3x3_matrix
 ! Find the unitary transform V such that V**T A(:,:,i) V is as diagonal as possible
 !
 subroutine joint_diagonalization(A, tol, V, converged)
-  implicit none
   real(dp), intent(inout) :: A(:, :, :), V(:, :)
   real(dp), intent(in)    :: tol
   logical, intent(out)   :: converged
@@ -1130,7 +1107,6 @@ end subroutine joint_diagonalization
 
 !=========================================================================
 function check_identity(matrix, tolerance) RESULT(is_identity)
-  implicit none
   class(*), intent(in) :: matrix(:, :)
   real(dp), optional, intent(in) :: tolerance
   logical              :: is_identity

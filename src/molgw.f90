@@ -1,7 +1,7 @@
 !=========================================================================
 ! This file is part of MOLGW.
 !
-! Copyright (C) 2010-2020  Fabien Bruneval
+! Copyright (C) 2010-2026  Fabien Bruneval
 ! MOLGW is free software: you can redistribute it and/or modify
 ! it under the terms of the GNU General Public License as published by
 ! the Free Software Foundation, either version 3 of the License, or
@@ -77,7 +77,7 @@ program molgw
   type(lbfgs_state)          :: lbfgs_plan
   type(energy_contributions) :: en_gks, en_mbpt, en_noft
   integer                 :: restart_type
-  integer                 :: nstate, nocc, ng_global
+  integer                 :: nstate, nocc
   integer                 :: istep, istring
   logical                 :: is_restart, is_big_restart, is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
@@ -119,8 +119,8 @@ program molgw
 
   !
   ! start counting time here
-  call init_timing()
-  call start_clock(timing_total)
+  call init_timers()
+  call timer_molgw%start()
 
   !
   ! Output some welcome messages and compilation options
@@ -163,7 +163,8 @@ program molgw
       write(stdout, '(/,/,1x,a,i5,/)') ' === LBFGS step ', istep
     endif
  
-    call start_clock(timing_prescf)
+    call timers_setstage(TIMING_PRESCF)
+    call timer_prescf%start()
  
  
     if( x2c_ ) then
@@ -396,17 +397,6 @@ program molgw
     ! Add the Nuclei-Electric Field interaction energy to nuc_nuc
     en_gks%nuc_nuc = en_gks%nuc_nuc + eext
    
-    !
-    ! Testing the quadrature in Fourier space
-    !if( .TRUE. ) then
-    !  !                        basis projectile n basis_target
-    !  call setup_overlap_fourier(basis, basis, s_matrix)
-    !  call setup_kinetic_fourier(basis, basis, hamiltonian_kinetic)
-    !  call setup_nucleus_fourier(basis, basis, hamiltonian_nucleus)
-    !endif
-   
-   
-   
     !If RESTART_TDDFT file exists and is correct, skip the SCF loop and start RT-TDDFT simulation
     if( read_tddft_restart_ ) then
       call check_restart_tddft(nstate, occupation, restart_tddft_is_correct)
@@ -440,7 +430,8 @@ program molgw
       endif
     endif
    
-    call stop_clock(timing_prescf)
+    call timer_prescf%stop()
+    call timers_setstage(TIMING_SCF)
    
    
     !
@@ -607,7 +598,8 @@ program molgw
   ! Part 3 / 3 : Post-processings
   !
   !
-  call start_clock(timing_postscf)
+  call timers_setstage(TIMING_POSTSCF)
+  call timer_postscf%start()
 
 #if defined(HAVE_LIBCINT)
   call destroy_libcint(basis)
@@ -691,12 +683,8 @@ program molgw
     call clean_deallocate('Square-Root of Overlap S{1/2}', s_matrix_sqrt)
   endif
   if( print_spatial_extension_ ) call spatial_extension(basis, c_matrix)
-  if( .FALSE.     ) call plot_rho_list(nstate, basis, occupation, c_matrix)
   if( print_dens_traj_ ) call plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, 0, 0.0_dp)
   if( print_dens_traj_points_set_ ) call plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix, 0, 0.0_dp)
-  if( .FALSE. ) call write_cube_from_header('GKS', basis, occupation, c_matrix)
-  !call plot_rho_xy(basis, occupation, c_matrix)      !plot density integrated on axis z in plane xy
-
   !
   ! Do NOFT optimization
   !
@@ -965,8 +953,8 @@ program molgw
 
   call destroy_cart_to_pure_transforms()
 
-  call stop_clock(timing_postscf)
-  call stop_clock(timing_total)
+  call timer_postscf%stop()
+  call timer_molgw%stop()
 
   call this_is_the_end()
 

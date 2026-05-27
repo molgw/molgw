@@ -20,12 +20,13 @@ module m_gw_selfenergy_analytic
   use m_linear_algebra, only: diagonalize
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, se)
-  implicit none
 
   integer, intent(in)                  :: selfenergy_approx
   real(dp), intent(in)                 :: occupation(:, :), energy(:, :)
@@ -43,7 +44,7 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
   real(dp)              :: energy_gw
   !=====
 
-  call start_clock(timing_gw_self)
+  call timer_gw_self%start()
 
   nstate = SIZE(occupation, DIM=1)
 
@@ -66,7 +67,7 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
 
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
   endif
 
 
@@ -189,7 +190,7 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
   endif
 
 
-  call stop_clock(timing_gw_self)
+  call timer_gw_self%stop()
 
 
 end subroutine gw_selfenergy
@@ -197,7 +198,6 @@ end subroutine gw_selfenergy
 
 !=========================================================================
 subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matrix, wpol, exchange_m_vxc)
-  implicit none
 
   integer, intent(in)                  :: selfenergy_approx
   real(dp), intent(in)                 :: occupation(:, :), energy(:, :)
@@ -226,7 +226,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
 #endif
   !=====
 
-  call start_clock(timing_gw_self)
+  call timer_gw_self%start()
 
   nstate = SIZE(energy, DIM=1)
 
@@ -248,7 +248,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   endif
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
   endif
 
   mstate = nvirtual_G - ncore_G - 1
@@ -465,14 +465,13 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
     call destroy_eri_3center_mo()
   endif
 
-  call stop_clock(timing_gw_self)
+  call timer_gw_self%stop()
 
 end subroutine gw_selfenergy_upfolding
 
 
 !=========================================================================
 subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matrix, wpol, se)
-  implicit none
 
   integer, intent(in)                  :: selfenergy_approx
   real(dp), intent(in)                 :: occupation(:, :), energy(:, :)
@@ -504,7 +503,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
 #if defined(HAVE_SCALAPACK)
   nstate = SIZE(energy, DIM=1)
 
-  call start_clock(timing_gw_self)
+  call timer_gw_self%start()
 
   write(stdout, *)
   select case(selfenergy_approx)
@@ -522,7 +521,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
   end select
 
 
-  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timer_aomo_gw)
 
 
 
@@ -643,7 +642,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
   call clean_deallocate('TMP distributed W', w_s_tmp)
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gw_self)
+  call timer_gw_self%stop()
 
 #endif
 
@@ -652,7 +651,6 @@ end subroutine gw_selfenergy_scalapack
 
 !=========================================================================
 subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfenergy_ao)
-  implicit none
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
@@ -667,7 +665,7 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
   real(dp)              :: fact_full_i, fact_empty_i
   !=====
 
-  call start_clock(timing_gw_self)
+  call timer_gw_self%start()
 
   nstate = SIZE(energy, DIM=1)
 
@@ -685,7 +683,7 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
 
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
   endif
 
   call clean_allocate('Temporary array', w_s, 1, wpol%npole_reso, nsemin, nsemax)
@@ -793,7 +791,7 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
   if(has_auxil_basis) call destroy_eri_3center_mo()
 
 
-  call stop_clock(timing_gw_self)
+  call timer_gw_self%stop()
 
 
 end subroutine gw_selfenergy_qs
@@ -801,7 +799,6 @@ end subroutine gw_selfenergy_qs
 
 !=========================================================================
 subroutine dump_gw_ingredients(energy, c_matrix, wpol)
-  implicit none
 
   real(dp), intent(in)                 :: energy(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :)
@@ -818,7 +815,7 @@ subroutine dump_gw_ingredients(energy, c_matrix, wpol)
   write(stdout, '(/,1x,a)') 'Dump on file the GW ingredients'
 
   if(has_auxil_basis) then
-    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
   endif
 
   !

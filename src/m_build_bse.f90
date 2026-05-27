@@ -26,13 +26,14 @@ module m_build_bse
   
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate, c_matrix, energy, wpol, alpha_local, &
                                 m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa, rpa_correlation)
-  implicit none
 
   logical, intent(in)                 :: is_triplet_currently
   real(dp), intent(in)                :: lambda
@@ -60,7 +61,7 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
   real(dp), allocatable :: apb_block(:, :)
   !=====
 
-  call start_clock(timing_build_common)
+  call timer_build_common%start()
     
   write(stdout, '(a)') ' Build Common part: Energies + Hartree + possibly Exchange'
   write(stdout, '(a,f8.3)') ' Content of Exchange: ', alpha_local
@@ -208,14 +209,13 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
   if(ALLOCATED(eri_mo_jbmin)) deallocate(eri_mo_jbmin)
 
 
-  call stop_clock(timing_build_common)
+  call timer_build_common%stop()
 
 end subroutine build_amb_apb_common
 
 
 !=========================================================================
 subroutine build_amb_apb_diag_auxil(nmat, nstate, energy, wpol, m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa)
-  implicit none
 
   integer, intent(in)                 :: nmat, nstate
   real(dp), intent(in)                :: energy(nstate, nspin)
@@ -253,7 +253,6 @@ end subroutine build_amb_apb_diag_auxil
 
 !=========================================================================
 subroutine remove_a_energy_diag(energy, wpol, a_matrix)
-  implicit none
 
   real(dp), intent(in)                :: energy(:, :)
   type(spectral_function), intent(in) :: wpol
@@ -286,7 +285,6 @@ end subroutine remove_a_energy_diag
 
 !=========================================================================
 subroutine get_rpa_correlation(nmat, m_apb, n_apb, amb_matrix, apb_matrix, rpa_correlation)
-  implicit none
 
   integer, intent(in)                 :: nmat
   integer, intent(in)                 :: m_apb, n_apb
@@ -318,7 +316,6 @@ end subroutine get_rpa_correlation
 
 !=========================================================================
 subroutine build_apb_hartree_auxil(is_triplet_currently, lambda, desc_apb, wpol, m_apb, n_apb, apb_matrix)
-  implicit none
 
   logical, intent(in)                 :: is_triplet_currently
   real(dp), intent(in)                :: lambda
@@ -341,7 +338,7 @@ subroutine build_apb_hartree_auxil(is_triplet_currently, lambda, desc_apb, wpol,
   ! in case of triplet final state, no contribution is to be calculated
   if( is_triplet_currently) return
 
-  call start_clock(timing_build_common)
+  call timer_build_common%start()
 
   write(stdout, '(a)') ' Build Hartree part with auxil basis'
 
@@ -412,14 +409,13 @@ subroutine build_apb_hartree_auxil(is_triplet_currently, lambda, desc_apb, wpol,
   enddo
 
 
-  call stop_clock(timing_build_common)
+  call timer_build_common%stop()
 
 end subroutine build_apb_hartree_auxil
 
 
 !=========================================================================
 subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda, desc_apb, wpol, m_apb, n_apb, apb_matrix)
-  implicit none
 
   logical, intent(in)                 :: is_triplet_currently
   real(dp), intent(in)                :: lambda
@@ -451,7 +447,7 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda, desc_
 
 #if defined(HAVE_SCALAPACK)
 
-  call start_clock(timing_build_common)
+  call timer_build_common%start()
 
   write(stdout, '(a)') ' Build Hartree part with auxil basis using DSYRK'
 
@@ -490,14 +486,13 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda, desc_
 #endif
 
 
-  call stop_clock(timing_build_common)
+  call timer_build_common%stop()
 
 end subroutine build_apb_hartree_auxil_scalapack
 
 
 !=========================================================================
 subroutine build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, wpol, m_apb, n_apb, apb_matrix)
-  implicit none
 
   logical, intent(in)                 :: is_triplet_currently
   integer, intent(in)                 :: nmat, nstate
@@ -517,7 +512,7 @@ subroutine build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, 
   real(dp), allocatable :: apb_block(:, :)
   !=====
 
-  call start_clock(timing_build_tddft)
+  call timer_build_tddft%start()
 
   write(stdout, '(a)') ' Build fxc part'
 
@@ -593,14 +588,13 @@ subroutine build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, 
 
   call destroy_tddft()
 
-  call stop_clock(timing_build_tddft)
+  call timer_build_tddft%stop()
 
 end subroutine build_apb_tddft
 
 
 !=========================================================================
 subroutine build_amb_apb_bse(wpol, wpol_static, m_apb, n_apb, amb_matrix, apb_matrix)
-  implicit none
 
   type(spectral_function), intent(in) :: wpol, wpol_static
   integer, intent(in)                 :: m_apb, n_apb
@@ -617,7 +611,7 @@ subroutine build_amb_apb_bse(wpol, wpol_static, m_apb, n_apb, amb_matrix, apb_ma
 
   if( has_auxil_basis ) call die('Have an auxil basis. This should not happen here')
 
-  call start_clock(timing_build_bse)
+  call timer_build_bse%start()
 
   write(stdout, '(a)') ' Build W part'
 
@@ -676,7 +670,7 @@ subroutine build_amb_apb_bse(wpol, wpol_static, m_apb, n_apb, amb_matrix, apb_ma
   deallocate(bra, ket)
 
 
-  call stop_clock(timing_build_bse)
+  call timer_build_bse%stop()
 
 
 end subroutine build_amb_apb_bse
@@ -686,7 +680,6 @@ end subroutine build_amb_apb_bse
 subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda, &
                                                  desc_apb, wpol, wpol_static, m_apb, n_apb, &
                                                  amb_matrix, apb_matrix)
-  implicit none
 
   real(dp), intent(in)                :: alpha_local, beta_local, lambda
   integer, intent(in)                 :: desc_apb(NDEL)
@@ -715,7 +708,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
 #endif
   !=====
 
-  call start_clock(timing_build_bse)
+  call timer_build_bse%start()
   if( .NOT. has_auxil_basis ) call die('Does not have auxil basis. This should not happen')
 
   write(stdout, '(a)')      ' Build W part Auxil'
@@ -966,7 +959,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
   call clean_deallocate('Temporary array for W', wp0)
   if(allocated(wp0_lr)) call clean_deallocate('Temporary array for W_lr', wp0_lr)
 
-  call stop_clock(timing_build_bse)
+  call timer_build_bse%stop()
 
 
 end subroutine build_amb_apb_screened_exchange_auxil

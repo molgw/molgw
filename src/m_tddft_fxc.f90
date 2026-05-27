@@ -20,6 +20,8 @@ module m_tddft_fxc
   use m_density_tools
   use m_libxc_tools
 
+  implicit none
+
   integer, private   :: nspin_tddft
 
   !
@@ -49,7 +51,6 @@ contains
 
 !=========================================================================
 subroutine prepare_tddft(is_triplet_in, nstate, basis, c_matrix, occupation)
-  implicit none
 
   logical, intent(in)               :: is_triplet_in
   integer, intent(in)               :: nstate
@@ -235,7 +236,6 @@ end subroutine prepare_tddft
 
 !=========================================================================
 function eval_fxc_rks_singlet(istate, jstate, ijspin, kstate, lstate, klspin)
-  implicit none
   !=====
   real(dp)           :: eval_fxc_rks_singlet
   integer, intent(in) :: istate, jstate, kstate, lstate
@@ -282,7 +282,6 @@ end function eval_fxc_rks_singlet
 
 !=========================================================================
 function eval_fxc_uks(istate, jstate, ijspin, kstate, lstate, klspin)
-  implicit none
   !=====
   real(dp)           :: eval_fxc_uks
   integer, intent(in) :: istate, jstate, kstate, lstate
@@ -329,7 +328,6 @@ end function eval_fxc_uks
 
 !=========================================================================
 function eval_fxc_rks_triplet(istate, jstate, ijspin, kstate, lstate, klspin)
-  implicit none
   !=====
   real(dp)           :: eval_fxc_rks_triplet
   integer, intent(in) :: istate, jstate, kstate, lstate
@@ -374,7 +372,6 @@ end function eval_fxc_rks_triplet
 
 !=========================================================================
 subroutine destroy_tddft()
-  implicit none
 
   call destroy_dft_grid()
 

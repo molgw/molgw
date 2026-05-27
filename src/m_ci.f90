@@ -21,6 +21,8 @@ module m_ci
   use m_inputparam
   use m_selfenergy_tools
 
+  implicit none
+
   integer, parameter, private     :: key_int=8
 
 
@@ -78,7 +80,6 @@ contains
 ! as defined in Hellgaker's book (chapter 1 box 1)
 !==================================================================
 pure function gamma_sign_keyud(keyud, istate, ispin)
-  implicit none
 
   integer(key_int), intent(in) :: keyud(2)
   integer, intent(in) :: istate, ispin
@@ -97,7 +98,6 @@ end function gamma_sign_keyud
 
 !==================================================================
 pure function get_keyud(sporbup, sporbdown) result(keyud)
-  implicit none
 
   integer, intent(in)    :: sporbup(:), sporbdown(:)
   integer(kind=key_int) :: keyud(2)
@@ -118,7 +118,6 @@ end function get_keyud
 
 !==================================================================
 subroutine increment_sporb(sporb)
-  implicit none
 
   integer, intent(inout) :: sporb(:)
   !=====
@@ -151,7 +150,6 @@ end subroutine increment_sporb
 
 !==================================================================
 pure function get_spinz_from_keyud(keyud) result(spinz)
-  implicit none
 
   integer(kind=key_int), intent(in) :: keyud(2)
   integer :: spinz
@@ -166,7 +164,6 @@ end function get_spinz_from_keyud
 !==================================================================
 ! From key, get the spins = 1 or 2
 subroutine get_spins_from_keyud(keyud, ispin)
-  implicit none
 
   integer(kind=key_int), intent(in) :: keyud(2)
   integer, intent(out)              :: ispin(:)
@@ -185,7 +182,6 @@ end subroutine get_spins_from_keyud
 !==================================================================
 ! From key, get the states
 subroutine get_states_from_keyud(keyud, istate)
-  implicit none
 
   integer(kind=key_int), intent(in) :: keyud(2)
   integer, intent(out)              :: istate(:)
@@ -213,7 +209,6 @@ end subroutine get_states_from_keyud
 !==================================================================
 subroutine prepare_ci(basis, nstate_in, nfrozen_in, c_matrix)
   use m_hamiltonian_onebody
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: nstate_in, nfrozen_in
@@ -248,7 +243,6 @@ end subroutine prepare_ci
 
 !==================================================================
 subroutine destroy_ci()
-  implicit none
   !=====
   !=====
 
@@ -273,7 +267,6 @@ end subroutine destroy_ci
 
 !==================================================================
 subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
-  implicit none
 
   integer, intent(in)               :: nelec
   integer, intent(in)               :: spinstate
@@ -297,7 +290,7 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
   integer :: order_up, order_down
   !=====
 
-  call start_clock(timing_ci_config)
+  call timer_ci_config%start()
 
   write(stdout, '(/,1x,a,a)') 'Setup CI space with excitations: ', ci_type_in
 
@@ -525,14 +518,13 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
 
   endif
 
-  call stop_clock(timing_ci_config)
+  call timer_ci_config%stop()
 
 end subroutine setup_configurations_ci
 
 
 !==================================================================
 subroutine build_1e_hamiltonian(c_matrix, h_1e)
-  implicit none
 
   real(dp), intent(in) :: c_matrix(:, :, :)
   real(dp), intent(in) :: h_1e(:, :)
@@ -557,7 +549,6 @@ end subroutine build_1e_hamiltonian
 
 !==================================================================
 function keyud_diff_order(keyud1, keyud2) RESULT(order)
-  implicit none
 
   integer(kind=key_int), intent(in) :: keyud1(2), keyud2(2)
   integer                          :: order
@@ -571,7 +562,6 @@ end function keyud_diff_order
 
 !==================================================================
 function key_diff_order(key1, key2) RESULT(order)
-  implicit none
 
   integer(kind=key_int), intent(in) :: key1, key2
   integer                          :: order
@@ -585,7 +575,6 @@ end function key_diff_order
 
 !==================================================================
 function keysud_diff_order(keyud1, keysud2) RESULT(order)
-  implicit none
 
   integer(kind=key_int), intent(in) :: keyud1(2), keysud2(:, :)
   integer                          :: order
@@ -603,7 +592,6 @@ end function keysud_diff_order
 
 !==================================================================
 function keys_diff_order(key1, keys2) RESULT(order)
-  implicit none
 
   integer(kind=key_int), intent(in) :: key1, keys2(:)
   integer                          :: order
@@ -621,7 +609,6 @@ end function keys_diff_order
 
 !==================================================================
 function hamiltonian_ci(keyudi, keyudj) RESULT(h_ci_ij)
-  implicit none
 
   integer(kind=key_int), intent(in) :: keyudi(2), keyudj(2)
   real(dp)           :: h_ci_ij
@@ -824,7 +811,6 @@ end function hamiltonian_ci
 
 !==================================================================
 subroutine build_ci_hamiltonian(conf, desc_hci, h_ci)
-  implicit none
 
   type(configurations), intent(in) :: conf
   integer, intent(in)              :: desc_hci(NDEL)
@@ -835,7 +821,7 @@ subroutine build_ci_hamiltonian(conf, desc_hci, h_ci)
   integer :: iconf_global, jconf_global
   !=====
 
-  call start_clock(timing_ham_ci)
+  call timer_ham_ci%start()
 
   write(stdout, '(1x,a)') 'Build CI hamiltonian'
 
@@ -853,14 +839,13 @@ subroutine build_ci_hamiltonian(conf, desc_hci, h_ci)
     enddo
   enddo
 
-  call stop_clock(timing_ham_ci)
+  call timer_ham_ci%stop()
 
 end subroutine build_ci_hamiltonian
 
 
 !==================================================================
 subroutine build_ci_hamiltonian_sparse(conf, desc, h)
-  implicit none
 
   type(configurations), intent(in)   :: conf
   integer, intent(in)                :: desc(NDEL)
@@ -881,7 +866,7 @@ subroutine build_ci_hamiltonian_sparse(conf, desc, h)
   call BLACS_GRIDINFO( cntxt, nprow, npcol, iprow, ipcol )
   mvec = NUMROC(conf%nconf, desc(MB_), iprow, first_row, nprow)
 
-  call start_clock(timing_zeroes_ci)
+  call timer_zeroes_ci%start()
   !
   ! Find the maximum size of the sparse CI hamiltonian
   h%nnz = 0
@@ -904,10 +889,10 @@ subroutine build_ci_hamiltonian_sparse(conf, desc, h)
   write(stdout, '(1x,a,f8.3)') 'CI hamiltonian sparsity (%): ', &
                                h%nnz_total / REAL(conf%nconf, dp) / REAL(conf%nconf-1, dp) * 200.0_dp
 
-  call stop_clock(timing_zeroes_ci)
+  call timer_zeroes_ci%stop()
 
 
-  call start_clock(timing_ham_ci)
+  call timer_ham_ci%start()
 
   call clean_allocate('Sparce CI values', h%val, h%nnz)
   call clean_allocate('Sparce CI indexes', h%row_ind, h%nnz)
@@ -939,14 +924,13 @@ subroutine build_ci_hamiltonian_sparse(conf, desc, h)
                                h%nnz_total / REAL(conf%nconf, dp) / REAL(conf%nconf-1, dp) * 200.0_dp
 
 
-  call stop_clock(timing_ham_ci)
+  call timer_ham_ci%stop()
 
 end subroutine build_ci_hamiltonian_sparse
 
 
 !==================================================================
 subroutine full_ci_nelectrons_selfenergy(energy_gks)
-  implicit none
 
   real(dp), intent(in)   :: energy_gks(:, :)
   !=====
@@ -967,7 +951,7 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
   integer(kind=key_int) :: keyudi(2), keyudj(2)
   !=====
 
-  call start_clock(timing_ci_selfenergy)
+  call timer_ci_selfenergy%start()
 
   ns_occ  = 0
   ns_virt = 0
@@ -1188,14 +1172,13 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
 
   call se%destroy()
 
-  call stop_clock(timing_ci_selfenergy)
+  call timer_ci_selfenergy%stop()
 
 end subroutine full_ci_nelectrons_selfenergy
 
 
 !==================================================================
 subroutine full_ci_nelectrons(save_coefficients, nelectron, spinstate, nuc_nuc)
-  implicit none
 
   integer, intent(in)         :: save_coefficients
   integer, intent(in)         :: nelectron, spinstate
@@ -1226,7 +1209,7 @@ subroutine full_ci_nelectrons(save_coefficients, nelectron, spinstate, nuc_nuc)
   type(sparse_matrix)          :: h
   !=====
 
-  call start_clock(timing_full_ci)
+  call timer_full_ci%start()
 
   write(stdout, '(/,1x,a,i4,/)') 'Full CI for electron count: ', nelectron
 
@@ -1288,10 +1271,10 @@ subroutine full_ci_nelectrons(save_coefficients, nelectron, spinstate, nuc_nuc)
   endif
 
   if( conf%nstate == conf%nconf ) then
-    call start_clock(timing_ci_diago)
+    call timer_ci_diago%start()
     write(stdout, '(1x,a,i8,a,i8)') 'Full diagonalization of CI hamiltonian', conf%nconf, ' x ', conf%nconf
     call diagonalize_sca(postscf_diago_flavor, h_ci, desc_hci, energy, eigvec, desc_hci)
-    call stop_clock(timing_ci_diago)
+    call timer_ci_diago%stop()
   else
     write(stdout, '(1x,a,i8,a,i8)') 'Partial diagonalization of CI hamiltonian', conf%nconf, ' x ', conf%nconf
     if( incore ) then
@@ -1303,9 +1286,9 @@ subroutine full_ci_nelectrons(save_coefficients, nelectron, spinstate, nuc_nuc)
         write(stdout, '(1x,a,es12.4,/)') 'Residual norm: ', residual_norm
       else
         call build_ci_hamiltonian_sparse(conf, desc_vec, h)
-        call start_clock(timing_ci_diago)
+        call timer_ci_diago%start()
         call diagonalize_davidson_ci(toldav, filename_eigvec, conf, conf%nstate, energy, desc_vec, eigvec, h)
-        call stop_clock(timing_ci_diago)
+        call timer_ci_diago%stop()
         call clean_deallocate('Sparce CI values', h%val)
         call clean_deallocate('Sparce CI indexes', h%row_ind)
         deallocate(h%col_ptr)
@@ -1327,16 +1310,16 @@ subroutine full_ci_nelectrons(save_coefficients, nelectron, spinstate, nuc_nuc)
                       cntxt_eri3_mo, MAX(1, mvec), info)
         call clean_allocate('CISD eigenvectors', eigvec_sd, mvec_sd, nvec_sd)
         eigvec_sd(:, :) = 0.0_dp
-        call start_clock(timing_ci_diago)
+        call timer_ci_diago%start()
         call diagonalize_davidson_ci(toldav, '', conf_sd, conf_sd%nstate, energy(1:conf_sd%nconf), desc_vec_sd, eigvec_sd)
-        call stop_clock(timing_ci_diago)
+        call timer_ci_diago%stop()
         call translate_eigvec_ci(conf_sd, desc_vec_sd, eigvec_sd, conf, desc_vec, eigvec)
         call clean_deallocate('CISD eigenvectors', eigvec_sd)
       endif
 
-      call start_clock(timing_ci_diago)
+      call timer_ci_diago%start()
       call diagonalize_davidson_ci(toldav, filename_eigvec, conf, conf%nstate, energy, desc_vec, eigvec)
-      call stop_clock(timing_ci_diago)
+      call timer_ci_diago%stop()
 
     endif
   endif
@@ -1380,7 +1363,7 @@ subroutine full_ci_nelectrons(save_coefficients, nelectron, spinstate, nuc_nuc)
   end select
 
 
-  call stop_clock(timing_full_ci)
+  call timer_full_ci%stop()
 
 
 end subroutine full_ci_nelectrons
@@ -1388,7 +1371,6 @@ end subroutine full_ci_nelectrons
 
 !=========================================================================
 subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval, desc_vec, eigvec, h)
-  implicit none
 
   real(dp), intent(in)             :: tolerance
   character(len=*), intent(in)     :: filename
@@ -1615,7 +1597,6 @@ subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval,
 contains
 
 subroutine get_ab()
-  implicit none
 
   !=====
   integer              :: iconf_min, iconf_max
@@ -1716,7 +1697,6 @@ end subroutine diagonalize_davidson_ci
 
 !==================================================================
 subroutine translate_eigvec_ci(conf_in, desc_vec_in, eigvec_in, conf_out, desc_vec_out, eigvec_out)
-  implicit none
 
   type(configurations), intent(in) :: conf_in, conf_out
   integer, intent(in)              :: desc_vec_in(NDEL), desc_vec_out(NDEL)
@@ -1778,7 +1758,6 @@ end subroutine translate_eigvec_ci
 
 !==================================================================
 subroutine write_eigvec_ci(filename, conf, desc_vec, eigvec, eigval, residual_norm)
-  implicit none
 
   character(len=*), intent(in)     :: filename
   type(configurations), intent(in) :: conf
@@ -1795,7 +1774,7 @@ subroutine write_eigvec_ci(filename, conf, desc_vec, eigvec, eigval, residual_no
 
   if( LEN(filename) == 0 ) return
 
-  call start_clock(timing_ci_write)
+  call timer_ci_write%start()
 
   neig = SIZE(eigvec(:, :), DIM=2)
   allocate(eigvec_tmp(conf%nconf))
@@ -1826,14 +1805,13 @@ subroutine write_eigvec_ci(filename, conf, desc_vec, eigvec, eigval, residual_no
 
   deallocate(eigvec_tmp)
 
-  call stop_clock(timing_ci_write)
+  call timer_ci_write%stop()
 
 end subroutine write_eigvec_ci
 
 
 !==================================================================
 subroutine read_eigvec_ci(filename, conf, desc_vec, eigvec, eigval, nstate_read, residual_norm, read_status)
-  implicit none
 
   character(len=*), intent(in)     :: filename
   type(configurations), intent(in) :: conf

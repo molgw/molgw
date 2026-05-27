@@ -31,6 +31,8 @@ module m_hamiltonian_onebody
 
 
 
+  implicit none
+
 contains
 
 
@@ -38,7 +40,6 @@ contains
 ! Calculate ( \alpha | \beta )
 !
 subroutine setup_overlap_finite(basis, s_matrix)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: s_matrix(:, :)
   !=====
@@ -66,7 +67,7 @@ subroutine setup_overlap_finite(basis, s_matrix)
 #endif
   !=====
 
-  call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_overlap%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup overlap matrix S (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -145,7 +146,7 @@ subroutine setup_overlap_finite(basis, s_matrix)
   call dump_out_matrix(.FALSE., title, s_matrix)
 
 
-  call stop_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_finite
@@ -155,7 +156,6 @@ end subroutine setup_overlap_finite
 ! Calculate ( \alpha | \beta ) when \alpha and \beta belong to 2 different basis sets
 !
 subroutine setup_overlap_mixedbasis(basis1, basis2, s_matrix)
-  implicit none
   type(basis_set), intent(in) :: basis1, basis2
   real(dp), intent(out)       :: s_matrix(basis1%nbf, basis2%nbf)
   !=====
@@ -178,7 +178,7 @@ subroutine setup_overlap_mixedbasis(basis1, basis2, s_matrix)
   integer :: ibf_cart, jbf_cart
   !=====
 
-  call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_overlap%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup mixed overlap matrix S (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -249,7 +249,7 @@ subroutine setup_overlap_mixedbasis(basis1, basis2, s_matrix)
   enddo
 
 
-  call stop_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_mixedbasis
@@ -257,7 +257,6 @@ end subroutine setup_overlap_mixedbasis
 
 !=========================================================================
 subroutine recalc_overlap(basis_t, basis_p, s_matrix)
-  implicit none
   type(basis_set), intent(in) :: basis_t, basis_p
   real(dp), intent(inout)       :: s_matrix(:, :)
   !=====
@@ -299,7 +298,6 @@ end subroutine recalc_overlap
 !                 =   ( \alpha | \nabla_r \beta )            <-> LIBCINT integral
 !
 subroutine setup_overlap_grad(basis, s_matrix_grad)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: s_matrix_grad(basis%nbf, basis%nbf, 3)
   !=====
@@ -328,7 +326,7 @@ subroutine setup_overlap_grad(basis, s_matrix_grad)
 #endif
   !=====
 
-  call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_overlap%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup gradient overlap matrix S (LIBCINT)'
 #elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
@@ -410,7 +408,7 @@ subroutine setup_overlap_grad(basis, s_matrix_grad)
   title='=== Overlap grad matrix Z ==='
   call dump_out_matrix(.FALSE., title, s_matrix_grad(:, :, 3))
 
-  call stop_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_grad
@@ -421,7 +419,6 @@ end subroutine setup_overlap_grad
 !                 = ( \nabla_r \alpha | \nabla_r \beta )            <-> LIBCINT integral
 !
 subroutine setup_overlap_hessian(basis, s_matrix_hess)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: s_matrix_hess(basis%nbf, basis%nbf, 3, 3)
   !=====
@@ -438,7 +435,7 @@ subroutine setup_overlap_hessian(basis, s_matrix_hess)
 #endif
   !=====
 
-  call start_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_overlap%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup hessian of the overlap matrix (LIBCINT)'
 #else
@@ -500,7 +497,7 @@ subroutine setup_overlap_hessian(basis, s_matrix_hess)
   title='=== Overlap hessian matrix ZZ ==='
   call dump_out_matrix(.FALSE., title, s_matrix_hess(:, :, 3, 3))
 
-  call stop_clock(MERGE(0, timing_overlap, in_rt_tddft))
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_overlap%stop()
 
 
 end subroutine setup_overlap_hessian
@@ -508,7 +505,6 @@ end subroutine setup_overlap_hessian
 
 !=========================================================================
 subroutine recalc_overlap_grad(basis_t, basis_p, s_matrix_grad)
-  implicit none
   type(basis_set), intent(in)   :: basis_t, basis_p
   real(dp), intent(out)         :: s_matrix_grad(:, :, :)
   !=====
@@ -540,7 +536,7 @@ subroutine recalc_overlap_grad(basis_t, basis_p, s_matrix_grad)
   !! We only need to calculate < grad P | T > here since we'll transpose
   !! S_grad to get D => only < T | grad P > needs recalc in D
 
-  call start_clock(timing_overlap_grad)
+  call timer_overlap_grad%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,1x,a)') 'Recalculate gradient of the overlap matrix S (LIBCINT)'
 #elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
@@ -624,7 +620,7 @@ subroutine recalc_overlap_grad(basis_t, basis_p, s_matrix_grad)
   title='=== Overlap grad matrix S_Z ==='
   call dump_out_matrix(.FALSE., title, s_matrix_grad(:, :, 3))
 
-  call stop_clock(timing_overlap_grad)
+  call timer_overlap_grad%stop()
 
 
 end subroutine recalc_overlap_grad
@@ -634,7 +630,6 @@ end subroutine recalc_overlap_grad
 ! Calculate  ( \alpha | p**2 / 2 | \beta )
 !
 subroutine setup_kinetic_finite(basis, hamiltonian_kinetic, timing)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: hamiltonian_kinetic(:, :)
   integer, intent(in), optional  :: timing
@@ -663,7 +658,7 @@ subroutine setup_kinetic_finite(basis, hamiltonian_kinetic, timing)
 #endif
   !=====
 
-  call start_clock(MERGE(0, timing_hamiltonian_kin, in_rt_tddft))
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_hamiltonian_kin%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup kinetic part of the Hamiltonian (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -735,14 +730,13 @@ subroutine setup_kinetic_finite(basis, hamiltonian_kinetic, timing)
   title='===  Kinetic energy contribution ==='
   call dump_out_matrix(.FALSE., title, hamiltonian_kinetic)
 
-  call stop_clock(MERGE(0, timing_hamiltonian_kin, in_rt_tddft))
+  if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_hamiltonian_kin%stop()
 
 end subroutine setup_kinetic_finite
 
 
 !=========================================================================
 subroutine recalc_kinetic(basis_t, basis_p, hamiltonian_kinetic)
-  implicit none
 
   type(basis_set), intent(in) :: basis_t, basis_p
   real(dp), intent(inout)     :: hamiltonian_kinetic(:, :)
@@ -767,7 +761,11 @@ subroutine recalc_kinetic(basis_t, basis_p, hamiltonian_kinetic)
   integer :: ibf_cart, jbf_cart
   !=====
 
-  call start_clock(MERGE(timing_tddft_kin, timing_hamiltonian_kin, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_kin%start()
+  else
+    call timer_hamiltonian_kin%start()
+  endif
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,1x,a)') 'Recalculate kinetic part of the Hamiltonian (LIBCINT)'
 #elif defined(LIBINT2_SUPPORT_ONEBODY)
@@ -837,7 +835,11 @@ subroutine recalc_kinetic(basis_t, basis_p, hamiltonian_kinetic)
   title='===  Kinetic energy contribution (Recalc) ==='
   call dump_out_matrix(.FALSE., title, hamiltonian_kinetic)
 
-  call stop_clock(MERGE(timing_tddft_kin, timing_hamiltonian_kin, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_kin%stop()
+  else
+    call timer_hamiltonian_kin%stop()
+  endif
 
 end subroutine recalc_kinetic
 
@@ -845,7 +847,6 @@ end subroutine recalc_kinetic
 !=========================================================================
 ! calculate  ( \nabla_{R_\alpha} \alpha | p**2 /2 | \beta) 
 subroutine setup_kinetic_grad(basis, hamiltonian_kinetic_grad)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: hamiltonian_kinetic_grad(basis%nbf, basis%nbf, 3)
   !=====
@@ -874,7 +875,7 @@ subroutine setup_kinetic_grad(basis, hamiltonian_kinetic_grad)
 #endif
   !=====
 
-  call start_clock(timing_grad_kin)
+  call timer_grad_kin%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup gradient of the kinetic part of the Hamiltonian (LIBCINT)'
 #elif (LIBINT2_DERIV_ONEBODY_ORDER > 0)
@@ -958,7 +959,7 @@ subroutine setup_kinetic_grad(basis, hamiltonian_kinetic_grad)
   title='===  Kinetic energy contribution (LIBINT) Z ==='
   call dump_out_matrix(.FALSE., title, hamiltonian_kinetic_grad(:, :, 3))
 
-  call stop_clock(timing_grad_kin)
+  call timer_grad_kin%stop()
 
 end subroutine setup_kinetic_grad
 
@@ -967,7 +968,6 @@ end subroutine setup_kinetic_grad
 ! Calculate \sum_C ( \alpha | -Z_C / |r - R_C| | \beta )
 !
 subroutine setup_nucleus(basis, hamiltonian_nucleus, atom_list)
-  implicit none
   type(basis_set), intent(in)  :: basis
   real(dp), intent(out)        :: hamiltonian_nucleus(basis%nbf, basis%nbf)
   integer, intent(in), optional :: atom_list(:)
@@ -996,10 +996,10 @@ subroutine setup_nucleus(basis, hamiltonian_nucleus, atom_list)
   real(C_DOUBLE), allocatable :: env_local(:)
   !=====
 
-  if( in_rt_tddft ) then
-    call start_clock(timing_tddft_hamiltonian_nuc)
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_hamiltonian_nuc%start()
   else
-    call start_clock(timing_hamiltonian_nuc)
+    call timer_hamiltonian_nuc%start()
   end if
 
 #if defined(HAVE_LIBCINT)
@@ -1112,10 +1112,10 @@ subroutine setup_nucleus(basis, hamiltonian_nucleus, atom_list)
 
   call dump_out_matrix(.FALSE., '===  Nucleus potential contribution ===', hamiltonian_nucleus)
 
-  if( in_rt_tddft ) then
-    call stop_clock(timing_tddft_hamiltonian_nuc)
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_hamiltonian_nuc%stop()
   else
-    call stop_clock(timing_hamiltonian_nuc)
+    call timer_hamiltonian_nuc%stop()
   endif
 
 end subroutine setup_nucleus
@@ -1125,7 +1125,6 @@ end subroutine setup_nucleus
 ! Calculate  1/2 ( \alpha | w**2 r**2 | \beta ) and add it to hamiltonian_nucleus
 !
 subroutine setup_para_conf(basis, hamiltonian_nucleus)
-  implicit none
   type(basis_set), intent(in)  :: basis
   real(dp), intent(inout)      :: hamiltonian_nucleus(basis%nbf, basis%nbf)
   !=====
@@ -1170,7 +1169,6 @@ end subroutine setup_para_conf
 !=========================================================================
 subroutine recalc_nucleus(basis_t, basis_p, hamiltonian_nucleus)
   use m_atoms
-  implicit none
   type(basis_set), intent(in)  :: basis_t, basis_p
   real(dp), intent(inout)        :: hamiltonian_nucleus(:, :)
   !=====
@@ -1195,7 +1193,7 @@ subroutine recalc_nucleus(basis_t, basis_p, hamiltonian_nucleus)
   real(dp) :: nucleus
   !=====
 
-  call start_clock(timing_tddft_hamiltonian_nuc)
+  call timer_tddft_hamiltonian_nuc%start()
 
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,1x,a)') 'Recalculate nucleus-electron part of the Hamiltonian (LIBCINT)'
@@ -1349,7 +1347,7 @@ subroutine recalc_nucleus(basis_t, basis_p, hamiltonian_nucleus)
 
   call dump_out_matrix(.FALSE., '===  Nucleus potential contribution (Recalc) ===', hamiltonian_nucleus)
 
-  call stop_clock(timing_tddft_hamiltonian_nuc)
+  call timer_tddft_hamiltonian_nuc%stop()
 
 end subroutine recalc_nucleus
 
@@ -1359,7 +1357,6 @@ end subroutine recalc_nucleus
 !       and              ( \nabla_{R_\alpha} \alpha | \sum_C -Z_C/|r-R_C| | \beta)  -> index= ncenter_nuclei+1
 !
 subroutine setup_nucleus_grad(basis, hamiltonian_nucleus_grad, atom_list, verbose)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: hamiltonian_nucleus_grad(:, :, :, :)
   integer, intent(in), optional :: atom_list(:)
@@ -1389,7 +1386,7 @@ subroutine setup_nucleus_grad(basis, hamiltonian_nucleus_grad, atom_list, verbos
     verbose_ = .FALSE.
   endif
 
-  call start_clock(timing_grad_nuc)
+  call timer_grad_nuc%start()
 
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)') ' Setup nucleus-electron part of the Hamiltonian gradient (LIBCINT)'
@@ -1514,7 +1511,7 @@ subroutine setup_nucleus_grad(basis, hamiltonian_nucleus_grad, atom_list, verbos
   enddo
 
 
-  call stop_clock(timing_grad_nuc)
+  call timer_grad_nuc%stop()
 
 end subroutine setup_nucleus_grad
 
@@ -1523,7 +1520,6 @@ end subroutine setup_nucleus_grad
 ! Calculate  ( \alpha | r x p | \beta )
 !
 subroutine setup_rxp_ao(basis, rxp_ao)
-  implicit none
   type(basis_set), intent(in)         :: basis
   real(dp), allocatable, intent(out)   :: rxp_ao(:, :, :)
   !=====
@@ -1591,7 +1587,6 @@ end subroutine setup_rxp_ao
 ! Calculate  GIAO ( \alpha | r x p | \beta )
 ! gauge-independent atomic orbital
 subroutine setup_giao_rxp_ao(basis, giao_rxp_ao)
-  implicit none
   type(basis_set), intent(in)         :: basis
   real(dp), allocatable, intent(out)   :: giao_rxp_ao(:, :, :)
   !=====
@@ -1658,7 +1653,6 @@ end subroutine setup_giao_rxp_ao
 !=========================================================================
 ! Calculate the Hamiltonian and the energy contributions induced by an external electric field
 subroutine setup_electric_field(basis, hext, eext)
-  implicit none
   type(basis_set), intent(in)         :: basis
   real(dp), intent(out)               :: eext
   real(dp), allocatable, intent(inout) :: hext(:, :)
@@ -1704,7 +1698,6 @@ end subroutine setup_electric_field
 ! Calculate  ( \alpha | r | \beta )
 !
 subroutine setup_dipole_ao(basis, dipole_ao)
-  implicit none
   type(basis_set), intent(in)         :: basis
   real(dp), allocatable, intent(out)   :: dipole_ao(:, :, :)
   !=====
@@ -1794,7 +1787,6 @@ end subroutine setup_dipole_ao
 ! Calculate  ( \alpha | \nabla_r | \beta )
 !
 subroutine setup_nabla_ao(basis, nabla_ao)
-  implicit none
   type(basis_set), intent(in)         :: basis
   real(dp), allocatable, intent(out)   :: nabla_ao(:, :, :)
   !=====
@@ -1869,7 +1861,6 @@ end subroutine setup_nabla_ao
 
 !=========================================================================
 subroutine calculate_gos_ao_mb(basis, gos_ao)
-  implicit none
   type(basis_set), intent(in)          :: basis
   complex(dp), allocatable, intent(out) :: gos_ao(:, :)
   !=====
@@ -1928,7 +1919,6 @@ end subroutine calculate_gos_ao_mb
 ! Calculate  ( \alpha | x*y | \beta ) tensor
 !
 subroutine setup_quadrupole_ao(basis, quadrupole_ao)
-  implicit none
   type(basis_set), intent(in)         :: basis
   real(dp), allocatable, intent(out)   :: quadrupole_ao(:, :, :, :)
   !=====
@@ -2022,7 +2012,6 @@ end subroutine setup_quadrupole_ao
 ! Calculate  ( \alpha | e^{i q.r} | \beta )
 !
 subroutine setup_gos_ao(basis, qvec, gos_ao)
-  implicit none
   type(basis_set), intent(in)          :: basis
   real(dp), intent(in)                 :: qvec(3)
   complex(dp), allocatable, intent(out) :: gos_ao(:, :)
@@ -2081,7 +2070,6 @@ end subroutine setup_gos_ao
 ! Calculate ( \alpha | V_ecp - Z/r | \beta )
 !
 subroutine setup_nucleus_ecp(basis, hamiltonian_nucleus, atom_list)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(inout)     :: hamiltonian_nucleus(:, :)
   integer, intent(in), optional :: atom_list(:)
@@ -2092,7 +2080,7 @@ subroutine setup_nucleus_ecp(basis, hamiltonian_nucleus, atom_list)
   if( nelement_ecp == 0 ) return
 
 
-  call start_clock(timing_ecp)
+  call timer_ecp%start()
 
   select case(ecp(1)%ecp_format)
   case(ECP_GTH)
@@ -2112,7 +2100,7 @@ subroutine setup_nucleus_ecp(basis, hamiltonian_nucleus, atom_list)
   call dump_out_matrix(.FALSE., '=== ECP Nucleus potential contribution ===', hamiltonian_nucleus)
 
 
-  call stop_clock(timing_ecp)
+  call timer_ecp%stop()
 
 end subroutine setup_nucleus_ecp
 
@@ -2121,7 +2109,6 @@ end subroutine setup_nucleus_ecp
 ! Calculate ( \alpha | V_ecp - Z/r | \beta ) with a real space quadrature
 !
 subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus, atom_list)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(inout)     :: hamiltonian_nucleus(:, :)
   integer, intent(in), optional :: atom_list(:)
@@ -2399,7 +2386,6 @@ subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus, atom_list)
   enddo ! icenter
 
   call world%sum(hamiltonian_ecp)
-  if (allocated(hamiltonian_kb)) call world%sum(hamiltonian_kb)
 
   hamiltonian_ecp = 0.5_dp * (hamiltonian_ecp + transpose(hamiltonian_ecp))
   if (allocated(hamiltonian_kb)) then
@@ -2420,7 +2406,6 @@ end subroutine setup_nucleus_ecp_quadrature
 ! Calculate ( \alpha | V_ecp - Z/r | \beta ) with an analytic formula for GTH pseudos
 !
 subroutine setup_nucleus_gth_analytic(basis, hamiltonian_nucleus, atom_list)
-  implicit none
   type(basis_set), intent(in) :: basis
   real(dp), intent(inout)     :: hamiltonian_nucleus(:, :)
   integer, intent(in), optional :: atom_list(:)
@@ -2471,7 +2456,6 @@ end subroutine setup_nucleus_gth_analytic
 ! NB: we need to remove the bare Coulomb potential, since it is added in the regular nucleus part
 !
 subroutine setup_nucleus_gth_local(basis, h_ecp, atom_list)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: h_ecp(:, :)
@@ -2668,7 +2652,6 @@ end subroutine setup_nucleus_gth_local
 ! Non-local part of the GTH pseudopotentials
 !
 subroutine setup_nucleus_gth_nonlocal(basis, h_ecp, atom_list)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: h_ecp(:, :)
@@ -2808,7 +2791,6 @@ end subroutine setup_nucleus_gth_nonlocal
 ! Calculate ( \alpha | V_ecp - Z/r | \beta )
 !
 subroutine recalc_nucleus_ecp(basis, basis_t, basis_p, hamiltonian_nucleus, atom_list)
-  implicit none
   type(basis_set), intent(in) :: basis, basis_t, basis_p
   real(dp), intent(inout)     :: hamiltonian_nucleus(basis%nbf, basis%nbf)
   integer, intent(in), optional :: atom_list(:)
@@ -2819,7 +2801,7 @@ subroutine recalc_nucleus_ecp(basis, basis_t, basis_p, hamiltonian_nucleus, atom
   if( nelement_ecp == 0 ) return
 
 
-  call start_clock(timing_ecp)
+  call timer_ecp%start()
 
   select case(ecp(1)%ecp_format)
   case(ECP_GTH)
@@ -2831,7 +2813,7 @@ subroutine recalc_nucleus_ecp(basis, basis_t, basis_p, hamiltonian_nucleus, atom
   call dump_out_matrix(.FALSE., '=== ECP Nucleus potential contribution ===', hamiltonian_nucleus)
 
 
-  call stop_clock(timing_ecp)
+  call timer_ecp%stop()
 
 end subroutine recalc_nucleus_ecp
 
@@ -2839,7 +2821,6 @@ end subroutine recalc_nucleus_ecp
 ! Calculate ( \alpha | V_ecp - Z/r | \beta ) with a real space quadrature
 !
 subroutine recalc_nucleus_ecp_quadrature(basis, basis_t, basis_p, hamiltonian_nucleus)
-  implicit none
   type(basis_set), intent(in) :: basis, basis_t, basis_p
   real(dp), intent(inout)     :: hamiltonian_nucleus(basis%nbf, basis%nbf)
   !=====
@@ -3169,7 +3150,6 @@ end subroutine recalc_nucleus_ecp_quadrature
 ! Calculate ( \alpha | V_ecp - Z/r | \beta ) with an analytic formula for GTH pseudos
 !
 subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucleus)
-  implicit none
   type(basis_set), intent(in) :: basis, basis_t, basis_p
   real(dp), intent(inout)     :: hamiltonian_nucleus(basis%nbf, basis%nbf)
   !=====
@@ -3724,7 +3704,6 @@ end subroutine recalc_nucleus_ecp_analytic
 ! Warning: Hard-coded for Germanium
 !
 subroutine setup_pbe_plus_alpha(basis, h_pbea)
-  implicit none
   type(basis_set), intent(in)  :: basis
   real(dp), intent(out)        :: h_pbea(:, :)
   !=====

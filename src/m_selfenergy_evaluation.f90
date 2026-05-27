@@ -31,12 +31,13 @@ module m_selfenergy_evaluation
   use m_multipole,only: static_dipole
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m_vxc, en_mbpt)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)        :: occupation(:, :)
@@ -628,7 +629,6 @@ end subroutine selfenergy_evaluation
 !=========================================================================
 ! Evaluate the total energy fragments
 subroutine evaluate_energy_terms(basis, occupation, c_matrix, p_matrix, en)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)        :: occupation(:, :)

@@ -23,6 +23,9 @@ module m_libint_tools
   !=========================================================================
   ! interfaces to libint wrappers in C/C++ with iso_c_binding
   !=========================================================================
+
+  implicit none
+
   interface
 
 #if (LIBINT2_SUPPORT_ONEBODY)
@@ -273,7 +276,6 @@ contains
 
 !=========================================================================
 subroutine transform_molgw_to_molgw_2d(gaussian_type, am1, am2, array_in, matrix_out)
-  implicit none
   character(len=4), intent(in)      :: gaussian_type
   integer, intent(in)               :: am1, am2
   real(C_DOUBLE), intent(in)        :: array_in(:)
@@ -306,7 +308,6 @@ end subroutine transform_molgw_to_molgw_2d
 
 !=========================================================================
 subroutine transform_libint_to_molgw_2d(gaussian_type, am1, am2, array_in, matrix_out)
-  implicit none
   character(len=4), intent(in)      :: gaussian_type
   integer, intent(in)               :: am1, am2
   real(C_DOUBLE), intent(in)        :: array_in(:)
@@ -340,7 +341,6 @@ end subroutine transform_libint_to_molgw_2d
 
 !=========================================================================
 subroutine transform_libint_to_molgw_3d(gaussian_type_left, am1, gaussian_type_right, am2, am3, array_in, matrix_out)
-  implicit none
   character(len=4), intent(in)      :: gaussian_type_left, gaussian_type_right
   integer, intent(in)               :: am1, am2, am3
   real(C_DOUBLE), intent(in)        :: array_in(:)
@@ -404,7 +404,6 @@ end subroutine transform_libint_to_molgw_3d
 
 !=========================================================================
 subroutine transform_libint_to_molgw_4d(gaussian_type, am1, am2, am3, am4, array_in, matrix_out)
-  implicit none
   character(len=4), intent(in)      :: gaussian_type
   integer, intent(in)               :: am1, am2, am3, am4
   real(C_DOUBLE), intent(in)        :: array_in(:)
@@ -465,7 +464,6 @@ end subroutine transform_libint_to_molgw_4d
 !=========================================================================
 ! Here index 1 stands for the projector which is always 'PURE' and already normalized
 subroutine transform_libint_to_molgw_gth_projector(gaussian_type, am1, am2, array_in, matrix_out)
-  implicit none
   character(len=4), intent(in)      :: gaussian_type
   integer, intent(in)               :: am1, am2
   real(C_DOUBLE), intent(in)        :: array_in(:)
@@ -499,7 +497,6 @@ end subroutine transform_libint_to_molgw_gth_projector
 
 !=========================================================================
 subroutine set_libint_shell(shell, amA, contrdepthA, A, alphaA, cA)
-  implicit none
 
   type(shell_type), intent(in)            :: shell
   integer(C_INT), intent(out)             :: amA, contrdepthA

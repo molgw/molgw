@@ -26,13 +26,14 @@ module m_spectra
 
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, chi, xpy_matrix, xmy_matrix, eigenvalue, &
                             bare_eigenvalue)
-  implicit none
 
   logical, intent(in)                 :: is_triplet_currently
   type(basis_set), intent(in)         :: basis
@@ -83,7 +84,7 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
   !
   ! Calculate the spectrum now
   !
-  call start_clock(timing_spectrum)
+  call timer_spectrum%start()
 
   write(stdout, '(/,a)') ' Calculate the optical spectrum'
 
@@ -465,14 +466,13 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
 
   deallocate(residue)
 
-  call stop_clock(timing_spectrum)
+  call timer_spectrum%stop()
 
 end subroutine optical_spectrum
 
 
 !=========================================================================
 subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
-  implicit none
 
   type(basis_set), intent(in)         :: basis
   real(dp), intent(in)                :: c_matrix(:, :, :)
@@ -507,7 +507,7 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
   !=====
 
 
-  call start_clock(timing_stopping)
+  call timer_stopping%start()
 
   nqradial = stopping_nq
   dqradial = stopping_dq
@@ -677,7 +677,7 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
 
   deallocate(qvec_list, wq, bethe_sumrule)
 
-  call stop_clock(timing_stopping)
+  call timer_stopping%stop()
 
 
 end subroutine stopping_power
@@ -685,7 +685,6 @@ end subroutine stopping_power
 
 !=========================================================================
 subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalue)
-  implicit none
 
   integer, intent(in)                 :: desc_x(NDEL)
   type(basis_set), intent(in)         :: basis
@@ -720,7 +719,7 @@ subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalu
   !=====
 
 
-  call start_clock(timing_stopping)
+  call timer_stopping%start()
 
   write(stdout, '(/,a)') ' Calculate the stopping power for a 3d system'
   gt = get_gaussian_type_tag(basis%gaussian_type)
@@ -861,7 +860,7 @@ subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalu
     enddo
   endif
 
-  call stop_clock(timing_stopping)
+  call timer_stopping%stop()
 
 end subroutine stopping_power_3d
 
