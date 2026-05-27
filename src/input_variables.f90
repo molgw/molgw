@@ -74,6 +74,7 @@
     print_eri,       &
     print_hartree,       &
     print_bare_energy,       &
+    print_transition_dipole,       &
     print_hdf5,       &
     print_multipole,       &
     print_pdos,       &
@@ -322,6 +323,7 @@
  print_eri = 'no'
  print_hartree = 'no'
  print_bare_energy = 'no'
+ print_transition_dipole = 'no'
  print_hdf5 = 'no'
  print_multipole = 'no'
  print_pdos = 'no'
