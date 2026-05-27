@@ -634,7 +634,7 @@ print_bare_energy:
   mandatory: 'no'
   experimental: 'no'
   default: 'no'
-  comment: Prints the bare QP energy difference contribution to each excitation energy to the yaml file. Requires tda=yes.
+  comment: Prints the bare QP energy difference contribution to each excitation energy to the yaml file.
 
 print_hdf5:
   family: io

@@ -10,6 +10,8 @@
 module m_lbfgs
   use m_definitions
 
+  implicit none
+
   type, public :: lbfgs_state
   integer              :: lbfgs_status
   integer              :: ndim
@@ -45,7 +47,6 @@ contains
 
 !=========================================================================
 subroutine lbfgs_init(lbfgs_plan, ndim, history_record, diag_guess)
-  implicit none
 
   type(lbfgs_state), intent(inout) :: lbfgs_plan
   integer, intent(in)              :: ndim
@@ -81,7 +82,6 @@ end subroutine lbfgs_init
 
 !=========================================================================
 subroutine lbfgs_destroy(lbfgs_plan)
-  implicit none
   type(lbfgs_state), intent(inout) :: lbfgs_plan
   !=====
 
@@ -93,7 +93,6 @@ end subroutine lbfgs_destroy
 
 !=========================================================================
 function lbfgs_execute(lbfgs_plan, x, f, gradf)
-  implicit none
   type(lbfgs_state), intent(inout) :: lbfgs_plan
   real(dp), intent(inout)          :: x(lbfgs_plan%ndim)
   real(dp), intent(in)             :: f
@@ -124,7 +123,6 @@ subroutine lbfgs(N, M, X, F, G, DIAG, W, IFLAG,      &
                  LINE_STY, LINE_FY, LINE_DGY,   &
                  LINE_STMIN, LINE_STMAX,       &
                  LINE_BRACKT, LINE_STAGE1, LINE_INFOC)
-  implicit none
 
   integer, intent(inout) :: LINE_INFOC
   integer, intent(inout)  :: ITER, IFLAG, INFO, NFEV
@@ -264,7 +262,6 @@ subroutine mcsrch(N, X, F, G, S, STP, FTOL, MAXFEV, INFO, NFEV, WA, &
                   GTOL, STPMIN, STPMAX, DGINIT, FINIT, &
                   STX, FX, DGX, STY, FY, DGY, STMIN, STMAX, &
                   BRACKT, STAGE1, INFOC)
-  implicit none
 
   integer, intent(in)     :: N, MAXFEV
   integer, intent(inout)  :: INFO, NFEV
@@ -455,7 +452,6 @@ end subroutine mcsrch
 
 !=========================================================================
 subroutine mcstep(STX, FX, DX, STY, FY, DY, STP, FP, DG, BRACKT, STPMIN, STPMAX, INFO)
-  implicit none
 
   integer, intent(inout)  :: INFO
   real(dp), intent(in)     :: FP

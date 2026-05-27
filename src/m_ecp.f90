@@ -15,6 +15,8 @@ module m_ecp
   use ISO_FORTRAN_ENV, only: IOSTAT_END
 
 
+  implicit none
+
   integer, parameter :: ECP_NWCHEM = 1
   integer, parameter :: ECP_PSP6   = 2
   integer, parameter :: ECP_PSP8   = 3
@@ -62,7 +64,6 @@ contains
 
 !=========================================================================
 subroutine init_ecp(ecp_elements, ecp_path, ecp_name, ecp_level_in)
-  implicit none
 
   character(len=*), intent(in) :: ecp_elements
   character(len=*), intent(in) :: ecp_path
@@ -210,7 +211,6 @@ end subroutine init_ecp
 
 !=========================================================================
 subroutine read_ecp_file(ecp_filename, element, ecpi)
-  implicit none
 
   character(*), intent(in)                      :: ecp_filename
   character(len=2), intent(in)                  :: element
@@ -318,7 +318,6 @@ end subroutine read_ecp_file
 !=========================================================================
 ! Read psp6 ABINIT format for Haman or TM pseudos generated with FHIPP
 subroutine read_psp6_file(ecp_filename, element, ecpi)
-  implicit none
 
   character(*), intent(in)                      :: ecp_filename
   character(len=2), intent(in)                  :: element
@@ -413,7 +412,6 @@ end subroutine read_psp6_file
 !=========================================================================
 ! Read psp8 ABINIT format for Don R Haman ONCVPSP pseudopotential type
 subroutine read_psp8_file(ecp_filename, element, ecpi)
-  implicit none
 
   character(*), intent(in)                      :: ecp_filename
   character(len=2), intent(in)                  :: element
@@ -522,7 +520,6 @@ end subroutine read_psp8_file
 
 !=========================================================================
 subroutine read_gth_file(ecp_filename, element, ecpi)
-  implicit none
 
   character(*), intent(in)                      :: ecp_filename
   character(len=2), intent(in)                  :: element

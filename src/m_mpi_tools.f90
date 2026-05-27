@@ -15,6 +15,8 @@ module m_mpi_tools
 #endif
 
 
+  implicit none
+
   type mpi_communicator
     integer    :: comm       ! MPI communicator
     integer    :: nproc      ! number of procs in the communicator comm
@@ -60,7 +62,6 @@ contains
 
 !=========================================================================
 subroutine mpic_init(mpic, comm_in)
-  implicit none
 
   class(mpi_communicator), intent(inout) :: mpic
   integer, intent(in)                    :: comm_in
@@ -86,7 +87,6 @@ end subroutine mpic_init
 
 !=========================================================================
 subroutine mpic_barrier(mpic)
-  implicit none
 
   class(mpi_communicator), intent(in) :: mpic
   !=====
@@ -105,7 +105,6 @@ end subroutine mpic_barrier
 
 !=========================================================================
 subroutine mpic_sum_dp(mpic, array)
-  implicit none
   class(mpi_communicator), intent(in) :: mpic
   real(dp), intent(inout) :: array(..)
   !=====
@@ -129,7 +128,6 @@ end subroutine mpic_sum_dp
 
 !=========================================================================
 subroutine mpic_sum_cdp(mpic, array)
-  implicit none
   class(mpi_communicator), intent(in) :: mpic
   complex(dp), intent(inout) :: array(..)
   !=====
@@ -153,7 +151,6 @@ end subroutine mpic_sum_cdp
 
 !=========================================================================
 subroutine mpic_sum_i8(mpic, array)
-  implicit none
   class(mpi_communicator), intent(in) :: mpic
   integer(kind=int8), intent(inout) :: array(..)
   !=====
@@ -177,7 +174,6 @@ end subroutine mpic_sum_i8
 
 !=========================================================================
 subroutine mpic_max_dp(mpic, array)
-  implicit none
   class(mpi_communicator), intent(in) :: mpic
   real(dp), intent(inout) :: array(..)
   !=====
@@ -201,7 +197,6 @@ end subroutine mpic_max_dp
 
 !=========================================================================
 subroutine mpic_max_i(mpic, array)
-  implicit none
   class(mpi_communicator), intent(in) :: mpic
   integer, intent(inout) :: array(..)
   !=====
@@ -225,7 +220,6 @@ end subroutine mpic_max_i
 
 !=========================================================================
 subroutine mpic_min_dp(mpic, array)
-  implicit none
   class(mpi_communicator), intent(in) :: mpic
   real(dp), intent(inout) :: array(..)
   !=====
@@ -249,7 +243,6 @@ end subroutine mpic_min_dp
 
 !=========================================================================
 subroutine mpic_min_i(mpic, array)
-  implicit none
   class(mpi_communicator), intent(in) :: mpic
   integer, intent(inout) :: array(..)
   !=====
@@ -273,7 +266,6 @@ end subroutine mpic_min_i
 
 !=========================================================================
 subroutine mpic_and_l(mpic, array)
-  implicit none
   class(mpi_communicator), intent(in) :: mpic
   logical, intent(inout) :: array(..)
   !=====
@@ -297,7 +289,6 @@ end subroutine mpic_and_l
 
 !=========================================================================
 subroutine mpic_bcast_i(mpic, rank, array)
-  implicit none
   class(mpi_communicator), intent(in) :: mpic
   integer, intent(in)    :: rank
   integer, intent(inout) :: array(..)
@@ -322,7 +313,6 @@ end subroutine mpic_bcast_i
 
 !=========================================================================
 subroutine mpic_bcast_dp(mpic, rank, array)
-  implicit none
   class(mpi_communicator), intent(in) :: mpic
   integer, intent(in)     :: rank
   real(dp), intent(inout) :: array(..)
@@ -347,7 +337,6 @@ end subroutine mpic_bcast_dp
 
 !=========================================================================
 subroutine mpic_bcast_cdp(mpic, rank, array)
-  implicit none
   class(mpi_communicator), intent(in) :: mpic
   integer, intent(in)     :: rank
   complex(dp), intent(inout) :: array(..)

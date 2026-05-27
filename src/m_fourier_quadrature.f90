@@ -19,11 +19,12 @@ module m_fourier_quadrature
 
 
 
+  implicit none
+
 contains
 
 !=========================================================================
 subroutine setup_overlap_fourier(basis_p, basis_t, reference)
-  implicit none
   type(basis_set), intent(in) :: basis_p    ! basis set for projectile
   type(basis_set), intent(in) :: basis_t    ! basis set for target
   real(dp), intent(in)        :: reference(basis_p%nbf, basis_t%nbf)
@@ -69,7 +70,6 @@ end subroutine setup_overlap_fourier
 
 !=========================================================================
 subroutine setup_nucleus_fourier(basis_p, basis_t, reference)
-  implicit none
 
   type(basis_set), intent(in) :: basis_p    ! basis set for projectile
   type(basis_set), intent(in) :: basis_t    ! basis set for target
@@ -179,7 +179,6 @@ end subroutine setup_nucleus_fourier
 
 !=========================================================================
 subroutine setup_kinetic_fourier(basis_p, basis_t, reference)
-  implicit none
 
   type(basis_set), intent(in) :: basis_p    ! basis set for projectile
   type(basis_set), intent(in) :: basis_t    ! basis set for target
@@ -326,7 +325,6 @@ end subroutine setup_kinetic_fourier
 
 !=========================================================================
 subroutine setup_gos_fourier(basis_p, basis_t, qvec, gos_ao)
-  implicit none
   type(basis_set), intent(in)          :: basis_p
   type(basis_set), intent(in)          :: basis_t
   real(dp), intent(in)                 :: qvec(3)

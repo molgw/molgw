@@ -25,6 +25,8 @@ module m_relativistic
   use m_hamiltonian_wrapper
   use m_libcint_tools
 
+  implicit none
+
  public::relativistic_init, check_CdaggerSC_I
 
  private::shuffle_real, shuffle_complex, H4c_me, MpSqL_me
@@ -115,7 +117,7 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
   complex(dp), allocatable        :: H_rel_rkb_ortho_mat(:, :)
   !=====
 
-  call start_clock(timing_relativistic)
+  call timer_relativistic%start()
 
 
 #if defined(HAVE_LIBCINT)
@@ -863,7 +865,7 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
 
 #endif
 
-  call stop_clock(timing_relativistic)
+  call timer_relativistic%stop()
 
 end subroutine relativistic_init
 

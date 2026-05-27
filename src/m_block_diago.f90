@@ -21,12 +21,13 @@ module m_block_diago
   use m_elpa
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, bigomega, xpy_matrix, xmy_matrix, desc_x)
-  implicit none
 
   integer, intent(in)     :: desc_apb(NDEL), desc_x(NDEL)
   real(dp), intent(inout) :: amb_matrix(:, :), apb_matrix(:, :)
@@ -43,8 +44,8 @@ subroutine diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, bigomega, xpy_ma
   integer              :: nprow, npcol, iprow, ipcol
   !=====
 
-  call start_clock(timing_diago_h2p)
-  call start_clock(timing_tmp2)
+  call timer_diago_h2p%start()
+  call timer_tmp2%start()
 
   write(stdout, '(/,a)') ' Performing the block diago with Cholesky'
 
@@ -131,15 +132,14 @@ subroutine diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, bigomega, xpy_ma
   endif
 #endif
 
-  call stop_clock(timing_tmp2)
-  call stop_clock(timing_diago_h2p)
+  call timer_tmp2%stop()
+  call timer_diago_h2p%stop()
 
 end subroutine diago_4blocks_chol
 
 
 !=========================================================================
 subroutine diago_4blocks_rpa_sca(amb_diag_rpa, apb_matrix, desc_apb, bigomega, xpy_matrix, desc_x)
-  implicit none
 
   integer, intent(in)     :: desc_apb(NDEL), desc_x(NDEL)
   real(dp), intent(in)    :: amb_diag_rpa(:)
@@ -152,7 +152,7 @@ subroutine diago_4blocks_rpa_sca(amb_diag_rpa, apb_matrix, desc_apb, bigomega, x
   real(dp)        :: amb_diag_sqrt(SIZE(bigomega))
   !=====
 
-  call start_clock(timing_diago_h2p)
+  call timer_diago_h2p%start()
 
   write(stdout, '(/,a)') ' Performing the SCALAPACK block diago when A-B is diagonal'
 
@@ -198,7 +198,7 @@ subroutine diago_4blocks_rpa_sca(amb_diag_rpa, apb_matrix, desc_apb, bigomega, x
   call matmul_diag_sca('L', amb_diag_sqrt, desc_x, xpy_matrix)
 
 
-  call stop_clock(timing_diago_h2p)
+  call timer_diago_h2p%stop()
 
 
 end subroutine diago_4blocks_rpa_sca
@@ -208,7 +208,6 @@ end subroutine diago_4blocks_rpa_sca
 subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
                                   amb_matrix, apb_matrix, desc_apb, &
                                   bigomega, xpy_matrix, xmy_matrix, desc_x)
-  implicit none
 
   real(dp), intent(in)    :: toldav
   integer, intent(in)     :: nstep
@@ -248,8 +247,8 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
   real(dp), allocatable :: work(:)
   !=====
 
-  call start_clock(timing_diago_h2p)
-  call start_clock(timing_tmp1)
+  call timer_diago_h2p%start()
+  call timer_tmp1%start()
 
   write(stdout, '(/,a,i4)') ' Performing the Davidson block diago'
 
@@ -654,8 +653,8 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
   deallocate(eigvec_left, eigvec_right)
 
 
-  call stop_clock(timing_tmp1)
-  call stop_clock(timing_diago_h2p)
+  call timer_tmp1%stop()
+  call timer_diago_h2p%stop()
 
 
 end subroutine diago_4blocks_davidson

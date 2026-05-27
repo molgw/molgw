@@ -15,6 +15,9 @@ module m_gaussian
 
   ! type containing all the information for one unnormalized cartesian gaussian
   ! (x-x0)**nx * (y-y0)**ny * (z-z0)**nz * exp( - alpha * ( (x-x0)**2 + (y-y0)**2 + (z-z0)**2 ) )
+
+  implicit none
+
   type gaussian
     integer          :: am
     character(len=1) :: amc
@@ -40,7 +43,6 @@ contains
 
 !=========================================================================
 pure function norm_factor(nx, ny, nz)
-  implicit none
 
   integer, intent(in) :: nx, ny, nz
   real(dp) :: norm_factor
@@ -54,7 +56,6 @@ end function norm_factor
 
 !=========================================================================
 subroutine init_gaussian_cart(nx, ny, nz, alpha, x0, ga)
-  implicit none
 
   integer, intent(in) :: nx, ny, nz
   real(dp), intent(in) :: alpha, x0(3)
@@ -82,7 +83,6 @@ end subroutine init_gaussian_cart
 
 !=========================================================================
 function compare_gaussian(g1, g2) result(same_gaussian)
-  implicit none
 
   logical                   :: same_gaussian
   type(gaussian), intent(in) :: g1, g2
@@ -103,7 +103,6 @@ end function compare_gaussian
 
 !=========================================================================
 pure function eval_gaussian(ga, x)
-  implicit none
 
   type(gaussian), intent(in) :: ga
   real(dp), intent(in) :: x(3)
@@ -129,7 +128,6 @@ end function eval_gaussian
 
 !=========================================================================
 function eval_gaussian_fourier(ga, k) RESULT(gaussian_fourier)
-  implicit none
   type(gaussian), intent(in) :: ga
   real(dp), intent(in) :: k(3)
   complex(dp) :: gaussian_fourier
@@ -246,7 +244,6 @@ end function eval_gaussian_fourier
 
 !=========================================================================
 function eval_gaussian_grad(ga, x)
-  implicit none
 
   type(gaussian), intent(in) :: ga
   real(dp), intent(in) :: x(3)
@@ -285,7 +282,6 @@ end function eval_gaussian_grad
 
 !=========================================================================
 function eval_gaussian_lapl(ga, x)
-  implicit none
 
   type(gaussian), intent(in) :: ga
   real(dp), intent(in) :: x(3)
@@ -329,7 +325,6 @@ end function eval_gaussian_lapl
 
 !=========================================================================
 subroutine print_gaussian(ga)
-  implicit none
 
   type(gaussian), intent(in) :: ga
   !=====
@@ -348,7 +343,6 @@ end subroutine print_gaussian
 
 !=========================================================================
 subroutine overlap_recurrence(ga, gb, s_ab)
-  implicit none
 
   type(gaussian), intent(in) :: ga, gb
   real(dp), intent(out) :: s_ab
@@ -465,7 +459,6 @@ end subroutine overlap_recurrence
 
 !=========================================================================
 subroutine kinetic_recurrence(ga, gb, k_ab)
-  implicit none
 
   type(gaussian), intent(in)     :: ga, gb
   real(dp), intent(out)          :: k_ab
@@ -639,7 +632,6 @@ end subroutine kinetic_recurrence
 
 !=========================================================================
 subroutine nucleus_recurrence(zatom, c, ga, gb, v_ab)
-  implicit none
 
   real(dp), intent(in)       :: zatom, c(3)
   type(gaussian), intent(in) :: ga, gb
@@ -803,7 +795,6 @@ end subroutine nucleus_recurrence
 
 !=========================================================================
 subroutine evaluate_gos(ga, gb, qvec, gos_ab)
-  implicit none
 
   type(gaussian), intent(in) :: ga, gb
   real(dp), intent(in)       :: qvec(3)

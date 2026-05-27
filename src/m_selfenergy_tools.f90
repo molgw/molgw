@@ -24,6 +24,9 @@ module m_selfenergy_tools
 
   !
   ! frozen core approximation parameters
+
+  implicit none
+
   integer, protected :: ncore_G
   integer, protected :: nvirtual_G
 
@@ -62,7 +65,6 @@ contains
 
 !=========================================================================
 subroutine selfenergy_set_state_range(nstate_in, occupation, range)
-  implicit none
   integer             :: nstate_in
   real(dp), intent(in) :: occupation(:, :)
   character(len=*), intent(in), optional :: range
@@ -122,7 +124,6 @@ end subroutine selfenergy_set_state_range
 
 !=========================================================================
 subroutine write_selfenergy_omega(filename_root, exchange_m_vxc, occupation, energy0, se)
-  implicit none
 
   character(len=*)    :: filename_root
   real(dp), intent(in) :: exchange_m_vxc(:, :)
@@ -199,7 +200,6 @@ end subroutine write_selfenergy_omega
 
 !=========================================================================
 subroutine find_qp_energy_linearization(se, exchange_m_vxc, energy0, energy_qp_z, zz)
-  implicit none
 
   type(selfenergy_grid), intent(in) :: se
   real(dp), intent(in)              :: exchange_m_vxc(:, :), energy0(:, :)
@@ -251,7 +251,6 @@ end subroutine find_qp_energy_linearization
 
 !=========================================================================
 subroutine find_qp_energy_graphical(se, exchange_m_vxc, energy0, energy_qp_g, zz)
-  implicit none
 
   type(selfenergy_grid), intent(in) :: se
   real(dp), intent(in)  :: exchange_m_vxc(:, :), energy0(:, :)
@@ -366,7 +365,6 @@ end subroutine find_qp_energy_graphical
 
 !=========================================================================
 subroutine find_fixed_point(xx, fx, energy_fixed_point, z_weight)
-  implicit none
   real(dp), intent(in) :: xx(:)
   real(dp), intent(in) :: fx(:)
   real(dp), intent(out) :: energy_fixed_point(:), z_weight(:)
@@ -424,7 +422,6 @@ end subroutine find_fixed_point
 
 !=========================================================================
 subroutine output_qp_energy(calcname, energy0, exchange_m_vxc, ncomponent, se, energy1, energy2, zz)
-  implicit none
 
   character(len=*)             :: calcname
   integer                      :: ncomponent
@@ -502,7 +499,6 @@ end subroutine output_qp_energy
 
 !=========================================================================
 subroutine output_qp_energy_yaml(calcname, energy0, exchange_m_vxc, se, energy2, zz)
-  implicit none
 
   character(len=*)                  :: calcname
   real(dp), intent(in)              :: energy0(:, :), exchange_m_vxc(:, :)
@@ -559,7 +555,6 @@ end subroutine output_qp_energy_yaml
 
 !=========================================================================
 subroutine se_init(se, selfenergy_technique, energy0)
-  implicit none
 
   class(selfenergy_grid), intent(inout) :: se
   integer, intent(in)                   :: selfenergy_technique
@@ -706,7 +701,6 @@ end subroutine se_init
 
 !=========================================================================
 subroutine se_destroy(se)
-  implicit none
   class(selfenergy_grid), intent(inout) :: se
   !=====
 
@@ -724,7 +718,6 @@ end subroutine se_destroy
 
 !=========================================================================
 subroutine setup_exchange_m_vxc(basis, occupation, energy, c_matrix, hamiltonian_fock, exchange_m_vxc)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(:, :)
@@ -741,7 +734,7 @@ subroutine setup_exchange_m_vxc(basis, occupation, energy, c_matrix, hamiltonian
   real(dp), allocatable :: hxc_val(:, :, :), hexx_val(:, :, :), hxmxc(:, :, :)
   !=====
 
-  call start_clock(timing_x_m_vxc)
+  call timer_x_m_vxc%start()
   write(stdout, *) 'Calculate the (Sigma_x - Vxc) matrix'
 
   nstate = SIZE(occupation, DIM=1)
@@ -804,7 +797,7 @@ subroutine setup_exchange_m_vxc(basis, occupation, energy, c_matrix, hamiltonian
 
   endif
 
-  call stop_clock(timing_x_m_vxc)
+  call timer_x_m_vxc%stop()
 
 end subroutine setup_exchange_m_vxc
 
@@ -814,7 +807,6 @@ end subroutine setup_exchange_m_vxc
 ! and perform a MO to AO transform
 !
 subroutine apply_qs_approximation(s_matrix, c_matrix, selfenergy_mo, selfenergy_ao)
-  implicit none
 
   real(dp), intent(in)    :: s_matrix(:, :), c_matrix(:, :, :)
   real(dp), intent(inout) :: selfenergy_mo(:, :, :)
@@ -838,7 +830,6 @@ end subroutine apply_qs_approximation
 
 !=========================================================================
 subroutine self_energy_fit(se)
-  implicit none
 
   type(selfenergy_grid), intent(inout) :: se
   !=====
@@ -923,7 +914,6 @@ contains
 
 
 function eval_func(coeff_in, zz)
-  implicit none
   real(dp), intent(in)    :: coeff_in(nparam*npp)
   complex(dp), intent(in) :: zz
   complex(dp)            :: eval_func
@@ -943,7 +933,6 @@ end function eval_func
 
 
 function eval_chi2(coeff_in)
-  implicit none
   real(dp), intent(in)    :: coeff_in(nparam*npp)
   real(dp)               :: eval_chi2
   !=====
@@ -974,7 +963,6 @@ end subroutine self_energy_fit
 
 !=========================================================================
 subroutine se_pade_fit(se)
-  implicit none
 
   class(selfenergy_grid), intent(inout) :: se
   !=====
@@ -1015,7 +1003,6 @@ end subroutine se_pade_fit
 ! Fit a low-order polynomial on the available real frequencies for sigma
 ! and make an extrapolation/interpolation to the requested frequencies
 subroutine self_energy_polynomial(se)
-  implicit none
 
   type(selfenergy_grid), intent(inout) :: se
   !=====
@@ -1056,7 +1043,6 @@ end subroutine self_energy_polynomial
 ! Delta E_i = A_basis + B_basis * ln( t_i )
 ! where t_i = < \phi_i | -\nabla^2 / 2 | \phi_i >
 subroutine selfenergy_convergence_prediction(basis, c_matrix, eqp)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: c_matrix(:, :, :)
@@ -1168,7 +1154,6 @@ end subroutine selfenergy_convergence_prediction
 
 !=========================================================================
 subroutine se_add(se, se2)
-  implicit none
   class(selfenergy_grid), intent(inout) :: se
   class(selfenergy_grid), intent(in)    :: se2
   !=====
@@ -1192,7 +1177,6 @@ end subroutine se_add
 
 !=========================================================================
 subroutine se_reset(se)
-  implicit none
   class(selfenergy_grid), intent(inout) :: se
   !=====
   !=====
@@ -1205,7 +1189,6 @@ end subroutine se_reset
 !=========================================================================
 subroutine greensfunction_supermatrix_to_density_matrix(occupation, energy, c_matrix, &
                                                         g_supermatrix, g_pole, p_matrix)
-  implicit none
 
   real(dp), intent(in) :: occupation(:, :), energy(:, :)
   real(dp), intent(in) :: c_matrix(:, :, :)
@@ -1261,7 +1244,6 @@ end subroutine greensfunction_supermatrix_to_density_matrix
 
 !=========================================================================
 subroutine selfenergy_lehmann_to_density_matrix(occupation, energy, c_matrix, w_s, w_pole, p_matrix)
-  implicit none
 
   real(dp), intent(in) :: occupation(:, :), energy(:, :)
   real(dp), intent(in) :: c_matrix(:, :, :)

@@ -34,12 +34,13 @@ module m_dm_analysis
   use m_io
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine dm_dump(basis, natural_occupation, natural_orbital)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in), optional :: natural_occupation(:, :)
@@ -222,8 +223,8 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
 
   ! Cleanly exit the code when running it dry
   if( .NOT. PRESENT(natural_occupation) ) then
-    call stop_clock(timing_prescf)
-    call stop_clock(timing_total)
+    call timer_prescf%stop()
+    call timer_molgw%stop()
     call this_is_the_end()
   endif
 

@@ -21,12 +21,13 @@ module m_pt_selfenergy
   use m_linear_response
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix, se, emp2)
-  implicit none
 
   integer, intent(in)         :: selfenergy_approx
   type(basis_set), intent(in) :: basis
@@ -51,7 +52,7 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
   real(dp)                :: coul_iqjk, coul_ijkq, coul_ipkj
   !=====
 
-  call start_clock(timing_pt_self)
+  call timer_pt_self%start()
 
   nstate = SIZE(energy, DIM=1)
   emp2_ring = 0.0_dp
@@ -212,14 +213,13 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
   deallocate(selfenergy_sox)
   if(has_auxil_basis) call destroy_eri_3center_mo()
 
-  call stop_clock(timing_pt_self)
+  call timer_pt_self%stop()
 
 end subroutine pt2_selfenergy
 
 
 !=========================================================================
 subroutine onering_selfenergy(basis, occupation, energy, c_matrix, se, emp2)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(:, :), energy(:, :)
@@ -231,7 +231,7 @@ subroutine onering_selfenergy(basis, occupation, energy, c_matrix, se, emp2)
   type(spectral_function) :: vchi0v
   !=====
 
-  call start_clock(timing_pt_self)
+  call timer_pt_self%start()
 
   nstate = SIZE(energy, DIM=1)
 
@@ -256,7 +256,7 @@ subroutine onering_selfenergy(basis, occupation, energy, c_matrix, se, emp2)
 
   call vchi0v%destroy()
 
-  call stop_clock(timing_pt_self)
+  call timer_pt_self%stop()
 
 
 end subroutine onering_selfenergy
@@ -271,7 +271,6 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
   use m_eri_ao_mo
   use m_inputparam
   use m_selfenergy_tools
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(:, :), energy(:, :)
@@ -295,7 +294,7 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
   real(dp)                :: coul_iqjk, coul_ijkq, coul_ipkj
   !=====
 
-  call start_clock(timing_pt_self)
+  call timer_pt_self%start()
 
   emp2_ring = 0.0_dp
   emp2_sox  = 0.0_dp
@@ -439,7 +438,7 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
   deallocate(selfenergy_sox)
   if(has_auxil_basis) call destroy_eri_3center_mo()
 
-  call stop_clock(timing_pt_self)
+  call timer_pt_self%stop()
 
 end subroutine pt2_selfenergy_qs
 
@@ -454,7 +453,6 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
   use m_eri_ao_mo
   use m_inputparam
   use m_selfenergy_tools
-  implicit none
 
   integer, intent(in)         :: selfenergy_approx, selfenergy_technique
   type(basis_set), intent(in) :: basis
@@ -489,7 +487,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
   real(dp)                :: eri_kaib, eri_icja, eri_acib, eri_ikja
   !=====
 
-  call start_clock(timing_pt_self)
+  call timer_pt_self%start()
 
   nstate = SIZE(energy, DIM=1)
 
@@ -1084,7 +1082,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
     call destroy_eri_4center_mo_uks()
   endif
 
-  call stop_clock(timing_pt_self)
+  call timer_pt_self%stop()
 
 end subroutine pt3_selfenergy
 

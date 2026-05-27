@@ -31,6 +31,8 @@ module m_acfd
 #include <xc_funcs.h>
 #endif
 
+  implicit none
+
 contains
 
 
@@ -50,6 +52,7 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
   real(dp), allocatable           :: x_matrix(:, :), y_matrix(:, :)
   real(dp), allocatable           :: a_matrix(:, :), b_matrix(:, :)
   integer                        :: nmat, desc_x(NDEL)
+  integer                        :: m_x, n_x, info, ilambda
   !=====
 
   !
@@ -382,7 +385,6 @@ end subroutine acfd_total_energy
 
 !=========================================================================
 subroutine calculate_ec_acft(desc_x, a_matrix, b_matrix, x_matrix, y_matrix, erpa)
-  implicit none
 
   integer, intent(in)   :: desc_x(NDEL)
   real(dp), intent(in)  :: x_matrix(:, :), y_matrix(:, :), a_matrix(:, :), b_matrix(:, :)

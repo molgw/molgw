@@ -24,6 +24,8 @@ module m_virtual_orbital_space
   use m_io
   use m_restart
 
+  implicit none
+
   real(dp), allocatable, private :: energy_ref(:, :)
   real(dp), allocatable, private :: c_matrix_ref(:, :, :)
 
@@ -35,7 +37,6 @@ contains
 
 !=========================================================================
 subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c_matrix, nstate_small)
-  implicit none
 
   type(basis_set), intent(in)            :: basis
   integer, intent(in)                    :: nstate
@@ -65,7 +66,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
   integer                               :: nocc, nfrozen
   !=====
 
-  call start_clock(timing_fno)
+  call timer_fno%start()
 
   write(stdout, '(/,1x,a)') 'Prepare optimized empty states using a smaller basis set'
 
@@ -237,14 +238,13 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
 
   write(stdout, '(1x,a)') 'Optimized empty states with a smaller basis set'
 
-  call stop_clock(timing_fno)
+  call timer_fno%stop()
 
 end subroutine setup_virtual_smallbasis
 
 
 !=========================================================================
 subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_matrix)
-  implicit none
 
   type(basis_set), intent(in)            :: basis
   integer, intent(in)                    :: nstate, nsemax
@@ -263,7 +263,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
   real(dp), allocatable                  :: eri_ci_i(:)
   !=====
 
-  call start_clock(timing_fno)
+  call timer_fno%start()
 
   write(stdout, '(/,1x,a)') 'Prepare optimized empty states with Frozen Natural Orbitals'
 
@@ -419,14 +419,13 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
 
   write(stdout, '(1x,a)') 'Optimized empty states with Frozen Natural Orbitals'
 
-  call stop_clock(timing_fno)
+  call timer_fno%stop()
 
 end subroutine calculate_virtual_fno
 
 
 !=========================================================================
 subroutine destroy_fno(basis, nstate, energy, c_matrix)
-  implicit none
 
   type(basis_set), intent(in)           :: basis
   integer, intent(in)                   :: nstate
@@ -465,7 +464,6 @@ end subroutine destroy_fno
 
 !=========================================================================
 subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_matrix_mo)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in) :: occupation(:, :), energy(:, :)

@@ -58,10 +58,9 @@ exe  = molgw_rootfolder + "/molgw"
 try:
     with open(molgw_rootfolder + '/src/input_variables.yaml', 'r') as stream:
         input_keywords = load(stream,Loader=Loader)
-except:
+except Exception:
     print("input_variables.yaml file not found or corrupted")
     input_keywords = {}
-    pass
 
 ########################################################################
 
@@ -75,10 +74,9 @@ except:
 def run(inputfile="molgw.in", outputfile="", yamlfile="",
         pyinput={}, mpirun="", executable_path="", openmp=1, tmp="", keep_tmp=False, **kwargs):
 
-    if len(pyinput) > 0:
+    if pyinput:
         text = json.dumps(pyinput, sort_keys=True)
         key = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
-
     else:
         path = pathlib.Path(inputfile)
         if not path.exists():
@@ -86,47 +84,36 @@ def run(inputfile="molgw.in", outputfile="", yamlfile="",
         with open(path, "rb") as f:
             key = hashlib.sha256(f.read()).hexdigest()[:16]
 
-    # If no tmp folder imposed, create a unique one
-    if len(tmp) == 0:
-        tmp = "tmp_" + key
-    os.makedirs(tmp, exist_ok=True)
+    tmp_path = pathlib.Path(tmp) if tmp else pathlib.Path("tmp_" + key)
+    tmp_path.mkdir(exist_ok=True)
 
-    if len(executable_path) > 0:
-        exe_local = executable_path
-    else:
-        exe_local = exe
-    if len(pyinput) > 0:
-        print_input_file(pyinput, "./" + tmp + "/" + inputfile)
+    exe_local = executable_path if executable_path else exe
+    if pyinput:
+        print_input_file(pyinput, tmp_path / inputfile)
     os.environ['OMP_NUM_THREADS'] = str(openmp)
     os.environ['MKL_NUM_THREADS'] = str(openmp)
 
-    if len(mpirun) == 0:
-        process = subprocess.Popen([exe_local, inputfile], cwd= "./" + tmp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    else:
-        process = subprocess.Popen(mpirun.split() + [exe_local, inputfile], cwd= "./" + tmp, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    cmd = (mpirun.split() if mpirun else []) + [exe_local, inputfile]
+    process = subprocess.Popen(cmd, cwd=tmp_path, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = process.communicate()
 
     if len(error) > 100:
         print(error.decode("utf-8"))
-    if len(outputfile) > 0:
-        with open(outputfile, "w") as f:
-            f.write(output.decode("utf-8"))
+    out_text = output.decode("utf-8")
+    if outputfile:
+        pathlib.Path(outputfile).write_text(out_text)
     else:
-        with open("./" + tmp + "/molgw.out", "w") as f:
-            f.write(output.decode("utf-8"))
-    if len(yamlfile) > 0:
-        shutil.copy( "./" + tmp + "/molgw.yaml", yamlfile)
+        (tmp_path / "molgw.out").write_text(out_text)
+    if yamlfile:
+        shutil.copy(tmp_path / "molgw.yaml", yamlfile)
 
-    with open("./" + tmp + "/molgw.yaml", "r") as stream:
-        try:
-            results = load(stream, Loader=Loader)
-        except:
-            print('molgw.yaml file is corrupted')
-            results = {}
-            pass
-    if len(tmp) > 0:
-        if not keep_tmp:
-            shutil.rmtree(tmp)
+    try:
+        results = load((tmp_path / "molgw.yaml").read_text(), Loader=Loader)
+    except Exception:
+        print('molgw.yaml file is corrupted')
+        results = {}
+    if not keep_tmp:
+        shutil.rmtree(tmp_path)
     return results
 
 
@@ -180,14 +167,14 @@ class Molecule:
     with a few method to read, print, transform
     """
     def __init__(self,strucin):
-        if type(strucin) == str:
+        if isinstance(strucin, str):
             if os.path.exists(strucin):
                 self.list = read_xyz_file(strucin)
             else:
                 tmplist = strucin.split("\n")[2:]
                 tmplist = [item for item in tmplist if item != ""]
                 self.list = [ line.split() for line in tmplist ]
-        elif type(strucin) == Molecule:
+        elif isinstance(strucin, Molecule):
             self.list = copy.deepcopy(strucin)
         else:
             sys.exit(1)
@@ -360,9 +347,8 @@ def parse_yaml_files(directory):
         with open(yaml_file, 'r') as stream:
             try:
                 calc.append(load(stream,Loader=Loader))
-            except:
+            except Exception:
                 print(yaml_file + ' is corrupted')
-                pass
     return calc
 
 
@@ -392,7 +378,7 @@ def print_input_file(pyinput, filename="molgw.in"):
                 continue
             elif key == "vel_projectile":
                 f.write('  {:30} = {}\n'.format(key,value) )
-            elif type(value) in [type(int()),type(float())]:
+            elif isinstance(value, (int, float)):
                 f.write('  {:30} = {}\n'.format(key,value) )
             else:
                 f.write('  {:30} = \'{}\'\n'.format(key,value) )
@@ -448,66 +434,56 @@ def scs_bethe_au(v_au,nelec,ionization,charge=1.0):
 ########################################################################
 # Load a gaussian cube file into a class
 class gaussian_cube:
-    atoms_element = []    # list of elements
-    atoms_position = []   # list of positions
-    nx = 0                # number of grid points along 1st vector
-    ny = 0                # number of grid points along 2nd vector
-    nz = 0                # number of grid points along 3rd vector
-    dx = []               # 1st vector in bohr
-    dy = []               # 2nd vector in bohr
-    dz = []               # 3rd vector in bohr
-    rr = []               # grid points list
-    data = []             # volumetric data
-    dv = 0.0              # grid point associated volume in bohr^3
 
-    # Initialize class with a file "filename"
-    def __init__(self,filename):
-
-        cf=open(filename,'r')
-        cf.readline()
-        cf.readline()
-
-        line = cf.readline().split()
-        natom = int(line[0])
-        r0 = [float(x) for x in line[1:5]]
-        line = cf.readline().split()
-        self.nx = int(line[0])
-        self.dx = [float(x) for x in line[1:5]]
-        line = cf.readline().split()
-        self.ny = int(line[0])
-        self.dy = [float(x) for x in line[1:5]]
-        line = cf.readline().split()
-        self.nz = int(line[0])
-        self.dz = [float(x) for x in line[1:5]]
-        # atom list
+    def __init__(self, filename):
         self.atoms_element = []
         self.atoms_position = []
-        for i in range(natom):
-            line = cf.readline().split()
-            self.atoms_element.append(int(line[0]))
-            self.atoms_position.append([float(line[2]), float(line[3]), float(line[4])])
-
-        # volumetric data
-        self.data = []
-        for line in cf:
-             self.data.extend( float(x) for x in line.split() )
-        cf.close()
-
+        self.nx = 0
+        self.ny = 0
+        self.nz = 0
+        self.dx = []
+        self.dy = []
+        self.dz = []
         self.rr = []
+        self.data = []
+        self.dv = 0.0
+
+        with open(filename, 'r') as cf:
+            cf.readline()
+            cf.readline()
+
+            line = cf.readline().split()
+            natom = int(line[0])
+            r0 = [float(x) for x in line[1:5]]
+            line = cf.readline().split()
+            self.nx = int(line[0])
+            self.dx = [float(x) for x in line[1:5]]
+            line = cf.readline().split()
+            self.ny = int(line[0])
+            self.dy = [float(x) for x in line[1:5]]
+            line = cf.readline().split()
+            self.nz = int(line[0])
+            self.dz = [float(x) for x in line[1:5]]
+            for i in range(natom):
+                line = cf.readline().split()
+                self.atoms_element.append(int(line[0]))
+                self.atoms_position.append([float(line[2]), float(line[3]), float(line[4])])
+            for line in cf:
+                self.data.extend(float(x) for x in line.split())
+
         for ix in range(self.nx):
             for iy in range(self.ny):
                 for iz in range(self.nz):
                     x = r0[0] + ix * self.dx[0] + iy * self.dy[0] + iz * self.dz[0]
                     y = r0[1] + ix * self.dx[1] + iy * self.dy[1] + iz * self.dz[1]
                     z = r0[2] + ix * self.dx[2] + iy * self.dy[2] + iz * self.dz[2]
-                    self.rr.append([x,y,z])
+                    self.rr.append([x, y, z])
         self.dv = self.dx[0] * self.dy[1] * self.dz[2] \
-                 +self.dx[1] * self.dy[2] * self.dz[0] \
-                 +self.dx[2] * self.dy[0] * self.dz[1] \
-                 -self.dx[2] * self.dy[1] * self.dz[0] \
-                 -self.dx[0] * self.dy[2] * self.dz[1] \
-                 -self.dx[1] * self.dy[0] * self.dz[2]
-        return
+                 + self.dx[1] * self.dy[2] * self.dz[0] \
+                 + self.dx[2] * self.dy[0] * self.dz[1] \
+                 - self.dx[2] * self.dy[1] * self.dz[0] \
+                 - self.dx[0] * self.dy[2] * self.dz[1] \
+                 - self.dx[1] * self.dy[0] * self.dz[2]
 
 
 ########################################################################
@@ -528,7 +504,7 @@ class Molgw_input:
             raise KeyError(f"Input variable '{key}' not found in the input")
         else:
             return self.d[key]
-    def __set__(self, key, value):
+    def __setitem__(self, key, value):
         self.d[key] = value
 
     def to_dict(self):
@@ -588,7 +564,7 @@ class Molgw_output:
             try:
                 with open(origin, "r") as stream:
                     self.d = load(stream, Loader=Loader)
-            except:
+            except Exception:
                 print(f'{origin} file does not exist or is no proper yaml file')
                 self.d = {}
                 raise FileNotFoundError
@@ -635,7 +611,7 @@ class Molgw_output:
             self["run"]
         except KeyError:
             valid = False
-        except:
+        except Exception:
             sys.exit(1)
         return valid and self["scf is converged"]
 
@@ -646,7 +622,7 @@ class Molgw_output_collection:
     def __init__(self, origin=''):
         self.files = []
         self.data = []
-        if len(origin) == 0:
+        if not origin:
             return
         if isinstance(origin, list):
             origins = origin
@@ -677,21 +653,12 @@ class Molgw_output_collection:
                     s+= f"\n - {i:04d} {file:<30}: no comment"
         return s
     def __iter__(self):
-        self.current = 0
-        return self
-    def __next__(self):
-        if self.current < len(self):
-            result = self.data[self.current]
-            self.current += 1
-            return result
-        else:
-            raise StopIteration
-        return self.data
+        return iter(self.data)
     def __getitem__(self, index):
         return self.data[index]
     def append(self, mlgo, file=""):
         self.data.append(mlgo)
-        if len(file) > 0:
+        if file:
             self.files.append(file)
         else:
             self.files.append(None)

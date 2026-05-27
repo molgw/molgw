@@ -24,12 +24,13 @@ module m_gw_selfenergy_grid
   use m_linear_response
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw, wpol)
-  implicit none
 
   real(dp), intent(in)                   :: occupation(:, :)
   real(dp), intent(in)                   :: energy(:, :)
@@ -58,7 +59,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
 #endif
   !=====
 
-  call start_clock(timing_rpa_dynamic)
+  call timer_rpa_dynamic%start()
 
   write(stdout, '(/,1x,a)') 'Calculation of RPA polarizability on imaginary axis grid'
 #if defined(HAVE_SCALAPACK)
@@ -89,7 +90,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
   ! Faster when the largest range (virtual states, occupied states) comes first
   if( has_auxil_basis ) then
     call calculate_eri_3center_mo(c_matrix, nlumo_W, nvirtual_W-1, ncore_W+1, nhomo_W, &
-                                     timing=timing_aomo_pola)
+                                     timing=timer_aomo_pola)
   endif
 
 
@@ -202,7 +203,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
   write(stdout, '(/,1x,a,f16.10)') 'RPA correlation energy (Ha): ', erpa
   write(stdout, '(1x,a,f16.10)')   'GW  correlation energy (Ha): ', egw
 
-  call stop_clock(timing_rpa_dynamic)
+  call timer_rpa_dynamic%stop()
 
 
 end subroutine polarizability_grid_scalapack
@@ -210,7 +211,6 @@ end subroutine polarizability_grid_scalapack
 
 !=========================================================================
 subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
-  implicit none
 
   real(dp), intent(in)                 :: energy(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :)
@@ -237,7 +237,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
     call die('gw_selfenergy_imag_scalapack requires an auxiliary basis')
   endif
 
-  call start_clock(timing_gw_self)
+  call timer_gw_self%start()
 
   write(stdout, '(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
@@ -257,7 +257,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
 #endif
 
 
-  if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timing_aomo_gw)
+  if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timer_aomo_gw)
 
 
   prange = nvirtual_G - ncore_G - 1
@@ -333,14 +333,13 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gw_self)
+  call timer_gw_self%stop()
 
 end subroutine gw_selfenergy_imag_scalapack
 
 
 !=========================================================================
 subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
-  implicit none
 
   real(dp), intent(in)                 :: energy(:, :), occupation(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :)
@@ -367,7 +366,7 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
     call die('gw_selfenergy_coutour_scalapack requires an auxiliary basis')
   endif
 
-  call start_clock(timing_gw_self)
+  call timer_gw_self%start()
 
   write(stdout, '(/,1x,a)') 'GW self-energy on a grid of real frequencies centered on the gKS energies'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
@@ -379,7 +378,7 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
   nstate = SIZE(energy, DIM=1)
 
 
-  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
 
   call wpol_imag%init(nstate, occupation, nomega_chi_imag, grid_type=IMAGINARY_QUAD)
   call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.TRUE.)
@@ -547,14 +546,13 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gw_self)
+  call timer_gw_self%stop()
 
 end subroutine gw_selfenergy_contour
 
 
 !=========================================================================
 subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
-  implicit none
 
   type(basis_set), intent(in)          :: basis
   real(dp), intent(in)                 :: energy(:, :), occupation(:, :)
@@ -580,7 +578,7 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
-  call start_clock(timing_gw_self)
+  call timer_gw_self%start()
 
   write(stdout, '(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
@@ -592,7 +590,7 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
   nstate = SIZE(energy, DIM=1)
 
 
-  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
 
   !
   ! Initialize wpol_imag any way to store chi(:,:,iomegap)
@@ -668,14 +666,13 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gw_self)
+  call timer_gw_self%stop()
 
 end subroutine gw_selfenergy_grid
 
 
 !=========================================================================
 subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
-  implicit none
 
   type(basis_set), intent(in)          :: basis
   real(dp), intent(in)                 :: energy(:, :), occupation(:, :)
@@ -709,7 +706,7 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
-  call start_clock(timing_gw_self)
+  call timer_gw_self%start()
 
   write(stdout, '(/,1x,a)') 'FSOS self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
@@ -721,7 +718,7 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
   nstate = SIZE(energy, DIM=1)
 
 
-  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
 
   !
   ! Initialize wpol_imag any way to obtain the quadrature grid points and weights
@@ -959,7 +956,7 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gw_self)
+  call timer_gw_self%stop()
 
 end subroutine fsos_selfenergy_grid
 

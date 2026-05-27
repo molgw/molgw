@@ -11,6 +11,8 @@ module m_warning
   use m_definitions
 
 
+  implicit none
+
   integer, parameter          :: NWARNINGMAX=100
   integer, private            :: nwarning
   character(len=128), private :: warning_list(NWARNINGMAX)
@@ -23,7 +25,6 @@ contains
 
 !=========================================================================
 subroutine init_warning()
-  implicit none
 
   nwarning=0
   warning_list(:)=''
@@ -33,7 +34,6 @@ end subroutine init_warning
 
 !=========================================================================
 subroutine issue_warning(msgw)
-  implicit none
   character(len=*), intent(in) :: msgw
   !=====
 
@@ -51,7 +51,6 @@ end subroutine issue_warning
 
 !=========================================================================
 subroutine output_all_warnings(unit_yaml)
-  implicit none
 
   integer, intent(in), optional :: unit_yaml
   !=====
@@ -77,7 +76,6 @@ end subroutine output_all_warnings
 
 !=========================================================================
 subroutine die(msg)
-  implicit none
   character(*), intent(in) :: msg
   !=====
   !=====
@@ -93,7 +91,6 @@ end subroutine die
 
 !=========================================================================
 subroutine assert_experimental()
-  implicit none
   !=====
   !=====
 

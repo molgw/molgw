@@ -33,6 +33,8 @@ module m_io
   use m_hdf5_tools
 
 
+  implicit none
+
   interface dump_out_matrix
     module procedure dump_out_matrix_nospin_dp
     module procedure dump_out_matrix_dp
@@ -54,14 +56,13 @@ contains
 !
 !=========================================================================
 subroutine this_is_the_end()
-  implicit none
 
   !=====
   !=====
 
   call total_memory_statement()
 
-  call output_timing()
+  call output_timers()
 
   if( print_yaml_ .AND. is_iomaster ) then
     call output_all_warnings(unit_yaml)
@@ -81,10 +82,10 @@ subroutine this_is_the_end()
 
     write(unit_yaml, '(4x,a)') 'timing:'
     write(unit_yaml, '(8x,a)')           'unit: s'
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'total:  ', get_timing(timing_total)
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'prescf: ', get_timing(timing_prescf)
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'scf:    ', get_timing(timing_scf)
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'postscf:', get_timing(timing_postscf)
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'total:  ', timer_get(timer_molgw)
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'prescf: ', timer_get(timer_prescf)
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'scf:    ', timer_get(timer_scf)
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'postscf:', timer_get(timer_postscf)
     write(unit_yaml, '(4x,a)') 'memory:'
     write(unit_yaml, '(8x,a)')           'unit: Gb'
     write(unit_yaml, '(8x,a,1x,es18.8)') 'peak:   ', get_peak_memory()
@@ -107,7 +108,6 @@ end subroutine this_is_the_end
 
 !=========================================================================
 subroutine header()
-  implicit none
 
   !=====
   character(len=40)   :: git_sha
@@ -304,7 +304,6 @@ end subroutine header
 
 !=========================================================================
 subroutine dump_out_matrix_dp(print_matrix, title, matrix, fmt)
-  implicit none
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
@@ -353,7 +352,6 @@ end subroutine dump_out_matrix_dp
 
 !=========================================================================
 subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, fmt, maxcol)
-  implicit none
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
@@ -405,7 +403,6 @@ end subroutine dump_out_matrix_nospin_dp
 
 !=========================================================================
 subroutine dump_out_matrix_cdp(print_matrix, title, matrix, fmt)
-  implicit none
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
@@ -467,7 +464,6 @@ end subroutine dump_out_matrix_cdp
 
 !=========================================================================
 subroutine mulliken_pdos(basis, s_matrix, c_matrix, occupation, energy)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: s_matrix(:, :)
@@ -596,7 +592,6 @@ end subroutine mulliken_pdos
 
 !=========================================================================
 subroutine mulliken_pdos_cmplx(basis, s_matrix, c_matrix_cmplx, occupation, file_mulliken, time_cur)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: s_matrix(:, :)
@@ -683,7 +678,6 @@ end subroutine mulliken_pdos_cmplx
 
 !=========================================================================
 subroutine lowdin_pdos(basis, s_matrix_sqrt, c_matrix, occupation, energy)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: s_matrix_sqrt(:, :)
@@ -767,7 +761,6 @@ end subroutine lowdin_pdos
 
 !=========================================================================
 subroutine lowdin_pdos_cmplx(basis, s_matrix_sqrt, c_matrix_cmplx, occupation, file_lowdin, time_cur, atom_state_occ)
-  implicit none
 
   integer, intent(in)             :: file_lowdin
   integer, intent(inout), optional :: atom_state_occ(:, :)
@@ -885,7 +878,6 @@ end subroutine lowdin_pdos_cmplx
 
 !=========================================================================
 subroutine plot_wfn(basis, c_matrix)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: c_matrix(:, :, :)
@@ -963,7 +955,6 @@ end subroutine plot_wfn
 
 !=========================================================================
 subroutine plot_wfn_fourier(basis, c_matrix)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: c_matrix(:, :, :)
@@ -1069,7 +1060,6 @@ end subroutine plot_wfn_fourier
 
 !=========================================================================
 subroutine plot_rho(rootname, basis, occupation, c_matrix)
-  implicit none
 
   type(basis_set), intent(in)  :: basis
   real(dp), intent(in)         :: occupation(:, :)
@@ -1140,7 +1130,6 @@ end subroutine plot_rho
 
 !=========================================================================
 subroutine plot_rho_xy(basis, occupation, c_matrix)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(:, :)
@@ -1209,7 +1198,6 @@ end subroutine plot_rho_xy
 
 !=========================================================================
 subroutine plot_rho_list(nstate, basis, occupation, c_matrix)
-  implicit none
 
   integer, intent(in)         :: nstate
   type(basis_set), intent(in) :: basis
@@ -1277,7 +1265,6 @@ end subroutine plot_rho_list
 
 !=========================================================================
 subroutine plot_cube_wfn(rootname, basis, occupation, c_matrix)
-  implicit none
 
   character(len=*), intent(in) :: rootname
   type(basis_set), intent(in)  :: basis
@@ -1411,7 +1398,6 @@ end subroutine plot_cube_wfn
 ! Author: Mauricio Rodriguez-Mayorga
 !=========================================================================
 subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy, print_all)
-  implicit none
 
   character(len=*)             :: rootname
   type(basis_set), intent(in)   :: basis
@@ -1730,7 +1716,6 @@ end subroutine print_wfn_file
 
 !=========================================================================
 subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, num, time_cur)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
@@ -1769,11 +1754,11 @@ subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, nu
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
   endif
   ! Find highest occupied state
@@ -1846,14 +1831,13 @@ subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, nu
 
   deallocate(phi)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_traj_bunch
 
 
 !=========================================================================
 subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num, time_cur)
-  implicit none
 
   integer, intent(in)         :: nstate
   type(basis_set), intent(in) :: basis
@@ -1906,11 +1890,11 @@ subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num,
     enddo
   end do
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
   endif
 
@@ -2021,14 +2005,13 @@ subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num,
 
   deallocate(phi)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_traj_bunch_contrib
 
 
 !=========================================================================
 subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix, num, time_cur)
-  implicit none
 
   integer, intent(in)         :: nstate
   type(basis_set), intent(in) :: basis
@@ -2083,11 +2066,11 @@ subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix,
     enddo
   end do
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
   endif
 
@@ -2196,14 +2179,13 @@ subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix,
 
   deallocate(phi)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_traj_points_set_contrib
 
 
 !=========================================================================
 subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
@@ -2236,11 +2218,11 @@ subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_cube_rho_tddft)
+  call timer_print_cube_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
   endif
   ! Find highest occupied state
@@ -2259,7 +2241,7 @@ subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
 
   allocate(phi_cmplx(1:nocc_max, nspin))
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(a,2(2x,i4))')   ' states:   ', 1, nocc_max
   endif
 
@@ -2318,14 +2300,13 @@ subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_cube_rho_tddft)
+  call timer_print_cube_rho_tddft%stop()
 
 end subroutine plot_cube_wfn_cmplx
 
 
 !=========================================================================
 subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num, time_cur)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
@@ -2358,11 +2339,11 @@ subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupatio
   real(dp), allocatable       :: charge_layer(:)
   !=====
 
-  call start_clock(timing_calc_dens_disc)
+  call timer_calc_dens_disc%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Calculate electronic density in discs'
   endif
   ! Find highest occupied state
@@ -2452,14 +2433,13 @@ subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupatio
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_calc_dens_disc)
+  call timer_calc_dens_disc%stop()
 
 end subroutine calc_density_in_disc_cmplx_regular
 
 
 !=========================================================================
 subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
-  implicit none
   type(basis_set), intent(in)  :: basis
   real(dp), intent(in)         :: occupation(:, :)
   complex(dp), intent(in)      :: c_matrix_cmplx(:, :, :)
@@ -2487,11 +2467,11 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
   real(dp), allocatable, save  :: cube_density_start(:, :)
   !=====
 
-  call start_clock(timing_print_cube_rho_tddft)
+  call timer_print_cube_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
   endif
 
@@ -2511,7 +2491,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
 
 
   allocate(phi_cmplx(1:nocc_max, nspin))
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(a,2(2x,i4))')   ' states:   ', 1, nocc_max
   endif
 
@@ -2614,7 +2594,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
 
     do ispin=1, nspin
 
-      !call start_clock(timing_tmp0)
+      !call timer_tmp0%start()
       dens_diff(:) = 0.0_dp
 
       !$OMP PARALLEL PRIVATE(basis_function_r, phi_cmplx)
@@ -2631,18 +2611,18 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
       enddo
       !$OMP END DO
       !$OMP END PARALLEL
-      !call stop_clock(timing_tmp0)
+      !call timer_tmp0%stop()
 
-      !call start_clock(timing_tmp1)
+      !call timer_tmp1%start()
       call world%sum(dens_diff)
-      !call stop_clock(timing_tmp1)
+      !call timer_tmp1%stop()
 
       if( is_iomaster ) then
-        !call start_clock(timing_tmp2)
+        !call timer_tmp2%start()
         do ir=1, cube_nx*cube_ny*cube_nz
           write(ocuberho(ispin), '(50(e16.8,2x))') dens_diff(ir)
         end do
-        !call stop_clock(timing_tmp2)
+        !call timer_tmp2%stop()
       endif
 
     enddo !do ispin
@@ -2656,14 +2636,13 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
 
   endif
 
-  call stop_clock(timing_print_cube_rho_tddft)
+  call timer_print_cube_rho_tddft%stop()
 
 end subroutine plot_cube_diff_cmplx
 
 
 !=========================================================================
 subroutine charge_projectile_cmplx(basis, occupation, c_matrix_cmplx)
-  implicit none
 
   type(basis_set), intent(in)  :: basis
   real(dp), intent(in)         :: occupation(:, :)
@@ -2707,7 +2686,6 @@ end subroutine charge_projectile_cmplx
 
 !=========================================================================
 subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num, time_cur)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
@@ -2744,11 +2722,11 @@ subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, n
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting some selected wavefunctions along one line'
   endif
   ! Find highest occupied state
@@ -2811,7 +2789,7 @@ subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, n
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_cmplx
 
@@ -2819,7 +2797,6 @@ end subroutine plot_rho_cmplx
 !=========================================================================
 subroutine plot_rho_diff_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num, time_cur, &
                                nr_line_rho, point_a, point_b, rho_start)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
@@ -2843,7 +2820,7 @@ subroutine plot_rho_diff_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -2878,7 +2855,7 @@ subroutine plot_rho_diff_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_diff_cmplx
 
@@ -2886,7 +2863,6 @@ end subroutine plot_rho_diff_cmplx
 !=========================================================================
 subroutine calc_rho_initial_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num, time_cur, &
                                   nr_line_rho, point_a, point_b, rho_start)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
@@ -2910,7 +2886,7 @@ subroutine calc_rho_initial_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -2945,14 +2921,13 @@ subroutine calc_rho_initial_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine calc_rho_initial_cmplx
 
 
 !=========================================================================
 subroutine initialize_rho_diff_cmplx(nr_line_rho, point_a, point_b)
-  implicit none
 
   real(dp), intent(out)       :: point_a(3), point_b(3)
   integer, intent(out)        :: nr_line_rho
@@ -2982,7 +2957,6 @@ end subroutine initialize_rho_diff_cmplx
 
 !=========================================================================
 subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num, time_cur)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
@@ -3021,11 +2995,11 @@ subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matr
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
   endif
   ! Find highest occupied state
@@ -3099,14 +3073,13 @@ subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matr
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_traj_bunch_cmplx
 
 
 !=========================================================================
 subroutine write_cube_from_header(rootname, basis, occupation, c_matrix)
-  implicit none
 
   character(len=*), intent(in) :: rootname
   type(basis_set), intent(in)  :: basis
@@ -3285,7 +3258,6 @@ end subroutine write_cube_from_header
 
 !=========================================================================
 subroutine read_gaussian_fchk(read_fchk_in, file_name, basis, p_matrix_out)
-  implicit none
 
   character(len=*), intent(in) :: read_fchk_in
   character(len=*), intent(in) :: file_name
@@ -3473,7 +3445,6 @@ end subroutine read_gaussian_fchk
 ! Author: Mauricio Rodriguez-Mayorga
 !=========================================================================
 subroutine read_guess_fchk(c_matrix, file_name, basis, nstate, nspin, energy)
-  implicit none
 
   integer, intent(in)     :: nstate, nspin
   type(basis_set), intent(in)   :: basis
@@ -3672,7 +3643,6 @@ end subroutine read_guess_fchk
 
 !=========================================================================
 subroutine write_energy_qp(energy_qp)
-  implicit none
 
   real(dp), intent(in) :: energy_qp(:, :)
   !=====
@@ -3713,7 +3683,6 @@ end subroutine write_energy_qp
 
 !=========================================================================
 subroutine read_energy_qp(nstate, energy_qp, reading_status)
-  implicit none
 
   integer, intent(in)   :: nstate
   integer, intent(out)  :: reading_status
@@ -3766,7 +3735,6 @@ end subroutine read_energy_qp
 
 !=========================================================================
 subroutine evaluate_wfn_r(nspin, nstate, basis, c_matrix, istate1, istate2, ispin, rr, wfn_i)
-  implicit none
 
   integer, intent(in)         :: nspin
   type(basis_set), intent(in) :: basis
@@ -3791,7 +3759,6 @@ end subroutine evaluate_wfn_r
 
 !=========================================================================
 function wfn_parity(nstate, basis, c_matrix, istate, ispin)
-  implicit none
 
   integer, intent(in)         :: nstate
   type(basis_set), intent(in) :: basis
@@ -3823,7 +3790,6 @@ end function wfn_parity
 
 !=========================================================================
 function wfn_reflection(nstate, basis, c_matrix, istate, ispin)
-  implicit none
 
   integer, intent(in)         :: nstate
   type(basis_set), intent(in) :: basis
@@ -3859,7 +3825,6 @@ end function wfn_reflection
 
 !=========================================================================
 subroutine calculation_parameters_yaml(nbf, auxil_nbf, nstate)
-  implicit none
 
   integer, intent(in)  :: nbf, auxil_nbf, nstate
   !=====
@@ -3876,7 +3841,6 @@ end subroutine calculation_parameters_yaml
 
 !=========================================================================
 subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
-  implicit none
 
   integer, intent(in)  :: nbf, auxil_nbf, nstate
   real(dp), intent(in) :: occupation(:, :)
@@ -3965,8 +3929,8 @@ subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
   write(stdout, '(/,1x,70("="))')
 
 
-  call stop_clock(timing_prescf)
-  call stop_clock(timing_total)
+  call timer_prescf%stop()
+  call timer_molgw%stop()
   call this_is_the_end()
 
 end subroutine evaluate_memory
@@ -3974,7 +3938,6 @@ end subroutine evaluate_memory
 
 !=========================================================================
 subroutine dump_matrix_cmplx_hdf5(f_or_g_id, matrix_cmplx, isnap, matrix_name)
-  implicit none
   integer(HID_T), intent(in) :: f_or_g_id
   integer, intent(in)          :: isnap
   complex(dp), intent(in)      :: matrix_cmplx(:, :, :)
@@ -4012,7 +3975,6 @@ end subroutine dump_matrix_cmplx_hdf5
 
 !=========================================================================
 subroutine yaml_search_keyword_i(filename, keyword, value)
-  implicit none
 
   character(len=*), intent(in) :: filename
   character(len=*), intent(in) :: keyword
@@ -4048,7 +4010,6 @@ end subroutine yaml_search_keyword_i
 
 !=========================================================================
 subroutine yaml_search_keyword_dp(filename, keyword, value)
-  implicit none
 
   character(len=*), intent(in) :: filename
   character(len=*), intent(in) :: keyword
@@ -4086,7 +4047,6 @@ end subroutine yaml_search_keyword_dp
 !=========================================================================
 subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, s_matrix, hamiltonian_fock, &
                                    rootname)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   integer, intent(inout)         :: nstate
@@ -4161,7 +4121,6 @@ end subroutine read_cc4s_eigenenergies
 
 !=========================================================================
 subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
-  implicit none
 
   real(dp), intent(in) :: occupation(:, :)
   real(dp), intent(in) :: energy(:, :)
@@ -4215,7 +4174,6 @@ end subroutine write_cc4s_eigenenergies
 
 !=========================================================================
 subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: s_matrix(:, :)
@@ -4339,7 +4297,6 @@ end subroutine print_restart_hdf5
 ! Write a volumetric data in a cube format file
 !
 subroutine write_cube_file(cubefilename, n1, n2, n3, dr, data, comment)
-  implicit none
 
   character(len=*), intent(in) :: cubefilename
   integer, intent(in) :: n1, n2, n3

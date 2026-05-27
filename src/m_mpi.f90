@@ -16,6 +16,8 @@ module m_mpi
 #endif
 
 
+  implicit none
+
   logical, parameter :: parallel_grid      = .TRUE.
   logical, parameter :: parallel_auxil     = .TRUE.
 
@@ -61,7 +63,6 @@ contains
 
 !=========================================================================
 subroutine init_mpi_world()
-  implicit none
 
   !=====
   integer :: dummy, ierror
@@ -90,7 +91,6 @@ end subroutine init_mpi_world
 
 !=========================================================================
 subroutine init_mpi_other_communicators(mpi_poorman_)
-  implicit none
 
   logical, intent(in) :: mpi_poorman_
   !=====
@@ -169,7 +169,6 @@ end subroutine init_mpi_other_communicators
 
 !=========================================================================
 subroutine finish_mpi()
-  implicit none
   integer :: ier
   !=====
 
@@ -190,7 +189,6 @@ end subroutine finish_mpi
 
 !=========================================================================
 subroutine init_dft_grid_distribution(ngrid)
-  implicit none
   integer, intent(inout) :: ngrid
   !=====
 
@@ -209,7 +207,6 @@ end subroutine init_dft_grid_distribution
 
 !=========================================================================
 subroutine destroy_dft_grid_distribution()
-  implicit none
   !=====
 
   if( ALLOCATED(task_grid_proc) )   deallocate(task_grid_proc)
@@ -221,7 +218,6 @@ end subroutine destroy_dft_grid_distribution
 
 !=========================================================================
 function is_my_grid_task(igrid)
-  implicit none
   integer, intent(in) :: igrid
   logical            :: is_my_grid_task
   !=====
@@ -233,7 +229,6 @@ end function is_my_grid_task
 
 !=========================================================================
 subroutine distribute_grid_workload()
-  implicit none
   !=====
   integer            :: igrid, iproc_local
   integer            :: igrid_current

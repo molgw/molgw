@@ -13,6 +13,8 @@ module m_atoms
   use m_elements
   use m_linear_algebra, only: cross_product, inverse_3x3_matrix, determinant_3x3_matrix
 
+  implicit none
+
   real(dp), parameter, private     :: tol_geom=1.0e-5_dp
 
   integer, public                 :: ncenter_basis
@@ -64,7 +66,6 @@ contains
 !=========================================================================
 subroutine init_atoms(natom_in, nghost_in, nucleus_wo_basis, zatom_read, x_read, vel_projectile, &
                       calculate_forces, excit_name, projectile_charge_scaling)
-  implicit none
 
   integer, intent(in)  :: natom_in, nghost_in
   logical, intent(in)  :: nucleus_wo_basis(:)
@@ -214,7 +215,6 @@ end subroutine init_atoms
 
 !=========================================================================
 function atoms_core_states()
-  implicit none
 
   integer :: atoms_core_states
   !=====
@@ -231,7 +231,6 @@ end function atoms_core_states
 
 !=========================================================================
 function atoms_core_states_gaussian() result(atoms_core_states)
-  implicit none
 
   integer :: atoms_core_states
   !=====
@@ -248,7 +247,6 @@ end function atoms_core_states_gaussian
 
 !=========================================================================
 subroutine get_bondcenter(ibond, xbond)
-  implicit none
 
   integer, intent(in)   :: ibond
   real(dp), intent(out) :: xbond(3)
@@ -274,7 +272,6 @@ end subroutine get_bondcenter
 
 !=========================================================================
 subroutine change_position_one_atom(iatom, xposition)
-  implicit none
   integer, intent(in)   :: iatom
   real(dp), intent(in)  :: xposition(3)
   !=====
@@ -287,7 +284,6 @@ end subroutine change_position_one_atom
 
 !=========================================================================
 subroutine change_basis_center_one_atom(iatom, xposition)
-  implicit none
   integer, intent(in)   :: iatom
   real(dp), intent(in)  :: xposition(3)
   !=====
@@ -299,7 +295,6 @@ end subroutine change_basis_center_one_atom
 
 !=========================================================================
 subroutine destroy_atoms()
-  implicit none
   !=====
 
   if(ALLOCATED(zatom))          deallocate(zatom)
@@ -323,7 +318,6 @@ end subroutine destroy_atoms
 !=========================================================================
 subroutine relax_atoms(lbfgs_plan, etotal)
   use m_lbfgs
-  implicit none
 
   type(lbfgs_state), intent(inout) :: lbfgs_plan
   real(dp), intent(in)             :: etotal
@@ -354,7 +348,6 @@ end subroutine relax_atoms
 
 !=========================================================================
 subroutine output_positions()
-  implicit none
   !=====
   integer :: ighost, iatom
   !=====
@@ -389,7 +382,6 @@ end subroutine output_positions
 
 !=========================================================================
 subroutine output_projectile_position()
-  implicit none
   !=====
   !=====
 
@@ -414,7 +406,6 @@ end subroutine output_projectile_position
 
 !=========================================================================
 subroutine nucleus_nucleus_energy(energy)
-  implicit none
 
   real(dp), intent(out) :: energy
   !=====
@@ -434,7 +425,6 @@ end subroutine nucleus_nucleus_energy
 !=========================================================================
 subroutine nucleus_nucleus_force()
   !=====
-  implicit none
   integer              :: icenter, jcenter
   !=====
 
@@ -453,7 +443,6 @@ end subroutine nucleus_nucleus_force
 
 !=========================================================================
 subroutine find_inversion()
-  implicit none
   !=====
   integer  :: icenter, jcenter
   logical  :: found
@@ -482,7 +471,6 @@ end subroutine find_inversion
 
 !=========================================================================
 function same_element(icenter, jcenter)
-  implicit none
   integer, intent(in) :: icenter, jcenter
   logical :: same_element
   !=====
@@ -495,7 +483,6 @@ end function same_element
 
 !=========================================================================
 subroutine setup_periodicity_vectors(length_unit, a1, a2, a3)
-  implicit none
   character(len=*), intent(in) :: length_unit
   real(dp), intent(in) :: a1(3), a2(3), a3(3)
   !=====
