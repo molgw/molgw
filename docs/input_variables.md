@@ -224,6 +224,7 @@
 [print_rho_grid](#print_rho_grid)
 [print_sigma](#print_sigma)
 [print_spatial_extension](#print_spatial_extension)
+[print_transition_dipole](#print_transition_dipole)
 [print_w](#print_w)
 [print_wfn](#print_wfn)
 [print_yaml](#print_yaml)
@@ -3261,6 +3262,22 @@ Prints a RESTART_TDDFT file which contains wavefunction coefficients for the las
 **Description:**
 
 Prints the difference of transition density \sum_{ia} C_{ia}^n \phi_i(r) \phi_a(r) of each optical excitation n in cube files.
+
+
+---
+### print_transition_dipole
+
+*Optional*
+
+**Family:** io
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Prints the dipole \sum_ia (X_ia^n+Y_ia^n) <i|r|a> of each neutral excitation n in the YAML output file. This is quite some writing. To be used with care.
 
 
 ---

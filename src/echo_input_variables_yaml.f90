@@ -191,6 +191,7 @@
  write(unit_yaml, '(4x,a,10x,a)') 'print_tddft_matrices:', yesno_to_TrueFalse(print_tddft_matrices) 
  write(unit_yaml, '(4x,a,11x,a)') 'print_tddft_restart:', yesno_to_TrueFalse(print_tddft_restart) 
  write(unit_yaml, '(4x,a,6x,a)') 'print_transition_density:', yesno_to_TrueFalse(print_transition_density) 
+ write(unit_yaml, '(4x,a,7x,a)') 'print_transition_dipole:', yesno_to_TrueFalse(print_transition_dipole) 
  write(unit_yaml, '(4x,a,23x,a)') 'print_w:', yesno_to_TrueFalse(print_w) 
  write(unit_yaml, '(4x,a,21x,a)') 'print_wfn:', yesno_to_TrueFalse(print_wfn) 
  write(unit_yaml, '(4x,a,15x,a)') 'print_wfn_files:', yesno_to_TrueFalse(print_wfn_files) 

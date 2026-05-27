@@ -82,6 +82,7 @@
     print_rho_grid,       &
     print_sigma,       &
     print_spatial_extension,       &
+    print_transition_dipole,       &
     print_w,       &
     print_wfn,       &
     print_yaml,       &
@@ -332,6 +333,7 @@
  print_rho_grid = 'no'
  print_sigma = 'no'
  print_spatial_extension = 'no'
+ print_transition_dipole = 'no'
  print_w = 'no'
  print_wfn = 'no'
  print_yaml = 'yes'

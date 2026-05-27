@@ -360,6 +360,16 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
     enddo
   endif
 
+  if( is_iomaster .AND. print_yaml_ .AND. print_transition_dipole_ ) then
+    write(unit_yaml, '(8x,a)') 'transition dipoles:'
+    write(unit_yaml, '(12x,a)') 'units: bohr'
+    do iexc=1, nexc
+      write(char6, '(i6)') iexc
+      write(unit_yaml, '(12x,a6,a,es18.8,a,es18.8,a,es18.8,a)') ADJUSTL(char6), ': [', &
+              residue(1, iexc), ', ', residue(2, iexc), ', ', residue(3, iexc), ']'
+    enddo
+  endif
+
   deallocate(oscillator_strength)
 
   !

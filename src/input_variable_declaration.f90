@@ -113,6 +113,8 @@
  logical, protected :: print_sigma_
  character(len=3), protected :: print_spatial_extension
  logical, protected :: print_spatial_extension_
+ character(len=3), protected :: print_transition_dipole
+ logical, protected :: print_transition_dipole_
  character(len=3), protected :: print_w
  logical, protected :: print_w_
  character(len=3), protected :: print_wfn
