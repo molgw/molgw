@@ -2386,7 +2386,6 @@ subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus, atom_list)
   enddo ! icenter
 
   call world%sum(hamiltonian_ecp)
-  if (allocated(hamiltonian_kb)) call world%sum(hamiltonian_kb)
 
   hamiltonian_ecp = 0.5_dp * (hamiltonian_ecp + transpose(hamiltonian_ecp))
   if (allocated(hamiltonian_kb)) then
