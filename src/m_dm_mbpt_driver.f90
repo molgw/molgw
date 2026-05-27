@@ -30,8 +30,6 @@ module m_dm_mbpt_driver
   implicit none
 
 
-  implicit none
-
 contains
 
 
@@ -142,10 +140,10 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     if( TRIM(pt_density_matrix) == 'GW_CEDERBAUM'  &
         .OR. TRIM(pt_density_matrix) == 'MP2' ) then
 
-      call start_clock(timing_tmp1)
+      call timer_tmp1%start()
       call cederbaum_blas(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
       p_matrix_corr_ao(:, :, :) = 0.0_dp
-      call stop_clock(timing_tmp1)
+      call timer_tmp1%stop()
 
     endif
 
