@@ -1,0 +1,23 @@
+&molgw
+ scf='hf'
+ tolscf=1.0e-10
+
+ frozencore='molgw'
+
+ pt_density_matrix='MP2'
+ use_correlated_density_matrix='yes'
+ print_hartree='yes'
+
+ postscf='gw'
+ selfenergy_state_range=1
+ 
+ basis='cc-pVDZ'
+ auxil_basis='auto'
+
+ mpi_poorman='yes'
+
+ natom=3
+/
+O    0.0000   -0.6673    0.0000
+O    2.3010   -0.6673    0.0000
+C    1.1505    0.0000    0.0000

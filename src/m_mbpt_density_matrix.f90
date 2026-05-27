@@ -7,7 +7,8 @@
 !
 !=========================================================================
 #include "molgw.h"
-module m_pt_density_matrix
+module m_mbpt_density_matrix
+
   use m_definitions
   use m_mpi
   use m_warning
@@ -22,28 +23,25 @@ module m_pt_density_matrix
   use m_io
 
 
-
-
   implicit none
+
 
 contains
 
 
 !=========================================================================
-subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
+subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix_pt2)
 
-  real(dp), intent(in)        :: occupation(:, :), energy(:, :)
-  real(dp), intent(in)        :: c_matrix(:, :, :)
-  real(dp), intent(inout)     :: p_matrix(:, :, :)
+  real(dp), intent(in)  :: occupation(:, :), energy(:, :)
+  real(dp), intent(in)  :: c_matrix(:, :, :)
+  real(dp), intent(out) :: p_matrix_pt2(:, :, :)
   !=====
   integer              :: nstate
-  integer              :: file_density_matrix
   integer              :: istate, jstate, kstate
   integer              :: astate, bstate, cstate
   integer              :: pqspin
   real(dp)             :: denom1, denom2
   real(dp)             :: num1, num2
-  real(dp), allocatable :: p_matrix_pt2(:, :, :)
   !=====
 
   nstate = SIZE(occupation, DIM=1)
@@ -62,7 +60,6 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
 
 
   ! Full calculation of the PT2 density matrix
-  allocate(p_matrix_pt2(nstate, nstate, nspin))
   p_matrix_pt2(:, :, :) = 0.0_dp
   ! so far, only spin-restricted calculation are possible
   pqspin = 1
@@ -70,9 +67,10 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
   ! A1 P_ij sum over k and a,b
   do istate=ncore_G+1, nhomo_G
     do jstate=ncore_G+1, nhomo_G
-      do kstate=ncore_G+1, nhomo_G
-        do astate=nhomo_G+1, nvirtual_G-1
-          do bstate=nhomo_G+1, nvirtual_G-1
+      do astate=nhomo_G+1, nvirtual_G-1
+        if( MODULO( astate - (nhomo_G+1), poorman%nproc ) /= poorman%rank ) cycle
+        do bstate=nhomo_G+1, nvirtual_G-1
+          do kstate=ncore_G+1, nhomo_G
 
             denom1 = energy(astate, pqspin) + energy(bstate, pqspin) - energy(istate, pqspin) - energy(kstate, pqspin)
             denom2 = energy(astate, pqspin) + energy(bstate, pqspin) - energy(jstate, pqspin) - energy(kstate, pqspin)
@@ -94,6 +92,7 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
   do astate=nhomo_G+1, nvirtual_G-1
     do bstate=nhomo_G+1, nvirtual_G-1
       do cstate=nhomo_G+1, nvirtual_G-1
+        if( MODULO( cstate - (nhomo_G+1), poorman%nproc ) /= poorman%rank ) cycle
         do istate=ncore_G+1, nhomo_G
           do jstate=ncore_G+1, nhomo_G
 
@@ -118,6 +117,7 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
   do cstate=nhomo_G+1, nvirtual_G-1
     do jstate=ncore_G+1, nhomo_G
       do astate=nhomo_G+1, nvirtual_G-1
+        if( MODULO( astate - (nhomo_G+1), poorman%nproc ) /= poorman%rank ) cycle
         do bstate=nhomo_G+1, nvirtual_G-1
           do istate=ncore_G+1, nhomo_G
             denom1 = energy(jstate, pqspin) + energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
@@ -141,6 +141,7 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
   do bstate=nhomo_G+1, nvirtual_G-1
     do kstate=ncore_G+1, nhomo_G
       do astate=nhomo_G+1, nvirtual_G-1
+        if( MODULO( astate - (nhomo_G+1), poorman%nproc ) /= poorman%rank ) cycle
         do istate=ncore_G+1, nhomo_G
           do jstate=ncore_G+1, nhomo_G
             denom1 = energy(jstate, pqspin) + energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin)
@@ -158,20 +159,7 @@ subroutine pt2_density_matrix(occupation, energy, c_matrix, p_matrix)
       enddo
     enddo
   enddo
-
-
-  call update_density_matrix(occupation, c_matrix, p_matrix_pt2, p_matrix)
-
-  deallocate(p_matrix_pt2)
-
-  if( print_density_matrix_ .AND. is_iomaster ) then
-    write(stdout, '(1x,a)') 'Write DENSITY_MATRIX file'
-    open(newunit=file_density_matrix, file='DENSITY_MATRIX', form='unformatted', action='write')
-    do pqspin=1, nspin
-      write(file_density_matrix) p_matrix(:, :, pqspin)
-    enddo
-    close(file_density_matrix)
-  endif
+  call poorman%sum(p_matrix_pt2)
 
 
   if(has_auxil_basis) then
@@ -186,20 +174,18 @@ end subroutine pt2_density_matrix
 
 
 !=========================================================================
-subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
+subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix_pt2)
 
-  real(dp), intent(in)     :: occupation(:, :), energy(:, :)
-  real(dp), intent(in)     :: c_matrix(:, :, :)
-  real(dp), intent(inout)  :: p_matrix(:, :, :)
+  real(dp), intent(in)   :: occupation(:, :), energy(:, :)
+  real(dp), intent(in)   :: c_matrix(:, :, :)
+  real(dp), intent(out)  :: p_matrix_pt2(:, :, :)
   !=====
   integer              :: nstate
-  integer              :: file_density_matrix
   integer              :: istate, jstate, kstate
   integer              :: astate, bstate, cstate
   integer              :: pqspin
   real(dp)             :: denom1, denom2
   real(dp)             :: num1, num2
-  real(dp), allocatable :: p_matrix_pt2(:, :, :)
   !=====
 
   call timer_mbpt_dm%start()
@@ -219,7 +205,6 @@ subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
 
   ! Full calculation of the 1-ring density matrix
 
-  allocate(p_matrix_pt2(nstate, nstate, nspin))
   p_matrix_pt2(:, :, :) = 0.0_dp
   pqspin = 1
 
@@ -312,20 +297,6 @@ subroutine onering_density_matrix(occupation, energy, c_matrix, p_matrix)
   enddo
 
 
-  call update_density_matrix(occupation, c_matrix, p_matrix_pt2, p_matrix)
-
-  deallocate(p_matrix_pt2)
-
-  if( print_density_matrix_ .AND. is_iomaster ) then
-    write(stdout, '(1x,a)') 'Write DENSITY_MATRIX file'
-    open(newunit=file_density_matrix, file='DENSITY_MATRIX', form='unformatted', action='write')
-    do pqspin=1, nspin
-      write(file_density_matrix) p_matrix(:, :, pqspin)
-    enddo
-    close(file_density_matrix)
-  endif
-
-
   if(has_auxil_basis) then
     call destroy_eri_3center_mo()
   else
@@ -338,15 +309,13 @@ end subroutine onering_density_matrix
 
 
 !=========================================================================
-subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_matrix, cederbaum)
+subroutine gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix_gw)
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
-  real(dp), intent(in)                :: c_matrix(:, :, :), s_matrix(:, :)
+  real(dp), intent(in)                :: c_matrix(:, :, :)
   type(spectral_function), intent(in) :: wpol
-  real(dp), intent(inout)             :: p_matrix(:, :, :)
-  logical, intent(in), optional       :: cederbaum
+  real(dp), intent(out)               :: p_matrix_gw(:, :, :)
   !=====
-  logical  :: cederbaum_
   integer  :: nstate
   integer  :: pstate, qstate
   integer  :: istate, jstate
@@ -355,8 +324,6 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_mat
   integer  :: spole
   integer  :: npole_local, spole_local
   integer  :: nstate_occ, nstate_virt
-  integer  :: file_density_matrix
-  real(dp), allocatable :: p_matrix_gw(:, :, :), p_matrix_mo(:, :, :)
   real(dp), allocatable :: w_s_occ(:, :), w_s_virt(:, :)
   real(dp), allocatable :: w_s_occ_local(:, :), w_s_virt_local(:, :)
   !=====
@@ -364,11 +331,6 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_mat
   call timer_mbpt_dm%start()
 
   nstate = SIZE(occupation, DIM=1)
-  if( PRESENT(cederbaum) ) then
-    cederbaum_ = cederbaum
-  else
-    cederbaum_ = .FALSE.
-  endif
 
   write(stdout, '(/,a)') ' Calculate the GW density matrix'
 
@@ -383,7 +345,6 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_mat
 
 
   ! First order calculation of the GW density matrix
-  allocate(p_matrix_gw(nstate, nstate, nspin))
   p_matrix_gw(:, :, :) = 0.0_dp
   pqspin = 1
 
@@ -514,51 +475,6 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_mat
   enddo
 
 
-  !
-  ! Cederbaum Appendix B
-  !
-  if( cederbaum_ ) then
-    write(stdout, '(/,1x,a)') &
-        'Renormalization of the occupied-virtual coupling block following Cederbaum Appendix B'
-    call timer_tmp1%start()
-
-    ! First convert the Fock density matrix from AO -> MO
-    allocate(p_matrix_mo(nstate, nstate, nspin))
-    call p_ao_to_mo(c_matrix, s_matrix, p_matrix, p_matrix_mo)
-
-    ! Remove the mean-field part since we just want the fock correction
-    do istate=1, nhomo_G
-      p_matrix_mo(istate, istate, :) = p_matrix_mo(istate, istate, :) - occupation(istate, :)
-    enddo
-    ! Add p_matrix_mo to p_matrix_gw
-    p_matrix_gw(:, :, :) = p_matrix_gw(:, :, :) + p_matrix_mo(:, :, :)
-
-    deallocate(p_matrix_mo)
-
-    ! Set p_matrix to zero here so that it is not added again later
-    ! in "update_density_matrix" 
-    p_matrix(:, :, :) = 0.0_dp
-
-    !call cederbaum_naive()
-    call cederbaum_blas()
-    call timer_tmp1%stop()
-
-  endif
-
-
-  call update_density_matrix(occupation, c_matrix, p_matrix_gw, p_matrix)
-
-  deallocate(p_matrix_gw)
-
-  if( print_density_matrix_ .AND. is_iomaster ) then
-    write(stdout, '(1x,a)') 'Write DENSITY_MATRIX file'
-    open(newunit=file_density_matrix, file='DENSITY_MATRIX', form='unformatted', action='write')
-    do pqspin=1, nspin
-      write(file_density_matrix) p_matrix(:, :, pqspin)
-    enddo
-    close(file_density_matrix)
-  endif
-
   if(has_auxil_basis) then
     call destroy_eri_3center_mo()
   else
@@ -568,417 +484,25 @@ subroutine gw_density_matrix(occupation, energy, c_matrix, s_matrix, wpol, p_mat
   call timer_mbpt_dm%stop()
 
 
-contains
-
-
-subroutine cederbaum_blas()
-
-  !=====
-  integer :: kstate, cstate
-  integer :: it, jt, nocc, nvirt, nmo, nt, imo, nneg
-  real(dp), allocatable :: a11(:, :), b1(:), sigma_inf1(:)
-  real(dp) :: deltae
-  real(dp) :: eri_iajb, eri_ibja, eri_ijab
-  integer :: info
-  integer, allocatable :: ipiv(:)
-  real(dp), allocatable :: hartree_tmp(:), exchange_tmp(:, :, :)
-  real(dp), allocatable :: eigval(:), eigvec(:, :)
-  !=====
-
-  pqspin=1
-
-  nvirt = nvirtual_G-1 - nhomo_G
-  nocc  = nhomo_G - ncore_G
-  nmo   = nocc + nvirt
-  nt = nvirt * nocc
-  allocate(b1(nt))
-  allocate(sigma_inf1(nt))
-
-  !
-  ! Step 1: Build B= (B₁
-  !                   B₂)
-  !
-  ! Block 1: occ-virt block
-  ! Block 2: occ-occ and then virt-virt block
-  ! Equation B2.b
-  !
-  call timer_tmp2%start()
-  b1(:) = 0.0_dp
-  !
-  ! B₁ᵢₐ = B₁ᴴᵢₐ + B₁ˣᵢₐ
-  !
-  !
-  ! Hartree term
-  !
-  ! B₁ᴴᵢₐ = Σ_pq 2 (i a| p q ) γpq
-  allocate(hartree_tmp(nauxil_local))
-  hartree_tmp(:) = 0.0_dp
-  do pstate=ncore_G+1, nvirtual_G-1
-    do qstate=ncore_G+1, nvirtual_G-1
-      hartree_tmp(:) = hartree_tmp(:) + eri_3center_mo(:, pstate, qstate, pqspin) &
-                                        * p_matrix_gw(pstate, qstate, pqspin) / spin_fact
-    enddo
-  enddo
-  it = 0
-  do istate=ncore_G+1, nhomo_G
-    do astate=nhomo_G+1, nvirtual_G-1
-      it = it + 1
-      b1(it) = b1(it) + spin_fact * DOT_PRODUCT(eri_3center_mo(:, istate, astate, 1), hartree_tmp(:))
-    enddo
-  enddo
-  deallocate(hartree_tmp)
-
-  !
-  ! Exchange term
-  !
-  ! B₁ˣᵢₐ = -Σ_pq (i p| a q ) γpq
-  allocate(eigval(nmo), eigvec(nmo, nmo))
-  eigvec(:, :) = p_matrix_gw(ncore_G+1:nvirtual_G-1, ncore_G+1:nvirtual_G-1, pqspin) / spin_fact
-  ! in-place diago
-  call diagonalize(' ', eigvec, eigval)
-  ! negative and positive eigenvalues are treated separately because the square-root
-  nneg = COUNT(eigval(:) < 0.0d0)
-
-  do imo=1, nmo
-    eigvec(:, imo) = eigvec(:, imo) * SQRT(ABS(eigval(imo)))
-  enddo
-
-  allocate(exchange_tmp(nauxil_local, nmo, ncore_G+1:nvirtual_G-1))
-  do pstate=ncore_G+1, nvirtual_G-1
-    !exchange_tmp(:, :, pstate) = MATMUL( eri_3center_mo(:, ncore_G+1:nvirtual_G-1, pstate, 1), eigvec(:, :) )
-    call DGEMM('N', 'N', nauxil_local, nmo, nmo, &
-               1.0d0, eri_3center_mo(1, ncore_G+1, pstate, 1), nauxil_local, &
-               eigvec, nmo, &
-               0.0d0, exchange_tmp(1, 1, pstate), nauxil_local)
-  enddo
-  deallocate(eigvec)
-
-  it = 0
-  do istate=ncore_G+1, nhomo_G
-    do astate=nhomo_G+1, nvirtual_G-1
-      it = it + 1
-      b1(it) = b1(it) + SUM(exchange_tmp(:, :nneg  , istate) * exchange_tmp(:, :nneg, astate) )
-      b1(it) = b1(it) - SUM(exchange_tmp(:, nneg+1:, istate) * exchange_tmp(:, nneg+1:, astate) )
-    enddo
-  enddo
-  deallocate(exchange_tmp)
-  call auxil%sum(b1)
-
-
-  ! Naive implementation
-  !it = 0
-  !do istate=ncore_G+1, nhomo_G
-  !  do astate=nhomo_G+1, nvirtual_G-1
-  !    it = it + 1
-  !    do pstate=ncore_G+1, nvirtual_G-1
-  !      do qstate=ncore_G+1, nvirtual_G-1
-  !        eri_iqpa = DOT_PRODUCT(eri_3center_mo(:, istate, qstate, 1), eri_3center_mo(:, pstate, astate, 1) )
-  !        b1(it) = b1(it) - eri_iqpa * p_matrix_gw(pstate, qstate, 1) / spin_fact
-  !      enddo
-  !    enddo
-  !  enddo
-  !enddo
-
-  call timer_tmp2%stop()
-
-  !
-  ! Step 2: Build A = ( A₁₁  0 )
-  !                   ( A₂₁  0 )
-  !
-  ! to obtain
-  ! A⁻¹ = ( (1-A₁₁)⁻¹       0 )
-  !       ( A₂₁·(1-A₁₁)⁻¹   1 )
-
-  ! Step 2.1: do (1 - A₁₁)
-  ! Block 11: indices  (ia, jb)
-  call timer_tmp3%start()
-  call clean_allocate('A11 matrix', a11, nt, nt)
-
-  it = 0
-  do istate=ncore_G+1, nhomo_G
-    do astate=nhomo_G+1, nvirtual_G-1
-      it = it + 1
-      jt = 0
-      do jstate=ncore_G+1, nhomo_G
-        do bstate=nhomo_G+1, nvirtual_G-1
-          jt = jt + 1
-          deltae = energy(jstate, pqspin) - energy(bstate, pqspin)
-          eri_iajb = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, jstate, bstate, pqspin) )
-          eri_ibja = DOT_PRODUCT(eri_3center_mo(:, istate, bstate, pqspin), eri_3center_mo(:, jstate, astate, pqspin) )
-          eri_ijab = DOT_PRODUCT(eri_3center_mo(:, istate, jstate, pqspin), eri_3center_mo(:, astate, bstate, pqspin) )
-          a11(it, jt) = ( 4.0_dp * eri_iajb - eri_ibja - eri_ijab ) / deltae
-        enddo
-      enddo
-    enddo
-  enddo
-  call timer_tmp3%stop()
-  call auxil%sum(a11)
-  a11(:, :) = -a11(:, :)
-  do it=1, nt
-    a11(it, it) = a11(it, it) + 1.0d0
-  enddo
-
-  !
-  ! a11 now contains (1-A₁₁)
-  !
-  ! Solve linear system:
-  ! (1-A₁₁) · Σ₁(∞) = (1-A₁₁)⁻¹ · B₁
-  write(stdout, '(1x,a)') 'Solve (1-A₁₁) · Σ₁(∞) = B₁'
-  !sigma_inf1(:) = b1(:)
-  call move_alloc(b1, sigma_inf1)
-  allocate(ipiv(nt))
-  call DGESV(nt, 1, a11, nt, ipiv, sigma_inf1, nt, info)
-  deallocate(ipiv)
-
-  call clean_deallocate('A11 matrix', a11)
-
-  !
-  ! Step 3: Add the density-matrix correction to the GW density-matrix
-  ! Note: only the occ-virt block is involved
-  it = 0
-  do istate=ncore_G+1, nhomo_G
-    do astate=nhomo_G+1, nvirtual_G-1
-      it = it + 1
-      deltae = energy(istate, pqspin) - energy(astate, pqspin)
-      p_matrix_gw(istate, astate, pqspin) = p_matrix_gw(istate, astate, pqspin) + sigma_inf1(it) * spin_fact / deltae
-      p_matrix_gw(astate, istate, pqspin) = p_matrix_gw(istate, astate, pqspin)
-    enddo
-  enddo
-  deallocate(sigma_inf1)
-
-end subroutine cederbaum_blas
-
-
-subroutine cederbaum_naive()
-
-  !=====
-  integer :: kstate, cstate
-  integer :: it, jt, nocc, nvirt, nt
-  real(dp), allocatable :: a11(:, :), a21(:, :), b1(:), b2(:), sigma_inf1(:), sigma_inf2(:)
-  real(dp) :: eri_pqkl, eri_plkq, eri_pklq, deltae
-  real(dp) :: eri_iajb, eri_ibja, eri_ijab, delta, eri_ijkb, eri_ikjb, eri_ikpq, eri_iqpk
-  real(dp) :: eri_iapq, eri_iqpa, eri_cajb, eri_capq, eri_cqpa, eri_cbja, eri_cjab, eri_ibjk
-  !=====
-    pqspin=1
-
-    nvirt = nvirtual_G-1 - nhomo_G
-    nocc  = nhomo_G - ncore_G
-    nt = nvirt * nocc
-    allocate(a11(nt, nt))
-    allocate(b1(nt))
-    allocate(sigma_inf1(nt))
-
-#if defined(BLOCK2)
-    allocate(a21(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2, nt))
-    allocate(b2(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2))
-    allocate(sigma_inf2(nocc*(nocc+1)/2+nvirt*(nvirt+1)/2))
-#endif
-
-    !
-    ! Step 1: Build B= (B₁
-    !                   B₂)
-    !
-    ! Block 1: occ-virt block
-    ! Block 2: occ-occ and then virt-virt block
-    ! Equation B2.b
-    !
-    call timer_tmp2%start()
-    b1(:) = 0.0_dp
-    it = 0
-    do istate=ncore_G+1, nhomo_G
-      do astate=nhomo_G+1, nvirtual_G-1
-        it = it + 1
-        do pstate=ncore_G+1, nvirtual_G-1
-          do qstate=ncore_G+1, nvirtual_G-1
-            eri_iapq = DOT_PRODUCT(eri_3center_mo(:, istate, astate, 1), eri_3center_mo(:, pstate, qstate, 1) )
-            eri_iqpa = DOT_PRODUCT(eri_3center_mo(:, istate, qstate, 1), eri_3center_mo(:, pstate, astate, 1) )
-            b1(it) = b1(it) + (2.0_dp * eri_iapq - eri_iqpa) * p_matrix_gw(pstate, qstate, 1) / spin_fact
-          enddo
-        enddo
-      enddo
-    enddo
-    call timer_tmp2%stop()
-
-#if defined(BLOCK2)
-    b2(:) = 0.0_dp
-    it = 0
-    do istate=ncore_G+1, nhomo_G
-      do kstate=ncore_G+1, istate
-        it = it + 1
-        do pstate=ncore_G+1, nvirtual_G-1
-          do qstate=ncore_G+1, nvirtual_G-1
-            eri_ikpq = DOT_PRODUCT(eri_3center_mo(:, istate, kstate, 1), eri_3center_mo(:, pstate, qstate, 1) )
-            eri_iqpk = DOT_PRODUCT(eri_3center_mo(:, istate, qstate, 1), eri_3center_mo(:, pstate, kstate, 1) )
-            b2(it) = b2(it) + (2.0_dp * eri_ikpq - eri_iqpk) * p_matrix_gw(pstate, qstate, 1) / spin_fact
-          enddo
-        enddo
-      enddo
-    enddo
-    do cstate=nhomo_G+1, nvirtual_G-1
-      do astate=nhomo_G+1, cstate
-        it = it + 1
-        do pstate=ncore_G+1, nvirtual_G-1
-          do qstate=ncore_G+1, nvirtual_G-1
-            eri_capq = DOT_PRODUCT(eri_3center_mo(:, cstate, astate, 1), eri_3center_mo(:, pstate, qstate, 1) )
-            eri_cqpa = DOT_PRODUCT(eri_3center_mo(:, cstate, qstate, 1), eri_3center_mo(:, pstate, astate, 1) )
-            b2(it) = b2(it) + (2.0_dp * eri_capq - eri_cqpa) * p_matrix_gw(pstate, qstate, 1) / spin_fact
-          enddo
-        enddo
-      enddo
-    enddo
-#endif
-
-
-    !
-    ! Step 2: Build A = ( A₁₁  0 )
-    !                   ( A₂₁  0 )
-    !
-    ! to obtain
-    ! A⁻¹ = ( (1-A₁₁)⁻¹       0 )
-    !       ( A₂₁·(1-A₁₁)⁻¹   1 )
-
-    ! Step 2.1: do (1 - A₁₁)
-    ! Block 11: indices  (ia, jb)
-    it = 0
-    do istate=ncore_G+1, nhomo_G
-      do astate=nhomo_G+1, nvirtual_G-1
-        it = it + 1
-        jt = 0
-        do jstate=ncore_G+1, nhomo_G
-          do bstate=nhomo_G+1, nvirtual_G-1
-            jt = jt + 1
-            delta = MERGE(1.0_dp, 0.0_dp, it == jt)
-            deltae = energy(jstate, pqspin) - energy(bstate, pqspin)
-            eri_iajb = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, jstate, bstate, pqspin) )
-            eri_ibja = DOT_PRODUCT(eri_3center_mo(:, istate, bstate, pqspin), eri_3center_mo(:, jstate, astate, pqspin) )
-            eri_ijab = DOT_PRODUCT(eri_3center_mo(:, istate, jstate, pqspin), eri_3center_mo(:, astate, bstate, pqspin) )
-            a11(it, jt) = delta - ( 4.0_dp * eri_iajb - eri_ibja - eri_ijab ) / deltae
-          enddo
-        enddo
-      enddo
-    enddo
-
-    !
-    ! a11 now contains (1-A₁₁)⁻¹
-    !
-    write(stdout, '(1x,a)') 'invert (1-A11) block'
-    ! TODO: solve instead of inverting
-    ! sigma_inf1(:) = b1(:)
-    ! call DGESV(nt, 1, a11, nt, ipiv, sigma_inf1, nt, info)
-    !
-    call invert(a11)
-
-    !
-    ! Σ₁(∞) = (1-A₁₁)⁻¹ · B₁
-    !
-    sigma_inf1(:) = MATMUL(a11, b1)
-
-#if defined(BLOCK2)
-    ! Step 2.2: build A₂₁
-    ! first, occ-occ rows, occ-virt columns
-    it = 0
-    do istate=ncore_G+1, nhomo_G
-      do kstate=ncore_G+1, istate
-        it = it + 1
-        jt = 0
-        do jstate=ncore_G+1, nhomo_G
-          do bstate=nhomo_G+1, nvirtual_G-1
-            jt = jt + 1
-            deltae = energy(jstate, pqspin) - energy(bstate, pqspin)
-            eri_ikjb = DOT_PRODUCT(eri_3center_mo(:, istate, kstate, pqspin), eri_3center_mo(:, jstate, bstate, pqspin) )
-            eri_ibjk = DOT_PRODUCT(eri_3center_mo(:, istate, bstate, pqspin), eri_3center_mo(:, jstate, kstate, pqspin) )
-            eri_ijkb = DOT_PRODUCT(eri_3center_mo(:, istate, jstate, pqspin), eri_3center_mo(:, kstate, bstate, pqspin) )
-            a21(it, jt) = ( 4.0_dp * eri_ikjb - eri_ibjk - eri_ijkb ) / deltae
-          enddo
-        enddo
-      enddo
-    enddo
-    ! second, virt-virt rows, occ-virt columns
-    do cstate=nhomo_G+1, nvirtual_G-1
-      do astate=nhomo_G+1, cstate
-        it = it + 1
-        jt = 0
-        do jstate=ncore_G+1, nhomo_G
-          do bstate=nhomo_G+1, nvirtual_G-1
-            jt = jt + 1
-            deltae = energy(jstate, 1) - energy(bstate, 1)
-            eri_cajb = DOT_PRODUCT(eri_3center_mo(:, cstate, astate, 1), eri_3center_mo(:, jstate, bstate, 1) )
-            eri_cbja = DOT_PRODUCT(eri_3center_mo(:, cstate, bstate, 1), eri_3center_mo(:, jstate, astate, 1) )
-            eri_cjab = DOT_PRODUCT(eri_3center_mo(:, cstate, jstate, 1), eri_3center_mo(:, astate, bstate, 1) )
-            a21(it, jt) = ( 4.0_dp * eri_cajb - eri_cbja - eri_cjab ) / deltae
-          enddo
-        enddo
-      enddo
-    enddo
-
-    !
-    ! a21 contains A₂₁·(1-A₁₁)⁻¹
-    !
-    a21(:, :) = MATMUL( a21, a11)
-
-    !
-    ! Σ₂(∞) = A₂₁·(1-A₁₁)⁻¹ · B₁ + B₂
-    !
-    sigma_inf2(:) = MATMUL(a21, b1) + b2(:)
-
-    it = 0
-    do istate=ncore_G+1, nhomo_G
-      do kstate=ncore_G+1, istate
-        it = it + 1
-        if( istate == kstate ) then
-          write(*, *) istate, sigma_inf2(it) * Ha_eV, b2(it) * Ha_eV
-        endif
-      enddo
-    enddo
-    do cstate=nhomo_G+1, nvirtual_G-1
-      do astate=nhomo_G+1, cstate
-        it = it + 1
-        if( cstate == astate ) then
-          write(*, *) cstate, sigma_inf2(it) * Ha_eV, b2(it) * Ha_eV
-        endif
-      enddo
-    enddo
-#endif
-
-    !
-    ! Step 3: Add the density-matrix correction to the GW density-matrix
-    ! Note: only the occ-virt block is involved
-    it = 0
-    do istate=ncore_G+1, nhomo_G
-      do astate=nhomo_G+1, nvirtual_G-1
-        it = it + 1
-        deltae = energy(istate, pqspin) - energy(astate, pqspin)
-        p_matrix_gw(istate, astate, pqspin) = p_matrix_gw(istate, astate, pqspin) + sigma_inf1(it) * spin_fact / deltae
-        p_matrix_gw(astate, istate, pqspin) = p_matrix_gw(istate, astate, pqspin)
-      enddo
-    enddo
-    deallocate(a11)
-    deallocate(b1)
-    deallocate(sigma_inf1)
-
-end subroutine cederbaum_naive
-
-
 end subroutine gw_density_matrix
 
 
 !=========================================================================
-subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
+subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix_gw)
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
   type(spectral_function), intent(in) :: wpol
-  real(dp), intent(inout)             :: p_matrix(:, :, :)
+  real(dp), intent(out)               :: p_matrix_gw(:, :, :)
   !=====
-  real(dp), parameter   :: alpha=1.0_dp
-  real(dp), parameter   :: beta=1.0_dp
+  real(dp), parameter  :: alpha_quad = 1.0_dp
+  real(dp), parameter  :: beta_quad = 1.0_dp
   integer              :: nstate
   integer              :: iomegas, iomega
   integer              :: info
   real(dp), allocatable :: eri3_sca_p(:, :), eri3_sca_q(:, :)
   real(dp), allocatable :: chi_eri3_sca_q(:, :)
   real(dp), allocatable :: omega_sigma(:), weight_sigma(:)
-  real(dp), allocatable :: p_matrix_gw(:, :, :)
   real(dp)             :: v_chi_v_pq, mu
   integer              :: desc_eri3_t(NDEL)
   integer              :: iprow, ipcol, nprow, npcol
@@ -986,7 +510,6 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
   integer              :: meri3, neri3
   integer              :: mstate, pstate, qstate, pqspin
   integer              :: mrange, mlocal
-  integer              :: file_density_matrix
   !=====
 
 
@@ -1037,10 +560,10 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
   ! Variable change [0,1] -> [0,+\inf[
   write(stdout, '(a)') '    #    Frequencies (eV)    Quadrature weights'
   do iomegas=1, nomega_sigma
-    weight_sigma(iomegas) = weight_sigma(iomegas) / ( 2.0_dp**alpha - 1.0_dp ) &
-                           * alpha * (1.0_dp -  omega_sigma(iomegas))**(-alpha-1.0_dp) * beta
-    omega_sigma(iomegas)  = 1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
-                             * ( 1.0_dp / (1.0_dp - omega_sigma(iomegas))**alpha - 1.0_dp ) * beta
+    weight_sigma(iomegas) = weight_sigma(iomegas) / ( 2.0_dp**alpha_quad - 1.0_dp ) &
+                           * alpha_quad * (1.0_dp -  omega_sigma(iomegas))**(-alpha_quad-1.0_dp) * beta_quad
+    omega_sigma(iomegas)  = 1.0_dp / ( 2.0_dp**alpha_quad - 1.0_dp ) &
+                             * ( 1.0_dp / (1.0_dp - omega_sigma(iomegas))**alpha_quad - 1.0_dp ) * beta_quad
     write(stdout, '(i5,2(2x,f14.6))') iomegas, omega_sigma(iomegas)*Ha_eV, weight_sigma(iomegas)
   enddo
 
@@ -1049,7 +572,6 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
   mu = ( MINVAL(energy(nhomo_G+1, :)) + MAXVAL(energy(nhomo_G, :)) ) / 2.0_dp
   write(stdout, '(1x,a,f12.6)') 'Center of the HOMO-LUMO gap (eV): ', mu*Ha_eV
 
-  allocate(p_matrix_gw(nstate, nstate, nspin))
   p_matrix_gw(:, :, :) = 0.0_dp
 
   do pqspin=1, nspin
@@ -1098,7 +620,7 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
   deallocate(omega_sigma, weight_sigma)
 
 
-  ! Symmetrization of the p_matrix here
+  ! Symmetrization of the p_matrix_gw here
   ! Only the upper triangle was set up before
   do pqspin=1, nspin
     do qstate=1, nstate
@@ -1107,18 +629,6 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix)
       enddo
     enddo
   enddo
-
-  call update_density_matrix(occupation, c_matrix, p_matrix_gw, p_matrix)
-
-
-  if( print_density_matrix_ .AND. is_iomaster ) then
-    write(stdout, '(1x,a)') 'Write DENSITY_MATRIX file'
-    open(newunit=file_density_matrix, file='DENSITY_MATRIX', form='unformatted', action='write')
-    do pqspin=1, nspin
-      write(file_density_matrix) p_matrix(:, :, pqspin)
-    enddo
-    close(file_density_matrix)
-  endif
 
 
   call clean_deallocate('TMP 3-center MO integrals', eri3_sca_p)
@@ -1133,22 +643,21 @@ end subroutine gw_density_matrix_imag
 
 
 !=========================================================================
-subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_matrix)
+subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_matrix_gw)
 
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
   type(spectral_function), intent(in) :: wpol
-  real(dp), intent(inout)             :: p_matrix(:, :, :)
+  real(dp), intent(out)               :: p_matrix_gw(:, :, :)
   !=====
-  real(dp), parameter   :: alpha=1.0_dp
-  real(dp), parameter   :: beta=1.0_dp
+  real(dp), parameter  :: alpha_quad = 1.0_dp
+  real(dp), parameter  :: beta_quad = 1.0_dp
   integer              :: nstate
   integer              :: iomegas, iomega
   integer              :: info
   real(dp), allocatable :: eri3_sca_p(:, :), eri3_sca_q(:, :)
   real(dp), allocatable :: chi_eri3_sca_q(:, :)
   real(dp), allocatable :: omega_sigma(:), weight_sigma(:)
-  real(dp), allocatable :: p_matrix_gw(:, :, :)
   complex(dp), allocatable :: m_matrix(:, :, :, :), sigma_c_g0(:, :, :)
   real(dp)             :: v_chi_v_pq, mu, ec_gm
   integer              :: desc_eri3_t(NDEL)
@@ -1157,7 +666,6 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
   integer              :: meri3, neri3
   integer              :: mstate, pstate, qstate, pqspin
   integer              :: mrange, mlocal
-  integer              :: file_density_matrix
   !=====
 
 
@@ -1208,10 +716,10 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
   ! Variable change [0,1] -> [0,+\inf[
   write(stdout, '(a)') '    #    Frequencies (eV)    Quadrature weights'
   do iomegas=1, nomega_sigma
-    weight_sigma(iomegas) = weight_sigma(iomegas) / ( 2.0_dp**alpha - 1.0_dp ) &
-                           * alpha * (1.0_dp -  omega_sigma(iomegas))**(-alpha-1.0_dp) * beta
-    omega_sigma(iomegas)  = 1.0_dp / ( 2.0_dp**alpha - 1.0_dp ) &
-                           * ( 1.0_dp / (1.0_dp - omega_sigma(iomegas))**alpha - 1.0_dp ) * beta
+    weight_sigma(iomegas) = weight_sigma(iomegas) / ( 2.0_dp**alpha_quad - 1.0_dp ) &
+                           * alpha_quad * (1.0_dp -  omega_sigma(iomegas))**(-alpha_quad-1.0_dp) * beta_quad
+    omega_sigma(iomegas)  = 1.0_dp / ( 2.0_dp**alpha_quad - 1.0_dp ) &
+                           * ( 1.0_dp / (1.0_dp - omega_sigma(iomegas))**alpha_quad - 1.0_dp ) * beta_quad
     write(stdout, '(i5,2(2x,f14.6))') iomegas, omega_sigma(iomegas)*Ha_eV, weight_sigma(iomegas)
   enddo
 
@@ -1220,7 +728,6 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
   mu = ( MINVAL(energy(nhomo_G+1, :)) + MAXVAL(energy(nhomo_G, :)) ) / 2.0_dp
   write(stdout, '(1x,a,f12.6)') 'Center of the HOMO-LUMO gap (eV): ', mu*Ha_eV
 
-  allocate(p_matrix_gw(nstate, nstate, nspin))
   allocate(m_matrix(nsemin:nsemax, nsemin:nsemax, nomega_sigma, nspin))
   allocate(sigma_c_g0(nomega_sigma, nsemin:nsemax, nspin))
   m_matrix(:, :, :, :) = (0.0_dp, 0.0_dp)
@@ -1317,20 +824,6 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
     enddo
   enddo
 
-  call update_density_matrix(occupation, c_matrix, p_matrix_gw, p_matrix)
-
-  deallocate(p_matrix_gw)
-
-
-  if( print_density_matrix_ .AND. is_iomaster ) then
-    write(stdout, '(1x,a)') 'Write DENSITY_MATRIX file'
-    open(newunit=file_density_matrix, file='DENSITY_MATRIX', form='unformatted', action='write')
-    do pqspin=1, nspin
-      write(file_density_matrix) p_matrix(:, :, pqspin)
-    enddo
-    close(file_density_matrix)
-  endif
-
 
   call clean_deallocate('TMP 3-center MO integrals', eri3_sca_p)
   call clean_deallocate('TMP 3-center MO integrals', eri3_sca_q)
@@ -1351,8 +844,9 @@ subroutine update_density_matrix(occupation, c_matrix, p_matrix_mo, p_matrix)
   real(dp), intent(in)    :: p_matrix_mo(:, :, :)
   real(dp), intent(inout) :: p_matrix(:, :, :)
   !=====
-  integer              :: pstate
+  integer              :: pstate, pqspin
   integer              :: nbf, nstate
+  integer              :: file_density_matrix
   real(dp), allocatable :: p_matrix_tmp(:, :, :)
   !=====
 
@@ -1387,10 +881,249 @@ subroutine update_density_matrix(occupation, c_matrix, p_matrix_mo, p_matrix)
 
   endif
 
+  !
+  ! Write down the DENSITY_MATRIX file
+  ! that contains the complete p_matrix on the AO basis
+  !
+  if( print_density_matrix_ .AND. is_iomaster ) then
+    write(stdout, '(1x,a)') 'Write DENSITY_MATRIX file'
+    open(newunit=file_density_matrix, file='DENSITY_MATRIX', form='unformatted', action='write')
+    do pqspin=1, nspin
+      write(file_density_matrix) p_matrix(:, :, pqspin)
+    enddo
+    close(file_density_matrix)
+  endif
+
 
 end subroutine update_density_matrix
 
 
 !=========================================================================
-end module m_pt_density_matrix
+subroutine cederbaum_blas(energy, c_matrix, hfock_ao, p_matrix_mo)
+
+  real(dp), intent(in)    :: energy(:, :)
+  real(dp), intent(in)    :: c_matrix(:, :, :)
+  real(dp), intent(in)    :: hfock_ao(:, :, :)
+  real(dp), intent(inout) :: p_matrix_mo(:, :, :)
+  !=====
+  integer :: kstate, cstate, nstate
+  integer :: it, jt, nocc, nvirt, nmo, nt, imo, nneg
+  real(dp), allocatable :: a11(:, :), b1(:), sigma_inf1(:)
+  integer :: istate, jstate, astate, bstate, pstate, qstate
+  integer :: pqspin
+  real(dp) :: deltae
+  real(dp) :: eri_iajb, eri_ibja, eri_ijab
+  integer :: info
+  integer, allocatable :: ipiv(:)
+  real(dp), allocatable :: hfock_mo(:, :, :)
+  real(dp), allocatable :: hartree_tmp(:), exchange_tmp(:, :, :)
+  real(dp), allocatable :: eigval(:), eigvec(:, :)
+  !=====
+
+  write(stdout, '(/,1x,a)') &
+      'Renormalization of the occupied-virtual coupling block following Cederbaum Appendix B'
+  pqspin=1
+
+  nstate = SIZE(energy, DIM=1)
+  nvirt = nvirtual_G-1 - nhomo_G
+  nocc  = nhomo_G - ncore_G
+  nmo   = nocc + nvirt
+  nt = nvirt * nocc
+  allocate(b1(nt))
+  allocate(sigma_inf1(nt))
+
+  ! First create the Fock hamiltonian in MO basis
+  call clean_allocate('Fock matrix F_MO', hfock_mo, nstate, nstate, nspin)
+  call h_ao_to_mo(c_matrix, hfock_ao, hfock_mo)
+
+  ! And fill b1 with the occ-virt Fock hamiltonian in MO basis
+  ! Note that
+  ! < i | Σₓ - vₓ𞁞 | a > = < i | h + Σₓ - (h+vₓ𞁞) | a >
+  !                      = < i | F | a > - δᵢₐ εₐ
+  !                      = < i | F | a >
+  b1(:) = 0.0_dp
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      ! Parallelize here because auxil%sum(b1) will be performed at the end
+      if(MODULO(it - 1, auxil%nproc) /= auxil%rank) cycle
+      b1(it) = hfock_mo(istate, astate, pqspin)
+    enddo
+  enddo
+
+  call clean_deallocate('Fock matrix F_MO', hfock_mo)
+
+  if(has_auxil_basis) then
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  else
+    call die("cederbaum_blas: not coded without RI")
+  endif
+
+  !
+  ! Step 1: Build B= (B₁
+  !                   B₂)
+  !
+  ! Block 1: occ-virt block
+  ! Equation B2.b
+  !
+  call timer_tmp2%start()
+  !
+  ! B₁ᵢₐ = B₁ᴴᵢₐ + B₁ˣᵢₐ
+  !
+
+  !
+  ! Hartree term
+  !
+  ! B₁ᴴᵢₐ = Σ_pq 2 (i a| p q ) γpq
+  write(stdout, *) 'Direct term in B1'
+
+  allocate(hartree_tmp(nauxil_local))
+  hartree_tmp(:) = 0.0_dp
+  do pstate=ncore_G+1, nvirtual_G-1
+    do qstate=ncore_G+1, nvirtual_G-1
+      hartree_tmp(:) = hartree_tmp(:) + eri_3center_mo(:, pstate, qstate, pqspin) &
+                                        * p_matrix_mo(pstate, qstate, pqspin) / spin_fact
+    enddo
+  enddo
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      b1(it) = b1(it) + spin_fact * DOT_PRODUCT(eri_3center_mo(:, istate, astate, 1), hartree_tmp(:))
+    enddo
+  enddo
+  deallocate(hartree_tmp)
+
+  !
+  ! Exchange term
+  !
+  ! B₁ˣᵢₐ = -Σ_pq (i p| a q ) γpq
+  write(stdout, *) 'Exchange term in B1'
+
+  allocate(eigval(nmo), eigvec(nmo, nmo))
+  eigvec(:, :) = p_matrix_mo(ncore_G+1:nvirtual_G-1, ncore_G+1:nvirtual_G-1, pqspin) / spin_fact
+  ! in-place diago
+  call diagonalize(' ', eigvec, eigval)
+  ! negative and positive eigenvalues are treated separately because the square-root
+  nneg = COUNT(eigval(:) < 0.0d0)
+
+  do imo=1, nmo
+    eigvec(:, imo) = eigvec(:, imo) * SQRT(ABS(eigval(imo)))
+  enddo
+
+  allocate(exchange_tmp(nauxil_local, nmo, ncore_G+1:nvirtual_G-1))
+  do pstate=ncore_G+1, nvirtual_G-1
+    !exchange_tmp(:, :, pstate) = MATMUL( eri_3center_mo(:, ncore_G+1:nvirtual_G-1, pstate, 1), eigvec(:, :) )
+    call DGEMM('N', 'N', nauxil_local, nmo, nmo, &
+               1.0d0, eri_3center_mo(1, ncore_G+1, pstate, 1), nauxil_local, &
+               eigvec, nmo, &
+               0.0d0, exchange_tmp(1, 1, pstate), nauxil_local)
+  enddo
+  deallocate(eigvec)
+
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      b1(it) = b1(it) + SUM(exchange_tmp(:, :nneg  , istate) * exchange_tmp(:, :nneg, astate) )
+      b1(it) = b1(it) - SUM(exchange_tmp(:, nneg+1:, istate) * exchange_tmp(:, nneg+1:, astate) )
+    enddo
+  enddo
+  deallocate(exchange_tmp)
+  call auxil%sum(b1)
+
+  write(stdout, *) 'B1 is set up'
+
+  ! Naive implementation
+  !it = 0
+  !do istate=ncore_G+1, nhomo_G
+  !  do astate=nhomo_G+1, nvirtual_G-1
+  !    it = it + 1
+  !    do pstate=ncore_G+1, nvirtual_G-1
+  !      do qstate=ncore_G+1, nvirtual_G-1
+  !        eri_iqpa = DOT_PRODUCT(eri_3center_mo(:, istate, qstate, 1), eri_3center_mo(:, pstate, astate, 1) )
+    !        b1(it) = b1(it) - eri_iqpa * p_matrix_mo(pstate, qstate, 1) / spin_fact
+  !      enddo
+  !    enddo
+  !  enddo
+  !enddo
+
+  call timer_tmp2%stop()
+
+  !
+  ! Step 2: Build A = ( A₁₁  0 )
+  !                   ( A₂₁  0 )
+  !
+  ! to obtain
+  ! A⁻¹ = ( (1-A₁₁)⁻¹       0 )
+  !       ( A₂₁·(1-A₁₁)⁻¹   1 )
+
+  ! Step 2.1: do (1 - A₁₁)
+  ! Block 11: indices  (ia, jb)
+  call timer_tmp3%start()
+  call clean_allocate('A11 matrix', a11, nt, nt)
+
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      jt = 0
+      do jstate=ncore_G+1, nhomo_G
+        do bstate=nhomo_G+1, nvirtual_G-1
+          jt = jt + 1
+          deltae = energy(jstate, pqspin) - energy(bstate, pqspin)
+          eri_iajb = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, jstate, bstate, pqspin) )
+          eri_ibja = DOT_PRODUCT(eri_3center_mo(:, istate, bstate, pqspin), eri_3center_mo(:, jstate, astate, pqspin) )
+          eri_ijab = DOT_PRODUCT(eri_3center_mo(:, istate, jstate, pqspin), eri_3center_mo(:, astate, bstate, pqspin) )
+          a11(it, jt) = ( 4.0_dp * eri_iajb - eri_ibja - eri_ijab ) / deltae
+        enddo
+      enddo
+    enddo
+  enddo
+  call timer_tmp3%stop()
+  call auxil%sum(a11)
+  a11(:, :) = -a11(:, :)
+  do it=1, nt
+    a11(it, it) = a11(it, it) + 1.0d0
+  enddo
+
+  !
+  ! a11 now contains (1-A₁₁)
+  !
+  ! Solve linear system:
+  ! (1-A₁₁) · Σ₁(∞) = (1-A₁₁)⁻¹ · B₁
+  write(stdout, '(1x,a)') 'Solve (1-A₁₁) · Σ₁(∞) = B₁'
+  !sigma_inf1(:) = b1(:)
+  call move_alloc(b1, sigma_inf1)
+  allocate(ipiv(nt))
+  call DGESV(nt, 1, a11, nt, ipiv, sigma_inf1, nt, info)
+  deallocate(ipiv)
+
+  if(info /= 0) then
+    call die("cederbaum_blas: error in the linear system solution")
+  endif
+  call clean_deallocate('A11 matrix', a11)
+
+  !
+  ! Step 3: Add the density-matrix correction to the GW density-matrix
+  ! Note: only the occ-virt block is involved
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      deltae = energy(istate, pqspin) - energy(astate, pqspin)
+      p_matrix_mo(istate, astate, pqspin) = p_matrix_mo(istate, astate, pqspin) + sigma_inf1(it) * spin_fact / deltae
+      p_matrix_mo(astate, istate, pqspin) = p_matrix_mo(istate, astate, pqspin)
+    enddo
+  enddo
+  deallocate(sigma_inf1)
+
+  call destroy_eri_3center_mo()
+
+end subroutine cederbaum_blas
+
+
+!=========================================================================
+end module m_mbpt_density_matrix
 !=========================================================================

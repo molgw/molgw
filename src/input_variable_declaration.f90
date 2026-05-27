@@ -99,6 +99,8 @@
  logical, protected :: print_bare_energy_
  character(len=3), protected :: print_hdf5
  logical, protected :: print_hdf5_
+ character(len=3), protected :: print_molden
+ logical, protected :: print_molden_
  character(len=3), protected :: print_multipole
  logical, protected :: print_multipole_
  character(len=3), protected :: print_pdos
@@ -120,6 +122,7 @@
  character(len=3), protected :: print_yaml
  logical, protected :: print_yaml_
  character(len=256), protected :: read_fchk
+ character(len=256), protected :: read_molden
  character(len=256), protected :: restart_input
  character(len=256), protected :: yaml_output
  character(len=3), protected :: calc_dens_disc

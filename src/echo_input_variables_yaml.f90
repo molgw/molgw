@@ -180,6 +180,7 @@
  write(unit_yaml, '(4x,a,20x,a)') 'print_hdf5:', yesno_to_TrueFalse(print_hdf5) 
  write(unit_yaml, '(4x,a,5x,a)') 'print_line_rho_diff_tddft:', yesno_to_TrueFalse(print_line_rho_diff_tddft) 
  write(unit_yaml, '(4x,a,10x,a)') 'print_line_rho_tddft:', yesno_to_TrueFalse(print_line_rho_tddft) 
+ write(unit_yaml, '(4x,a,18x,a)') 'print_molden:', yesno_to_TrueFalse(print_molden) 
  write(unit_yaml, '(4x,a,15x,a)') 'print_multipole:', yesno_to_TrueFalse(print_multipole) 
  write(unit_yaml, '(4x,a,2x,a)') 'print_p_matrix_mo_block_hdf5:', yesno_to_TrueFalse(print_p_matrix_mo_block_hdf5) 
  write(unit_yaml, '(4x,a,20x,a)') 'print_pdos:', yesno_to_TrueFalse(print_pdos) 
@@ -203,6 +204,7 @@
  write(unit_yaml, '(4x,a,14x,i8)') 'rdm_filtering_mo:', rdm_filtering_mo 
  write(unit_yaml, '(4x,a,14x,i8)') 'rdm_filtering_no:', rdm_filtering_no 
  write(unit_yaml, '(4x,a,21x,a)') 'read_fchk:', TRIM(read_fchk) 
+ write(unit_yaml, '(4x,a,19x,a)') 'read_molden:', TRIM(read_molden) 
  write(unit_yaml, '(4x,a,18x,a)') 'read_restart:', yesno_to_TrueFalse(read_restart) 
  write(unit_yaml, '(4x,a,12x,a)') 'read_tddft_restart:', yesno_to_TrueFalse(read_tddft_restart) 
  write(unit_yaml, '(4x,a,17x,a)') 'restart_input:', TRIM(restart_input) 

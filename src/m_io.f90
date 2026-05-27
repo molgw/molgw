@@ -21,7 +21,7 @@ module m_io
   use m_libint_tools, only: libint_init
   use m_libcint_tools, only: libcint_has_range_separation, check_capability_libcint, pypzpx_order
   use m_libxc_tools, only: xc_version
-  use m_linear_algebra, only: determinant_3x3_matrix
+  use m_linear_algebra, only: determinant_3x3_matrix, invert
   use m_inputparam
   use m_hamiltonian_tools, only: get_number_occupied_states, dump_out_energy
   use m_atoms
@@ -351,42 +351,52 @@ end subroutine dump_out_matrix_dp
 
 
 !=========================================================================
-subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, fmt)
+subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, fmt, maxcol)
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
   real(dp), intent(in)         :: matrix(:, :)
   character(len=*), optional, intent(in) :: fmt
+  integer, optional, intent(in) :: maxcol
   !=====
-  integer, parameter :: MAXSIZE=50
+  integer :: maxcol_ = 50
   !=====
-  real(dp) :: row(MIN(SIZE(matrix, DIM=2), MAXSIZE))
+  real(dp), allocatable :: row(:)
   integer :: imat, mmat, nmat
   character(:), allocatable :: fmt_
   !=====
 
   if( .NOT. print_matrix .AND. .NOT. debug ) return
 
+  mmat  = SIZE(matrix, DIM=1)
+  nmat  = SIZE(matrix, DIM=2)
+
   if( PRESENT(fmt) ) then
     fmt_ = fmt
   else
     fmt_ = 'f12.5'
   endif
+  if( PRESENT(maxcol) ) then
+    maxcol_ = maxcol
+  else
+    maxcol_ = MIN(50, nmat)
+  endif
+  allocate(row(maxcol_))
 
-  mmat  = SIZE(matrix, DIM=1)
-  nmat  = SIZE(matrix, DIM=2)
 
   write(stdout, '(/,1x,a)') TRIM(title)
 
-  do imat=1, MIN(mmat, MAXSIZE)
-    where( ABS(matrix(imat, 1:MIN(nmat, MAXSIZE))) > 1.0e-5_dp )
-      row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE))
+  do imat=1, MIN(mmat, maxcol_)
+    where( ABS(matrix(imat, 1:MIN(nmat, maxcol_))) > 1.0e-5_dp )
+      row(:) = matrix(imat, 1:MIN(nmat, maxcol_))
     elsewhere
       row(:) = 1.0e-6_dp
     end where
     write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
   enddo
   write(stdout, *)
+
+  deallocate(row)
 
 end subroutine dump_out_matrix_nospin_dp
 
@@ -1419,7 +1429,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
   if( .NOT. is_iomaster ) return
 
   completely_empty_local = completely_empty
-  if(present(print_all)) then
+  if(PRESENT(print_all)) then
     if(print_all) completely_empty_local = -TEN
   endif
 
@@ -1494,7 +1504,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
     if(shell_typ==1) then                    ! p-shell
       p_aos(1:3)=ao_map(ibf2:ibf2+2)
       ao_map(ibf2:ibf2+2)=p_aos(:)
-      elseif(shell_typ==2) then                ! d-shell
+    elseif(shell_typ==2) then                ! d-shell
       d_aos(1:6)=ao_map(ibf2:ibf2+5)
       ao_map(ibf2  )=d_aos(1)
       ao_map(ibf2+1)=d_aos(4)
@@ -1502,7 +1512,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
       ao_map(ibf2+3)=d_aos(2)
       ao_map(ibf2+4)=d_aos(3)
       ao_map(ibf2+5)=d_aos(5)
-      elseif(shell_typ==3) then                ! f-shell
+    elseif(shell_typ==3) then                ! f-shell
       f_aos(1:10)=ao_map(ibf2:ibf2+9)
       ao_map(ibf2  )=f_aos(1)
       ao_map(ibf2+1)=f_aos(7)
@@ -1514,7 +1524,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
       ao_map(ibf2+7)=f_aos(6)
       ao_map(ibf2+8)=f_aos(9)
       ao_map(ibf2+9)=f_aos(5)
-      elseif(shell_typ==4) then                ! g-shell
+    elseif(shell_typ==4) then                ! g-shell
       g_aos(1:15)=ao_map(ibf2:ibf2+14)
       ao_map(ibf2  )=g_aos( 1)
       ao_map(ibf2+1)=g_aos(11)
@@ -1531,7 +1541,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
       ao_map(ibf2+12)=g_aos( 5)
       ao_map(ibf2+13)=g_aos( 8)
       ao_map(ibf2+14)=g_aos( 9)
-      elseif(shell_typ==0) then                ! s-shell
+    elseif(shell_typ==0) then                ! s-shell
       ! Do nothing
     else                ! h-, i-,...shell
       write(stdout, '(1x,a,i5,a)') "Shell type", shell_typ, " not reordered."
@@ -3464,11 +3474,11 @@ subroutine read_guess_fchk(c_matrix, file_name, basis, nstate, nspin, energy)
     ao_map(ibf) = ibf
   enddo
 
-  ibf=1
+  ibf = 1
   do ishell=1, nshell
-    shell_typ=basis%shell(ishell)%am   ! 0 for s, 1 for p, 2 for d, 3 for f,...,
+    shell_typ = basis%shell(ishell)%am   ! 0 for s, 1 for p, 2 for d, 3 for f,...,
 
-    iprim_per_shell=number_basis_function_am('CART', shell_typ)
+    iprim_per_shell = number_basis_function_am('CART', shell_typ)
 
     ! Order MO Coefs
     if(shell_typ==1) then                    ! p-shell
@@ -3534,7 +3544,7 @@ subroutine read_guess_fchk(c_matrix, file_name, basis, nstate, nspin, energy)
   write(stdout, '(/,1x,a,a)') 'Reading an existing Gaussian formatted checkpoint point: ', &
                              TRIM(file_name)
 
-  nel=nstate*basis%nbf
+  nel = nstate * basis%nbf
   allocate(c_coef(nel))
 
   open(newunit=fu, file=TRIM(file_name), status='old', action='read')
@@ -3559,12 +3569,12 @@ subroutine read_guess_fchk(c_matrix, file_name, basis, nstate, nspin, energy)
   do istate=1, nstate
     do ibf=1, basis%nbf
       ijbf = ijbf + 1
-      c_coef_tmp(ibf)=c_coef(ijbf)
+      c_coef_tmp(ibf) = c_coef(ijbf)
     enddo
-    c_matrix(:, istate, 1)=c_coef_tmp(ao_map(:))
+    c_matrix(:, istate, 1) = c_coef_tmp(ao_map(:))
   enddo
 
-  if (present(energy) ) then
+  if (PRESENT(energy) ) then
 
     allocate(energy_tmp(basis%nbf))
 
@@ -3940,7 +3950,7 @@ subroutine dump_matrix_cmplx_hdf5(f_or_g_id, matrix_cmplx, isnap, matrix_name)
 
   if( .NOT. is_iomaster ) return
 
-  if( present(matrix_name) ) then
+  if( PRESENT(matrix_name) ) then
     m_name = matrix_name
   else
     m_name = 'snap_'
@@ -4332,6 +4342,161 @@ subroutine write_cube_file(cubefilename, n1, n2, n3, dr, data, comment)
   close(fileunit)
 
 end subroutine write_cube_file
+
+!=========================================================================
+! Write a MOLDEN type file
+!
+subroutine write_molden_file(moldenfilename, basis, occupation, energy, c_matrix)
+  implicit none
+
+  character(len=*), intent(in) :: moldenfilename
+  type(basis_set), intent(in)  :: basis
+  real(dp), intent(in)         :: c_matrix(:, :, :)
+  real(dp), intent(in)         :: occupation(:, :), energy(:, :)
+  !=====
+  integer :: fileunit, nbf, nstate, istate, ibf, ispin
+  integer :: li, ni_cart, ibf1, ibf2, ibfc, gt, ibf1_cart, ishell
+  real(dp), allocatable :: c_matrix_cart(:)
+  !=====
+
+  nbf = SIZE(c_matrix, DIM=1)
+  nstate = SIZE(c_matrix, DIM=2)
+  gt = get_gaussian_type_tag(basis%gaussian_type)
+
+
+  open(newunit=fileunit, file=TRIM(moldenfilename), action='write')
+
+  write(fileunit, '(a)') '[MO]'
+  do ispin=1, nspin
+    do istate=1, nstate
+      write(fileunit, '(a)') 'Sym= A'
+      write(fileunit, '(a,f24.16)') 'Ene= ', energy(istate, ispin)
+      write(fileunit, '(a)') 'Spin= Alpha'
+      write(fileunit, '(a,es14.6)') 'Occup= ', occupation(istate, ispin)
+
+      ibf = 0
+      do ishell=1, basis%nshell
+        li        = basis%shell(ishell)%am
+        ni_cart   = number_basis_function_am('CART',li)
+        ibf1      = basis%shell(ishell)%istart
+        ibf1_cart = basis%shell(ishell)%istart_cart
+        ibf2      = basis%shell(ishell)%iend
+        allocate(c_matrix_cart(ni_cart))
+        c_matrix_cart(:) = MATMUL( cart_to_pure_norm(li, gt)%matrix(:, :), c_matrix(ibf1:ibf2, istate, ispin))
+        do ibfc=1, ni_cart
+          ibf = ibf + 1
+          write(fileunit, '(i4,f16.10)') ibf, c_matrix_cart(m2molden_cart(li)%reindex(ibfc)) 
+        enddo
+       
+        deallocate(c_matrix_cart)
+      enddo
+    enddo
+  enddo
+
+  close(fileunit)
+
+
+end subroutine write_molden_file
+
+
+!=========================================================================
+! Read a MOLDEN type file
+!
+subroutine read_molden_file(moldenfilename, basis, occupation, energy, c_matrix)
+  implicit none
+
+  character(len=*), intent(in) :: moldenfilename
+  type(basis_set), intent(in)  :: basis
+  real(dp), intent(out)        :: c_matrix(:, :, :)
+  real(dp), intent(out)        :: occupation(:, :), energy(:, :)
+  !=====
+  integer :: fileunit, ios
+  integer :: nbf, nstate, istate, ibf, ispin
+  integer :: li, ni, ni_cart, ibf1, ibf2, ibfc, gt, ibf1_cart, ishell, ii
+  real(dp), allocatable :: c_matrix_cart(:), cart_to_pure_renorm(:, :), pseudo_inv(:, :)
+  real(dp) :: nelec
+  character(len=256) :: line, dummy
+  logical :: found
+  !=====
+
+  write(stdout, '(/,1x,a,a)') 'Read MOLDEN file: ', TRIM(moldenfilename)
+
+  nbf = SIZE(c_matrix, DIM=1)
+  nstate = SIZE(c_matrix, DIM=2)
+  gt = get_gaussian_type_tag(basis%gaussian_type)
+
+  !if (gt /= CARTG) then
+  !  call die('read_molden_file: only implemented for Cartesian gaussian')
+  !endif
+
+  open(newunit=fileunit, file=TRIM(moldenfilename), action='read', form='formatted', iostat=ios)
+  if (ios /= 0) then
+    call die('read_molden_file: error opening file ' // TRIM(moldenfilename))
+    stop
+  endif
+
+  ! Looking for the keyword [MO]
+  found = .FALSE.
+  do
+    read(fileunit, '(a)', iostat=ios) line
+    if (ios /= 0) exit ! End of file reached without finding [MO]
+
+    if(INDEX(line, '[MO]') > 0) then
+      found = .true.
+      exit
+    endif
+  enddo
+  if( .NOT. found ) then
+    call die('read_molden_file: MOLDEN file does not contain [MO] tag. Is it corrupted?')
+  endif
+
+  do ispin=1, nspin
+    do istate=1, nstate
+      read(fileunit, '(a)', iostat=ios) line ! Sym line
+      read(fileunit, *) dummy, energy(istate, ispin)
+      read(fileunit, '(a)', iostat=ios) line ! spin line
+      read(fileunit, *) dummy, occupation(istate, ispin)
+
+      do ishell=1, basis%nshell
+        li        = basis%shell(ishell)%am
+        ni_cart   = number_basis_function_am('CART', li)
+        ni        = number_basis_function_am(basis%gaussian_type, li)
+        ibf1      = basis%shell(ishell)%istart
+        ibf1_cart = basis%shell(ishell)%istart_cart
+        ibf2      = basis%shell(ishell)%iend
+        allocate(c_matrix_cart(ni_cart))
+        do ibfc=1, ni_cart
+          read(fileunit, *) ibf, c_matrix_cart(m2molden_cart(li)%reindex(ibfc))
+        enddo
+
+
+        !
+        ! Calculate the pseudo inverse of cart_to_pure_norm(li, gt)%matrix(:, :)
+        !
+        allocate(cart_to_pure_renorm(ni_cart, ni))
+        allocate(pseudo_inv(ni, ni))
+        pseudo_inv(:, :) = MATMUL( TRANSPOSE(cart_to_pure_norm(li, gt)%matrix(:, :)), cart_to_pure_norm(li, gt)%matrix(:, :))
+        call invert(pseudo_inv)
+        cart_to_pure_renorm(:, :) = MATMUL( cart_to_pure_norm(li, gt)%matrix(:, :), TRANSPOSE(pseudo_inv) )
+
+        c_matrix(ibf1:ibf2, istate, ispin) = MATMUL( TRANSPOSE(cart_to_pure_renorm(:, :)), c_matrix_cart(:) )
+
+        deallocate(cart_to_pure_renorm, pseudo_inv)
+
+        deallocate(c_matrix_cart)
+      enddo
+    enddo
+  enddo
+
+
+  close(fileunit)
+
+  write(stdout, '(/,1x,a,i3)')  'Reading natural occupations for spin: ', 1
+  write(stdout, '(10(2x,f14.6))') occupation(:, 1)
+  write(stdout, '(1x,a,f14.6)') 'Number of electrons: ', SUM(occupation(:, :))
+
+
+end subroutine read_molden_file
 
 
 !=========================================================================

@@ -27,12 +27,12 @@ contains
 ! Many optional arguments however not all combinations are possible (be careful!)
 subroutine static_dipole(basis, occupation, c_matrix_in, p_matrix_in, dipole_ao_in, dipole_out)
 
-  type(basis_set), intent(in)       :: basis
-  real(dp), optional, intent(in)     :: occupation(:, :)
-  real(dp), optional, intent(in)     :: c_matrix_in(:, :, :)
+  type(basis_set), intent(in)     :: basis
+  real(dp), optional, intent(in)  :: occupation(:, :)
+  real(dp), optional, intent(in)  :: c_matrix_in(:, :, :)
   class(*), optional, intent(in)  :: p_matrix_in(:, :, :)
-  real(dp), optional, intent(in)     :: dipole_ao_in(:, :, :)
-  real(dp), optional, intent(out)    :: dipole_out(3)
+  real(dp), optional, intent(in)  :: dipole_ao_in(:, :, :)
+  real(dp), optional, intent(out) :: dipole_out(3)
   !=====
   integer                    :: icenter, idir
   real(dp)                   :: dipole(3)

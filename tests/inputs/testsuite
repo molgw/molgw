@@ -92,9 +92,9 @@ gKS HOMO energy           ,   -3.230199        , 0 , 1.0e-4
 gKS LUMO energy           ,   -1.930441        , 0 , 1.0e-4
 
 butadiene_diago.in        , HF butadiene with diagonalizations made with (P)DSYEVD
-SCF Total Energy          , -154.9342671231    , 0 , 1.0e-7
-gKS HOMO energy           ,   -8.693777        , 0 , 1.0e-4
-gKS LUMO energy           ,    3.220523        , 0 , 1.0e-4
+SCF Total Energy          , -154.9336767704    , 0 , 1.0e-7
+gKS HOMO energy           ,   -8.694923        , 0 , 1.0e-4
+gKS LUMO energy           ,    3.218456        , 0 , 1.0e-4
 
 h2o_distorted.in          , BHLYP distorted water (having quadrupole)
 SCF Total Energy          , -76.3815547520     , 0 , 1.0e-7
@@ -152,8 +152,8 @@ gKS HOMO energy           ,  -12.210687        , 0 , 1.0e-4
 gKS LUMO energy           ,   35.106709        , 0 , 1.0e-4
 
 lih_ghost.in              , LiH molecule with addition basis functions on ghost atoms
-Kinetic Energy            ,    8.3706447990    , 0 , 1.0e-7
-Nucleus Energy            ,  -21.8154517287    , 0 , 1.0e-7
+Kinetic Energy            ,    8.3706450131    , 0 , 1.0e-7
+Nucleus Energy            ,  -21.8154519211    , 0 , 1.0e-7
 Hartree Energy            ,    6.1980439217    , 0 , 1.0e-7
 Exchange Energy           ,   -2.2262796016    , 0 , 1.0e-7
 SCF Total Energy          ,   -7.8855109768    , 0 , 1.0e-7
@@ -843,7 +843,7 @@ SCF Total Energy          ,  -76.3757991664     , 0 , 1.0e-7
 RT-TDDFT Total Energy     ,  -75.3811268142     , 0 , 1.0e-7
 
 h2o_rt_tddft_min_overlap.in , proj wihtout basis nstate ne nbf,tddft
-RT-TDDFT Total Energy     ,  -75.6361897954     , 0 , 1.0e-7
+RT-TDDFT Total Energy     ,  -75.6302124982     , 0 , 1.0e-7
 
 be2_qsgw_bse.in           , BSE calculation after QSGW for Be2
 gKS HOMO energy           ,  -8.818516          , 0 , 1.0e-4
@@ -1053,14 +1053,14 @@ RT-TDDFT Total Energy     ,  -2.7195375026     , 0 , 1.0e-5
 
 h_in_he_rt_lda_MB_PC2B_ions.in, RT-TDDFT PC="MB_PC2B" projectile with basis, need_gradients
 SCF Total Energy          ,  -2.8286834572     , 0 , 1.0e-7
-RT-TDDFT Total Energy     ,  -2.3308202283     , 0 , 1.0e-5
+RT-TDDFT Total Energy     ,  -2.3307557977     , 0 , 1.0e-5
 Number of electrons	  ,  2.002093	       , 0 , 5.0e-4  # Loosened criterium
-Lowdin projectile charge  ,  8.379366E-01      , 0 , 1.0e-4
+Lowdin projectile charge  ,  7.216317E-01      , 0 , 1.0e-4
 
 h_in_he_rt_lda_MB_PC2B_ions_restart.in, RT-TDDFT PC="MB_PC2B" projectile with basis, restart need_gradients
-RT-TDDFT Total Energy     ,  -2.1264231497     , 0 , 1.0e-5
+RT-TDDFT Total Energy     ,  -2.1264059147     , 0 , 1.0e-5
 Number of electrons	  ,  2.000330	       , 0 , 1.0e-4
-Lowdin projectile charge  ,  5.409376E-01      , 0 , 1.0e-4
+Lowdin projectile charge  ,  5.409570E-01      , 0 , 1.0e-4
 
 he_in_h_ghost_rt_lda_MB_PC2B.in, RT-TDDFT PC="MB_PC2B" projectile in ghost, need_gradients
 SCF Total Energy          ,  -2.8356240593     , 0 , 1.0e-7
@@ -1363,8 +1363,26 @@ SCF Total Energy          , -187.4495378734    , 0 , 1.0e-7
 Kinetic Energy (Ha):      ,  186.9058907148    , 0 , 1.0e-7
 Nucleus Energy (Ha):      , -548.6566331109    , 0 , 1.0e-7
 Hartree Energy (Ha):      ,  142.9060274911    , 0 , 1.0e-7
-Exchange Energy (Ha):     ,   -21.1384503978   , 0 , 1.0e-7
+Exchange Energy (Ha):     ,  -21.1384503978    , 0 , 1.0e-7
 Hartree  HOMO expectation ,  291.642779        , 0 , 1.0e-4
 Exchange HOMO expectation ,  -24.839183        , 0 , 1.0e-4
 GW HOMO energy            ,  -12.015375        , 0 , 1.0e-4
+
+co2_mp2_dm.in             , CO2 MP2 density-matrix
+SCF Total Energy          , -187.4495378734    , 0 , 1.0e-7
+Kinetic Energy (Ha):      ,  187.1068985336    , 0 , 1.0e-7
+Nucleus Energy (Ha):      , -548.8749834705    , 0 , 1.0e-7
+Hartree Energy (Ha):      ,  142.9727941016    , 0 , 1.0e-7
+Exchange Energy (Ha):     ,  -21.0552706236    , 0 , 1.0e-7
+Hartree  HOMO expectation ,  291.425633        , 0 , 1.0e-4
+Exchange HOMO expectation ,  -24.426481        , 0 , 1.0e-4
+
+co2_gw@pbeh_dm_cederbaum.in, CO2 GW density-matrix a la Cederbaum
+SCF Total Energy          , -188.2181587541    , 0 , 1.0e-7
+Kinetic Energy (Ha):      ,  186.8655436979    , 0 , 1.0e-7
+Nucleus Energy (Ha):      , -548.3970589999    , 0 , 1.0e-7
+Hartree Energy (Ha):      ,  142.7575597891    , 0 , 1.0e-7
+Exchange Energy (Ha):     ,  -21.0972552041    , 0 , 1.0e-7
+Hartree  HOMO expectation ,  293.645469        , 0 , 1.0e-4
+Exchange HOMO expectation ,  -23.873869        , 0 , 1.0e-4
 

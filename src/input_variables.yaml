@@ -644,6 +644,14 @@ print_hdf5:
   default: 'no'
   comment: Prints an HDF5 file with self-consistent field data
 
+print_molden:
+  family: io
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Prints an MOLDEN type file
+
 print_multipole:
   family: io
   datatype: yes/no
@@ -745,6 +753,15 @@ read_fchk:
     set in both codes. Options are 'no' (no reading), 'SCF' (for self-consistent field),
     'CC' (for coupled-cluster), or 'MP2' (for MP2). Today, only works for Cartesian
     Gaussian and for spin restricted calculations.
+
+read_molden:
+  family: io
+  datatype: characters
+  mandatory: 'no'
+  experimental: 'no'
+  default: ''
+  comment: If not empty, it contains the name of a MOLDEN file to read.
+           Useful to read a density-matrix file obtained from CFOUR and analyzed with 'print_rho_grid'.
 
 read_restart:
   family: io

@@ -75,6 +75,7 @@
     print_hartree,       &
     print_bare_energy,       &
     print_hdf5,       &
+    print_molden,       &
     print_multipole,       &
     print_pdos,       &
     print_restart,       &
@@ -86,6 +87,7 @@
     print_wfn,       &
     print_yaml,       &
     read_fchk,       &
+    read_molden,       &
     read_restart,       &
     restart_input,       &
     yaml_output,       &
@@ -324,6 +326,7 @@
  print_hartree = 'no'
  print_bare_energy = 'no'
  print_hdf5 = 'no'
+ print_molden = 'no'
  print_multipole = 'no'
  print_pdos = 'no'
  print_restart = 'yes'
@@ -335,6 +338,7 @@
  print_wfn = 'no'
  print_yaml = 'yes'
  read_fchk = 'no'
+ read_molden = ''
  read_restart = 'no'
  restart_input = 'RESTART'
  yaml_output = 'molgw.yaml'

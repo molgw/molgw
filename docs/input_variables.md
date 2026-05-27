@@ -217,6 +217,7 @@
 [print_hartree](#print_hartree)
 [print_bare_energy](#print_bare_energy)
 [print_hdf5](#print_hdf5)
+[print_molden](#print_molden)
 [print_multipole](#print_multipole)
 [print_pdos](#print_pdos)
 [print_restart](#print_restart)
@@ -228,6 +229,7 @@
 [print_wfn](#print_wfn)
 [print_yaml](#print_yaml)
 [read_fchk](#read_fchk)
+[read_molden](#read_molden)
 [read_restart](#read_restart)
 [restart_input](#restart_input)
 [yaml_output](#yaml_output)
@@ -3087,6 +3089,22 @@ Prints electronic density along a line, which parameters must be provided in man
 
 
 ---
+### print_molden
+
+*Optional*
+
+**Family:** io
+
+**Type:** yes/no
+
+**Default:** no
+
+**Description:**
+
+Prints an MOLDEN type file
+
+
+---
 ### print_multipole
 
 *Optional*
@@ -3458,6 +3476,22 @@ Number of natural orbitals in addition to the fixed `rdm_filtering_mo` when crea
 **Description:**
 
 Triggers the reading of an external Gaussian formatted checkpoint file (named gaussian.fchk) that contains density matrices. Basis sets have to be precisely the same in MOLGW and in Gaussian, which requires a manual input of the basis set in both codes. Options are 'no' (no reading), 'SCF' (for self-consistent field), 'CC' (for coupled-cluster), or 'MP2' (for MP2). Today, only works for Cartesian Gaussian and for spin restricted calculations.
+
+
+---
+### read_molden
+
+*Optional*
+
+**Family:** io
+
+**Type:** characters
+
+**Default:** None
+
+**Description:**
+
+If not empty, it contains the name of a MOLDEN file to read. Useful to read a density-matrix file obtained from CFOUR and analyzed with 'print_rho_grid'.
 
 
 ---

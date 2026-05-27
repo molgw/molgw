@@ -180,6 +180,7 @@
   write(stdout, '(1x,a32,6x,a)') 'print_hdf5', print_hdf5 
   write(stdout, '(1x,a32,6x,a)') 'print_line_rho_diff_tddft', print_line_rho_diff_tddft 
   write(stdout, '(1x,a32,6x,a)') 'print_line_rho_tddft', print_line_rho_tddft 
+  write(stdout, '(1x,a32,6x,a)') 'print_molden', print_molden 
   write(stdout, '(1x,a32,6x,a)') 'print_multipole', print_multipole 
   write(stdout, '(1x,a32,6x,a)') 'print_p_matrix_mo_block_hdf5', print_p_matrix_mo_block_hdf5 
   write(stdout, '(1x,a32,6x,a)') 'print_pdos', print_pdos 
@@ -203,6 +204,7 @@
   write(stdout, '(1x,a32,2x,i8)') 'rdm_filtering_mo', rdm_filtering_mo 
   write(stdout, '(1x,a32,2x,i8)') 'rdm_filtering_no', rdm_filtering_no 
   write(stdout, '(1x,a32,6x,a)') 'read_fchk', TRIM(read_fchk) 
+  write(stdout, '(1x,a32,6x,a)') 'read_molden', TRIM(read_molden) 
   write(stdout, '(1x,a32,6x,a)') 'read_restart', read_restart 
   write(stdout, '(1x,a32,6x,a)') 'read_tddft_restart', read_tddft_restart 
   write(stdout, '(1x,a32,6x,a)') 'restart_input', TRIM(restart_input) 

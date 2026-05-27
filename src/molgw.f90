@@ -54,7 +54,7 @@ program molgw
   use m_virtual_orbital_space
   use m_ci
   use m_dm_analysis
-  use m_dm_mbpt
+  use m_dm_mbpt_driver
   use m_restart
   use m_multipole
   use m_io
@@ -539,6 +539,9 @@ program molgw
     ! HDF5 file with scf data
     if( scf_has_converged .AND. print_hdf5_ ) then
       call print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy)
+    endif
+    if( print_molden_ ) then
+      call write_molden_file('molgw.MOLDEN', basis, occupation, energy, c_matrix)
     endif
    
     !
