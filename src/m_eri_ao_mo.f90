@@ -881,7 +881,7 @@ end subroutine calculate_eri_3center_mo_cmplx
 !=================================================================
 subroutine calculate_eri_3center_mo_no(c_matrix_mo_no, eri_3center_no, timing, verbose)
   real(dp), intent(in)          :: c_matrix_mo_no(:, :, :)
-  real(dp), allocatable         :: eri_3center_no(:, :, :, :)
+  real(dp), allocatable, intent(out) :: eri_3center_no(:, :, :, :)
   type(timer), optional, intent(inout) :: timing
   logical, optional, intent(in) :: verbose
   !=====

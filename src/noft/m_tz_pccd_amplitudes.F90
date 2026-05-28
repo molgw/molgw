@@ -68,7 +68,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
 !arrays
- real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ)::Phases
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::Phases
 !Local variables ------------------------------
 !scalars
  logical::diagco,converged,only_phases_
@@ -475,8 +475,8 @@ subroutine num_calc_Grad_t_amp(ELAGd,RDMd,INTEGd,y_ij,Grad_residue)
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
 !arrays
- real(dp),dimension(RDMd%Namplitudes)::Grad_residue
- real(dp),dimension(RDMd%Npairs,RDMd%Npairs)::y_ij
+ real(dp),dimension(RDMd%Namplitudes),intent(out)::Grad_residue
+ real(dp),dimension(RDMd%Npairs,RDMd%Npairs),intent(inout)::y_ij
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1
@@ -545,9 +545,9 @@ subroutine num_calc_Grad_z_amp(ELAGd,RDMd,INTEGd,y_ij,y_ab,Grad_residue)
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
 !arrays
- real(dp),dimension(RDMd%Namplitudes)::Grad_residue
- real(dp),dimension(RDMd%Npairs,RDMd%Npairs)::y_ij
- real(dp),dimension(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs))::y_ab
+ real(dp),dimension(RDMd%Namplitudes),intent(out)::Grad_residue
+ real(dp),dimension(RDMd%Npairs,RDMd%Npairs),intent(in)::y_ij
+ real(dp),dimension(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)),intent(in)::y_ab
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1
@@ -616,7 +616,7 @@ subroutine calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
 !arrays
- real(dp),dimension(RDMd%Npairs,RDMd%Npairs)::y_ij
+ real(dp),dimension(RDMd%Npairs,RDMd%Npairs),intent(out)::y_ij
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5
@@ -717,8 +717,8 @@ subroutine calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
 !arrays
- real(dp),dimension(RDMd%Npairs,RDMd%Npairs)::y_ij
- real(dp),dimension(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs))::y_ab
+ real(dp),dimension(RDMd%Npairs,RDMd%Npairs),intent(in)::y_ij
+ real(dp),dimension(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)),intent(in)::y_ab
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5

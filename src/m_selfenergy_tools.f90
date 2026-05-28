@@ -65,7 +65,7 @@ contains
 
 !=========================================================================
 subroutine selfenergy_set_state_range(nstate_in, occupation, range)
-  integer             :: nstate_in
+  integer, intent(in) :: nstate_in
   real(dp), intent(in) :: occupation(:, :)
   character(len=*), intent(in), optional :: range
   !=====
@@ -125,7 +125,7 @@ end subroutine selfenergy_set_state_range
 !=========================================================================
 subroutine write_selfenergy_omega(filename_root, exchange_m_vxc, occupation, energy0, se)
 
-  character(len=*)    :: filename_root
+  character(len=*), intent(in) :: filename_root
   real(dp), intent(in) :: exchange_m_vxc(:, :)
   real(dp), intent(in) :: occupation(:, :), energy0(:, :)
   type(selfenergy_grid), intent(in) :: se
@@ -423,8 +423,8 @@ end subroutine find_fixed_point
 !=========================================================================
 subroutine output_qp_energy(calcname, energy0, exchange_m_vxc, ncomponent, se, energy1, energy2, zz)
 
-  character(len=*)             :: calcname
-  integer                      :: ncomponent
+  character(len=*), intent(in) :: calcname
+  integer, intent(in)          :: ncomponent
   real(dp), intent(in)          :: energy0(:, :), exchange_m_vxc(:, :)
   type(selfenergy_grid), intent(in) :: se
   real(dp), intent(in)          :: energy1(:, :)
@@ -500,7 +500,7 @@ end subroutine output_qp_energy
 !=========================================================================
 subroutine output_qp_energy_yaml(calcname, energy0, exchange_m_vxc, se, energy2, zz)
 
-  character(len=*)                  :: calcname
+  character(len=*), intent(in)      :: calcname
   real(dp), intent(in)              :: energy0(:, :), exchange_m_vxc(:, :)
   type(selfenergy_grid), intent(in) :: se
   real(dp), intent(in), optional    :: energy2(:, :), zz(:, :)

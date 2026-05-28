@@ -356,7 +356,7 @@ end subroutine timers_setstage
 subroutine timer_init(t, label, id)
   class(timer), intent(inout)  :: t
   character(len=*), intent(in) :: label
-  integer, optional            :: id
+  integer, intent(in), optional :: id
   !=====
 
   if( PRESENT(id) ) then
@@ -427,7 +427,7 @@ end subroutine timer_stop
 !=========================================================================
 function timer_get(t, stage) RESULT(time)
   class(timer), intent(inout) :: t
-  integer, optional           :: stage
+  integer, intent(in), optional :: stage
   real(dp)                    :: time
   !=====
 

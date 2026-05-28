@@ -1399,7 +1399,7 @@ end subroutine plot_cube_wfn
 !=========================================================================
 subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy, print_all)
 
-  character(len=*)             :: rootname
+  character(len=*), intent(in) :: rootname
   type(basis_set), intent(in)   :: basis
   real(dp), intent(in)          :: etotal
   real(dp), intent(in)          :: occupation(:, :)
@@ -1722,7 +1722,7 @@ subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, nu
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(nstate, nspin)
   real(dp), intent(in)        :: c_matrix(basis%nbf, nstate, nspin)
-  integer                    :: num
+  integer, intent(in)        :: num
   real(dp), intent(in)        :: time_cur
   !=====
   integer                    :: nr=1000, nh=100
@@ -1843,7 +1843,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num,
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(nstate, nspin)
   real(dp), intent(in)        :: c_matrix(basis%nbf, nstate, nspin)
-  integer                    :: num
+  integer, intent(in)        :: num
   real(dp), intent(in)        :: time_cur
   !=====
   integer                    :: nr=1000, nh=100
@@ -2017,7 +2017,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix,
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(nstate, nspin)
   real(dp), intent(in)        :: c_matrix(basis%nbf, nstate, nspin)
-  integer                    :: num
+  integer, intent(in)        :: num
   real(dp), intent(in)        :: time_cur
   !=====
   integer                    :: nr=1000, nh=100
@@ -2192,7 +2192,7 @@ subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(nstate, nspin)
   complex(dp), intent(in)     :: c_matrix_cmplx(basis%nbf, nocc_dim, nspin)
-  integer                    :: num
+  integer, intent(in)        :: num
   !=====
   integer                    :: gt
   integer                    :: nocc(2), nocc_max
@@ -2963,7 +2963,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matr
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(nstate, nspin)
   complex(dp), intent(in)     :: c_matrix_cmplx(basis%nbf, nocc_dim, nspin)
-  integer                    :: num
+  integer, intent(in)        :: num
   real(dp), intent(in)        :: time_cur
   !=====
   integer                    :: nr=1000, nh=100

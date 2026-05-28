@@ -950,9 +950,10 @@ subroutine HSE08Fx(omega, ipol, rho, s, Fxhse, d10Fxhse, d01Fxhse)
   !
   ! Calculates the enhancement factor
   !
-  integer  :: ipol
-  real(dp) :: omega
-  real(dp) :: rho, s, Fxhse, d10Fxhse, d01Fxhse
+  integer, intent(in)   :: ipol
+  real(dp), intent(in)  :: omega
+  real(dp), intent(in)  :: rho, s
+  real(dp), intent(out) :: Fxhse, d10Fxhse, d01Fxhse
   real(dp) :: A, B, C, D, E
   real(dp) :: ha2, ha3, ha4, ha5, ha6, ha7
   real(dp) :: hb1, hb2, hb3, hb4, hb5, hb6, hb7, hb8, hb9

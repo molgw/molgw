@@ -10,8 +10,8 @@
 subroutine boys_function_c(fnt, nn, tt)  BIND(C)
   use, intrinsic :: ISO_C_BINDING, only: C_INT, C_DOUBLE
   implicit none
-  integer(C_INT), value       :: nn
-  real(C_DOUBLE), value       :: tt
+  integer(C_INT), value, intent(in) :: nn
+  real(C_DOUBLE), value, intent(in) :: tt
   real(C_DOUBLE), intent(out) :: fnt(0:nn)
   !=====
   integer(C_INT), parameter  :: maxfac=100

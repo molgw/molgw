@@ -2459,7 +2459,7 @@ end subroutine matmul_transaba_sca
 !
 !=========================================================================
 subroutine symmetrize_matrix_sca(uplo, nglobal, desc, matrix, desc_tmp, matrix_tmp)
-  character(len=1)       :: uplo
+  character(len=1), intent(in) :: uplo
   integer, intent(in)     :: nglobal
   integer, intent(in)     :: desc(NDEL), desc_tmp(NDEL)
   real(dp), intent(inout) :: matrix(:, :)

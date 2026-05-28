@@ -29,7 +29,7 @@ contains
 !=========================================================================
 subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
 
-  type(basis_set)                    :: basis
+  type(basis_set), intent(in)        :: basis
   real(dp), intent(in)                :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                :: c_matrix(:, :, :)
   type(spectral_function), intent(inout) :: wpol
@@ -413,7 +413,7 @@ end subroutine sosex_selfenergy
 !=========================================================================
 subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, se)
 
-  type(basis_set)                    :: basis
+  type(basis_set), intent(in)        :: basis
   real(dp), intent(in)               :: occupation(:, :), energy(:, :)
   real(dp), intent(in)               :: c_matrix(:, :, :)
   type(spectral_function), intent(inout) :: wpol

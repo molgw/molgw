@@ -61,7 +61,7 @@ module m_nvtx
      ! push range with custom label and standard color
      subroutine nvtxRangePushA(name) bind(C, name='nvtxRangePushA')
        use, intrinsic :: iso_c_binding
-       character(kind=C_CHAR) :: name(256)
+       character(kind=C_CHAR), intent(in) :: name(256)
      end subroutine nvtxRangePushA
      ! push range with custom label and custom color
      subroutine nvtxRangePushEx(event) bind(C, name='nvtxRangePushEx')
@@ -91,8 +91,8 @@ contains
   subroutine nvtxStartRange(name,id)
 
 
-    character(kind=c_char,len=*) :: name
-    integer, optional:: id
+    character(kind=c_char,len=*), intent(in) :: name
+    integer, intent(in), optional :: id
     type(nvtxEventAttributes):: event
     character(kind=c_char,len=256) :: trimmed_name
     integer:: i

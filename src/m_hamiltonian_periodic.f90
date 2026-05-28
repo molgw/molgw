@@ -1930,7 +1930,7 @@ contains
 
   subroutine calculate_selfenergy(r, rho, total_charge, selfenergy)
     real(dp), intent(in) :: r(:), rho(:)
-    real(dp) :: total_charge, selfenergy
+    real(dp), intent(out) :: total_charge, selfenergy
     !=====
     integer  :: irad, nrad
     real(dp), allocatable :: Q(:), S(:), phi(:)
