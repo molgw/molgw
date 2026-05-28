@@ -526,7 +526,7 @@ subroutine read_gth_file(ecp_filename, element, ecpi)
   type(effective_core_potential), intent(inout) :: ecpi
   !=====
   integer            :: ecpunit
-  integer            :: iline, i1, i2, i3, i4, istat, il
+  integer            :: iline, i1, i2, i3, i4, i5, istat, il
   character(len=132) :: line
   real(dp)           :: rtmp
   logical            :: end_of_file
@@ -540,20 +540,29 @@ subroutine read_gth_file(ecp_filename, element, ecpi)
   ! First line is a comment
   read(ecpunit, '(a)', iostat=istat) line
 
-  ! Second line contains 1, 2, or 3 integers that counts the number of valence electrons for s, p, d
+  ! Second line contains 1, 2, 3 or 4 integers that counts the number of valence electrons for s, p, d, f
   read(ecpunit, '(a)', iostat=istat) line
 
-  i1=0;i2=0;i3=0
-  read(line, *, iostat=istat) i1, i2, i3
-  if( istat /= 0 ) then
-    read(line, *, iostat=istat) i1, i2
+  i1=0;i2=0;i3=0;i4=0;i5=0
+  read(line, *, iostat=istat) i1, i2, i3, i4, i5
+  if( istat == 0) then
+    call die('read_gth_file: Angular momentum l=4 (g orbitals) not supported')
+  else
+    read(line, *, iostat=istat) i1, i2, i3, i4
     if( istat /= 0 ) then
-      read(line, *, iostat=istat) i1
-      if( istat /= 0 ) call die('read_gth_file: 2nd line is not compliant with CP2K format')
+      read(line, *, iostat=istat) i1, i2, i3
+      if( istat /= 0 ) then
+        read(line, *, iostat=istat) i1, i2
+        if( istat /= 0 ) then
+          read(line, *, iostat=istat) i1
+          if( istat /= 0 ) call die('read_gth_file: 2nd line is not compliant with CP2K format')
+        endif
+      endif
     endif
   endif
 
-  ecpi%ncore = element_number(element) - i1 - i2 - i3
+
+  ecpi%ncore = element_number(element) - i1 - i2 - i3 - i4
 
   read(ecpunit, *, iostat=istat) ecpi%gth_rpploc, ecpi%gth_nloc
   allocate(ecpi%gth_cipp(ecpi%gth_nloc))
