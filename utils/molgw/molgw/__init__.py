@@ -21,7 +21,7 @@ import os, sys, shutil, subprocess
 import difflib
 import json
 import copy
-import pathlib, glob
+import pathlib
 import hashlib
 try:
     from yaml import load, dump
@@ -167,7 +167,9 @@ class Molecule:
     with a few method to read, print, transform
     """
     def __init__(self,strucin):
-        if isinstance(strucin, str):
+        if isinstance(strucin, pathlib.Path):
+            self.list = read_xyz_file(strucin)
+        elif isinstance(strucin, str):
             if os.path.exists(strucin):
                 self.list = read_xyz_file(strucin)
             else:
@@ -560,7 +562,7 @@ class Molgw_output:
     def __init__(self, origin):
         if isinstance(origin, dict):
             self.d = origin
-        elif isinstance(origin, str):
+        elif isinstance(origin, (str, pathlib.Path)):
             try:
                 with open(origin, "r") as stream:
                     self.d = load(stream, Loader=Loader)
@@ -629,9 +631,10 @@ class Molgw_output_collection:
         else:
             origins = [origin]
         for orig in origins:
-            if not os.path.isdir(orig):
-                sys.exit(orig + " is not a valid folder")
-            self.files += glob.glob(orig+"/**/*.yaml",recursive=True)
+            orig = pathlib.Path(orig)
+            if not orig.is_dir():
+                sys.exit(str(orig) + " is not a valid folder")
+            self.files += [str(p) for p in orig.glob("**/*.yaml")]
         self.files = list(set(self.files))
         for file in self.files:
             with open(file,'r') as f:
