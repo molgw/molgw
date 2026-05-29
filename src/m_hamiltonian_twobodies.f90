@@ -57,7 +57,7 @@ subroutine setup_hartree(p_matrix, hartree_ao, ehartree)
 #else
   stride = 1
   index_ij = 0
-#end if
+#endif
   index_kl = 1
 
   ! SCHEDULE(static, 1) should not be modified
@@ -552,7 +552,7 @@ subroutine setup_exchange(p_matrix, exchange_ao, eexchange)
 #else
   stride = 1
   index_ik = 0
-#end if
+#endif
   index_lj = 1
 
   ! SCHEDULE(static, 1) should not be modified
@@ -639,7 +639,7 @@ subroutine setup_exchange_longrange(p_matrix, exchange_ao, eexchange)
 #else
   stride = 1
   index_ik = 0
-#end if
+#endif
   index_lj = 1
 
   ! SCHEDULE(static, 1) should not be modified
@@ -1875,7 +1875,7 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
 #else
   write(stdout, *) 'XC energy and potential set to zero'
   write(stdout, *) 'LIBXC is not present'
-#end if
+#endif
 
   if(.not.calc_type%is_noft) then ! MRM mutted only for NOFT
     write(stdout, '(/,a28,2(2x,f12.6))') ' Number of electrons:', normalization(:)

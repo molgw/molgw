@@ -2518,6 +2518,6 @@ contains
 
 #else
   integer, parameter :: HID_T = 8
-#end if
+#endif
 
 end module m_hdf5_tools

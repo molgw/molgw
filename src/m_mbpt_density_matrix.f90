@@ -529,7 +529,7 @@ subroutine gw_density_matrix_imag(occupation, energy, c_matrix, wpol, p_matrix_g
   ! Get the processor grid included in the input wpol%desc_chi
   call BLACS_GRIDINFO(wpol%desc_chi(CTXT_), nprow, npcol, iprow, ipcol)
   write(stdout, '(1x,a,i4,a,i4)') 'SCALAPACK grid', nprow, ' x ', npcol
-#end if
+#endif
 
 
   if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
@@ -685,7 +685,7 @@ subroutine gw_density_matrix_dyson_imag(occupation, energy, c_matrix, wpol, p_ma
   ! Get the processor grid included in the input wpol%desc_chi
   call BLACS_GRIDINFO(wpol%desc_chi(CTXT_), nprow, npcol, iprow, ipcol)
   write(stdout, '(1x,a,i4,a,i4)') 'SCALAPACK grid', nprow, ' x ', npcol
-#end if
+#endif
 
 
   if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)

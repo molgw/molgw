@@ -12,7 +12,7 @@ module m_timing
   use m_warning, only: die
 #if defined(HAVE_NVTX)
   use m_nvtx
-#end if
+#endif
 
   implicit none
 
@@ -390,7 +390,7 @@ subroutine timer_start(t)
 
 #if defined(HAVE_NVTX)
   call nvtxStartRange(t%label, t%id)
-#end if
+#endif
 
   call system_clock(COUNT=count_tmp)
   t%start_time = count_tmp
@@ -415,7 +415,7 @@ subroutine timer_stop(t)
 
 #if defined(HAVE_NVTX)
   call nvtxEndRange()
-#end if
+#endif
 
   call system_clock(COUNT=count_tmp)
   t%timing(TIMING_current_stage) = t%timing(TIMING_current_stage) &

@@ -16,7 +16,7 @@ module m_libxc_tools
 #if !defined(NO_LIBXC)
 #include <xc_funcs.h>
 #include <xc_version.h>
-#end if
+#endif
 
   implicit none
 
@@ -291,7 +291,7 @@ subroutine init_libxc_info(dft_xc)
   ! dft_xc(:)%needs_gradient = ANY( ( dft_xc(:)%family == XC_FAMILY_GGA     ) .AND. ( ABS(dft_xc(:)%coeff) > 1.0e-6_dp ) ) &
   !                    .OR. ANY( ( dft_xc(:)%family == XC_FAMILY_HYB_GGA ) .AND. ( ABS(dft_xc(:)%coeff) > 1.0e-6_dp ) )
 
-#end if
+#endif
 
 
 end subroutine init_libxc_info
@@ -335,7 +335,7 @@ subroutine destroy_libxc_info(dft_xc)
 #if !defined(NO_LIBXC)
     call xc_func_end(dft_xc(ixc)%func)
     call xc_func_free(dft_xc(ixc)%func)
-#end if
+#endif
   end do
   deallocate(dft_xc)
 

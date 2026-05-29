@@ -56,7 +56,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
   integer              :: meri3, neri3
 #if defined(HAVE_SCALAPACK)
   real(dp), allocatable :: eri3_sca(:, :)
-#end if
+#endif
   !=====
 
   call timer_rpa_dynamic%start()
@@ -64,7 +64,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
   write(stdout, '(/,1x,a)') 'Calculation of RPA polarizability on imaginary axis grid'
 #if defined(HAVE_SCALAPACK)
   write(stdout, '(1x,a,i4,a,i4)') 'SCALAPACK grid', nprow_sd, ' x ', npcol_sd
-#end if
+#endif
 
   nstate = SIZE(occupation, DIM=1)
 
@@ -103,7 +103,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
 
 #if defined(HAVE_SCALAPACK)
   call clean_allocate('TMP 3-center MO integrals', eri3_sca, meri3, neri3)
-#end if
+#endif
   call clean_allocate('TMP 3-center MO integrals', eri3_t, nauxil_local, wpol%npole_reso)
   call clean_allocate('Chi0', chi0, wpol%mchi, wpol%nchi)
   call clean_allocate('1-Chi0', one_m_chi0, wpol%mchi, wpol%nchi)
@@ -139,13 +139,13 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
 #if defined(HAVE_SCALAPACK)
     call PDGEMR2D(nauxil_global, wpol%npole_reso, eri3_t, 1, 1, desc_eri3_t, &
                                                  eri3_sca, 1, 1, desc_eri3_final, wpol%desc_chi(CTXT_))
-#end if
+#endif
 
 #if defined(HAVE_SCALAPACK)
     call PDSYRK('L', 'N', nauxil_global, wpol%npole_reso, 1.0_dp, eri3_sca, 1, 1, desc_eri3_final, 0.0_dp, chi0,1,1,wpol%desc_chi)
 #else
     call DSYRK('L', 'N', nauxil_global, wpol%npole_reso, 1.0_dp, eri3_t, nauxil_global, 0.0_dp, chi0,nauxil_global)
-#end if
+#endif
     chi0(:, :) = -chi0(:, :)
 
 
@@ -185,14 +185,14 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
                1.0_dp, one_m_chi0m1, nauxil_global, &
                       chi0        , nauxil_global, &
                0.0_dp, wpol%chi(:, :, iomega), nauxil_global)
-#end if
+#endif
 
 
   end do
 
 #if defined(HAVE_SCALAPACK)
   call clean_deallocate('TMP 3-center MO integrals', eri3_sca)
-#end if
+#endif
   call clean_deallocate('TMP 3-center MO integrals', eri3_t)
   call clean_deallocate('1-Chi0', one_m_chi0)
   call clean_deallocate('(1-Chi0)**-1', one_m_chi0m1)
@@ -254,7 +254,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
   ! Get the processor grid included in the input wpol%desc_chi
   call BLACS_GRIDINFO(wpol%desc_chi(CTXT_), nprow, npcol, iprow, ipcol)
   write(stdout, '(1x,a,i4,a,i4)') 'SCALAPACK grid', nprow, ' x ', npcol
-#end if
+#endif
 
 
   if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timer_aomo_gw)
@@ -284,7 +284,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
                                                                       eri3_sca, 1, 1, desc_eri3_final, wpol%desc_chi(CTXT_))
 #else
       eri3_sca(:, 1:prange) = eri_3center_mo(:, ncore_G+1:nvirtual_G-1, mstate, mpspin)
-#end if
+#endif
 
 
       do iomegap=1, wpol%nomega
@@ -298,7 +298,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
                    1.0_dp, wpol%chi(:, :, iomegap), nauxil_global,    &
                           eri3_sca            , nauxil_global,    &
                    0.0_dp, chi_eri3_sca        , nauxil_global)
-#end if
+#endif
 
         !$OMP PARALLEL PRIVATE(pstate, v_chi_v_p)
         !$OMP DO REDUCTION(+:sigmaigw)

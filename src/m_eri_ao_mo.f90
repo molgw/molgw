@@ -201,7 +201,7 @@ subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_mo_i)
 #else
   stride = 1
   index_ij = 0
-#end if
+#endif
   index_kl = 1
 
   ! SCHEDULE(static, 1) should not be modified
@@ -326,7 +326,7 @@ subroutine calculate_eri_4center_mo_uks(c_matrix, nstate_min, nstate_max)
 #else
     stride = 1
     index_ij = 0
-#end if
+#endif
     index_kl = 1
 
     ! SCHEDULE(static, 1) should not be modified
@@ -1209,7 +1209,7 @@ subroutine read_cc4s_coulombvertex(rootname)
   integer :: mtmp, ntmp, info
   integer :: nstate2
   integer :: ijstate_global, ijstate_local
-#end if
+#endif
   !=====
 
   if( PRESENT(rootname) ) then
@@ -1320,7 +1320,7 @@ subroutine read_cc4s_coulombvertex(rootname)
   call clean_deallocate('Reading 3-center MO integrals', eri_3center_tmp)
 
   call MPI_FILE_CLOSE(unitcv, ierr)
-#end if
+#endif
   first_index = LBOUND(eri_3center_mo, DIM=2)
   rtmp = DOT_PRODUCT(eri_3center_mo(:, first_index, first_index, 1), eri_3center_mo(:, first_index, first_index, 1))
   call auxil%sum(rtmp)
@@ -1355,7 +1355,7 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootna
   real(dp), allocatable :: eri_3center_tmp(:, :)
   integer :: mtmp, ntmp, info
   integer :: ijstate_global, ijstate_local
-#end if
+#endif
   !=====
 
   if( nspin > 1 ) call die("write_cc4s_coulombvertex: spin polarized not implemented yet")
@@ -1497,7 +1497,7 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootna
   call clean_deallocate('Writing 3-center MO integrals', eri_3center_tmp)
 
   call MPI_FILE_CLOSE(unitcv, ierr)
-#end if
+#endif
 
   call timer_write_coulombvertex%stop()
 

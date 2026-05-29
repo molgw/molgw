@@ -447,7 +447,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
       call hdf_write_dataset(p_mat_group, 'snap_0', p_matrix_MO_block)
 
     end if
-#end if
+#endif
 
   end if
 
@@ -582,7 +582,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
         write(snap_name, '(a,i0)') 'snap_', iwrite_step
 #if defined(HAVE_HDF5)
         if (is_iomaster) call hdf_write_dataset(p_mat_group, TRIM(snap_name), p_matrix_MO_block)
-#end if 
+#endif 
         deallocate(p_matrix_real)
         deallocate(p_matrix_MO_real)
       end if
@@ -634,7 +634,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
     if(print_c_matrix_cmplx_hdf5_) call hdf_close_group(c_mat_group)
     if(print_p_matrix_MO_block_hdf5_) call hdf_close_group(p_mat_group)
     call hdf_close_file(fid)
-#end if
+#endif
   end if
 
   if(print_tddft_restart_) then
@@ -2879,7 +2879,7 @@ subroutine transform_hamiltonian_ortho(x_matrix, h_cmplx, h_small_cmplx)
   else
     write(stdout, '(1x,a)') 'Transform the hamiltonian into the canonical orthogonal basis: real'
   end if
-#end if
+#endif
 
   nbf    = SIZE(x_matrix, DIM=1)
   nstate = SIZE(x_matrix, DIM=2)
@@ -2911,7 +2911,7 @@ subroutine transform_hamiltonian_ortho(x_matrix, h_cmplx, h_small_cmplx)
       call ZGEMM('C', 'N', nstate, nstate, nbf, COMPLEX_ONE, x_matrix_cmplx(1, 1), nbf, &
                                                        m_tmp(1, 1), nbf,  &
                                            COMPLEX_ZERO, h_small_cmplx(:, :, ispin), nstate)
-#end if
+#endif
 
       deallocate(m_tmp)
       deallocate(x_matrix_cmplx)
@@ -2938,7 +2938,7 @@ subroutine transform_hamiltonian_ortho(x_matrix, h_cmplx, h_small_cmplx)
       call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, x_matrix, nbf, &
                                                  m_tmpr2, nbf,  &
                                            0.0d0, m_tmpr1, nstate)
-#end if
+#endif
       h_small_cmplx(:, :, ispin) = m_tmpr1(:, :)
       deallocate(m_tmpr1)
       deallocate(m_tmpr2)

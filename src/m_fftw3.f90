@@ -8,7 +8,7 @@
 #include "molgw.h"
 #if !defined(NO_LIBINT)
 #include<libint2/libint2_params.h>
-#end if
+#endif
 
 
 module m_fftw3
@@ -16,7 +16,7 @@ module m_fftw3
 
 #if defined(HAVE_FFTW3)
 #include"fftw3.f03"
-#end if
+#endif
 
 
 end module m_fftw3

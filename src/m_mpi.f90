@@ -13,7 +13,7 @@ module m_mpi
   use m_mpi_tools
 #if defined(HAVE_MPI)
   use mpi
-#end if
+#endif
 
 
   implicit none
@@ -74,7 +74,7 @@ subroutine init_mpi_world()
   call world%init(MPI_COMM_WORLD)
 #else
   call world%init(dummy)
-#end if
+#endif
 
   if( world%rank /= rank_iomaster ) then
     is_iomaster = .FALSE.
@@ -83,7 +83,7 @@ subroutine init_mpi_world()
 #else
     close(stdout)
     open(unit=stdout, file='/dev/null')
-#end if
+#endif
   end if
 
 end subroutine init_mpi_world
@@ -144,7 +144,7 @@ subroutine init_mpi_other_communicators(mpi_poorman_)
   auxil%rank  = 0
   grid%nproc  = 1
   grid%rank   = 0
-#end if
+#endif
 
 
 #if defined(HAVE_MPI)
@@ -160,9 +160,9 @@ subroutine init_mpi_other_communicators(mpi_poorman_)
   write(stdout, '(a50,6x,l1)')               'Use SCALAPACK:', .TRUE.
 #else
   write(stdout, '(a50,6x,l1)')               'Use SCALAPACK:', .FALSE.
-#end if
+#endif
   write(stdout, '(/)')
-#end if
+#endif
 
 end subroutine init_mpi_other_communicators
 
@@ -182,7 +182,7 @@ subroutine finish_mpi()
 
 #if defined(HAVE_MPI)
   call MPI_FINALIZE(ier)
-#end if
+#endif
 
 end subroutine finish_mpi
 

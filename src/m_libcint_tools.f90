@@ -325,7 +325,7 @@ subroutine check_capability_libcint(lmax)
   shls(:) = 0
 #if defined(HAVE_LIBCINT)
   info = cint2c2e_cart(integral, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env, LIBCINT_opt)
-#end if
+#endif
 
   libcint_has_range_separation = ABS( integral(1) - ref_value_screened_integral ) < 1.0e-10_dp
 
@@ -378,7 +378,7 @@ subroutine check_capability_libcint(lmax)
   shls(2) = 1
 #if defined(HAVE_LIBCINT)
   info = cint1e_ovlp_sph(ovlp, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env)
-#end if
+#endif
 
   pypzpx_order = ABS( ovlp(5) - ref_value_pz_overlap ) < 1.0e-10_dp
 
@@ -421,7 +421,7 @@ subroutine check_capability_libcint(lmax)
     shls(:) = 0
 #if defined(HAVE_LIBCINT)
     info = cint1e_ovlp_sph(ovlp, shls, fake_atm, 1_C_INT, fake_bas, 1_C_INT, fake_env)
-#end if
+#endif
     libcint_pure_norm(il) = 1.0_dp / SQRT(ovlp(1))
 
     deallocate(ovlp)
@@ -675,7 +675,7 @@ subroutine libcint_3center(amA, contrdepthA, A, alphaA, cA, &
 
 #if defined(HAVE_LIBCINT)
   info = cint3c2e_cart(eriACD, shls, tmp_atm, 3_C_INT, tmp_bas, 3_C_INT, tmp_env, LIBCINT_opt)
-#end if
+#endif
 
 
 end subroutine libcint_3center
@@ -765,7 +765,7 @@ subroutine libcint_overlap(gaussian_type, &
   else
     info = cint1e_ovlp_sph (ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
   end if
-#end if
+#endif
 
 
 end subroutine libcint_overlap
@@ -847,7 +847,7 @@ subroutine libcint_kinetic(amA, contrdepthA, A, alphaA, cA, &
 
 #if defined(HAVE_LIBCINT)
   info = cint1e_kin_cart(kinAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
-#end if
+#endif
 
 
 end subroutine libcint_kinetic
@@ -931,7 +931,7 @@ subroutine libcint_elecpot(amA, contrdepthA, A, alphaA, cA, &
 
 #if defined(HAVE_LIBCINT)
   info = cint1e_rinv_cart(elecpotAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
-#end if
+#endif
 
 
 end subroutine libcint_elecpot
@@ -1015,7 +1015,7 @@ subroutine libcint_elecpot_grad(amA, contrdepthA, A, alphaA, cA, &
 
 #if defined(HAVE_LIBCINT)
   info = cint1e_iprinv_cart(elecpotAC_grad, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
-#end if
+#endif
 
 
 end subroutine libcint_elecpot_grad
@@ -1124,7 +1124,7 @@ subroutine libcint_overlap_3center(amA, contrdepthA, A, alphaA, cA, &
 
 #if defined(HAVE_LIBCINT)
   info = cint3c1e_cart(ovlpACD, shls, tmp_atm, 3_C_INT, tmp_bas, 3_C_INT, tmp_env, LIBCINT_opt)
-#end if
+#endif
 
 
 end subroutine libcint_overlap_3center
@@ -1216,7 +1216,7 @@ subroutine libcint_gth_projector(amA, contrdepthA, A, alphaA, cA, &
     info = cint1e_r4_origj_cart(ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
   case default
   end select
-#end if
+#endif
 
 
 end subroutine libcint_gth_projector

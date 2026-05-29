@@ -11,7 +11,7 @@
 #include "molgw.h"
 #if !defined(NO_LIBINT)
 #include<libint2/libint2_params.h>
-#end if
+#endif
 
 module m_libint_tools
   use m_definitions
@@ -77,7 +77,7 @@ module m_libint_tools
       real(C_DOUBLE), intent(inout) :: elecpotAB(*)
 
     end subroutine libint_elecpot
-#end if
+#endif
 
 #if (LIBINT2_DERIV_ONEBODY_ORDER > 0)
     subroutine libint_overlap_grad(amA, contrdepthA, A, alphaA, cA, &
@@ -138,7 +138,7 @@ module m_libint_tools
       real(C_DOUBLE), intent(inout) :: elecpotBz(*)
 
     end subroutine libint_elecpot_grad
-#end if
+#endif
 #if (LIBINT2_DERIV_ERI_ORDER >0)
     subroutine libint_4center_grad(amA, contrdepthA, A, alphaA, cA, &
                                    amB, contrdepthB, B, alphaB, cB, &
@@ -181,7 +181,7 @@ module m_libint_tools
       real(C_DOUBLE), intent(inout) :: eriDz(*)
 
     end subroutine libint_4center_grad
-#end if
+#endif
 
     subroutine libint_init(ammax, has_onebody, has_gradient) bind(C)
       import :: C_INT, C_BOOL

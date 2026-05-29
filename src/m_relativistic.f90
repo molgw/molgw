@@ -863,7 +863,7 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
   end if
 
 
-#end if
+#endif
 
   call timer_relativistic%stop()
 

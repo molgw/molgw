@@ -274,7 +274,7 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
   real(dp), allocatable   :: x_matrix_distrib(:, :)
   real(dp), allocatable   :: p_matrix_distrib(:, :, :)
   real(dp), allocatable   :: ham_distrib(:, :, :)
-#end if
+#endif
   !=====
 
   call timer_diis%start()
@@ -321,7 +321,7 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
     end if
 #else
     res_hist(:, :, ispin, 1) = matrix_tmp2(:, :)
-#end if
+#endif
 
     deallocate(matrix_tmp2)
     deallocate(matrix_tmp1)
@@ -353,7 +353,7 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
   do ihist=2, nhist_current
     a_matrix_hist(ihist, 1) = SUM( res_hist(:, :, :, ihist) * res_hist(:, :, :, 1) ) * nspin
   end do
-#end if
+#endif
   a_matrix_hist(1, 2:nhist_current) = a_matrix_hist(2:nhist_current, 1)
 
 
@@ -442,7 +442,7 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
 
   write(stdout, '(a,2x,es12.5,/)') ' DIIS predicted residual:', NORM2( residual_pred(:, :, :) ) * SQRT(REAL(nspin, dp))
 
-#end if
+#endif
 
   deallocate(residual_pred)
 
@@ -825,7 +825,7 @@ function check_converged(p_matrix_new)
 #if defined(HAVE_SCALAPACK)
   real(dp), allocatable  :: delta_p_distrib(:, :, :)
   real(dp)              :: work(1)
-#end if
+#endif
   !=====
 
 #if defined(HAVE_SCALAPACK)
@@ -839,7 +839,7 @@ function check_converged(p_matrix_new)
 
 #else
   rms = NORM2( p_matrix_new(:, :, :) - p_matrix_hist(:, :, :, 1) ) * SQRT( REAL(nspin, dp) )
-#end if
+#endif
 
   write(stdout, '(1x,a,es12.5)') 'Convergence criterium on the density matrix: ', rms
 

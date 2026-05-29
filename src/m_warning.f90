@@ -99,7 +99,7 @@ subroutine assert_experimental()
 #else
   write(stdout, *) 'This part of the code is experimental. It should not be used unless you know what you are doing'
   call die('Compilation with -DACTIVATE_EXPERIMENTAL is required')
-#end if
+#endif
 
 end subroutine assert_experimental
 

@@ -22,7 +22,7 @@ module m_scalapack
   use m_elpa
 #if defined(HAVE_MPI)
   use mpi
-#end if
+#endif
 
   implicit none
 
@@ -35,7 +35,7 @@ module m_scalapack
   integer, parameter :: SCALAPACK_BLOCKSIZE_MAX = 4
 #else
   integer, parameter :: SCALAPACK_BLOCKSIZE_MAX = 64
-#end if
+#endif
 
   integer, parameter :: block_row = SCALAPACK_BLOCKSIZE_MAX
   integer, parameter :: block_col = SCALAPACK_BLOCKSIZE_MAX
@@ -222,7 +222,7 @@ module m_scalapack
       character, intent(in) :: cmach
     end function PDLAMCH
   end interface
-#end if
+#endif
 
 contains
 
@@ -317,7 +317,7 @@ subroutine BLACS_GRIDINFO(icntxt, nprow, npcol, iprow, ipcol)
 end subroutine BLACS_GRIDINFO
 
 
-#end if
+#endif
 
 
 !=========================================================================
@@ -497,7 +497,7 @@ subroutine gather_distributed_copy_nospin_dp(desc, matrix, matrix_global)
 
   matrix_global(:, :) = matrix(:, :)
 
-#end if
+#endif
 
 end subroutine gather_distributed_copy_nospin_dp
 
@@ -557,7 +557,7 @@ subroutine gather_distributed_copy_spin_dp(desc, matrix, matrix_global)
 
 #else
   matrix_global(:, :, :) = matrix(:, :, :)
-#end if
+#endif
 
 end subroutine gather_distributed_copy_spin_dp
 
@@ -616,7 +616,7 @@ subroutine gather_distributed_copy_nospin_cdp(desc, matrix, matrix_global)
 
   matrix_global(:, :) = matrix(:, :)
 
-#end if
+#endif
 
 end subroutine gather_distributed_copy_nospin_cdp
 
@@ -656,7 +656,7 @@ subroutine matmul_diag_sca(side, diag, desc, matrix)
       iglobal = rowindex_local_to_global(desc, ilocal)
       matrix(ilocal, :) = matrix(ilocal, :) * diag(iglobal)
     end do
-#end if
+#endif
 
 
   case('R')
@@ -673,7 +673,7 @@ subroutine matmul_diag_sca(side, diag, desc, matrix)
       jglobal = colindex_local_to_global(desc, jlocal)
       matrix(:, jlocal) = matrix(:, jlocal) * diag(jglobal)
     end do
-#end if
+#endif
 
 
   case default
@@ -741,7 +741,7 @@ subroutine diagonalize_eigval_sca(flavor, matrix, desc, eigval)
 
   call diagonalize_wo_vectors(flavor, matrix, eigval)
 
-#end if
+#endif
 
 
 end subroutine diagonalize_eigval_sca
@@ -846,13 +846,13 @@ subroutine diagonalize_inplace_sca_dp(flavor, matrix, desc, eigval)
     deallocate(eigvec)
 
   else
-#end if
+#endif
 
     call diagonalize(flavor, matrix, eigval)
 
 #if defined(HAVE_SCALAPACK)
   end if
-#end if
+#endif
 
 
 end subroutine diagonalize_inplace_sca_dp
@@ -923,13 +923,13 @@ subroutine diagonalize_inplace_sca_cdp(flavor, matrix, desc, eigval)
     deallocate(eigvec)
 
   else
-#end if
+#endif
 
     call diagonalize(flavor, matrix, eigval)
 
 #if defined(HAVE_SCALAPACK)
   end if
-#end if
+#endif
 
 
 end subroutine diagonalize_inplace_sca_cdp
@@ -966,7 +966,7 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
   type(elpa_hdl_t) :: elpa_hdl
   integer          :: use_gpu
   logical          :: use_two_stage
-#end if
+#endif
   !=====
 
   nglobal = desc(M_)
@@ -1025,7 +1025,7 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
 #else
       call die('diagonalize_outofplace_sca_dp: you requested a diago flavor among {L, N, G, H}, ' // &
                'but MOLGW was not compiled with ELPA support.')
-#end if
+#endif
 
     case('d', 'D')
       lwork = -1
@@ -1166,13 +1166,13 @@ subroutine diagonalize_outofplace_sca_dp(flavor, matrix, desc, eigval, eigvec, d
 
 
   else
-#end if
+#endif
 
     call diagonalize(flavor, matrix, eigval, eigvec)
 
 #if defined(HAVE_SCALAPACK)
   end if
-#end if
+#endif
 
 end subroutine diagonalize_outofplace_sca_dp
 
@@ -1249,13 +1249,13 @@ subroutine diagonalize_scalapack_dp(flavor, scalapack_block_min, matrix_global, 
 
 
   else ! Only one SCALAPACK proc
-#end if
+#endif
 
     call diagonalize(flavor, matrix_global, eigval)
 
 #if defined(HAVE_SCALAPACK)
   end if
-#end if
+#endif
 
 
 end subroutine diagonalize_scalapack_dp
@@ -1331,13 +1331,13 @@ subroutine diagonalize_scalapack_cdp(flavor, scalapack_block_min, matrix_global,
 
 
   else ! Only one SCALAPACK proc
-#end if
+#endif
 
     call diagonalize(flavor, matrix_global, eigval)
 
 #if defined(HAVE_SCALAPACK)
   end if
-#end if
+#endif
 
 
 end subroutine diagonalize_scalapack_cdp
@@ -1446,7 +1446,7 @@ subroutine matmul_ab_scalapack_dp(scalapack_block_min, a_matrix, b_matrix, c_mat
 
 
 
-#end if
+#endif
 
 
 end subroutine matmul_ab_scalapack_dp
@@ -1557,7 +1557,7 @@ subroutine matmul_ab_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix, c_ma
 
 
 
-#end if
+#endif
 
 
 end subroutine matmul_ab_scalapack_cdp
@@ -1708,7 +1708,7 @@ subroutine matmul_abc_scalapack_dp(scalapack_block_min, a_matrix, b_matrix, c_ma
   deallocate(m_matrix)
 
 
-#end if
+#endif
 
 
 end subroutine matmul_abc_scalapack_dp
@@ -1861,7 +1861,7 @@ subroutine matmul_abc_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix, c_m
   deallocate(m_matrix)
 
 
-#end if
+#endif
 
 
 end subroutine matmul_abc_scalapack_cdp
@@ -2010,7 +2010,7 @@ subroutine matmul_transaba_scalapack_dp(scalapack_block_min, a_matrix, b_matrix,
   deallocate(m_matrix)
 
 
-#end if
+#endif
 
 
 end subroutine matmul_transaba_scalapack_dp
@@ -2161,7 +2161,7 @@ subroutine matmul_transaba_scalapack_cdp(scalapack_block_min, a_matrix, b_matrix
   deallocate(m_matrix)
 
 
-#end if
+#endif
 
 
 end subroutine matmul_transaba_scalapack_cdp
@@ -2290,7 +2290,7 @@ subroutine trace_transab_scalapack(scalapack_block_min, a_matrix, b_matrix, ab_t
   deallocate(m_matrix)
 
 
-#end if
+#endif
 
 
 end subroutine trace_transab_scalapack
@@ -2365,7 +2365,7 @@ subroutine matmul_abc_sca(desca, a_matrix_local, descb, b_matrix_local, descc, c
 
 #else
   d_matrix_local(:, :) = MATMUL( a_matrix_local(:, :) , MATMUL( b_matrix_local(:, :) , c_matrix_local(:, :) ) )
-#end if
+#endif
 
 
 end subroutine matmul_abc_sca
@@ -2448,7 +2448,7 @@ subroutine matmul_transaba_sca(desca, a_matrix_local, descb, b_matrix_local, des
 
 #else
   c_matrix_local(:, :) = MATMUL( TRANSPOSE(a_matrix_local) , MATMUL( b_matrix_local , a_matrix_local ) )
-#end if
+#endif
 
 
 end subroutine matmul_transaba_sca
@@ -2545,7 +2545,7 @@ subroutine symmetrize_matrix_sca(uplo, nglobal, desc, matrix, desc_tmp, matrix_t
   call PDLACPY('A', nglobal, nglobal, matrix, 1, 1, desc, matrix_tmp, 1, 1, desc_tmp)
   call PDGEADD('T', nglobal, nglobal, 1.d0, matrix_tmp, 1, 1, desc, 1.d0, matrix, 1, 1, desc)
 
-#end if
+#endif
 
 
 end subroutine symmetrize_matrix_sca
@@ -2615,7 +2615,7 @@ subroutine invert_sca(desc, matrix, matrix_inv)
 
   call invert(matrix, matrix_inv)
 
-#end if
+#endif
 
 end subroutine invert_sca
 
@@ -2651,7 +2651,7 @@ subroutine invert_chol_sca(desc, matrix)
     end if
 
   else
-#end if
+#endif
 
     nmat = SIZE(matrix, DIM=1)
     call DPOTRF('L', nmat, matrix, nmat, info)
@@ -2661,7 +2661,7 @@ subroutine invert_chol_sca(desc, matrix)
 
 #if defined(HAVE_SCALAPACK)
   end if
-#end if
+#endif
 
 end subroutine invert_chol_sca
 
@@ -2723,7 +2723,7 @@ subroutine init_scalapack()
   npcol_3center = 1
   ipcol_3center = 0
   iprow_3center = 0
-#end if
+#endif
 
 end subroutine init_scalapack
 
@@ -2816,7 +2816,7 @@ subroutine init_scalapack_other(nbf, eri3_nprow, eri3_npcol)
   iprow_eri3_mo = 0
   ipcol_eri3_mo = 0
 
-#end if
+#endif
 
 
 
@@ -2835,7 +2835,7 @@ function row_block_size(mglobal, iprow, nprow)
   row_block_size = NUMROC(mglobal, block_row, iprow, first_row, nprow)
 #else
   row_block_size = mglobal
-#end if
+#endif
 
 end function row_block_size
 
@@ -2851,7 +2851,7 @@ function col_block_size(nglobal, ipcol, npcol)
   col_block_size = NUMROC(nglobal, block_col, ipcol, first_col, npcol)
 #else
   col_block_size = nglobal
-#end if
+#endif
 
 end function col_block_size
 
@@ -2893,7 +2893,7 @@ function rowindex_global_to_local_distrib(distribution, iglobal) result(ilocal)
   end select
 #else
   ilocal = iglobal
-#end if
+#endif
 
 end function rowindex_global_to_local_distrib
 
@@ -2935,7 +2935,7 @@ function colindex_global_to_local_distrib(distribution, jglobal) result(jlocal)
   end select
 #else
   jlocal = jglobal
-#end if
+#endif
 
 end function colindex_global_to_local_distrib
 
@@ -2962,7 +2962,7 @@ function rowindex_local_to_global_distrib(distribution, ilocal) result(iglobal)
   end select
 #else
   iglobal = ilocal
-#end if
+#endif
 
 end function rowindex_local_to_global_distrib
 
@@ -2978,7 +2978,7 @@ function rowindex_local_to_global_procindex(iprow, nprow, ilocal) result(iglobal
   iglobal = INDXL2G(ilocal, block_row, iprow, first_row, nprow)
 #else
   iglobal = ilocal
-#end if
+#endif
 
 end function rowindex_local_to_global_procindex
 
@@ -2990,7 +2990,7 @@ function rowindex_local_to_global_descriptor(desc, ilocal) result(iglobal)
   !=====
 #if defined(HAVE_SCALAPACK)
   integer          :: iprow, ipcol, nprow, npcol
-#end if
+#endif
   !=====
 
 #if defined(HAVE_SCALAPACK)
@@ -2998,7 +2998,7 @@ function rowindex_local_to_global_descriptor(desc, ilocal) result(iglobal)
   iglobal = INDXL2G(ilocal, desc(MB_), iprow, desc(RSRC_), nprow)
 #else
   iglobal = ilocal
-#end if
+#endif
 
 end function rowindex_local_to_global_descriptor
 
@@ -3010,7 +3010,7 @@ function rowindex_global_to_local_descriptor(desc, iglobal) result(ilocal)
   !=====
 #if defined(HAVE_SCALAPACK)
   integer          :: iprow, ipcol, nprow, npcol
-#end if
+#endif
   !=====
 
 #if defined(HAVE_SCALAPACK)
@@ -3022,7 +3022,7 @@ function rowindex_global_to_local_descriptor(desc, iglobal) result(ilocal)
   end if
 #else
   ilocal = iglobal
-#end if
+#endif
 
 end function rowindex_global_to_local_descriptor
 
@@ -3049,7 +3049,7 @@ function colindex_local_to_global_distrib(distribution, jlocal) result(jglobal)
   end select
 #else
   jglobal = jlocal
-#end if
+#endif
 
 end function colindex_local_to_global_distrib
 
@@ -3065,7 +3065,7 @@ function colindex_local_to_global_procindex(ipcol, npcol, jlocal) result(jglobal
   jglobal = INDXL2G(jlocal, block_col, ipcol, first_col, npcol)
 #else
   jglobal = jlocal
-#end if
+#endif
 
 end function colindex_local_to_global_procindex
 
@@ -3077,7 +3077,7 @@ function colindex_local_to_global_descriptor(desc, jlocal) result(jglobal)
   !=====
 #if defined(HAVE_SCALAPACK)
   integer          :: iprow, ipcol, nprow, npcol
-#end if
+#endif
   !=====
 
 #if defined(HAVE_SCALAPACK)
@@ -3085,7 +3085,7 @@ function colindex_local_to_global_descriptor(desc, jlocal) result(jglobal)
   jglobal = INDXL2G(jlocal, desc(NB_), ipcol, desc(CSRC_), npcol)
 #else
   jglobal = jlocal
-#end if
+#endif
 
 end function colindex_local_to_global_descriptor
 
@@ -3097,7 +3097,7 @@ function colindex_global_to_local_descriptor(desc, jglobal) result(jlocal)
   !=====
 #if defined(HAVE_SCALAPACK)
   integer          :: iprow, ipcol, nprow, npcol
-#end if
+#endif
   !=====
 
 #if defined(HAVE_SCALAPACK)
@@ -3109,7 +3109,7 @@ function colindex_global_to_local_descriptor(desc, jglobal) result(jlocal)
   end if
 #else
   jlocal = jglobal
-#end if
+#endif
 
 end function colindex_global_to_local_descriptor
 
@@ -3155,7 +3155,7 @@ subroutine finish_scalapack()
   if( cntxt_eri3_ao >= 0 ) call BLACS_GRIDEXIT( cntxt_eri3_ao )
   if( cntxt_eri3_mo >= 0 ) call BLACS_GRIDEXIT( cntxt_eri3_mo )
   call BLACS_EXIT( 0 )
-#end if
+#endif
 
 end subroutine finish_scalapack
 
@@ -3350,7 +3350,7 @@ subroutine diagonalize_davidson_sca(tolerance, desch, ham, neig, eigval, desc_ve
 
 #else
   call die('diagonalize_davidson_sca: should not be called when not compiled with HAVE_SCALAPACK')
-#end if
+#endif
 
 end subroutine diagonalize_davidson_sca
 
@@ -3389,7 +3389,7 @@ subroutine orthogonalize_sca(desc_vec, mvec_ortho, nvec_ortho, vec)
 
 #else
   call die('diagonalize_davidson_sca: should not be called when not compiled with HAVE_SCALAPACK')
-#end if
+#endif
 
 end subroutine orthogonalize_sca
 

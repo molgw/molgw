@@ -421,7 +421,7 @@ subroutine write_spectral_function(sf)
   integer              :: ierr
   integer              :: ibf_auxil
   integer(kind=MPI_OFFSET_KIND) :: disp
-#end if
+#endif
   !=====
   integer :: spole
   !=====
@@ -498,7 +498,7 @@ subroutine write_spectral_function(sf)
 
   call MPI_FILE_CLOSE(wfile, ierr)
 
-#end if
+#endif
 
 
 end subroutine write_spectral_function
@@ -521,7 +521,7 @@ subroutine read_spectral_function(sf, reading_status)
   real(dp), allocatable :: buffer(:)
 #else
   integer :: spole_read
-#end if
+#endif
   !=====
 
   write(stdout, '(/,a)') ' Try to read spectral function from file SCREENED_COULOMB'
@@ -614,7 +614,7 @@ subroutine read_spectral_function(sf, reading_status)
   call issue_warning(msg)
   reading_status=0
 
-#end if
+#endif
 
 
 end subroutine read_spectral_function
@@ -875,7 +875,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
 #else
     call DGEMM('N', 'T', nauxil_global, nauxil_global, sf%npole_reso, 1.0d0, eri3_t1, nauxil_global, eri3_t2,nauxil_global, &
                0.0d0, chi0, nauxil_global)
-#end if
+#endif
 
 
 

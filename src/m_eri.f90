@@ -382,7 +382,7 @@ subroutine identify_negligible_shellpair(basis)
   call set_erf_screening_length_libcint(basis, 0.0_dp)
 #else
   write(stdout, '(/,a)')    ' Cauchy-Schwartz screening of the 3- or 4-center integrals (LIBINT)'
-#end if
+#endif
 
 
   !
@@ -455,7 +455,7 @@ subroutine identify_negligible_shellpair(basis)
                          am2, ng2, x02, alpha2, coeff2, &
                          0.0_C_DOUBLE, int_shell)
       deallocate(alpha1, coeff1)
-#end if
+#endif
       call transform_libint_to_molgw(basis%gaussian_type, ami, amj, ami, amj, int_shell, integrals)
 
       do ibf=1, ni
@@ -788,7 +788,7 @@ subroutine reshuffle_distribution_3center()
   integer :: mlocal, nlocal
   integer :: desc3final(NDEL)
   real(dp), allocatable :: eri_3center_tmp(:, :)
-#end if
+#endif
   !=====
 
 #if defined(HAVE_SCALAPACK)
@@ -831,7 +831,7 @@ subroutine reshuffle_distribution_3center()
     eri_3center(:, :) = 0.0_dp
   end if
   call poorman%sum(eri_3center)
-#end if
+#endif
 
 
 end subroutine reshuffle_distribution_3center

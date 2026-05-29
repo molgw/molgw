@@ -707,7 +707,7 @@ subroutine h_ao_to_mo(c_matrix, h_ao, h_mo)
     call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, c_matrix(1, 1, ispin), nbf, &
                                               matrix_tmp(1, 1), nbf,          &
                                         0.0d0, h_mo(1, 1, ispin), nstate)
-#end if
+#endif
 
   end do
   deallocate(matrix_tmp)
@@ -778,7 +778,7 @@ subroutine h_mo_to_ao(c_matrix, s_matrix, h_mo, h_ao)
                tmp_matrix_real(1, 1), nbf, &
                SC_matrix_real(1, 1), nbf, &
                0.0d0, h_ao(1, 1, ispin), nstate)
-#end if
+#endif
 
   end do
 
@@ -828,7 +828,7 @@ subroutine p_mo_to_ao(c_matrix, p_mo, p_ao)
     call DGEMM('N', 'T', nbf, nbf, nstate, 1.0d0, matrix_tmp(1, 1), nbf, &
                                            c_matrix(1, 1, ispin), nbf,  &
                                      0.0d0, p_ao(1, 1, ispin), nbf)
-#end if
+#endif
 
   end do
   deallocate(matrix_tmp)
@@ -895,7 +895,7 @@ subroutine p_ao_to_mo_real(c_matrix, s_matrix, p_ao, p_mo)
                SC_matrix_real(1, 1), nbf, &
                tmp_matrix_real(1, 1), nbf, 0.0d0, &
                p_mo(1, 1, ispin), nstate)
-#end if
+#endif
 
   end do
 
@@ -971,7 +971,7 @@ subroutine p_ao_to_mo_cmplx(c_matrix, s_matrix, p_ao, p_mo)
                SC_matrix_cmplx(:, :), nbf, &
                tmp_matrix_cmplx(:, :), nbf, (0.0d0, 0.0d0), &
                p_mo(:, :, ispin), nstate)
-#end if
+#endif
 
   end do
 
@@ -1432,7 +1432,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
   integer  :: m_small, n_small
   real(dp), allocatable :: ham_local(:, :), c_matrix_local(:, :), s_matrix_local(:, :)
   real(dp), allocatable :: h_small(:, :)
-#end if
+#endif
   integer  :: ispin
   real(dp), allocatable :: h_small2(:, :, :)
   !=====
@@ -1569,7 +1569,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
     call world%sum(c_matrix)
 
   else ! only one proc selected
-#end if
+#endif
 
     allocate(h_small2(nstate, nstate, 1))
 
@@ -1610,7 +1610,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
 
 #if defined(HAVE_SCALAPACK)
   end if
-#end if
+#endif
 
 end subroutine diagonalize_hamiltonian_scalapack
 

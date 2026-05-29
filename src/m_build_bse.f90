@@ -483,7 +483,7 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda, desc_
                                               DBLE(1.0_dp), apb_matrix, 1, 1, desc_apb)
 
   call clean_deallocate('TMP 3-center integrals', eri_3tmp_sd)
-#end if
+#endif
 
 
   call timer_build_common%stop()
@@ -705,7 +705,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
   real(dp), allocatable :: vsqrt_chi_vsqrt_i(:), w_s(:), wp0_i(:, :)
 #else
   real(dp), allocatable :: vsqrt_chi_vsqrt(:, :)
-#end if
+#endif
   !=====
 
   call timer_build_bse%start()
@@ -852,7 +852,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
       end if
 
     end do
-#end if
+#endif
   end if
 
 
