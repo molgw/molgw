@@ -38,7 +38,6 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
   real(dp)                   :: contrib1, contrib2
   real(dp)                   :: fact
   integer                    :: nocc(nspin)
-  integer                    :: ncore, nstate_mp2
   !=====
 
   call timer_mp2_energy%start()
@@ -48,17 +47,7 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
   write(stdout, '(/,a)') ' RI-MP2 correlation calculation'
 
 
-  ncore = ncoreg
-  select case(TRIM(frozencore))
-  case('MOLGW', 'YES')
-    if( ncore == 0) ncore = atoms_core_states()
-  case('GAUSSIAN')
-    if( ncore == 0) ncore = atoms_core_states_gaussian()
-  end select
-
-  call calculate_eri_3center_mo(c_matrix, ncore+1, nstate, ncore+1, nstate)
-
-  nstate_mp2 = MIN( nvirtualg-1, nstate )
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
 
 
 
@@ -70,8 +59,8 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
   do iaspin=1, nspin
     !
     ! First, set up the list of occupied states
-    nocc(iaspin) = ncore
-    do istate=ncore+1, nstate
+    nocc(iaspin) = ncore_G
+    do istate=ncore_G+1, nstate
       if( occupation(istate, iaspin) < completely_empty ) cycle
       nocc(iaspin) = istate
     end do
@@ -80,19 +69,19 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
 
   do iaspin=1, nspin
 
-    do istate=ncore+1, nocc(iaspin)
+    do istate=ncore_G+1, nocc(iaspin)
 
 
-      write(stdout, '(i4,2x,i4,a,i4)') iaspin, istate-ncore, ' / ', nocc(iaspin)-ncore
+      write(stdout, '(i4,2x,i4,a,i4)') iaspin, istate - ncore_G, ' / ', nocc(iaspin) - ncore_G
 
       do jbspin=1, nspin
 
-        do jstate=ncore+1, nocc(jbspin)
+        do jstate=ncore_G+1, nocc(jbspin)
 
-          do astate=ncore+1, nstate_mp2
+          do astate=ncore_G+1, nvirtual_G-1
             if( occupation(astate, iaspin) > spin_fact - completely_empty ) cycle
 
-            do bstate=ncore+1, nstate_mp2
+            do bstate=ncore_G+1, nvirtual_G-1
               if( occupation(bstate, jbspin) > spin_fact - completely_empty ) cycle
 
               fact =  occupation(istate, iaspin) * ( spin_fact - occupation(astate, iaspin) ) &
@@ -100,12 +89,6 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
 
               energy_denom = energy(istate, iaspin) + energy(jstate, jbspin) &
                                      - energy(astate, iaspin) - energy(bstate, jbspin)
-              ! Avoid the zero denominators
-              if( ABS(energy_denom) < 1.d-18) then
-                write(stdout, *) 'you skipped something'
-                cycle
-              end if
-
               energy_denom =  fact / energy_denom
 
               tmp_iajb = evaluate_eri_mo_ri(istate, astate, iaspin, jstate, bstate, jbspin)
@@ -158,7 +141,6 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
   complex(dp)                :: tmp_iajb, tmp_ibja
   complex(dp)                :: contrib1, contrib2
   integer                    :: nocc(nspin)
-  integer                    :: ncore, nstate_mp2
   !=====
 
   call timer_mp2_energy%start()
@@ -167,17 +149,9 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
 
   write(stdout, '(/,a)') ' RI-MP2 correlation calculation'
 
-  ncore = ncoreg
-  select case(TRIM(frozencore))
-  case('MOLGW', 'YES')
-    if( ncore == 0) ncore = atoms_core_states()
-  case('GAUSSIAN')
-    if( ncore == 0) ncore = atoms_core_states_gaussian()
-  end select
 
-  call calculate_eri_3center_mo_cmplx(c_matrix_cmplx, ncore+1, nstate, ncore+1, nstate)
+  call calculate_eri_3center_mo_cmplx(c_matrix_cmplx, ncore_G+1, nstate, ncore_G+1, nstate)
 
-  nstate_mp2 = MIN( nvirtualg-1, nstate )
 
   emp2 = 0.0_dp
   contrib1 = ( 0.0_dp, 0.0_dp )
@@ -186,8 +160,8 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
   do iaspin=1, nspin
     !
     ! First, set up the list of occupied states
-    nocc(iaspin) = ncore
-    do istate=ncore+1, nstate
+    nocc(iaspin) = ncore_G
+    do istate=ncore_G+1, nstate
       if( occupation(istate, iaspin) < completely_empty ) cycle
       nocc(iaspin) = istate
     end do
@@ -195,19 +169,19 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
 
   do iaspin=1, nspin
 
-    do istate=ncore+1, nocc(iaspin)
+    do istate=ncore_G+1, nocc(iaspin)
 
 
-      write(stdout, '(i4,2x,i4,a,i4)') iaspin, istate-ncore, ' / ', nocc(iaspin)-ncore
+      write(stdout, '(i4,2x,i4,a,i4)') iaspin, istate-ncore_G, ' / ', nocc(iaspin)-ncore_G
 
       do jbspin=1, nspin
 
-        do jstate=ncore+1, nocc(jbspin)
+        do jstate=ncore_G+1, nocc(jbspin)
 
-          do astate=ncore+1, nstate_mp2
+          do astate=ncore_G+1, nvirtual_G-1
             if( occupation(astate, iaspin) > spin_fact - completely_empty ) cycle
 
-            do bstate=ncore+1, nstate_mp2
+            do bstate=ncore_G+1, nvirtual_G-1
               if( occupation(bstate, jbspin) > spin_fact - completely_empty ) cycle
 
               fact =  occupation(istate, iaspin) * ( spin_fact - occupation(astate, iaspin) ) &
@@ -272,7 +246,7 @@ subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
   complex(dp)                :: tmp_iajb, tmp_ibja
   complex(dp)                :: contrib1
   integer                    :: ncore, nstate_mp2
-  real(dp), allocatable       :: energy_vec(:)
+  real(dp), allocatable      :: energy_vec(:)
   !=====
 
   call timer_mp2_energy%start()
@@ -700,8 +674,9 @@ subroutine correlation_energy_singles(basis, occupation, energy, c_matrix, hfock
     enddo
   enddo
 
-
   call clean_deallocate('Fock matrix F_MO', hfock_mo)
+
+  write(stdout, '(1x,a22,2x,f19.10)') 'Singles (Ha):', ec_singles
 
   call timer_ec_singles%stop()
 

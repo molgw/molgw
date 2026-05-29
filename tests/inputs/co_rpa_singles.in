@@ -1,0 +1,14 @@
+&molgw
+  scf                            = 'pbeh'
+  alpha_hybrid=0.25
+  postscf='rpa'
+  correlation_singles = 'yes'
+
+  basis                          = 'aug-cc-pVDZ'
+  auxil_basis                    = 'pauto'
+
+  natom                          = 2
+/
+C 0.0 0.0 0.0
+O 0.0 0.0 1.118
+

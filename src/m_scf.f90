@@ -70,6 +70,7 @@ module m_scf
     real(dp) :: time       = -1.0_dp      ! time in TDDFT
     real(dp) :: work_p_nonconserv  = 0.0_dp   ! non-conservative work on the projectile in TDDFT
     real(dp) :: work_p             = 0.0_dp   ! conservative work on the projectile in TDDFT
+    real(dp) :: singles = 0.0_dp
   end type
 
 

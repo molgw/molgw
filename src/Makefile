@@ -220,9 +220,9 @@ level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_linear_response.o
 level065: m_mbpt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o m_g3w2_selfenergy.o m_tdhf_selfenergy.o m_relativistic.o \
           m_gw_selfenergy_analytic.o
 
-level068: m_pt_selfenergy.o m_force.o m_dm_analysis.o
+level068: m_pt_selfenergy.o m_force.o m_dm_analysis.o m_mp2_energy.o
 
-level070: m_scf_loop.o m_ci.o m_selfenergy_evaluation.o m_acfd.o m_dm_mbpt_driver.o m_realtime_tddft.o m_noft.o m_mp2_energy.o
+level070: m_scf_loop.o m_ci.o m_selfenergy_evaluation.o m_acfd.o m_dm_mbpt_driver.o m_realtime_tddft.o m_noft.o
 
 level100: molgw.o
 
@@ -354,7 +354,7 @@ m_linear_response.o: m_definitions.o m_mpi.o m_timing.o m_warning.o m_memory.o m
 
 m_acfd.o: m_definitions.o m_mpi.o m_timing.o m_warning.o m_memory.o m_cart_to_pure.o m_scalapack.o m_numerical_tools.o \
           m_inputparam.o m_basis_set.o m_spectral_function.o m_gw_selfenergy_grid.o m_selfenergy_tools.o \
-          m_spectra.o m_scf.o m_linear_response.o m_dft_grid.o m_hamiltonian_twobodies.o \
+          m_spectra.o m_scf.o m_linear_response.o m_dft_grid.o m_hamiltonian_twobodies.o m_mp2_energy.o \
 	  m_acfd.f90
 	$(FC_W_OPTS) -c m_acfd.f90 $(LIBXC_INCS)
 

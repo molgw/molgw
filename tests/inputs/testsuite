@@ -1386,3 +1386,14 @@ Exchange Energy (Ha):     ,  -21.0972552041    , 0 , 1.0e-7
 Hartree  HOMO expectation ,  293.645469        , 0 , 1.0e-4
 Exchange HOMO expectation ,  -23.873869        , 0 , 1.0e-4
 
+co_mp2_singles.in         , CO dimer MP2 + singles
+ SCF Total Energy         ,  -113.2002154540   , 0 , 1.0e-7
+ Singles                  ,    -0.0101563903   , 0 , 1.0e-7
+ MP2 Energy               ,    -0.4420086072   , 0 , 1.0e-7
+ MP2 Total Energy         ,  -113.1989677035   , 0 , 1.0e-7
+
+co_rpa_singles.in         , CO dimer MP2 + singles
+ SCF Total Energy         ,  -113.2002154540   , 0 , 1.0e-7
+ Singles                  ,    -0.0101563903   , 0 , 1.0e-7
+ RPA Energy               ,    -0.4114915279   , 0 , 1.0e-7
+ RPA Total Energy         ,  -113.1684506243   , 0 , 1.0e-7

@@ -26,6 +26,7 @@ module m_acfd
   use m_gw_selfenergy_grid
   use m_linear_response
   use m_numerical_tools, only: coeffs_gausslegint
+  use m_mp2_energy
 
 #if !defined(NO_LIBXC)
 #include <xc_funcs.h>
@@ -33,27 +34,37 @@ module m_acfd
 
   implicit none
 
+
 contains
 
 
 !=========================================================================
-subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbpt)
+subroutine acfd_total_energy(basis, occupation, energy, c_matrix, hfock, en_mbpt)
   type(basis_set), intent(in)  :: basis
-  integer, intent(in)          :: nstate
-  real(dp), intent(in)         :: occupation(:, :), energy(:, :)
+  real(dp), intent(in)         :: occupation(:, :), energy(:, :), hfock(:, :, :)
   real(dp), intent(in)         :: c_matrix(:, :, :)
   real(dp), allocatable        :: matrix_tmp(:, :, :)
   type(energy_contributions), intent(inout) :: en_mbpt
   !=====
-  type(dft_xc_info), allocatable  :: dft_xc_tmp(:)
+  integer                        :: nstate
+  type(dft_xc_info), allocatable :: dft_xc_tmp(:)
   type(spectral_function)        :: wpol
   real(dp)                       :: ebse_singlet, erpa_singlet, erpa_triplet, egw_tmp, erpa_sie_KP, erpa_state
   real(dp)                       :: wlambda(acfd_nlambda), lambda(acfd_nlambda)
-  real(dp), allocatable           :: x_matrix(:, :), y_matrix(:, :)
-  real(dp), allocatable           :: a_matrix(:, :), b_matrix(:, :)
+  real(dp), allocatable          :: x_matrix(:, :), y_matrix(:, :)
+  real(dp), allocatable          :: a_matrix(:, :), b_matrix(:, :)
   integer                        :: nmat, desc_x(NDEL)
   integer                        :: m_x, n_x, info, ilambda
   !=====
+
+  nstate = SIZE(energy, DIM=1)
+
+  call selfenergy_set_state_range(nstate, occupation)
+
+  if( correlation_singles_ ) then
+    call correlation_energy_singles(basis, occupation, energy, c_matrix, hfock, en_mbpt%singles)
+    write(stdout, '(1x,a22,2x,f19.10)') 'Singles (Ha):', en_mbpt%singles
+  endif
 
   !
   ! First the "+" part of RPA+
@@ -125,7 +136,8 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
       en_mbpt%total = en_mbpt%total + en_mbpt%rpa + erpa_sie_KP
     else
       en_mbpt%total = en_mbpt%nuc_nuc + en_mbpt%kinetic + en_mbpt%nucleus &
-                    + en_mbpt%hartree + en_mbpt%exx + en_mbpt%rpa + erpa_sie_KP
+                    + en_mbpt%hartree + en_mbpt%exx + en_mbpt%rpa + erpa_sie_KP  &
+                    + en_mbpt%singles
     end if
 
     if( TRIM(postscf) == 'RPAP' .OR. TRIM(postscf) == 'RPA+' ) then
