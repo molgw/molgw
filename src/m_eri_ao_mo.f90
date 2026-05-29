@@ -51,7 +51,7 @@ function evaluate_eri_mo(istate, jstate, ijspin, kstate, lstate, klspin)
     call auxil%sum(evaluate_eri_mo)
   else
     evaluate_eri_mo = eri_4center_mo_uks(istate, jstate, kstate, lstate)
-  endif
+  end if
 
 
 end function evaluate_eri_mo
@@ -173,7 +173,7 @@ subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_mo_i)
   else
     istate_previous = istate
     ijspin_previous = ijspin
-  endif
+  end if
 
 
   call timer_eri_4center_ao2mo%start()
@@ -193,7 +193,7 @@ subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_mo_i)
     write(stdout, '(1x,a,f9.3,a)') 'Make sure OMP_STACKSIZE is larger than ', &
                                     REAL(nbf, dp)**3 * REAL(dp, dp) / 1024.0_dp**2, ' (Mb)'
     disclaimer = .FALSE.
-  endif
+  end if
   !$OMP PARALLEL PRIVATE(index_ij, index_kl, ibf, jbf, kbf, lbf, stride)
 #if defined(_OPENMP)
   stride = OMP_GET_NUM_THREADS()
@@ -201,7 +201,7 @@ subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_mo_i)
 #else
   stride = 1
   index_ij = 0
-#endif
+#end if
   index_kl = 1
 
   ! SCHEDULE(static, 1) should not be modified
@@ -212,7 +212,7 @@ subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_mo_i)
     do while( index_ij > npair )
       index_kl = index_kl + 1
       index_ij = index_kl + index_ij - npair - 1
-    enddo
+    end do
 
     ibf = index_basis(1, index_ij)
     jbf = index_basis(2, index_ij)
@@ -224,24 +224,24 @@ subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_mo_i)
       eri_tmp3(ibf, kbf, lbf) = eri_tmp3(ibf, kbf, lbf) + eri_4center(iint) * c_matrix(jbf, istate, ijspin)
       if( kbf /= lbf ) then
         eri_tmp3(ibf, lbf, kbf) = eri_tmp3(ibf, lbf, kbf) + eri_4center(iint) * c_matrix(jbf, istate, ijspin)
-      endif
-    endif
+      end if
+    end if
     if( kbf /= lbf ) then
       eri_tmp3(jbf, lbf, kbf) = eri_tmp3(jbf, lbf, kbf) + eri_4center(iint) * c_matrix(ibf, istate, ijspin)
-    endif
+    end if
     if( index_kl /= index_ij ) then
       eri_tmp3(lbf, ibf, jbf) = eri_tmp3(lbf, ibf, jbf) + eri_4center(iint) * c_matrix(kbf, istate, ijspin)
       if( ibf /= jbf ) then
         eri_tmp3(lbf, jbf, ibf) = eri_tmp3(lbf, jbf, ibf) + eri_4center(iint) * c_matrix(kbf, istate, ijspin)
         if( kbf /= lbf ) then
           eri_tmp3(kbf, jbf, ibf) = eri_tmp3(kbf, jbf, ibf) + eri_4center(iint) * c_matrix(lbf, istate, ijspin)
-        endif
-      endif
+        end if
+      end if
       if( kbf /= lbf ) then
         eri_tmp3(kbf, ibf, jbf) = eri_tmp3(kbf, ibf, jbf) + eri_4center(iint) * c_matrix(lbf, istate, ijspin)
-      endif
-    endif
-  enddo
+      end if
+    end if
+  end do
   !$OMP END DO
   !$OMP END PARALLEL
 
@@ -255,7 +255,7 @@ subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_mo_i)
       call DGEMM('N', 'N', nstate, nstate, nbf, 1.0d0, eri_tmp2(1, 1, lbf), nstate,    &
                                                  c_matrix(1, 1, klspin), nbf, &
                                            0.0d0, eri_tmp3(1, 1, lbf), nbf)
-    enddo
+    end do
 
     do lstate=1, nstate
       eri_tmp1(:, :) = TRANSPOSE( eri_tmp3(1:nstate, lstate, 1:nbf) )
@@ -264,8 +264,8 @@ subroutine calculate_eri_4center_mo(c_matrix, istate, ijspin, eri_mo_i)
                                                 c_matrix(1, 1, klspin), nbf,  &
                                            0.0d0, eri_mo_i(1, 1, lstate, klspin), nstate)
 
-    enddo
-  enddo !klspin
+    end do
+  end do !klspin
 
   deallocate(eri_tmp1)
   call clean_deallocate('TMP array', eri_tmp2)
@@ -326,7 +326,7 @@ subroutine calculate_eri_4center_mo_uks(c_matrix, nstate_min, nstate_max)
 #else
     stride = 1
     index_ij = 0
-#endif
+#end if
     index_kl = 1
 
     ! SCHEDULE(static, 1) should not be modified
@@ -337,7 +337,7 @@ subroutine calculate_eri_4center_mo_uks(c_matrix, nstate_min, nstate_max)
       do while( index_ij > npair )
         index_kl = index_kl + 1
         index_ij = index_kl + index_ij - npair - 1
-      enddo
+      end do
 
       ibf = index_basis(1, index_ij)
       jbf = index_basis(2, index_ij)
@@ -349,24 +349,24 @@ subroutine calculate_eri_4center_mo_uks(c_matrix, nstate_min, nstate_max)
         eri_tmp3(ibf, kbf, lbf) = eri_tmp3(ibf, kbf, lbf) + eri_4center(iint) * c_matrix(jbf, istate, ijspin)
         if( kbf /= lbf ) then
           eri_tmp3(ibf, lbf, kbf) = eri_tmp3(ibf, lbf, kbf) + eri_4center(iint) * c_matrix(jbf, istate, ijspin)
-        endif
-      endif
+        end if
+      end if
       if( kbf /= lbf ) then
         eri_tmp3(jbf, lbf, kbf) = eri_tmp3(jbf, lbf, kbf) + eri_4center(iint) * c_matrix(ibf, istate, ijspin)
-      endif
+      end if
       if( index_kl /= index_ij ) then
         eri_tmp3(lbf, ibf, jbf) = eri_tmp3(lbf, ibf, jbf) + eri_4center(iint) * c_matrix(kbf, istate, ijspin)
         if( ibf /= jbf ) then
           eri_tmp3(lbf, jbf, ibf) = eri_tmp3(lbf, jbf, ibf) + eri_4center(iint) * c_matrix(kbf, istate, ijspin)
           if( kbf /= lbf ) then
             eri_tmp3(kbf, jbf, ibf) = eri_tmp3(kbf, jbf, ibf) + eri_4center(iint) * c_matrix(lbf, istate, ijspin)
-          endif
-        endif
+          end if
+        end if
         if( kbf /= lbf ) then
           eri_tmp3(kbf, ibf, jbf) = eri_tmp3(kbf, ibf, jbf) + eri_4center(iint) * c_matrix(lbf, istate, ijspin)
-        endif
-      endif
-    enddo
+        end if
+      end if
+    end do
     !$OMP END DO
     !$OMP END PARALLEL
 
@@ -385,10 +385,10 @@ subroutine calculate_eri_4center_mo_uks(c_matrix, nstate_min, nstate_max)
                                               1.0d0, eri_tmp1(1, 1), nstate_maxmin,              &
                                                     c_matrix(1, nstate_min, klspin), nbf,  &
                                               0.0d0, eri_4center_mo_uks(nstate_min, nstate_min, jstate, istate), nstate_maxmin)
-      enddo
-    enddo !klspin
+      end do
+    end do !klspin
 
-  enddo !istate
+  end do !istate
 
   deallocate(eri_tmp1)
   deallocate(eri_tmp1b)
@@ -434,31 +434,31 @@ subroutine calculate_eri_3center_mo(c_matrix, mstate_min, mstate_max, nstate_min
 
   if( PRESENT(only_one_spin) ) then
     if( only_one_spin ) nspin_ = 1
-  endif
+  end if
 
   if( PRESENT(long_range) ) then
     if( long_range .AND. (.NOT. ALLOCATED(eri_3center_mo_lr)) ) lr_exists = .FALSE.
-  endif
+  end if
 
   ! eri_3center_mo(_lr) is/are already allocated, then assume that you know what you are doing
   if( ALLOCATED(eri_3center_mo) .AND. lr_exists ) then
     return
-  endif
+  end if
 
   if( PRESENT(timing) ) then
     call timing%start()
   else
     call timer_eri_3center_ao2mo%start()
-  endif
+  end if
 
   if(PRESENT(verbose)) then
     verbose_ = verbose
   else
     verbose_ = .TRUE.
-  endif
+  end if
   if(verbose_) then
     write(stdout, '(/,a)') ' Calculate 3-center integrals on molecular orbitals: AO -> MO transform'
-  endif
+  end if
 
   nbf    = SIZE(c_matrix, DIM=1)
   nstate = SIZE(c_matrix, DIM=2)
@@ -467,25 +467,25 @@ subroutine calculate_eri_3center_mo(c_matrix, mstate_min, mstate_max, nstate_min
     mstate_min_ = mstate_min
   else
     mstate_min_ = 1
-  endif
+  end if
 
   if( PRESENT(mstate_max) ) then
     mstate_max_ = mstate_max
   else
     mstate_max_ = nstate
-  endif
+  end if
 
   if( PRESENT(nstate_min) ) then
     nstate_min_ = nstate_min
   else
     nstate_min_ = 1
-  endif
+  end if
 
   if( PRESENT(nstate_max) ) then
     nstate_max_ = nstate_max
   else
     nstate_max_ = nstate
-  endif
+  end if
 
   mstate_count_ = mstate_max_ - mstate_min_ + 1
   nstate_count_ = nstate_max_ - nstate_min_ + 1
@@ -497,7 +497,7 @@ subroutine calculate_eri_3center_mo(c_matrix, mstate_min, mstate_max, nstate_min
     call clean_allocate('3-center_lr MO integrals', eri_3center_mo_lr, 1, nauxil_local_lr, &
                      mstate_min_, mstate_max_, nstate_min_, nstate_max_, 1, nspin_, verbose_)
     eri_3center_mo_lr(:, :, :, :) = 0.0_dp
-  endif
+  end if
   eri_3center_mo(:, :, :, :) = 0.0_dp
 
   call clean_allocate('TMP 3-center ints', tmp1, nstate_min_, nstate_max_, 1, nbf, verbose_)
@@ -519,7 +519,7 @@ subroutine calculate_eri_3center_mo(c_matrix, mstate_min, mstate_max, nstate_min
         lbf = index_basis(2, ipair)
         tmp1(:, kbf) = tmp1(:, kbf) +  c_t(:, lbf) * eri_3center(ipair, iauxil)
         tmp1(:, lbf) = tmp1(:, lbf) +  c_t(:, kbf) * eri_3center(ipair, iauxil)
-      enddo
+      end do
       !$OMP END DO
       !$OMP END PARALLEL
 
@@ -533,7 +533,7 @@ subroutine calculate_eri_3center_mo(c_matrix, mstate_min, mstate_max, nstate_min
       eri_3center_mo(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
                                   = tmp2(mstate_min_:mstate_max_, nstate_min_:nstate_max_)
 
-    enddo !iauxil
+    end do !iauxil
 
     if(PRESENT(long_range)) then
       do iauxil=1, nauxil_local_lr
@@ -547,7 +547,7 @@ subroutine calculate_eri_3center_mo(c_matrix, mstate_min, mstate_max, nstate_min
           lbf = index_basis(2, ipair)
           tmp1(:, kbf) = tmp1(:, kbf) +  c_t(:, lbf) * eri_3center_lr(ipair, iauxil)
           tmp1(:, lbf) = tmp1(:, lbf) +  c_t(:, kbf) * eri_3center_lr(ipair, iauxil)
-        enddo
+        end do
         !$OMP END DO
         !$OMP END PARALLEL
 
@@ -561,10 +561,10 @@ subroutine calculate_eri_3center_mo(c_matrix, mstate_min, mstate_max, nstate_min
         eri_3center_mo_lr(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
                                     = tmp2(mstate_min_:mstate_max_, nstate_min_:nstate_max_)
 
-      enddo !iauxil_lr
-    endif
+      end do !iauxil_lr
+    end if
 
-  enddo !klspin
+  end do !klspin
 
   call clean_deallocate('TMP 3-center ints', tmp2, verbose_)
   call clean_deallocate('TMP 3-center ints', c_t, verbose_)
@@ -577,7 +577,7 @@ subroutine calculate_eri_3center_mo(c_matrix, mstate_min, mstate_max, nstate_min
     call timing%stop()
   else
     call timer_eri_3center_ao2mo%stop()
-  endif
+  end if
 
 end subroutine calculate_eri_3center_mo
 
@@ -603,22 +603,22 @@ subroutine calculate_eri_3center_mo_lr(c_matrix, mstate_min, mstate_max, nstate_
   ! eri_3center_mo is already allocated, then assume that you know what you are doing
   if( ALLOCATED(eri_3center_mo) ) then
     return
-  endif
+  end if
 
   if( PRESENT(timing) ) then
     call timing%start()
   else
     call timer_eri_3center_ao2mo%start()
-  endif
+  end if
 
   if(PRESENT(verbose)) then
     verbose_ = verbose
   else
     verbose_ = .TRUE.
-  endif
+  end if
   if(verbose_) then
     write(stdout, '(/,a)') ' Calculate 3-center integrals on molecular orbitals: AO -> MO transform'
-  endif
+  end if
 
   nbf    = SIZE(c_matrix, DIM=1)
   nstate = SIZE(c_matrix, DIM=2)
@@ -627,25 +627,25 @@ subroutine calculate_eri_3center_mo_lr(c_matrix, mstate_min, mstate_max, nstate_
     mstate_min_ = mstate_min
   else
     mstate_min_ = 1
-  endif
+  end if
 
   if( PRESENT(mstate_max) ) then
     mstate_max_ = mstate_max
   else
     mstate_max_ = nstate
-  endif
+  end if
 
   if( PRESENT(nstate_min) ) then
     nstate_min_ = nstate_min
   else
     nstate_min_ = 1
-  endif
+  end if
 
   if( PRESENT(nstate_max) ) then
     nstate_max_ = nstate_max
   else
     nstate_max_ = nstate
-  endif
+  end if
 
   mstate_count_ = mstate_max_ - mstate_min_ + 1
   nstate_count_ = nstate_max_ - nstate_min_ + 1
@@ -675,7 +675,7 @@ subroutine calculate_eri_3center_mo_lr(c_matrix, mstate_min, mstate_max, nstate_
         lbf = index_basis(2, ipair)
         tmp1(:, kbf) = tmp1(:, kbf) +  c_t(:, lbf) * eri_3center_lr(ipair, iauxil)
         tmp1(:, lbf) = tmp1(:, lbf) +  c_t(:, kbf) * eri_3center_lr(ipair, iauxil)
-      enddo
+      end do
       !$OMP END DO
       !$OMP END PARALLEL
 
@@ -689,9 +689,9 @@ subroutine calculate_eri_3center_mo_lr(c_matrix, mstate_min, mstate_max, nstate_
       eri_3center_mo(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
                                   = tmp2(mstate_min_:mstate_max_, nstate_min_:nstate_max_)
 
-    enddo !iauxil
+    end do !iauxil
 
-  enddo !klspin
+  end do !klspin
 
   call clean_deallocate('TMP 3-center ints', tmp2, verbose_)
   call clean_deallocate('TMP 3-center ints', c_t, verbose_)
@@ -703,7 +703,7 @@ subroutine calculate_eri_3center_mo_lr(c_matrix, mstate_min, mstate_max, nstate_
     call timing%stop()
   else
     call timer_eri_3center_ao2mo%stop()
-  endif
+  end if
 
 end subroutine calculate_eri_3center_mo_lr
 
@@ -730,31 +730,31 @@ subroutine calculate_eri_3center_mo_cmplx(c_matrix_cmplx, mstate_min, mstate_max
 
   if( PRESENT(only_one_spin) ) then
     if( only_one_spin ) nspin_ = 1
-  endif
+  end if
 
   if( PRESENT(long_range) ) then
     if( long_range .AND. (.NOT. ALLOCATED(eri_3center_mo_lr_cmplx)) ) lr_exists=.FALSE.
-  endif
+  end if
 
   ! eri_3center_mo(_lr) is/are already allocated, then assume that you know what you are doing
   if( ALLOCATED(eri_3center_mo_cmplx) .AND. lr_exists ) then
     return
-  endif
+  end if
 
   if( PRESENT(timing) ) then
     call timing%start()
   else
     call timer_eri_3center_ao2mo%start()
-  endif
+  end if
 
   if(PRESENT(verbose)) then
     verbose_ = verbose
   else
     verbose_ = .TRUE.
-  endif
+  end if
   if(verbose_) then
     write(stdout, '(/,a)') ' Calculate 3-center integrals on molecular orbitals: AO -> MO transform'
-  endif
+  end if
 
   nbf    = SIZE(c_matrix_cmplx, DIM=1)
   nstate = SIZE(c_matrix_cmplx, DIM=2)
@@ -763,25 +763,25 @@ subroutine calculate_eri_3center_mo_cmplx(c_matrix_cmplx, mstate_min, mstate_max
     mstate_min_ = mstate_min
   else
     mstate_min_ = 1
-  endif
+  end if
 
   if( PRESENT(mstate_max) ) then
     mstate_max_ = mstate_max
   else
     mstate_max_ = nstate
-  endif
+  end if
 
   if( PRESENT(nstate_min) ) then
     nstate_min_ = nstate_min
   else
     nstate_min_ = 1
-  endif
+  end if
 
   if( PRESENT(nstate_max) ) then
     nstate_max_ = nstate_max
   else
     nstate_max_ = nstate
-  endif
+  end if
 
   mstate_count_ = mstate_max_ - mstate_min_ + 1
   nstate_count_ = nstate_max_ - nstate_min_ + 1
@@ -793,7 +793,7 @@ subroutine calculate_eri_3center_mo_cmplx(c_matrix_cmplx, mstate_min, mstate_max
     call clean_allocate('3-center_lr MO integrals', eri_3center_mo_lr_cmplx, 1, nauxil_local_lr, &
                      mstate_min_, mstate_max_, nstate_min_, nstate_max_, 1, nspin_, verbose_)
     eri_3center_mo_lr_cmplx(:, :, :, :) = (0.0_dp, 0.0_dp)
-  endif
+  end if
   eri_3center_mo_cmplx(:, :, :, :) = (0.0_dp, 0.0_dp)
 
   call clean_allocate('TMP 3-center ints', tmp1_cmplx, mstate_min_, mstate_max_, 1, nbf, verbose_)
@@ -815,7 +815,7 @@ subroutine calculate_eri_3center_mo_cmplx(c_matrix_cmplx, mstate_min, mstate_max
         lbf = index_basis(2, ipair)
         tmp1_cmplx(:, kbf) = tmp1_cmplx(:, kbf) +  c_t_cmplx(:, lbf) * eri_3center(ipair, iauxil)
         tmp1_cmplx(:, lbf) = tmp1_cmplx(:, lbf) +  c_t_cmplx(:, kbf) * eri_3center(ipair, iauxil)
-      enddo
+      end do
       !$OMP END DO
       !$OMP END PARALLEL
 
@@ -829,7 +829,7 @@ subroutine calculate_eri_3center_mo_cmplx(c_matrix_cmplx, mstate_min, mstate_max
       eri_3center_mo_cmplx(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
                                   = tmp2_cmplx(mstate_min_:mstate_max_, nstate_min_:nstate_max_)
 
-    enddo !iauxil
+    end do !iauxil
 
     if(PRESENT(long_range)) then
       do iauxil=1, nauxil_local_lr
@@ -843,7 +843,7 @@ subroutine calculate_eri_3center_mo_cmplx(c_matrix_cmplx, mstate_min, mstate_max
           lbf = index_basis(2, ipair)
           tmp1_cmplx(:, kbf) = tmp1_cmplx(:, kbf) +  c_t_cmplx(:, lbf) * eri_3center_lr(ipair, iauxil)
           tmp1_cmplx(:, lbf) = tmp1_cmplx(:, lbf) +  c_t_cmplx(:, kbf) * eri_3center_lr(ipair, iauxil)
-        enddo
+        end do
         !$OMP END DO
         !$OMP END PARALLEL
 
@@ -857,10 +857,10 @@ subroutine calculate_eri_3center_mo_cmplx(c_matrix_cmplx, mstate_min, mstate_max
         eri_3center_mo_lr_cmplx(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
                                     = tmp2_cmplx(mstate_min_:mstate_max_, nstate_min_:nstate_max_)
     
-      enddo !iauxil_lr
-    endif
+      end do !iauxil_lr
+    end if
 
-  enddo !klspin
+  end do !klspin
 
   call clean_deallocate('TMP 3-center ints', tmp2_cmplx, verbose_)
   call clean_deallocate('TMP 3-center ints', c_t_cmplx, verbose_)
@@ -873,7 +873,7 @@ subroutine calculate_eri_3center_mo_cmplx(c_matrix_cmplx, mstate_min, mstate_max
     call timing%stop()
   else
     call timer_eri_3center_ao2mo%stop()
-  endif
+  end if
 
 end subroutine calculate_eri_3center_mo_cmplx
 
@@ -900,22 +900,22 @@ subroutine calculate_eri_3center_mo_no(c_matrix_mo_no, eri_3center_no, timing, v
   ! eri_3center_mo is needed allocated, then assume that you know what you are doing
   if( .NOT. ALLOCATED(eri_3center_mo) ) then
     call die('calculate_eri_3center_mo_no: bug: eri_3center_mo is needed at this stage')
-  endif
+  end if
 
   if( PRESENT(timing) ) then
     call timing%start()
   else
     call timer_eri_3center_ao2mo%start()
-  endif
+  end if
 
   if(PRESENT(verbose)) then
     verbose_ = verbose
   else
     verbose_ = .TRUE.
-  endif
+  end if
   if(verbose_) then
     write(stdout, '(/,a)') ' Calculate 3-center integrals on molecular orbitals: AO -> MO transform'
-  endif
+  end if
 
   nmo = SIZE(c_matrix_mo_no, DIM=1)
   nno = SIZE(c_matrix_mo_no, DIM=2)
@@ -958,9 +958,9 @@ subroutine calculate_eri_3center_mo_no(c_matrix_mo_no, eri_3center_no, timing, v
       eri_3center_no(iauxil, mstate_min_:mstate_max_, nstate_min_:nstate_max_, klspin) &
                                   = tmp3(mstate_min_:mstate_max_, nstate_min_:nstate_max_)
 
-    enddo !iauxil
+    end do !iauxil
 
-  enddo !klspin
+  end do !klspin
 
   call clean_deallocate('TMP 3-center ints', tmp2, verbose_)
   call clean_deallocate('TMP 3-center ints', tmp3, verbose_)
@@ -972,7 +972,7 @@ subroutine calculate_eri_3center_mo_no(c_matrix_mo_no, eri_3center_no, timing, v
     call timing%stop()
   else
     call timer_eri_3center_ao2mo%stop()
-  endif
+  end if
 
 end subroutine calculate_eri_3center_mo_no
 
@@ -1004,8 +1004,8 @@ subroutine calculate_eri_x2c(c_matrix_rel, nstate, nstate_min, nstate_max, mstat
     do istate=1, nstate
       c_matrix_LaorLb(ibf, istate, 1)=c_matrix_rel(2*ibf-1, istate) ! L alpha coef. in spin channel 1
       c_matrix_LaorLb(ibf, istate, 2)=c_matrix_rel(2*ibf  , istate) ! L beta  coef. in spin channel 2
-    enddo
-  enddo
+    end do
+  end do
 
   call calculate_eri_3center_mo_cmplx(c_matrix_LaorLb, nstate_min_, nstate_max_, mstate_min_, mstate_max_, verbose=x2c_verbose)
 
@@ -1024,24 +1024,24 @@ subroutine destroy_eri_3center_mo(verbose, long_range, force)
 
   if( .NOT. PRESENT(force) ) then
     if( eri_3center_mo_stay_in_memory ) return
-  endif
+  end if
 
   if(PRESENT(verbose)) then
     verbose_ = verbose
   else
     verbose_ = .TRUE.
-  endif
+  end if
 
   if( ALLOCATED(eri_3center_mo) ) then
     if(verbose_) write(stdout, '(/,a)') ' Destroy 3-center integrals on MO'
     call clean_deallocate('3-center MO integrals', eri_3center_mo, verbose_)
-  endif
+  end if
   if(PRESENT(long_range)) then
     if(long_range) then
       if(verbose_) write(stdout, '(a,/)') ' Destroy 3-center_lr integrals on MO'
       call clean_deallocate('3-center_lr MO integrals', eri_3center_mo_lr, verbose_)
-    endif
-  endif
+    end if
+  end if
 
 end subroutine destroy_eri_3center_mo
 
@@ -1058,7 +1058,7 @@ subroutine destroy_eri_3center_mo_cmplx(verbose, long_range)
     verbose_ = verbose
   else
     verbose_ = .TRUE.
-  endif
+  end if
 
   if(verbose_) write(stdout, '(/,a)') ' Destroy 3-center integrals on MO'
   call clean_deallocate('3-center MO integrals', eri_3center_mo_cmplx, verbose_)
@@ -1066,8 +1066,8 @@ subroutine destroy_eri_3center_mo_cmplx(verbose, long_range)
     if(long_range) then
       if(verbose_) write(stdout, '(a,/)') ' Destroy 3-center_lr integrals on MO'
       call clean_deallocate('3-center_lr MO integrals', eri_3center_mo_lr_cmplx, verbose_)
-    endif
-  endif
+    end if
+  end if
 
 end subroutine destroy_eri_3center_mo_cmplx
 
@@ -1118,28 +1118,28 @@ subroutine form_erimol(nbf, nstate_tot, nstate_jkl, c_matrix, c_matrix_cmplx, ER
               if( negligible_basispair(ibf, abf) ) cycle
               tmp_pxxx_cmplx(abf, jbf, bbf)=tmp_pxxx_cmplx(abf, jbf, bbf) &
                               + CONJG(c_matrix_cmplx(ibf, pstate, 1)) * eri(ibf, abf, jbf, bbf)
-            enddo
-          enddo
-        enddo
-      enddo
+            end do
+          end do
+        end do
+      end do
       do jstate=1, nstate_jkl
         tmp_pxjx_cmplx(:, :) = COMPLEX_ZERO
         do bbf=1, nbf
           do abf=1, nbf
             tmp_pxjx_cmplx(abf, bbf) = SUM( conjg(c_matrix_cmplx(:, jstate, 1)) * tmp_pxxx_cmplx(abf, :, bbf) )
-          enddo
-        enddo
+          end do
+        end do
         do istate=1, nstate_jkl
           tmp_pijx_cmplx(:) = COMPLEX_ZERO
           do bbf=1, nbf
             tmp_pijx_cmplx(bbf) = SUM( c_matrix_cmplx(:, istate, 1) * tmp_pxjx_cmplx(:, bbf) )
-          enddo
+          end do
           do kstate=1, nstate_jkl
             ERImol_cmplx(pstate, jstate, istate, kstate) = SUM( tmp_pijx_cmplx(:) * c_matrix_cmplx(:, kstate, 1) ) ! < pi|jk>
-          enddo
-        enddo
-      enddo
-    enddo ! pstate
+          end do
+        end do
+      end do
+    end do ! pstate
 
     deallocate(tmp_pxxx_cmplx, tmp_pxjx_cmplx, tmp_pijx_cmplx)
 
@@ -1156,34 +1156,34 @@ subroutine form_erimol(nbf, nstate_tot, nstate_jkl, c_matrix, c_matrix_cmplx, ER
             do ibf=1, nbf
               if( negligible_basispair(ibf, abf) ) cycle
               tmp_pxxx(abf, jbf, bbf)=tmp_pxxx(abf, jbf, bbf)+c_matrix(ibf, pstate, 1)*eri(ibf, abf, jbf, bbf)
-            enddo
-          enddo
-        enddo
-      enddo
+            end do
+          end do
+        end do
+      end do
       do jstate=1, nstate_jkl
         tmp_pxjx(:, :) = zero
         do bbf=1, nbf
           do abf=1, nbf
             tmp_pxjx(abf, bbf) = SUM( c_matrix(:, jstate, 1) * tmp_pxxx(abf, :, bbf) )
-          enddo
-        enddo
+          end do
+        end do
         do istate=1, nstate_jkl
           tmp_pijx(:) = zero
           do bbf=1, nbf
             tmp_pijx(bbf) = SUM( c_matrix(:, istate, 1) * tmp_pxjx(:, bbf) )
-          enddo
+          end do
           do kstate=1, nstate_jkl
             ERImol(pstate, jstate, istate, kstate) = SUM( tmp_pijx(:) * c_matrix(:, kstate, 1) ) ! < pi|jk>
-          enddo
-        enddo
-      enddo
-    enddo ! pstate
+          end do
+        end do
+      end do
+    end do ! pstate
 
     deallocate(tmp_pxxx, tmp_pxjx, tmp_pijx)
 
   else
     ! Nth to be done
-  endif
+  end if
 
 end subroutine form_erimol
 
@@ -1209,12 +1209,12 @@ subroutine read_cc4s_coulombvertex(rootname)
   integer :: mtmp, ntmp, info
   integer :: nstate2
   integer :: ijstate_global, ijstate_local
-#endif
+#end if
   !=====
 
   if( PRESENT(rootname) ) then
     rootname_ = rootname
-  endif
+  end if
 
   if( nspin > 1 ) call die("read_cc4s_coulombvertex: spin polarized not implemented yet")
   
@@ -1230,7 +1230,7 @@ subroutine read_cc4s_coulombvertex(rootname)
   call yaml_search_keyword(TRIM(rootname_) // '_CoulombVertex.yaml', 'halfGrid', yaml_integers)
   if( yaml_integers(1) /= 1 ) then
     call die('read_cc4s_coulombvertex: only works for half grid (i.e. real wavefunctions)')
-  endif
+  end if
   deallocate(yaml_integers)
 
   call yaml_search_keyword(TRIM(rootname_) // '_CoulombVertex.yaml', 'length', yaml_integers)
@@ -1256,8 +1256,8 @@ subroutine read_cc4s_coulombvertex(rootname)
       read(unitcv) coulomb_vertex_ij(:)
       eri_3center_mo(1:naux, istate, jstate, 1)        = coulomb_vertex_ij(:)%re
       eri_3center_mo(naux+1:2*naux, istate, jstate, 1) = coulomb_vertex_ij(:)%im
-    enddo
-  enddo
+    end do
+  end do
 
   close(unitcv)
 
@@ -1301,8 +1301,8 @@ subroutine read_cc4s_coulombvertex(rootname)
       eri_3center_tmp(1:naux, ijstate_local)      = coulomb_vertex_ij(:)%re
       eri_3center_tmp(naux+1:2*naux, ijstate_local) = coulomb_vertex_ij(:)%im
 
-    enddo
-  enddo
+    end do
+  end do
 
 
   call DESCINIT(desc_mo, nauxil_global, nstate2, MB_eri3_mo, NB_eri3_mo, first_row, first_col, cntxt_eri3_mo, &
@@ -1320,7 +1320,7 @@ subroutine read_cc4s_coulombvertex(rootname)
   call clean_deallocate('Reading 3-center MO integrals', eri_3center_tmp)
 
   call MPI_FILE_CLOSE(unitcv, ierr)
-#endif
+#end if
   first_index = LBOUND(eri_3center_mo, DIM=2)
   rtmp = DOT_PRODUCT(eri_3center_mo(:, first_index, first_index, 1), eri_3center_mo(:, first_index, first_index, 1))
   call auxil%sum(rtmp)
@@ -1355,14 +1355,14 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootna
   real(dp), allocatable :: eri_3center_tmp(:, :)
   integer :: mtmp, ntmp, info
   integer :: ijstate_global, ijstate_local
-#endif
+#end if
   !=====
 
   if( nspin > 1 ) call die("write_cc4s_coulombvertex: spin polarized not implemented yet")
 
   if( PRESENT(rootname) ) then
     rootname_ = rootname
-  endif
+  end if
   
   call timer_write_coulombvertex%start()
   write(stdout, '(1x,a)') 'Writing ' // TRIM(rootname_) // '_CoulombVertex.yaml and ' &
@@ -1381,7 +1381,7 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootna
     naux = nauxil_in / 2
   else ! odd
     naux = (nauxil_in + 1) / 2
-  endif
+  end if
 
   allocate(coulomb_vertex_ij(naux))
   naux_local = SIZE(eri_3center_updated, DIM=1)
@@ -1423,10 +1423,10 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootna
         coulomb_vertex_ij(1:naux-1) = CMPLX( eri_3center_updated(1:naux-1, istate, jstate, 1), &
                                              eri_3center_updated(naux+1:2*naux-1, istate, jstate, 1) )
         coulomb_vertex_ij(naux) = CMPLX( eri_3center_updated(naux, istate, jstate, 1), 0.0_dp )
-      endif
+      end if
       write(unitcv) coulomb_vertex_ij(:)
-    enddo
-  enddo
+    end do
+  end do
 
   close(unitcv)
 
@@ -1451,7 +1451,7 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootna
   else
     call DESCINIT(desc_updated, nauxil_in, nstate2, MB_eri3_mo, NB_eri3_mo, first_row, first_col, cntxt_eri3_mo, &
                   MAX(1, naux_local), info)
-  endif
+  end if
 
   call PDGEMR2D(nauxil_in, nstate2, eri_3center_updated, 1, 1, desc_updated, &
                                     eri_3center_tmp, 1, 1, desc_tmp, cntxt_eri3_mo)
@@ -1484,20 +1484,20 @@ subroutine write_cc4s_coulombvertex(nauxil_in, eri_3center_updated, desc, rootna
         coulomb_vertex_ij(1:naux-1) = CMPLX( eri_3center_tmp(1:naux-1, ijstate_local), &
                                              eri_3center_tmp(naux+1:2*naux-1, ijstate_local) )
         coulomb_vertex_ij(naux) = CMPLX( eri_3center_tmp(naux, ijstate_local) , 0.0_dp )
-      endif
+      end if
 
       call MPI_FILE_WRITE_AT(unitcv, disp, coulomb_vertex_ij, &
                             naux, MPI_DOUBLE_COMPLEX, MPI_STATUS_IGNORE, ierr)
 
 
-    enddo
-  enddo
+    end do
+  end do
 
 
   call clean_deallocate('Writing 3-center MO integrals', eri_3center_tmp)
 
   call MPI_FILE_CLOSE(unitcv, ierr)
-#endif
+#end if
 
   call timer_write_coulombvertex%stop()
 

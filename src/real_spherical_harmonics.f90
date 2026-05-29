@@ -26,8 +26,8 @@ function real_spherical_harmonics(ll, mm, cos_theta, phi) result(slm)
   if( abs_mm > 0 ) then
     do ilm = ll-abs_mm+1, ll+abs_mm
       factorial = factorial * REAL(ilm, kind=dp)
-    enddo
-  endif
+    end do
+  end if
 
   factor = SQRT( (2.0_dp * ll + 1.0_dp) / (2.0_dp * pi) / factorial )
 
@@ -37,7 +37,7 @@ function real_spherical_harmonics(ll, mm, cos_theta, phi) result(slm)
     slm = COS( abs_mm * phi )
   else
     slm = SIN( abs_mm * phi )
-  endif
+  end if
 
   slm = slm * factor * legendre_polynomial(ll, abs_mm, cos_theta)
 
@@ -70,8 +70,8 @@ function legendre_polynomial(ll, mm, xx) result(plgndr)
     do i=1, mm
       pmm=-pmm*fact*somx2
       fact=fact+2.
-    enddo
-  endif
+    end do
+  end if
 
   if( ll == mm ) then
     plgndr = pmm
@@ -85,10 +85,10 @@ function legendre_polynomial(ll, mm, xx) result(plgndr)
         pll = (xx*(2*ill-1) * pmmp1 - (ill+mm-1)*pmm) / ( ill - mm )
         pmm = pmmp1
         pmmp1 = pll
-      enddo
+      end do
       plgndr = pll
-    endif
-  endif
+    end if
+  end if
 
 end function  legendre_polynomial
 

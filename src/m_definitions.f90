@@ -15,14 +15,14 @@ module m_definitions
 
 #if defined(_OPENMP)
   use OMP_LIB, only: OMP_GET_NUM_THREADS, OMP_GET_THREAD_NUM, OMP_GET_MAX_THREADS
-#endif
+#end if
   implicit none
 
 #if defined(DEBUG)
   logical, parameter :: debug=.TRUE.
 #else
   logical, parameter :: debug=.FALSE.
-#endif
+#end if
 
   integer, parameter  :: dp = KIND(0.0d0)
   integer, parameter  :: sp = KIND(0.0)
@@ -116,7 +116,7 @@ subroutine set_standard_output(unit_stdout)
     close(OUTPUT_UNIT)
     stdout = unit_stdout
     open(unit=stdout)
-  endif
+  end if
 
 end subroutine set_standard_output
 

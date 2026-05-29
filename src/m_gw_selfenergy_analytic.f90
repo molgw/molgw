@@ -68,7 +68,7 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
 
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
-  endif
+  end if
 
 
   call clean_allocate('Temporary array', w_s, 1, wpol%npole_reso, nsemin, nsemax)
@@ -91,7 +91,7 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
         do pstate=nsemin, nsemax
           ipstate = index_prodstate(istate, pstate) + (ispin-1) * index_prodstate(nvirtual_W-1, nvirtual_W-1)
           w_s(:, pstate) = wpol%w_s(ipstate, :)
-        enddo
+        end do
         !$OMP END DO
         !$OMP END PARALLEL
       else
@@ -102,7 +102,7 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
                    1.0d0, wpol%w_s, nauxil_local, eri_3center_mo(1, nsemin, istate, ispin), nauxil_local, &
                    0.0d0, w_s, wpol%npole_reso)
         call auxil%sum(w_s)
-      endif
+      end if
 
 
 
@@ -133,15 +133,15 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
                                              - energy(istate, ispin) + wpol%pole(spole) - ieta )  &
                           + fact_empty_i / ( se%energy0(pstate, ispin) + se%omega(iomega) &
                                              - energy(istate, ispin) - wpol%pole(spole) + ieta ) )
-            enddo
+            end do
             !$OMP END DO
             !$OMP END PARALLEL
 
             if( (spin_fact - occupation(pstate, ispin)) / spin_fact < completely_empty) then
               energy_gw = energy_gw + fact_empty_i * occupation(pstate, ispin) &
                                * w_s(spole, pstate)**2 / ( energy(pstate, ispin) - energy(istate, ispin) - wpol%pole(spole) )
-            endif
-          enddo
+            end if
+          end do
         case(COHSEX)
           !$OMP PARALLEL
           !$OMP DO PRIVATE(pstate)
@@ -160,17 +160,17 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
                       - w_s(spole, pstate) * w_s(spole, pstate) &
                             / wpol%pole(spole)
 
-          enddo
+          end do
           !$OMP END DO
           !$OMP END PARALLEL
         case default
           call die('BUG')
         end select
 
-      enddo !spole
+      end do !spole
 
-    enddo !istate
-  enddo !ispin
+    end do !istate
+  end do !ispin
 
   ! Sum up the contribution from different poles (= different procs)
   call world%sum(se%sigma)
@@ -187,7 +187,7 @@ subroutine gw_selfenergy(selfenergy_approx, occupation, energy, c_matrix, wpol, 
 
   if(has_auxil_basis) then
     call destroy_eri_3center_mo()
-  endif
+  end if
 
 
   call timer_gw_self%stop()
@@ -223,7 +223,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   integer              :: desc_matrix(NDEL)
   real(dp)             :: work(1), nelect, rtmp
   integer              :: nlocal, jlocal, iglobal, jglobal
-#endif
+#end if
   !=====
 
   call timer_gw_self%start()
@@ -245,11 +245,11 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
     write(stdout, '(1x,a,i5,1x,i5)') 'nsemin ?= ncore_G+1    ', nsemin, ncore_G+1
     write(stdout, '(1x,a,i5,1x,i5)') 'nsemax ?= nvirtual_G-1 ', nsemax, nvirtual_G-1
     call die('gw_selfenergy_upfolding: selfenergy state range should contain all the active states')
-  endif
+  end if
 
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
-  endif
+  end if
 
   mstate = nvirtual_G - ncore_G - 1
   nmat   = mstate * ( 1 + wpol%npole_reso)
@@ -308,7 +308,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
         do pstate=nsemin, nsemax
           ipstate = index_prodstate(istate, pstate) + (ispin-1) * index_prodstate(nvirtual_W-1, nvirtual_W-1)
           matrix_wing(irecord+1:irecord+wpol%npole_reso, pstate-ncore_G) = wpol%w_s(ipstate, :)
-        enddo
+        end do
       else
         ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
 #if defined(HAVE_SCALAPACK)
@@ -320,12 +320,12 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
         matrix_wing(irecord+1:irecord+wpol%npole_reso, :) = &
              MATMUL( TRANSPOSE(wpol%w_s(:, :)) , eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
         call auxil%sum(matrix_wing(irecord+1:irecord+wpol%npole_reso, :))
-#endif
-      endif
+#end if
+      end if
 
 
-    enddo !istate
-  enddo !ispin
+    end do !istate
+  end do !ispin
 
   write(stdout, '(a)') ' Matrix is setup'
 
@@ -340,19 +340,19 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
     do jmat=1, mstate
       do imat=1, jmat
         write(fu, '(1x,i7,1x,i7,1x,e16.8)') imat, jmat, matrix_head(imat, jmat)*Ha_eV
-      enddo
-    enddo
+      end do
+    end do
     do imat=1, mwing
       write(fu, '(1x,i7,1x,i7,1x,e16.8)') imat+mstate, imat+mstate, matrix_diag(imat)*Ha_eV
-    enddo
-  endif
+    end do
+  end if
 
   do jmat=1, mstate
     do ilocal=1, mwing_local
       imat = INDXL2G(ilocal, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
       write(fu, '(1x,i7,1x,i7,1x,e16.8)') mstate+imat, jmat, matrix_wing(ilocal, jmat)*Ha_eV
-    enddo
-  enddo
+    end do
+  end do
   close(fu)
 
 
@@ -386,8 +386,8 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
         if( INDXG2P(iglobal, block_row, iprow_sd, first_row, nprow_sd) /= iprow_sd ) cycle
         ilocal = INDXG2L(iglobal, block_row, iprow_sd, first_row, nprow_sd)
         super_matrix(ilocal, jlocal) = matrix_head(iglobal, jglobal)
-      enddo
-    enddo
+      end do
+    end do
 
     write(stdout, *) 'Set large diagonal'
     do iglobal=mstate+1, nmat
@@ -397,7 +397,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
       jlocal = INDXG2L(jglobal, block_col, ipcol_sd, first_col, npcol_sd)
       ilocal = INDXG2L(iglobal, block_row, iprow_sd, first_row, nprow_sd)
       super_matrix(ilocal, jlocal) = matrix_diag(iglobal-mstate)
-    enddo
+    end do
 
     write(stdout, *) 'Start diago'
     call diagonalize_sca('R', super_matrix, desc_matrix,eigval)
@@ -415,9 +415,9 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
         call PDAMAX(mstate, rtmp, jstate, super_matrix, 1, jmat, desc_matrix, 1)
         call world%max(jstate)
         write(stdout, '(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ', jstate, ': ', eigval(jmat)*Ha_eV, weight
-      endif
+      end if
       write(fu, '(1x,f16.6,4x,f12.6)') eigval(jmat) * Ha_eV, weight
-    enddo
+    end do
     close(fu)
     write(stdout, '(1x,a,f12.6)') 'Number of electrons: ', nelect
     write(stdout, *) '==================================================='
@@ -431,7 +431,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
     super_matrix(mstate+1:nmat, 1:mstate) = matrix_wing(:, :)
     do imat=mstate+1, nmat
       super_matrix(imat, imat) = matrix_diag(imat-mstate)
-    enddo
+    end do
     call diagonalize('R', super_matrix, eigval)
 
     write(stdout, '(1x,a,i8)') 'Number of non-negligible poles: ', COUNT( SUM(super_matrix(1:mstate, :)**2, DIM=1) > 1.0e-3_dp )
@@ -442,9 +442,9 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
       if( weight > 5.0e-2_dp ) then
         jstate = MAXLOC(ABS(super_matrix(1:mstate, jmat)), DIM=1)
         write(stdout, '(1x,a,i5.5,a,f16.6,4x,f12.6)') 'Projection on state ', jstate, ': ', eigval(jmat)*Ha_eV, weight
-      endif
+      end if
       write(fu, '(1x,f16.6,4x,f12.6)') eigval(jmat) * Ha_eV, SUM(super_matrix(1:mstate, jmat)**2)
-    enddo
+    end do
     close(fu)
     ! If eigenvalue lower than the middle of the HOMO-LUMO gap,
     ! then consider the excitation is occupied
@@ -452,18 +452,18 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
              spin_fact * SUM( SUM(super_matrix(1:mstate, :)**2, DIM=1), MASK=(eigval(:) < mu) )
     write(stdout, *) '==================================================='
 
-#endif
+#end if
     call clean_deallocate('Super matrix', super_matrix)
     deallocate(eigval)
 
-  endif
+  end if
 
   call clean_deallocate('Matrix wing', matrix_wing)
   call clean_deallocate('Matrix head', matrix_head)
   deallocate(matrix_diag)
   if(has_auxil_basis) then
     call destroy_eri_3center_mo()
-  endif
+  end if
 
   call timer_gw_self%stop()
 
@@ -494,7 +494,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
   real(dp), allocatable    :: w_s_tmp(:, :)
   real(dp), allocatable    :: w_s(:, :)
   complex(dp), allocatable :: sigmagw(:, :, :)
-#endif
+#end if
   !=====
 
   if(.NOT. has_auxil_basis) return
@@ -565,11 +565,11 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
           jglobal = INDXL2G(jlocal, NB_eri3_mo, ipcol_eri3_mo, first_col, npcol_eri3_mo) + ncore_G
           do ilocal=1, mlocal
             eri_3tmp_auxil(ilocal, jlocal) = eri_3center_mo(ilocal, jglobal, pstate, pspin)
-          enddo
-        enddo
+          end do
+        end do
       else
         call clean_allocate('TMP 3center MO', eri_3tmp_auxil, 1, 1, verbose=.FALSE.)
-      endif
+      end if
       !
       ! Change data distribution
       ! from cntxt_eri3_mo to cntxt_sd
@@ -621,15 +621,15 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
                                         - energy(istate, pspin) + wpol%pole(spole) - ieta )   &
                       + fact_empty_i / ( se%energy0(pstate, pspin) + se%omega(:) &
                                         - energy(istate, pspin) - wpol%pole(spole) + ieta )  )
-        enddo  !ilocal -> spole
-      enddo !jlocal -> istate
+        end do  !ilocal -> spole
+      end do !jlocal -> istate
       !$OMP END DO
       !$OMP END PARALLEL
 
       call clean_deallocate('Temporary array', w_s, verbose=.FALSE.)
 
-    enddo !pstate
-  enddo !pspin
+    end do !pstate
+  end do !pspin
 
   ! Sum up the contribution from different poles (= different procs)
   call world%sum(sigmagw)
@@ -644,7 +644,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
 
   call timer_gw_self%stop()
 
-#endif
+#end if
 
 end subroutine gw_selfenergy_scalapack
 
@@ -684,7 +684,7 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
 
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
-  endif
+  end if
 
   call clean_allocate('Temporary array', w_s, 1, wpol%npole_reso, nsemin, nsemax)
 
@@ -705,7 +705,7 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
         do pstate=nsemin, nsemax
           ipstate = index_prodstate(istate, pstate) + (ispin-1) * index_prodstate(nvirtual_W-1, nvirtual_W-1)
           w_s(:, pstate) = wpol%w_s(ipstate, :)
-        enddo
+        end do
         !$OMP END DO
         !$OMP END PARALLEL
       else
@@ -713,7 +713,7 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
         w_s(:, nsemin:nsemax)     = MATMUL( TRANSPOSE(wpol%w_s(:, :)), &
                                             eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
         call auxil%sum(w_s)
-      endif
+      end if
 
 
       ! The application of residue theorem only retains the pole in given
@@ -743,8 +743,8 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
                             + REAL(  fact_empty_i / ( energy(qstate, ispin) + ieta  &
                                                      - energy(istate, ispin) - wpol%pole(spole) ) , dp ) )
 
-            enddo
-          enddo
+            end do
+          end do
           !$OMP END DO
           !$OMP END PARALLEL
         case(COHSEX)
@@ -765,18 +765,18 @@ subroutine gw_selfenergy_qs(occupation, energy, c_matrix, s_matrix, wpol, selfen
               selfenergy_mo(pstate, qstate, ispin) = selfenergy_mo(pstate, qstate, ispin) &
                         - w_s(spole, pstate) * w_s(spole, qstate) &
                               / wpol%pole(spole)
-            enddo
-          enddo
+            end do
+          end do
           !$OMP END DO
           !$OMP END PARALLEL
         case default
           call die('BUG')
         end select
 
-      enddo !spole
+      end do !spole
 
-    enddo !istate
-  enddo !ispin
+    end do !istate
+  end do !ispin
 
   ! Sum up the contribution from different poles (= different procs)
   call world%sum(selfenergy_mo)
@@ -816,7 +816,7 @@ subroutine dump_gw_ingredients(energy, c_matrix, wpol)
 
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
-  endif
+  end if
 
   !
   ! energies.dat file that contains gKS energies
@@ -825,7 +825,7 @@ subroutine dump_gw_ingredients(energy, c_matrix, wpol)
   write(file_e, *) nvirtual_G-ncore_G-1
   do qstate=ncore_G+1, nvirtual_G-1
     write(file_e, *) energy(qstate, 1)
-  enddo
+  end do
   close(file_e)
   write(stdout, '(1x,a)') 'energies.dat written'
 
@@ -836,7 +836,7 @@ subroutine dump_gw_ingredients(energy, c_matrix, wpol)
   write(file_omega, *) wpol%npole_reso
   do spole=1, wpol%npole_reso
     write(file_omega, *) wpol%pole(spole)
-  enddo
+  end do
   close(file_omega)
   write(stdout, '(1x,a)') 'omegas.dat written'
 
@@ -853,8 +853,8 @@ subroutine dump_gw_ingredients(energy, c_matrix, wpol)
                                                  eri_3center_mo(:, ncore_G+1:nvirtual_G-1, qstate, qspin) )
       call auxil%sum(wcoeff)
       write(file_w) wcoeff(:, :)
-    enddo
-  enddo
+    end do
+  end do
   call clean_deallocate('w coeff for dumping', wcoeff)
   close(file_w)
   write(stdout, '(1x,a)') 'w.bin written'
@@ -872,8 +872,8 @@ subroutine dump_gw_ingredients(energy, c_matrix, wpol)
   do qspin=1, nspin
     do qstate=ncore_G+1, nvirtual_G-1
       write(file_v) eri_3center_mo(:, ncore_G+1:nvirtual_G-1, qstate, qspin)
-    enddo
-  enddo
+    end do
+  end do
   close(file_v)
   write(stdout, '(1x,a)') 'v.bin written'
 

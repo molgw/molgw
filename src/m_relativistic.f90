@@ -138,9 +138,9 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
      &  (  basis_name_1(istring+2:istring+2)=='e' .and. basis_name_1(istring+3:istring+3)=='l') ) then
        basis_name_1=basis_name_1(1:istring-1)
        found_basis_name=.true.
-     endif
-   endif
-  enddo
+     end if
+   end if
+  end do
   basis_name_nrel(:)=basis_name_1
   
   !! Initialize the non-rel. basis (used to find the large component AOs)
@@ -166,14 +166,14 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
         if( abs(basis%shell(ishell)%coeff(igaus) - basis_nrel%shell(jshell)%coeff(igaus))>1e-4 .or. &
          &  abs(basis%shell(ishell)%alpha(igaus) - basis_nrel%shell(jshell)%alpha(igaus))>1e-4 ) then
          this_is_large=.false.
-        endif
-      enddo
+        end if
+      end do
       is_large_4c(ishell)=this_is_large
       if(is_large_4c(ishell)) kshell=kshell+1
-     endif
-    enddo
-   endif
-  enddo
+     end if
+    end do
+   end if
+  end do
 
   !! Find if nstate_large=basis_nrel%nbf before proceeding
   call clean_allocate('Large overlap matrix S', s_matrix_large, basis_nrel%nbf, basis_nrel%nbf)
@@ -189,7 +189,7 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
   if(nstate_large/=nbf_large) then
     write(stdout, '(/,a,i10,i10,/)') 'Nstate and basis_large ', nstate_large, basis_nrel%nbf
     call die("Relativistic requires basis sets that are linearly independent.")
-  endif
+  end if
  
   !! Define atomic basis as large or small
   allocate(is_large(basis%nbf))
@@ -214,12 +214,12 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
     ntyp=28
    else 
     call die('Shell type >6 in Relativistic is not implemented!') 
-   endif
+   end if
    do ibf=1, ntyp
      is_large(ibf+nbasis)=is_large_4c(ishell)
-   enddo
+   end do
    nbasis=nbasis+ntyp
-  enddo
+  end do
   deallocate(is_large_4c)
 
   !! Calculate all integrals for unrestricted-KB H_rel
@@ -256,7 +256,7 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
     nbasis_L=nbasis_L+1
    else
     nbasis_S=nbasis_S+1
-   endif
+   end if
 
    is_large_4c(2*ibf-1)=is_large(ibf)
    is_large_4c(2*ibf)=is_large(ibf)
@@ -301,7 +301,7 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
       Vext_pq=zero;S_pq=zero;Dz_pq=zero;Dy_pq=zero;Dx_pq=zero;
       Dz_pq(2)=scalar_nabla_ao(ibf, jbf, 3)
       H_rel_ukb_mat(2*ibf, 2*jbf)=H4c_me(Vext_pq, S_pq, Dz_pq, Dy_pq, Dx_pq)
-     endif
+     end if
     else                    ! S 
      if(is_large(jbf)) then  ! SL
       ! p3 and q1
@@ -340,12 +340,12 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
       Vext_pq(4)=scalar_nucleus(ibf, jbf)
       S_pq(4)=scalar_s_matrix(ibf, jbf)
       H_rel_ukb_mat(2*ibf, 2*jbf)=H4c_me(Vext_pq, S_pq, Dz_pq, Dy_pq, Dx_pq)
-     endif
-    endif  
+     end if
+    end if  
  
-   enddo
+   end do
 
-  enddo
+  end do
   nbasis_L=2*nbasis_L; nbasis_S=2*nbasis_S; nstate_rkb=2*nbasis_L;
   write(stdout, '(a,i10)') ' UKB Nbasis Large', nbasis_L
   write(stdout, '(a,i10)') ' UKB Nbasis Small', nbasis_S
@@ -360,14 +360,14 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
     x_matrix(2*ibf, 2*jbf)=x_matrix_large(ibf, jbf)
     s_matrix(2*ibf-1, 2*jbf-1)=s_matrix_large(ibf, jbf)
     s_matrix(2*ibf, 2*jbf)=s_matrix_large(ibf, jbf)
-   enddo
-  enddo
+   end do
+  end do
   write(stdout, '(a,/)') ' Completed the H_rel in UKB'
   !! Do not proceed if nbasis_L/2 /= nbf_large because we did not find all the large component basis
   if(nbasis_L/2 /= nbf_large) then
     write(stdout, '(/,a,i10,i10,/)') 'Nbasis_L/2 and basis%nbf large ', nbasis_L/2, nbf_large
     call die("Relativistic requires large comp. basis sets in files foo_rel to be also present in files foo.")
-  endif
+  end if
 
   !! No longer need these scalar and pure large component matrices (integrals)
   call clean_deallocate('Large overlap matrix S', s_matrix_large)
@@ -408,9 +408,9 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
     if(abs(W(ibf))<min_overlap) then
      write(stdout, '(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ', min_overlap, ' in S_mall^-1', ibf, W(ibf)
      W(ibf)=min_overlap
-    endif
+    end if
     s_matrix_small(ibf, ibf)=1.0d0/W(ibf)
-   enddo
+   end do
    s_matrix_small=matmul(matmul(U_mat, s_matrix_small), transpose(conjg(U_mat)))
    deallocate(W, U_mat)
   else
@@ -431,13 +431,13 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
      if(abs(W(ibf))<min_overlap) then
       write(stdout, '(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ', min_overlap, ' in S_mall^-1', ibf, W(ibf)
       W(ibf)=min_overlap
-     endif
+     end if
      s_matrix_small(ibf, ibf)=1.0d0/W(ibf)
-    enddo
+    end do
     s_matrix_small=matmul(matmul(U_mat, s_matrix_small), transpose(conjg(U_mat)))
     deallocate(W, U_mat)
-   endif
-  endif
+   end if
+  end if
   deallocate(ipiv, Work)
   do ibf=1, nbasis_S
    do jbf=1, nbasis_L
@@ -456,7 +456,7 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
       jjbf=jjbf/2
       Dx_pq(1)=scalar_nabla_ao(iibf, jjbf, 1)
       Dy_pq(1)=scalar_nabla_ao(iibf, jjbf, 2)
-     endif
+     end if
     ! S2 
     else
      iibf=iibf/2
@@ -469,11 +469,11 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
      else
       jjbf=jjbf/2
       Dz_pq(2)=scalar_nabla_ao(iibf, jjbf, 3)
-     endif
-    endif
+     end if
+    end if
     MpSqL_matrix(ibf, jbf)=MpSqL_me(Dx_pq, Dy_pq, Dz_pq)
-   enddo
-  enddo
+   end do
+  end do
   c_matrix_small=matmul(s_matrix_small, MpSqL_matrix) !! C = S^-1 M_pSqL
   call clean_deallocate('M_pSqL matrix ', MpSqL_matrix)
   call clean_deallocate('Scalar nabla operator D', scalar_nabla_ao)
@@ -490,7 +490,7 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
   c_matrix_ukb2rkb=complex_zero
   do ibf=1, nbasis_L
    c_matrix_ukb2rkb(ibf, ibf)=1.0d0
-  enddo
+  end do
   c_matrix_ukb2rkb(nbasis_L+1:, nbasis_L+1:)=c_matrix_small(:, :)
   H_rel_rkb_mat=matmul(conjg(transpose(c_matrix_ukb2rkb)), matmul(H_rel_ukb_mat, c_matrix_ukb2rkb))
   call clean_deallocate('H_rel in UKB', H_rel_ukb_mat)
@@ -512,9 +512,9 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
    if(abs(W(ibf))<min_overlap) then
     write(stdout, '(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ', min_overlap, ' in (RKB S_SS)^-1/2', ibf, W(ibf)
     W(ibf)=min_overlap
-   endif
+   end if
    Tmp_matrix(ibf, ibf)=1.0d0/sqrt(W(ibf)) 
-  enddo
+  end do
   x_matrix_small=matmul(matmul(U_mat, Tmp_matrix), transpose(conjg(U_mat)))
   x_matrix(nbasis_L+1:, nbasis_L+1:)=x_matrix_small(:, :) ! NOTE: save in x_matrix
    ! C = C (RKB S_SS)^-1/2 
@@ -526,14 +526,14 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
      if(ibf/=jbf) then
       if(abs(x_matrix_small(ibf, jbf))>min_overlap) then
        write(stdout, '(a,i10,i10,2f20.5)') 'Error S comp. orthonorm. ', ibf, jbf, x_matrix_small(ibf, jbf)
-      endif
+      end if
      else
       if(abs(x_matrix_small(ibf, jbf)-1.0d0)>min_overlap) then
        write(stdout, '(a,i10,i10,2f20.5)') 'Error S comp. orthonorm. ', ibf, jbf, x_matrix_small(ibf, jbf)
-      endif
-     endif
-   enddo
-  enddo
+      end if
+     end if
+   end do
+  end do
   deallocate(W, U_mat, Tmp_matrix) 
   call clean_deallocate('4C UKB overlap matrix S', s_matrix_4c)
   call clean_deallocate('Small overlap matrix ', s_matrix_small)
@@ -562,7 +562,7 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
   do ibf=1, nstate_rkb/2
    write(stdout, '(1x,i5,2(2(1x,f25.5)))') ibf, W(2*ibf-1), W(2*ibf), W(2*ibf-1)*Ha_eV, W(2*ibf)*Ha_eV 
    if(ibf==nbasis_L/2) write(stdout, '(a)') '  --------------------------------------------------------------'
-  enddo
+  end do
   c_matrix=matmul(x_matrix, U_mat) ! NOTE: As we do in m_scf_loop.f90 we multiply S^-1/2 U = c_matrix
   deallocate(W, U_mat)
   call clean_deallocate('H_rel in RKB ortho', H_rel_rkb_ortho_mat)
@@ -624,9 +624,9 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
     if(abs(W(ibf))<min_overlap) then
      write(stdout, '(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ', min_overlap, ' in A^-1', ibf, W(ibf)
      W(ibf)=min_overlap
-    endif
+    end if
     R_mat(ibf, ibf)=1.0d0/W(ibf)
-   enddo
+   end do
    A_mat=matmul(matmul(U_mat, R_mat), transpose(conjg(U_mat)))
    R_mat=matmul(A_mat, B_mat)
    deallocate(W, U_mat)
@@ -649,9 +649,9 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
     do jbf=1, nbasis_L
       if(abs(A_mat(ibf, jbf))>1d-5) then
        write(stdout, '(a,i10,i10,2f20.5)') 'Error computing R decoup. matrix. ', ibf, jbf, A_mat(ibf, jbf)
-      endif
-    enddo
-   enddo
+      end if
+    end do
+   end do
    R_mat=transpose(conjg(R_mat))
    deallocate(Tmp_matrix)!,Work,ipiv)
    write(stdout, '(a)') ' Checked that the R matrix solves the system of equations'
@@ -668,7 +668,7 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
    do ibf=1, nbasis_L
     A_mat(ibf, ibf)=A_mat(ibf, ibf)+1.0d0
     B_mat(ibf, ibf)=B_mat(ibf, ibf)+1.0d0
-   enddo
+   end do
    allocate(W(nbasis_L), U_mat(nbasis_L, nbasis_L), Tmp_matrix(nbasis_L, nbasis_L))
    Tmp_matrix=complex_zero; U_mat=complex_zero; W=complex_zero;
    call diagonalize(' ', A_mat,W,U_mat)
@@ -678,9 +678,9 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
     if(abs(W(ibf))<min_overlap) then
      write(stdout, '(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ', min_overlap, ' in 1/ sqrt[ I + R^dagger R ]', ibf, W(ibf)
      W(ibf)=min_overlap
-    endif
+    end if
     Tmp_matrix(ibf, ibf)=1.0d0/sqrt(W(ibf))
-   enddo  
+   end do  
    A_mat=matmul(matmul(U_mat, Tmp_matrix), transpose(conjg(U_mat)))
    Tmp_matrix=complex_zero; U_mat=complex_zero; W=complex_zero;
    call diagonalize(' ', B_mat,W,U_mat)
@@ -690,9 +690,9 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
     if(abs(W(ibf))<min_overlap) then
      write(stdout, '(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ', min_overlap, ' in 1/ sqrt[ I + R R^dagger ]', ibf, W(ibf)
      W(ibf)=min_overlap
-    endif
+    end if
     Tmp_matrix(ibf, ibf)=1.0d0/sqrt(W(ibf))
-   enddo  
+   end do  
    B_mat=matmul(matmul(U_mat, Tmp_matrix), transpose(conjg(U_mat)))
    deallocate(W, U_mat, Tmp_matrix)
    write(stdout, '(a,/)') ' Completed normalization factors for the transformation matrix'
@@ -711,7 +711,7 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
    U_mat(1:nbasis_L, nbasis_L+1:)=R_mat
    do ibf=1, nstate_rkb
     U_mat(ibf, ibf)=1.0d0
-   enddo
+   end do
    U_mat=matmul(Tmp_matrix, U_mat)
    Tmp_matrix=matmul(U_mat, transpose(conjg(U_mat)))
    do ibf=1, nstate_rkb
@@ -719,14 +719,14 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
      if(ibf==jbf) then
       if(abs(Tmp_matrix(ibf, jbf)-1.0d0)>min_overlap) then
        write(stdout, '(a,i5,i5,2f10.5)') ' Error in U matrix', ibf, jbf, Tmp_matrix(ibf, jbf)
-      endif
+      end if
      else
       if(abs(Tmp_matrix(ibf, jbf))>min_overlap) then
        write(stdout, '(a,i5,i5,2f10.5)') ' Error in U matrix', ibf, jbf, Tmp_matrix(ibf, jbf)
-      endif
-     endif
-    enddo
-   enddo
+      end if
+     end if
+    end do
+   end do
    deallocate(Tmp_matrix)
    write(stdout, '(a,/)') ' Checked that the U decoupling matrix is unitary'
    call clean_deallocate('A matrix ', A_mat)
@@ -764,9 +764,9 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
     if(abs(W(ibf))<min_overlap) then
      write(stdout, '(a,f20.8,a,i5,f20.8)') ' Eigenvalue lower than ', min_overlap, ' in X matrix calc.', ibf, W(ibf)
      W(ibf)=min_overlap
-    endif
+    end if
     x_matrix(ibf, ibf)=1.0d0/sqrt(W(ibf))
-   enddo
+   end do
    x_matrix=matmul(matmul(V_mat, x_matrix), transpose(conjg(V_mat)))
    deallocate(W, V_mat)
     ! H^x2c = U H^RKB U^dagger
@@ -791,31 +791,31 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
 !!  tmp2=complex_zero
 !!  do ibf=1,nbasis_L
 !!   tmp2(ibf,ibf)=E_state(ibf)
-!!  enddo
+!!  end do
 !!  tmp0=matmul(H_rel_rkb_mat,c_matrix)
 !!  tmp1=matmul(matmul(s_matrix,c_matrix),tmp2)
 !!  tmp2=tmp0-tmp1
 !!  do ibf=1,nbasis_L
 !!   do jbf=1,nbasis_L
 !!    if(abs(tmp2(ibf,jbf))>1d-8) write(stdout,*) ibf,jbf,tmp2(ibf,jbf)
-!!   enddo
-!!  enddo
+!!   end do
+!!  end do
 !!  write(stdout,'(a)') ' Checking Hermiticity of H^x2c'
 !!  do ibf=1,nbasis_L
 !!   do jbf=1,nbasis_L
 !!    if(abs(H_rel_rkb_mat(ibf,jbf)-conjg(H_rel_rkb_mat(jbf,ibf)))>1d-8) then
 !!     write(stdout,*) ibf,jbf,H_rel_rkb_mat(ibf,jbf),H_rel_rkb_mat(jbf,ibf)
-!!    endif
-!!   enddo
-!!  enddo
+!!    end if
+!!   end do
+!!  end do
 !!  write(stdout,'(a)') ' Checking Hermiticity of S^x2c'
 !!  do ibf=1,nbasis_L
 !!   do jbf=1,nbasis_L
 !!    if(abs(s_matrix(ibf,jbf)-conjg(s_matrix(jbf,ibf)))>1d-8) then
 !!     write(stdout,*) ibf,jbf,s_matrix(ibf,jbf),s_matrix(jbf,ibf)
-!!    endif
-!!   enddo
-!!  enddo
+!!    end if
+!!   end do
+!!  end do
 !!  write(stdout,'(a)') ' Checking (X^x2c)^dagger S^x2c X^x2c = I'
 !!  tmp0=matmul(conjg(transpose(x_matrix)),matmul(s_matrix,x_matrix))
 !!  do ibf=1,nbasis_L
@@ -824,9 +824,9 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
 !!     if(abs(tmp0(ibf,jbf))>min_overlap) write(stdout,*) ibf,jbf,tmp0(ibf,jbf)
 !!    else
 !!     if(abs(tmp0(ibf,jbf)-1.0d0)>min_overlap) write(stdout,*) ibf,jbf,tmp0(ibf,jbf)
-!!    endif
-!!   enddo
-!!  enddo
+!!    end if
+!!   end do
+!!  end do
 !!  deallocate(tmp0)
 !!  deallocate(tmp1)
 !!  deallocate(tmp2)
@@ -853,17 +853,17 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
    do ibf=1, nstate/2
     write(stdout, '(1x,i5,2(2(1x,f25.5)))') ibf, W(2*ibf-1), W(2*ibf), W(2*ibf-1)*Ha_eV, W(2*ibf)*Ha_eV 
     if(ibf==ielectrons/2) write(stdout, '(a)') '  --------------------------------------------------------------'
-   enddo
+   end do
    deallocate(W, U_mat)
    call clean_deallocate('H_X2C ortho', H_rel_rkb_ortho_mat)
 
    write(stdout, '(/,a)') ' Completed X2C Hamiltonian construction'
    write(stdout, '(a,/)') ' ======================================'
 
-  endif
+  end if
 
 
-#endif
+#end if
 
   call timer_relativistic%stop()
 
@@ -885,27 +885,27 @@ subroutine shuffle_complex(nbasis, is_large, matrix)
    if(is_large(ibf)) then
     tmp_matrix(jbf, :)=matrix(ibf, :)
     jbf=jbf+1  
-   endif
-  enddo
+   end if
+  end do
   do ibf=1, nbasis
    if(.not.is_large(ibf)) then
     tmp_matrix(jbf, :)=matrix(ibf, :)
     jbf=jbf+1  
-   endif
-  enddo
+   end if
+  end do
   jbf=1
   do ibf=1, nbasis
    if(is_large(ibf)) then
     matrix(:, jbf)=tmp_matrix(:, ibf)
     jbf=jbf+1  
-   endif
-  enddo
+   end if
+  end do
   do ibf=1, nbasis
    if(.not.is_large(ibf)) then
     matrix(:, jbf)=tmp_matrix(:, ibf)
     jbf=jbf+1  
-   endif
-  enddo
+   end if
+  end do
   deallocate(tmp_matrix)
 
 end subroutine shuffle_complex
@@ -926,27 +926,27 @@ subroutine shuffle_real(nbasis, is_large, matrix)
    if(is_large(ibf)) then
     tmp_matrix(jbf, :)=matrix(ibf, :)
     jbf=jbf+1  
-   endif
-  enddo
+   end if
+  end do
   do ibf=1, nbasis
    if(.not.is_large(ibf)) then
     tmp_matrix(jbf, :)=matrix(ibf, :)
     jbf=jbf+1  
-   endif
-  enddo
+   end if
+  end do
   jbf=1
   do ibf=1, nbasis
    if(is_large(ibf)) then
     matrix(:, jbf)=tmp_matrix(:, ibf)
     jbf=jbf+1  
-   endif
-  enddo
+   end if
+  end do
   do ibf=1, nbasis
    if(.not.is_large(ibf)) then
     matrix(:, jbf)=tmp_matrix(:, ibf)
     jbf=jbf+1  
-   endif
-  enddo
+   end if
+  end do
   deallocate(tmp_matrix)
 
 end subroutine shuffle_real
@@ -986,8 +986,8 @@ subroutine check_CdaggerSC_I(basis, electrons_in, c_matrix_rel, s_matrix_rel, x_
     do jstate=1, nstate/2
        tmp_matrix(2*istate-1, 2*jstate-1)=s_matrix(istate, jstate)
        tmp_matrix(2*istate  , 2*jstate  )=s_matrix(istate, jstate)
-    enddo
-  enddo
+    end do
+  end do
   tmp_matrix=matmul(transpose(conjg(c_matrix_rel)), matmul(tmp_matrix, c_matrix_rel))
   err_x2c_coef=0.0_dp
   do istate=1, nstate
@@ -995,14 +995,14 @@ subroutine check_CdaggerSC_I(basis, electrons_in, c_matrix_rel, s_matrix_rel, x_
        if(istate==jstate) then
          if(abs(tmp_matrix(istate, jstate)-1.0_dp)>1e-6) then
            err_x2c_coef=err_x2c_coef+abs(tmp_matrix(istate, jstate)-1.0_dp)
-         endif
+         end if
        else
          if(abs(tmp_matrix(istate, jstate))>1e-6) then
            err_x2c_coef=err_x2c_coef+abs(tmp_matrix(istate, jstate))
-         endif
-       endif
-    enddo
-  enddo
+         end if
+       end if
+    end do
+  end do
   err_x2c_coef=err_x2c_coef/(nstate*nstate)
   write(stdout, '(a,f15.8)') ' MAE in (C^x2c)^dagger S C^x2c = I', err_x2c_coef
   if(err_x2c_coef>1e-6 .and. .false.) then ! TODO: decide if it is worthy or we just remove it...
@@ -1012,7 +1012,7 @@ subroutine check_CdaggerSC_I(basis, electrons_in, c_matrix_rel, s_matrix_rel, x_
       write(stdout, '(a)') ' The MAE > 1e-6, overwriting S, X, C and H matrices before doing the SCF procedure'
     else
       write(stdout, '(a)') ' The MAE > 1e-6, overwriting S, and X matrices before doing the SCF procedure'
-    endif
+    end if
     s_matrix_rel=COMPLEX_ZERO
     x_matrix_rel=COMPLEX_ZERO
 
@@ -1023,14 +1023,14 @@ subroutine check_CdaggerSC_I(basis, electrons_in, c_matrix_rel, s_matrix_rel, x_
          s_matrix_rel(2*istate  , 2*jstate  )=s_matrix(istate, jstate)
          x_matrix_rel(2*istate-1, 2*jstate-1)=x_matrix(istate, jstate)
          x_matrix_rel(2*istate  , 2*jstate  )=x_matrix(istate, jstate)
-      enddo
-    enddo
+      end do
+    end do
 
     if( trim(approx_H_x2c)=='yes' ) then 
       write(stdout, '(a)') ' Computing inverse of the C_x2c matrix'
       do istate=1, nstate
         c_matrix_rel(:, istate)=c_matrix_rel(:, istate)/sqrt(tmp_matrix(istate, istate))
-      enddo
+      end do
       allocate(inv_c_matrix_rel(nstate, nstate), ipiv(nstate), Work(1))
       inv_c_matrix_rel=c_matrix_rel
       lwork=-1
@@ -1044,14 +1044,14 @@ subroutine check_CdaggerSC_I(basis, electrons_in, c_matrix_rel, s_matrix_rel, x_
         allocate(Work(lwork))
         call zgetri(nstate, inv_c_matrix_rel, nstate, ipiv, Work, lwork, info)
         if(info/=0) call die("Error computing ( C_x2c )^-1 in zgetri")
-      endif
+      end if
       
       write(stdout, '(a)') ' Computing approximate Hamiltonian H^new = 1/2 ( H + H^dagger )'
       write(stdout, '(a)') ' with H = S C_x2c e ( C_x2c )^-1 and H^dagger = S C_x2c e ( C_x2c )^-1'
       tmp_matrix=COMPLEX_ZERO
       do istate=1, nstate
         tmp_matrix(istate, istate)=energy_rel(istate)
-      enddo
+      end do
       ! H C_x2c = S C_x2c e
       ! H = S C_x2c e ( C_x2c )^-1
       ! and we should also have
@@ -1079,7 +1079,7 @@ subroutine check_CdaggerSC_I(basis, electrons_in, c_matrix_rel, s_matrix_rel, x_
       do istate=1, nstate/2
        write(stdout, '(1x,i5,2(2(1x,f25.5)))') istate, W(2*istate-1), W(2*istate), W(2*istate-1)*Ha_eV, W(2*istate)*Ha_eV 
        if(istate==ielectrons/2) write(stdout, '(a)') '  --------------------------------------------------------------'
-      enddo
+      end do
       !W(:)=abs(W(:)-energy_rel(:))
       !err_x2c_coef=sum(W(1:2*ielectrons))/(2*ielectrons)
       !write(stdout,'(/,a,f10.6)') ' MAE in the eigenvalues (2 x Nelectrons window) ',err_x2c_coef
@@ -1088,9 +1088,9 @@ subroutine check_CdaggerSC_I(basis, electrons_in, c_matrix_rel, s_matrix_rel, x_
       
       deallocate(W, U_mat)
 
-    endif
+    end if
 
-  endif
+  end if
   
   deallocate(tmp_matrix)
 

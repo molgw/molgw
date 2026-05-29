@@ -88,7 +88,7 @@ subroutine prepare_tddft(is_triplet_in, nstate, basis, c_matrix, occupation)
   call copy_libxc_info(dft_xc, tddft_xc)
   do ixc=1, tddft_xc(1)%nxc
     tddft_xc(ixc)%nspin = nspin_tddft
-  enddo
+  end do
   call init_libxc_info(tddft_xc)
 
   call init_dft_grid(basis, tddft_grid_level, dft_xc(1)%needs_gradient, .FALSE., 1)
@@ -117,7 +117,7 @@ subroutine prepare_tddft(is_triplet_in, nstate, basis, c_matrix, occupation)
     vsigma(:, :)     = 0.0_dp
     v2rhosigma(:, :) = 0.0_dp
     v2sigma2(:, :)   = 0.0_dp
-  endif
+  end if
 
 
   max_v2sigma2 = -1.0_dp
@@ -131,7 +131,7 @@ subroutine prepare_tddft(is_triplet_in, nstate, basis, c_matrix, occupation)
     ! store the wavefunction in r
     do ispin=1, nspin
       wf_r(igrid, :, ispin) = MATMUL( basis_function_r(:, 1) , c_matrix(:, :, ispin) )
-    enddo
+    end do
 
     if( dft_xc(1)%needs_gradient ) then
       call get_basis_functions_gradr_batch(basis, igrid, bf_gradx, bf_grady, bf_gradz)
@@ -141,8 +141,8 @@ subroutine prepare_tddft(is_triplet_in, nstate, basis, c_matrix, occupation)
         wf_gradr(1, igrid, :, ispin) = MATMUL( bf_gradx(:, 1) , c_matrix(:, :, ispin) )
         wf_gradr(2, igrid, :, ispin) = MATMUL( bf_grady(:, 1) , c_matrix(:, :, ispin) )
         wf_gradr(3, igrid, :, ispin) = MATMUL( bf_gradz(:, 1) , c_matrix(:, :, ispin) )
-      enddo
-    endif
+      end do
+    end if
 
 
     if( dft_xc(1)%needs_gradient ) then
@@ -156,11 +156,11 @@ subroutine prepare_tddft(is_triplet_in, nstate, basis, c_matrix, occupation)
         sigma_c(3) = SUM( grad_rhor(2, 1, :)**2 )
       else ! triplet excitations from singlet ground-state
         sigma_c(:) = SUM( grad_rhor(1, 1, :)**2 ) * 0.25_dp
-      endif
+      end if
 
     else
       call calc_density_r_batch(occupation, c_matrix, basis_function_r, rhor_r)
-    endif
+    end if
 
 
     if( nspin_tddft==1 ) then
@@ -169,7 +169,7 @@ subroutine prepare_tddft(is_triplet_in, nstate, basis, c_matrix, occupation)
       rho_c(:) = rhor_r(:, 1)
     else ! triplet excitations from singlet ground-state
       rho_c(:) = rhor_r(1, 1) * 0.5_dp
-    endif
+    end if
 
     !
     ! Calculate the kernel
@@ -194,7 +194,7 @@ subroutine prepare_tddft(is_triplet_in, nstate, basis, c_matrix, occupation)
         vsigma_c(:)     = MIN( vsigma_c(:), kernel_capping )
         v2rhosigma_c(:) = MIN( v2rhosigma_c(:), kernel_capping )
         v2sigma2_c(:)   = MIN( v2sigma2_c(:), kernel_capping )
-      endif
+      end if
 
       ! Store the result with the weight
       ! Remove too large values for stability
@@ -203,10 +203,10 @@ subroutine prepare_tddft(is_triplet_in, nstate, basis, c_matrix, occupation)
         vsigma(igrid, :)     = vsigma(igrid, :)     + vsigma_c(:)     * w_grid(igrid) * dft_xc(ixc)%coeff
         v2rhosigma(igrid, :) = v2rhosigma(igrid, :) + v2rhosigma_c(:) * w_grid(igrid) * dft_xc(ixc)%coeff
         v2sigma2(igrid, :)   = v2sigma2(igrid, :)   + v2sigma2_c(:)   * w_grid(igrid) * dft_xc(ixc)%coeff
-      endif
+      end if
 
-    enddo
-  enddo
+    end do
+  end do
   if(dft_xc(1)%needs_gradient) then
     call world%max(max_v2sigma2)
     write(stdout, '(a,e18.6)') ' Maximum numerical value for fxc: ', max_v2sigma2
@@ -217,7 +217,7 @@ subroutine prepare_tddft(is_triplet_in, nstate, basis, c_matrix, occupation)
     allocate(dot_rho_ij(ngrid, nspin))
     allocate(dot_rho_kl(ngrid, nspin))
 
-  endif
+  end if
 
   deallocate(rho_c)
   deallocate(v2rho2_c)
@@ -229,7 +229,7 @@ subroutine prepare_tddft(is_triplet_in, nstate, basis, c_matrix, occupation)
   deallocate(tddft_xc)
 #else
   call die('prepare_tddft: not available without LIBXC')
-#endif
+#end if
 
 end subroutine prepare_tddft
 
@@ -274,7 +274,7 @@ function eval_fxc_rks_singlet(istate, jstate, ijspin, kstate, lstate, klspin)
                  + wf_r(:, kstate, klspin) * wf_r(:, lstate, klspin) * dot_rho_ij(:, 1) ) &
                    * 4.0_dp * v2rhosigma(:, 1) )
 
-  endif
+  end if
 
 
 end function eval_fxc_rks_singlet
@@ -321,7 +321,7 @@ function eval_fxc_uks(istate, jstate, ijspin, kstate, lstate, klspin)
          +  SUM( ( wf_r(:, istate, ijspin) * wf_r(:, jstate, ijspin) * dot_rho_kl(:, 1)   &
                 + wf_r(:, kstate, klspin) * wf_r(:, lstate, klspin) * dot_rho_ij(:, 1) ) &
                    * ( v2rhosigma(:, 1) + v2rhosigma(:, 2) + v2rhosigma(:, 3) )  )
-  endif
+  end if
 
 end function eval_fxc_uks
 
@@ -365,7 +365,7 @@ function eval_fxc_rks_triplet(istate, jstate, ijspin, kstate, lstate, klspin)
          +  SUM( ( wf_r(:, istate, ijspin) * wf_r(:, jstate, ijspin) * dot_rho_kl(:, 1)   &
                 + wf_r(:, kstate, klspin) * wf_r(:, lstate, klspin) * dot_rho_ij(:, 1) ) &
                    * ( v2rhosigma(:, 1) - v2rhosigma(:, 4) )  )   !FIXME 3 and 4 are working, but only one is correct in principle
-  endif
+  end if
 
 end function eval_fxc_rks_triplet
 

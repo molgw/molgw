@@ -43,7 +43,7 @@ subroutine setup_atomic_density(basis, rr, rhor)
     found = .FALSE.
     do ibf=1, basis%nbf
       found = found .OR. ( NORM2( xatom(:, icenter) - basis%bff(ibf)%x0(:) ) < 1.0e-6_dp )
-    enddo
+    end do
     if( .NOT. found ) cycle
 
     ngau = 4
@@ -54,10 +54,10 @@ subroutine setup_atomic_density(basis, rr, rhor)
 
     do igau=1, ngau
       rhor = rhor + SQRT(alpha(igau)/pi)**3 * EXP( -alpha(igau)*dr**2) * coeff(igau)
-    enddo
+    end do
 
     deallocate(alpha, coeff)
-  enddo
+  end do
 
 end subroutine setup_atomic_density
 
@@ -105,7 +105,7 @@ subroutine calc_density_r_batch(occupation, c_matrix, basis_function_r, rhor)
       !$OMP PARALLEL DO
       do ir=1, nr
         rhor(ispin, ir) = SUM( phir(:, ir)**2 * occupation(:nocc, ispin) )
-      enddo
+      end do
       !$OMP END PARALLEL DO
 
       deallocate(phir)
@@ -122,7 +122,7 @@ subroutine calc_density_r_batch(occupation, c_matrix, basis_function_r, rhor)
       !$OMP PARALLEL DO
       do ir=1, nr
         rhor(ispin, ir) = SUM( ABS(phir_cmplx(:, ir))**2 * occupation(:nocc, ispin) )
-      enddo
+      end do
       !$OMP END PARALLEL DO
 
       deallocate(phir_cmplx)
@@ -132,7 +132,7 @@ subroutine calc_density_r_batch(occupation, c_matrix, basis_function_r, rhor)
     end select
 
 
-  enddo
+  end do
 
 
 end subroutine calc_density_r_batch
@@ -207,10 +207,10 @@ subroutine calc_PI_dens_grad_r_batch(occupation, dm2_JK, c_matrix, bfr, PIr, &
             do jstate=1, nocc
               PIr(ir) = PIr(ir) + dm2_JK(1, istate, jstate)*phir(istate, ir)*phir(jstate, ir)*phir(istate, ir)*phir(jstate, ir) ! J
               PIr(ir) = PIr(ir) + dm2_JK(2, istate, jstate)*phir(istate, ir)*phir(jstate, ir)*phir(jstate, ir)*phir(istate, ir) ! K
-            enddo
-          enddo
-        endif
-      enddo
+            end do
+          end do
+        end if
+      end do
       !$OMP END PARALLEL DO
       deallocate(phir)
       deallocate(phir_gradx, phir_grady, phir_gradz)
@@ -252,10 +252,10 @@ subroutine calc_PI_dens_grad_r_batch(occupation, dm2_JK, c_matrix, bfr, PIr, &
             &                                                  *phir_cmplx(istate, ir)*phir_cmplx(jstate, ir) ) ! J
               PIr(ir) = PIr(ir) + REAL( dm2_JK(2, istate, jstate)*conjg(phir_cmplx(istate, ir)*phir_cmplx(jstate, ir)) &
             &                                                  *phir_cmplx(jstate, ir)*phir_cmplx(istate, ir) ) ! K
-            enddo
-          enddo
-        endif
-      enddo
+            end do
+          end do
+        end if
+      end do
       !$OMP END PARALLEL DO
 
       deallocate(tmp_cmplx)
@@ -267,7 +267,7 @@ subroutine calc_PI_dens_grad_r_batch(occupation, dm2_JK, c_matrix, bfr, PIr, &
     end select
 
 
-  enddo
+  end do
 
 
 end subroutine calc_PI_dens_grad_r_batch
@@ -339,7 +339,7 @@ subroutine calc_density_gradr_batch(occupation, c_matrix, bfr, bf_gradx, bf_grad
         grad_rhor(ispin, ir, 1) = 2.0_dp * SUM(  phir(:, ir) * phir_gradx(:, ir) * occupation(:nocc, ispin) )
         grad_rhor(ispin, ir, 2) = 2.0_dp * SUM(  phir(:, ir) * phir_grady(:, ir) * occupation(:nocc, ispin) )
         grad_rhor(ispin, ir, 3) = 2.0_dp * SUM(  phir(:, ir) * phir_gradz(:, ir) * occupation(:nocc, ispin) )
-      enddo
+      end do
       !$OMP END PARALLEL DO
       deallocate(phir)
       deallocate(phir_gradx, phir_grady, phir_gradz)
@@ -373,7 +373,7 @@ subroutine calc_density_gradr_batch(occupation, c_matrix, bfr, bf_gradx, bf_grad
               * CONJG(phir_grady_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
         grad_rhor(ispin, ir, 3) = 2.0_dp * REAL( SUM( phir_cmplx(:, ir) &
               * CONJG(phir_gradz_cmplx(:, ir)) * occupation(:nocc, ispin ) ), dp)
-      enddo
+      end do
       !$OMP END PARALLEL DO
 
       deallocate(tmp_cmplx)
@@ -386,7 +386,7 @@ subroutine calc_density_gradr_batch(occupation, c_matrix, bfr, bf_gradx, bf_grad
 
 
 
-  enddo
+  end do
 
 
 
@@ -440,7 +440,7 @@ subroutine calc_density_current_rr_cmplx(occupation, c_matrix_cmplx, basis_funct
     deallocate(phir_cmplx)
     deallocate(phir_gradx_cmplx, phir_grady_cmplx, phir_gradz_cmplx)
 
-  enddo
+  end do
 
 
 end subroutine calc_density_current_rr_cmplx
@@ -486,7 +486,7 @@ subroutine calc_density_in_disc_cmplx_dft_grid(basis, occupation, c_matrix_cmplx
     i_max_atom=ncenter_nuclei-nprojectile
   else
     i_max_atom=ncenter_nuclei
-  endif
+  end if
 
   inquire(file='manual_disc_dft_grid', exist=file_exists)
   if(file_exists) then
@@ -498,7 +498,7 @@ subroutine calc_density_in_disc_cmplx_dft_grid(basis, occupation, c_matrix_cmplx
     ndisc=100
     length=10.0_dp
     call issue_warning('calc_density_in_disc_cmplx_dft_grid: manual file was not found')
-  endif
+  end if
 
   z_min =MIN(MINVAL( xatom(3, 1:i_max_atom) ), MINVAL( xbasis(3, :) )) - length
   z_max =MAX(MAXVAL( xatom(3, 1:i_max_atom) ), MAXVAL( xbasis(3, :) )) + length
@@ -549,14 +549,14 @@ subroutine calc_density_in_disc_cmplx_dft_grid(basis, occupation, c_matrix_cmplx
         if( idisc > ndisc ) then
           charge_out(2, ispin)=charge_out(2, ispin)+rhor_batch(ispin, ir) * weight_batch(ir)
         end if
-      enddo ! loop on the ispin
-    enddo ! loop on ir
+      end do ! loop on the ispin
+    end do ! loop on ir
 
     deallocate(weight_batch)
     deallocate(basis_function_r_batch)
     deallocate(rhor_batch)
 
-  enddo ! loop on the batches
+  end do ! loop on the batches
   call grid%sum(charge_disc(:, :))
 
   if( is_iomaster ) then
@@ -565,7 +565,7 @@ subroutine calc_density_in_disc_cmplx_dft_grid(basis, occupation, c_matrix_cmplx
       write(file_name(ispin), '(a,i4.4,a,i1,a,i3.3,f0.3,a)') 'disc_dens_', num, &
                                                             "_s_", ispin, "_r_", INT(r_disc), r_disc-INT(r_disc),".dat"
       open(newunit=file_out(ispin), file=file_name(ispin))
-    enddo
+    end do
 
     do ispin=1, nspin
       write(file_out(ispin), '(a,F12.6,a,3F12.6)') '# Time: ', time_cur, '  Projectile position (A): ', &
@@ -623,9 +623,9 @@ subroutine calc_density_gradr_laplr(nspin, nbf, p_matrix, basis_function_r, basi
                              + basis_function_r(ibf) * SUM( basis_function_laplr(:, jbf) )               &
                              + 2.0_dp * DOT_PRODUCT( basis_function_gradr(:, ibf) , basis_function_gradr(:, jbf) ) )
 
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
 
 end subroutine calc_density_gradr_laplr
@@ -1054,7 +1054,7 @@ subroutine HSE08Fx(omega, ipol, rho, s, Fxhse, d10Fxhse, d01Fxhse)
     kf = (three*pi2*rho)**f13
   else
     kf = (six*pi2*rho)**f13
-  endif
+  end if
   nu = omega/kf
   chi = nu/dsqrt(lambda+nu**two)
   lambda2 = (one+chi)*(lambda+nu**two)

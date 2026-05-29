@@ -76,7 +76,7 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
   call diagonalize(' ', s_matrix, s_eigval, s_matrix_sqrt)
   do jbf=1, basis%nbf
     s_matrix_sqrt(:, jbf) = s_matrix_sqrt(:, jbf) * SQRT(s_eigval(jbf))
-  enddo
+  end do
   deallocate(s_eigval)
 
 
@@ -90,7 +90,7 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
 
     else
       call die('dm_dump: optional arguments natural_occupation and natural_orbital should be both there')
-    endif
+    end if
 
   else
     nstate = basis%nbf
@@ -121,15 +121,15 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
         open(newunit=file_density_matrix, file='DENSITY_MATRIX', form='unformatted', action='read')
         do ispin=1, nspin
           read(file_density_matrix) p_matrix_test(:, :, ispin)
-        enddo
+        end do
         close(file_density_matrix)
       else
         call die('dm_dump: no correlated density matrix read or calculated though input file suggests you really want one')
-      endif
+      end if
 
       write(stdout,'(1x,a)') 'Natural orbitals have been calculated from a density-matrix in a file'
       call get_c_matrix_from_p_matrix(p_matrix_test, c_matrix_test, occupation_test)
-    endif
+    end if
 
 
 
@@ -150,13 +150,13 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
       write(stdout, '(/,1x,a,i3)')  'Natural occupations for spin: ', ispin
       write(stdout, '(10(2x,f14.6))') s_eigval(:)
       write(stdout, '(1x,a,f14.6)') 'Trace:', SUM(s_eigval(:))
-    enddo
+    end do
 
     deallocate(s_eigval)
     deallocate(p_matrix_ortho)
 
     call clean_deallocate('Density matrix', p_matrix_test)
-  endif
+  end if
 
 
   call init_dft_grid(basis, grid_level, .FALSE., .TRUE., BATCH_SIZE)
@@ -189,11 +189,11 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
       write(file_rho_grid, '(2(1x,es16.6))') (rhor_batch_test(:, ir), weight_batch(ir), ir=1, nr)
     else
       write(file_rho_grid, '(3(1x,es16.6))') (rhor_batch_test(:, ir), weight_batch(ir), ir=1, nr)
-    endif
+    end if
 
     deallocate(weight_batch, rhor_batch_test, basis_function_r_batch)
 
-  enddo
+  end do
   close(file_rho_grid)
 
   ! not coded in parallel
@@ -209,7 +209,7 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
     !
     ! Evaluate the static quadrupole
     call static_quadrupole(basis, occupation_test, c_matrix_test)
-  endif
+  end if
 
   if( print_cube_ ) call plot_cube_wfn('MBPT', basis, occupation_test, c_matrix_test)
 
@@ -226,7 +226,7 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
     call timer_prescf%stop()
     call timer_molgw%stop()
     call this_is_the_end()
-  endif
+  end if
 
 
 end subroutine dm_dump

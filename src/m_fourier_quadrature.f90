@@ -102,7 +102,7 @@ subroutine setup_nucleus_fourier(basis_p, basis_t, reference)
     xtmp = ( iqradial - 0.5_dp ) / REAL(nqradial, dp)
     xa(iqradial)   = -alpha * log( 1.0_dp - xtmp**3)
     wxa(iqradial)  = 3.0_dp * alpha * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nqradial, dp)
-  enddo
+  end do
   call ld0230(x1, y1, z1, w1, iq)
   iq = 0
   do ix1=1, n1
@@ -112,8 +112,8 @@ subroutine setup_nucleus_fourier(basis_p, basis_t, reference)
       qlist(1, iq) = xa(iqradial) * x1(ix1)
       qlist(2, iq) = xa(iqradial) * y1(ix1)
       qlist(3, iq) = xa(iqradial) * z1(ix1)
-    enddo
-  enddo
+    end do
+  end do
 
 
   enucl(:, :) = 0.0_dp
@@ -130,7 +130,7 @@ subroutine setup_nucleus_fourier(basis_p, basis_t, reference)
     do iatom=1, ncenter_nuclei
       structure_factor = structure_factor &
                 - zvalence(iatom) * EXP( im * DOT_PRODUCT(qvec(:), xatom(:, iatom)) )
-    enddo
+    end do
 
     call setup_gos_fourier(basis_p, basis_t, -qpvvec, s_matrix_mqmv)
 
@@ -139,7 +139,7 @@ subroutine setup_nucleus_fourier(basis_p, basis_t, reference)
 
     deallocate(s_matrix_mqmv)
 
-  enddo
+  end do
   enucl(:, :) = enucl(:, :) / (2.0_dp * pi)**3
 
   call world%sum(enucl)
@@ -215,7 +215,7 @@ subroutine setup_kinetic_fourier(basis_p, basis_t, reference)
     xtmp = ( iqradial - 0.5_dp ) / REAL(nqradial, dp)
     xa(iqradial)   = -alpha * log( 1.0_dp - xtmp**3)
     wxa(iqradial)  = 3.0_dp * alpha * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nqradial, dp)
-  enddo
+  end do
   call ld0230(x1, y1, z1, w1, iq)
   iq = 0
   do iqradial=1, nqradial
@@ -225,8 +225,8 @@ subroutine setup_kinetic_fourier(basis_p, basis_t, reference)
       qlist(1, iq) = xa(iqradial) * x1(ix1)
       qlist(2, iq) = xa(iqradial) * y1(ix1)
       qlist(3, iq) = xa(iqradial) * z1(ix1)
-    enddo
-  enddo
+    end do
+  end do
 
 
   ekin(:, :) = 0.0_dp
@@ -252,11 +252,11 @@ subroutine setup_kinetic_fourier(basis_p, basis_t, reference)
 
       do i_cart=1, ni_cart
         basis_function_cart(i_cart) = basis_function_fourier(basis_t%bfc(ibf1_cart+i_cart-1), qvec)
-      enddo
+      end do
       basis_function_q(ibf1:ibf2) = MATMUL( TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)), basis_function_cart(:) )
       deallocate(basis_function_cart)
 
-    enddo
+    end do
 
     !
     ! Fourier transform of the left-hand basis function: \phi_alpha(q-v)
@@ -271,11 +271,11 @@ subroutine setup_kinetic_fourier(basis_p, basis_t, reference)
 
       do i_cart=1, ni_cart
         basis_function_cart(i_cart) = basis_function_fourier(basis_p%bfc(ibf1_cart+i_cart-1), qmvvec)
-      enddo
+      end do
       basis_function_qmv(ibf1:ibf2) = MATMUL( TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)), basis_function_cart(:) )
       deallocate(basis_function_cart)
 
-    enddo
+    end do
 
     !ekin(ibf,jbf) = ekin(ibf,jbf) + weight * NORM2(qvec)**2 &
     !                                * basis_function_qmv(ibf) * CONJG( basis_function_q(jbf) )
@@ -284,7 +284,7 @@ subroutine setup_kinetic_fourier(basis_p, basis_t, reference)
                basis_function_qmv, 1, basis_function_q, 1, ekin, basis_p%nbf)
 
 
-  enddo
+  end do
 
   ! the CONJG() is imposed by the definition of ZGERC
   ekin(:, :) = 0.5_dp * CONJG( ekin(:, :) ) * (2.0_dp * pi)**3
@@ -363,16 +363,16 @@ subroutine setup_gos_fourier(basis_p, basis_t, qvec, gos_ao)
       do i_cart=1, ni_cart
         do j_cart=1, nj_cart
           call basis_function_gos(basis_p%bfc(ibf1_cart+i_cart-1), basis_t%bfc(jbf1_cart+j_cart-1), qvec, gos_cart(i_cart, j_cart))
-        enddo
-      enddo
+        end do
+      end do
 
       gos_ao(ibf1:ibf2, jbf1:jbf2) = MATMUL( TRANSPOSE( cart_to_pure(li, gt)%matrix(:, :) ) , &
               MATMUL(  gos_cart(:, :) , cart_to_pure(lj, gt)%matrix(:, :) ) )
 
       deallocate(gos_cart)
 
-    enddo
-  enddo
+    end do
+  end do
   !$OMP END DO
   !$OMP END PARALLEL
 

@@ -109,8 +109,8 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
     do mpspin=1, nspin
       dipole_mo(:, :, mpspin, idir) = MATMUL( TRANSPOSE( c_matrix(:, :, mpspin) ) , &
                                               MATMUL( dipole_ao(:, :, idir) , c_matrix(:, :, mpspin) ) )
-    enddo
-  enddo
+    end do
+  end do
 
   deallocate(dipole_ao)
 
@@ -131,10 +131,10 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
       if( t_jb_global <= nexc) then
         residue(:, t_jb_global) = residue(:, t_jb_global) &
                      + dipole_mo(istate, astate, iaspin, :) * xpy_matrix(t_ia, t_jb) * SQRT(spin_fact)
-      endif
-    enddo
+      end if
+    end do
 
-  enddo
+  end do
   call world%sum(residue)
 
   deallocate(dipole_mo)
@@ -147,22 +147,22 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
       write(unit_yaml, '(8x,a)') 'spin multiplicity: triplet'
     else
       write(unit_yaml, '(8x,a)') 'spin multiplicity: singlet'
-    endif
+    end if
     write(unit_yaml, '(8x,a)') 'energies:'
     write(unit_yaml, '(12x,a)') 'units: eV'
     do iexc=1, nexc
       write(char6, '(i6)') iexc
       write(unit_yaml, '(12x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', eigenvalue(iexc) * Ha_eV
-    enddo
+    end do
     if( print_bare_energy_ .AND. PRESENT(bare_eigenvalue) ) then
       write(unit_yaml, '(8x,a)') 'bare energy contribution:'
       write(unit_yaml, '(12x,a)') 'units: eV'
       do iexc=1, nexc
         write(char6, '(i6)') iexc
         write(unit_yaml, '(12x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', bare_eigenvalue(iexc) * Ha_eV
-      enddo
-    endif
-  endif
+      end do
+    end if
+  end if
 
   write(stdout, '(/,5x,a)') 'Excitation energies (eV)     Oscil. strengths   [Symmetry] '
 
@@ -173,7 +173,7 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
 
   if( is_iomaster .AND. print_yaml_ ) then
       write(unit_yaml, '(8x,a)') 'transitions:'
-  endif
+  end if
 
   do t_jb_global=1, nexc
     t_jb = colindex_global_to_local('S', t_jb_global)
@@ -183,7 +183,7 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
     else
       oscillator_strength(t_jb_global) = 2.0_dp/3.0_dp &
                      * DOT_PRODUCT(residue(:, t_jb_global), residue(:, t_jb_global)) * eigenvalue(t_jb_global)
-    endif
+    end if
     trk_sumrule = trk_sumrule + oscillator_strength(t_jb_global)
     mean_excitation = mean_excitation + oscillator_strength(t_jb_global) * LOG( eigenvalue(t_jb_global) )
 
@@ -192,7 +192,7 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
       symsymbol='3'
     else
       symsymbol='1'
-    endif
+    end if
 
     !
     ! Test the parity in case of molecule with inversion symmetry
@@ -204,9 +204,9 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
         if( 0.5_dp * ABS( xpy_matrix(t_ia, t_jb) + xmy_matrix(t_ia, t_jb) ) > 0.1_dp ) then
           t_ia_global = rowindex_local_to_global(iprow_sd, nprow_sd, t_ia)
           exit
-        endif
-      endif
-    enddo
+        end if
+      end if
+    end do
     call world%max(t_ia_global)
     if( t_ia_global == 0 ) cycle
 
@@ -222,7 +222,7 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
       case(-1)
         symsymbol=TRIM(symsymbol)//'(A2, B1 or App)'
       end select
-    endif
+    end if
     if(inversion) then
       parityi = wfn_parity(nstate, basis, c_matrix, istate, iaspin)
       parityj = wfn_parity(nstate, basis, c_matrix, astate, iaspin)
@@ -232,12 +232,12 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
       case(-1)
         symsymbol=TRIM(symsymbol)//'u'
       end select
-    endif
+    end if
 
     if(t_jb_global <= 30) then
       write(stdout, '(1x,a,1x,i4.4,a3,2(f18.8,2x),5x,a32)') 'Exc.', t_jb_global, ' : ', &
                  eigenvalue(t_jb_global)*Ha_eV, oscillator_strength(t_jb_global), symsymbol
-    endif
+    end if
 
     !
     ! Output the transition coefficients
@@ -253,8 +253,8 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
         ! Anti-Resonant
         coeff(chi%npole_reso + t_ia_global) = 0.5_dp * ( xpy_matrix(t_ia, t_jb) - xmy_matrix(t_ia, t_jb) ) / SQRT(2.0_dp)
         xpy_global(            t_ia_global) = xpy_matrix(t_ia, t_jb)
-      endif
-    enddo
+      end if
+    end do
     call world%sum(coeff)
     call world%sum(xpy_global)
 
@@ -285,7 +285,7 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
 
         do iatom=1, natom
           write(icubefile, '(i6,4(2x,f12.6))') NINT(zatom(iatom)), 0.0, xatom(:, iatom)
-        enddo
+        end do
 
         igrid = 0
         do ix=1, cube_nx
@@ -304,20 +304,20 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
                 istate = chi%transition_table(1, t_ia_global)
                 astate = chi%transition_table(2, t_ia_global)
                 transdens(igrid) = transdens(igrid) + xpy_global(t_ia_global) * phi(istate, 1) * phi(astate, 1)
-              enddo ! t_ia_global
+              end do ! t_ia_global
 
-            enddo ! iz
-          enddo ! iy
-        enddo ! ix
+            end do ! iz
+          end do ! iy
+        end do ! ix
 
         do igrid=1, ntot
           write(icubefile, '(e16.8)') SQRT(2.0_dp) * transdens(igrid)
-        enddo
+        end do
         deallocate(phi, transdens)
 
         close(icubefile)
-      endif
-    endif
+      end if
+    end if
 
     if( is_iomaster .AND. print_yaml_ ) then
       write(char6, '(i6)') t_jb_global
@@ -331,8 +331,8 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
         if( ABS(coeff(chi%npole_reso+t_ia_global)) > 0.05_dp ) &
           write(unit_yaml, '(16x,a,i6,a,i6,a,es18.8,a,a,a)') '- [', astate, ', ', istate, ', ', &
                   coeff(chi%npole_reso+t_ia_global), ', "', TRIM(symsymbol), '" ]'
-      enddo
-    endif
+      end do
+    end if
 
     if( t_jb_global <= 30 ) then
       do t_ia_global=1, chi%npole_reso
@@ -345,20 +345,20 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
         if( ABS(coeff(chi%npole_reso+t_ia_global)) > 0.1_dp )  &
           write(stdout, '(8x,i4,a,i4,1x,f12.5)') istate, ' <- ', astate, coeff(chi%npole_reso+t_ia_global)
 
-      enddo
+      end do
 
       write(stdout, *)
 
-    endif
-  enddo
+    end if
+  end do
 
   if( is_iomaster .AND. print_yaml_ ) then
     write(unit_yaml, '(8x,a)') 'oscillator strengths:'
     do iexc=1, nexc
       write(char6, '(i6)') iexc
       write(unit_yaml, '(12x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', oscillator_strength(iexc)
-    enddo
-  endif
+    end do
+  end if
 
   if( is_iomaster .AND. print_yaml_ .AND. print_transition_dipole_ ) then
     write(unit_yaml, '(8x,a)') 'transition dipoles:'
@@ -367,8 +367,8 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
       write(char6, '(i6)') iexc
       write(unit_yaml, '(12x,a6,a,es18.8,a,es18.8,a,es18.8,a)') ADJUSTL(char6), ': [', &
               residue(1, iexc), ', ', residue(2, iexc), ', ', residue(3, iexc), ']'
-    enddo
-  endif
+    end do
+  end if
 
   deallocate(oscillator_strength)
 
@@ -378,7 +378,7 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
   if( is_triplet_currently ) then
     deallocate(residue)
     return
-  endif
+  end if
 
 
   !
@@ -391,7 +391,7 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
   omega(nomega)=MIN(50.0_dp/Ha_eV, MAXVAL(ABS(eigenvalue(:)))+10.00/Ha_eV)
   do iomega=2, nomega-1
     omega(iomega) = omega(1) + ( omega(nomega)-omega(1) ) /REAL(nomega-1, dp) * (iomega-1)
-  enddo
+  end do
   ! Add the broadening
   omega(:) = omega(:) + ieta
 
@@ -406,12 +406,12 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
       static_polarizability(idir, jdir) = static_polarizability(idir, jdir) &
                      + 2.0_dp * residue(idir, t_ia) * residue(jdir, t_ia) / eigenvalue(t_ia)
     end forall
-  enddo
+  end do
   !
   ! Get the photoabsorption cross section
   do iomega=1, nomega
     photoabsorp_cross(iomega, :, :) = 4.0_dp * pi * REAL(omega(iomega), dp) / c_speedlight * dynamical_pol(iomega, :, :)
-  enddo
+  end do
 
   write(stdout, '(/,a)')     ' TRK sum rule: the two following numbers should compare well'
   write(stdout, '(a,f12.6)') ' Sum over oscillator strengths: ', trk_sumrule
@@ -424,7 +424,7 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
   do idir=1, 3
     write(stdout, '(3(4x,f12.6))') static_polarizability(idir, :)
     trace = trace + static_polarizability(idir, idir) / 3.0_dp
-  enddo
+  end do
   write(stdout, '(a,f12.6)') ' Static dipole polarizability trace: ', trace
 
   if( is_iomaster .AND. print_yaml_ ) then
@@ -434,9 +434,9 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
     do idir=1, 3
       do jdir=1, 3
         write(unit_yaml, '(12x,a,es18.8)') '- ', static_polarizability(idir, jdir)
-      enddo
-    enddo
-  endif
+      end do
+    end do
+  end if
 
   if( is_iomaster ) then
 
@@ -456,12 +456,12 @@ subroutine optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, c
                                               + photoabsorp_cross(iomega, 2, 2) &
                                               + photoabsorp_cross(iomega, 3, 3) ) / 3.0_dp, &
                                              photoabsorp_cross(iomega, :, :)
-    enddo
+    end do
 
     close(dynpolfile)
     close(photocrossfile)
 
-  endif
+  end if
 
 
   deallocate(residue)
@@ -524,7 +524,7 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
     msg='no nspin/=1 allowed'
     call issue_warning(msg)
     return
-  endif
+  end if
 
   stride = nprow_sd * npcol_sd
   write(stdout, *) 'Parallelize GOS calculation over ', stride
@@ -535,7 +535,7 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
   !
   do iv=1, nvel_projectile
     vlist(:, iv) = vel_projectile(:) * iv
-  enddo
+  end do
 
   !
   ! Setup the entire q-vector list
@@ -546,7 +546,7 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
     qvec_list(2, iqradial) = 0.0_dp
     qvec_list(3, iqradial) = qq
     wq(iqradial)          = dqradial
-  enddo
+  end do
 
   if( print_yaml_ .AND. is_iomaster ) then
     write(unit_yaml, '(/,a)') 'stopping power:'
@@ -555,8 +555,8 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
     do iq=1, nq
       write(unit_yaml, '(8x,a,es16.6,a,es16.6,a,es16.6,a)') '- [', qvec_list(1, iq), ' , ', &
                                                 qvec_list(2, iq), ' , ', qvec_list(3, iq), ']'
-    enddo
-  endif
+    end do
+  end if
 
   nmat=chi%npole_reso
   allocate(gos_tddft(chi%npole_reso))
@@ -581,9 +581,9 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
 
       do mpspin=1, nspin
         gos_mo(:, :, mpspin, iiq) = MATMUL( TRANSPOSE( c_matrix(:, :, mpspin) ) ,  MATMUL( gos_ao(:, :) , c_matrix(:, :, mpspin) ) )
-      enddo
+      end do
       deallocate(gos_ao)
-    enddo
+    end do
 
     call world%sum(gos_mo)
 
@@ -603,9 +603,9 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
 
           gos_tddft(t_jb_global) = gos_tddft(t_jb_global) &
                        + gos_mo(istate, astate, iaspin, iiq) * xpy_matrix(t_ia, t_jb) * SQRT(spin_fact)
-        enddo
+        end do
 
-      enddo
+      end do
       call world%sum(gos_tddft)
 
 
@@ -613,7 +613,7 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
       bethe_sumrule(iq) = SUM(fnq(:))
       !do t_ia=1,nmat
       !  write(1234,*) NORM2(qvec),eigenvalue(t_ia),fnq(t_ia)
-      !enddo
+      !end do
 
       write(stdout, '(1x,a,f8.3,a,f12.6)') 'Bethe sumrule for q', NORM2(qvec(:)), ':', bethe_sumrule(iq)
 
@@ -626,14 +626,14 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
           !if( NORM2(qvec) > eigenvalue(t_ia) / vv )   &
           !     stopping_exc(iv,t_ia) = stopping_exc(iv,t_ia) + ( 4.0_dp * pi ) / vv**2  &
           !                                     * fnq(t_ia)  / NORM2(qvec) * wq(iq)
-        enddo
+        end do
 
-      enddo
-    enddo
+      end do
+    end do
 
     deallocate(gos_mo)
 
-  enddo
+  end do
 
   deallocate(gos_tddft)
 
@@ -641,15 +641,15 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
     write(unit_yaml, '(4x,a)') 'bethe sum rule:'
     do iq=1, nq
       write(unit_yaml, '(8x,a,es16.6,a,es16.6,a)') '- [', NORM2(qvec_list(:, iq)), ' , ', bethe_sumrule(iq), ']'
-    enddo
-  endif
+    end do
+  end if
 
   write(stdout, *) 'Electronic stopping cross section: v, S0 (a.u.)'
   open(newunit=fstopping, file='stopping.dat')
   do iv=1, nvel_projectile
     write(stdout, '(1x,a,3(1x,f6.3),a,f12.6)') 'velocity ', vlist(:, iv), ' : ', stopping_cross_section(iv)
     write(fstopping, '(4(2x,es18.8))') vlist(:, iv), stopping_cross_section(iv)
-  enddo
+  end do
   write(stdout, *)
   close(fstopping)
 
@@ -657,13 +657,13 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
   !  write(2000+t_ia,*) '#', &
   !      chi%transition_table(1,MAXLOC(ABS(xpy_matrix(:,t_ia)),DIM=1)),&
   !      chi%transition_table(2,MAXLOC(ABS(xpy_matrix(:,t_ia)),DIM=1))
-  !enddo
+  !end do
   !do iv=1,nvel_projectile
   !  vv = NORM2(vlist(:,iv))
   !  do t_ia=1,12 ! nmat
   !    write(stdout,'(i6,1x,2(2x,f12.6))') t_ia,vv,stopping_exc(iv,t_ia)
-  !  enddo
-  !enddo
+  !  end do
+  !end do
 
   if( print_yaml_ .AND. is_iomaster )  then
     write(unit_yaml, '(4x,a)') 'stopping cross section:'
@@ -671,8 +671,8 @@ subroutine stopping_power(basis, c_matrix, chi, xpy_matrix, eigenvalue)
       write(unit_yaml, '(8x,a,es16.6,a,es16.6,a,es16.6,a,es16.6,a)') '- [', vlist(1, iv), ' , ', &
                                                                           vlist(2, iv), ' , ', vlist(3, iv), ' , ', &
                                                                           stopping_cross_section(iv), ']'
-    enddo
-  endif
+    end do
+  end if
 
 
   deallocate(qvec_list, wq, bethe_sumrule)
@@ -729,7 +729,7 @@ subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalu
     msg='no nspin/=1 allowed'
     call issue_warning(msg)
     return
-  endif
+  end if
 
   call clean_allocate('temporary non-distributed X+Y matrix', xpy_matrix_global, chi%npole_reso, chi%npole_reso)
   call gather_distributed_copy(desc_x, xpy_matrix, xpy_matrix_global)
@@ -739,7 +739,7 @@ subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalu
   !
   do iv=1, nvel_projectile
     vlist(:, iv) = vel_projectile(:) * iv
-  enddo
+  end do
 
   !
   ! Set the 3 axis (v1, v2, v3)
@@ -757,7 +757,7 @@ subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalu
     v1(2) = v3(1)
     v1(3) = 0.0_dp
     v1(:) = v1(:) / NORM2(v1(:))
-  endif
+  end if
   call cross_product(v1, v3, v2)
   v2(:) = -v2(:)
 
@@ -802,7 +802,7 @@ subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalu
           gos_mo(:, :, :) = 0.0_dp
           do mpspin=1, nspin
             gos_mo(:, :, mpspin) = MATMUL( TRANSPOSE( c_matrix(:, :, mpspin) ) ,  MATMUL( gos_ao(:, :) , c_matrix(:, :, mpspin) ) )
-          enddo
+          end do
           deallocate(gos_ao)
           ! call world%sum(gos_mo)
 
@@ -814,7 +814,7 @@ subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalu
 
             gos_tddft = gos_tddft &
                            + gos_mo(istate, astate, iaspin) * xpy_matrix_global(t_ia, t_jb) * SQRT(spin_fact)
-          enddo
+          end do
           deallocate(gos_mo)
           fnq = 2.0_dp * ABS( gos_tddft )**2 * eigenvalue(t_jb) / SUM( qvec(:)**2 )
 
@@ -823,12 +823,12 @@ subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalu
 
           !write(2000+iv,'(1x,i5.2,4(2x,f12.6))') t_jb,fnq,qq,costheta(idir),phi(idir)
 
-        enddo
+        end do
 
-      enddo
-    enddo
+      end do
+    end do
     !close(2000+iv)
-  enddo ! velocity
+  end do ! velocity
 
   call world%sum(stopping_exc)
   stopping_cross_section(:) = SUM(stopping_exc(:, :), DIM=2)
@@ -844,9 +844,9 @@ subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalu
       vv = NORM2(vlist(:, iv))
       do t_jb=1, 15
         write(2000+t_jb, '(2(2x,f12.6))') vv, stopping_exc(iv, t_jb)
-      enddo
-    endif
-  enddo
+      end do
+    end if
+  end do
   write(stdout, *)
   close(fstopping)
 
@@ -857,8 +857,8 @@ subroutine stopping_power_3d(basis, c_matrix, chi, xpy_matrix, desc_x, eigenvalu
       write(unit_yaml, '(8x,a,es16.6,a,es16.6,a,es16.6,a,es16.6,a)') '- [', vlist(1, iv), ' , ', &
                                                                           vlist(2, iv), ' , ', vlist(3, iv), ' , ', &
                                                                           stopping_cross_section(iv), ']'
-    enddo
-  endif
+    end do
+  end if
 
   call timer_stopping%stop()
 

@@ -9,7 +9,7 @@
 #include "molgw.h"
 #if !defined(NO_LIBINT)
 #include<libint2/libint2_params.h>
-#endif
+#end if
 module m_inputparam
   use m_definitions
   use m_mpi
@@ -23,7 +23,7 @@ module m_inputparam
 
 #if !defined(NO_LIBXC)
 #include <xc_funcs.h>
-#endif
+#end if
 
   implicit none
 
@@ -345,7 +345,7 @@ subroutine init_calculation_type(scf, postscf)
       write(stdout, *) 'postscf: ', TRIM(postscf)
       call die('init_calculation_type: Error reading keyword: postscf')
     end select
-  endif
+  end if
 
   calc_type%scf_name =  TRIM(scf)
 
@@ -440,7 +440,7 @@ subroutine init_dft_type(key)
 
   if( ALLOCATED(dft_xc) ) then
     call destroy_libxc_info(dft_xc)
-  endif
+  end if
 
   !
   ! Prepare the object dft_xc
@@ -683,7 +683,7 @@ subroutine init_dft_type(key)
     dft_xc(1)%coeff = beta_hybrid
     dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
     dft_xc(1)%gamma = gamma_hybrid
-#endif
+#end if
   case default
 
     !
@@ -710,12 +710,12 @@ subroutine init_dft_type(key)
           read(key(off1:off2), '(i4)') dft_xc(ixc)%id
           off2 = off2+2
           off1 = off2
-        endif
-      enddo
+        end if
+      end do
 
     else
       call die('init_dft_type: Error reading keyword scf. DFT type not understood')
-    endif
+    end if
   end select
 
   call init_libxc_info(dft_xc)
@@ -729,12 +729,12 @@ subroutine init_dft_type(key)
     gamma_hybrid = omega_libxc
     alpha_hybrid = globalx_libxc + srx_libxc
     beta_hybrid  = -srx_libxc
-  endif
-#endif
+  end if
+#end if
 
   if( gamma_hybrid > 1.0e-12 ) then
     rcut = 1.0_dp / gamma_hybrid
-  endif
+  end if
 
 end subroutine init_dft_type
 
@@ -765,7 +765,7 @@ subroutine summary_input()
     write(stdout, '(a30,f8.4)') ' range-separation (bohr-1): ', gamma_hybrid
   else
     write(stdout, '(a30,a)') ' range-separation (bohr-1): ', ' none'
-  endif
+  end if
   write(stdout, *)
 
   call output_positions()
@@ -775,7 +775,7 @@ subroutine summary_input()
     write(stdout, *) 'Molecule has inversion symmetry'
   else
     write(stdout, *) 'Molecule does not have inversion symmetry'
-  endif
+  end if
   if(linear) then
     write(stdout, *) 'Molecule is linear'
   else
@@ -784,8 +784,8 @@ subroutine summary_input()
       write(stdout, *) 'Molecule is planar'
     else
       write(stdout, *) 'Molecule is not planar'
-    endif
-  endif
+    end if
+  end if
   write(stdout, *)
 
 end subroutine summary_input
@@ -832,8 +832,8 @@ subroutine read_inputfile_namelist()
       basis_path = TRIM(basis_path_env)
     else
       basis_path = default_basis_path
-    endif
-  endif
+    end if
+  end if
 
 
   ! Get the number of inline arguments with the new Fortran 2003 statement
@@ -847,7 +847,7 @@ subroutine read_inputfile_namelist()
     if( .NOT. file_exists) then
       write(stdout, *) 'Tried to open file:', TRIM(input_file_name)
       call die('Input file not found')
-    endif
+    end if
     output_name=TRIM(input_file_name)
     idot=1
     ichart=1
@@ -855,10 +855,10 @@ subroutine read_inputfile_namelist()
       if(output_name(ichart:ichart+2)==".in") then
         idot=ichart
         exit
-      endif
+      end if
       ichart=ichart+1
       if(ichart+2>140) exit
-    enddo
+    end do
     output_name=TRIM(output_name(1:idot))
     open(newunit=inputfile, file=TRIM(input_file_name), status='old')
   case(0)
@@ -950,19 +950,19 @@ subroutine read_inputfile_namelist()
     ! Check if the correct nspin=2 was provided
     if( nspin/=2 ) then
       call die("X2C calculations require nspin=2")
-    endif
+    end if
     ! Check if the magnetization=0
     if( abs(magnetization)>1e-8 ) then
       call die("X2C calculations only implemented for magnetization=0")
-    endif
+    end if
     if( .NOT. move_nuclei == 'no' ) then
       call die("X2C calculations only implemented for move_nuclei=no")
-    endif
+    end if
     if( gaussian_type/= 'CART' ) then
       call die("X2C calculations require cartesian gaussian_type")
-    endif
+    end if
 
-  endif
+  end if
 
 
 
@@ -970,9 +970,9 @@ subroutine read_inputfile_namelist()
 #if !defined(HAVE_LIBCINT)
   if( move_nuclei /= 'no' ) then
     call die('LIBINT does not contain the gradients of the integrals that are needed when move_nuclei is different from no')
-  endif
-#endif
-#endif
+  end if
+#end if
+#end if
 
 #if !defined(HAVE_HDF5)
 
@@ -980,9 +980,9 @@ subroutine read_inputfile_namelist()
     call die('To print c_matrix_cmplx into an HDF5 file, '  // &
                 'MOLGW must be compiled with HDF5: HDF5_ROOT must be specified ' // &
                 'and the -DHAVE_HDF5 compilation option must be activated')
-  endif
+  end if
 
-#endif
+#end if
 
   call init_excitation_type()
   nprojectile = MERGE(1, 0, excit_type%form==EXCIT_PROJECTILE .OR. excit_type%form == EXCIT_PROJECTILE_W_BASIS)
@@ -991,7 +991,7 @@ subroutine read_inputfile_namelist()
   ! If no nuclei motion is requested, then override nstep and set it to 1
   if( move_nuclei == 'no' ) then
     nstep = 1
-  endif
+  end if
 
   call setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, ecp_auxil_basis, ecp_small_basis)
 
@@ -1005,12 +1005,12 @@ subroutine read_inputfile_namelist()
   if( print_w_ .AND. has_auxil_basis ) then
     call die('input check: print_w is not numerically stable when using an auxiliary basis.' // &
              ' Do not use this keyword and everything is gonna be alright')
-  endif
+  end if
   if( x2c_ ) then
     if( .not. has_auxil_basis ) then
       call die("X2C calculations require an auxiliary basis")
-    endif
-  endif
+    end if
+  end if
 
   !
   ! Interpret the scf and postscf input parameters
@@ -1020,12 +1020,12 @@ subroutine read_inputfile_namelist()
     if( nscf /= 0 ) then
       nscf = 0
       call issue_warning("input variable nscf has been set to zero because of scf='NONE'")
-    endif
+    end if
     if( .NOT. assume_scf_converged_ ) then
       assume_scf_converged_ = .TRUE.
       call issue_warning("input variable assume_scf_converged has been set to 'yes' because of scf='NONE'")
-    endif
-  endif
+    end if
+  end if
 
   !
   ! Some additional checks
@@ -1038,23 +1038,23 @@ subroutine read_inputfile_namelist()
                     // ' nomega_sigma_calc > 1 advised')
   if( nexcitation /=0 .AND. calc_type%is_gw ) then
     call die('Davidson diago is not compatible with GW. Set nexcitation to 0')
-  endif
+  end if
   if( nstep_gw > 1 .AND. calc_type%selfenergy_technique /= EVSC ) then
     call die('nstep_gw > 1 is only valid when performing ev-GW. Change either postscf or nstep_gw')
-  endif
+  end if
   if( eri3_genuine_ .AND. calc_type%need_exchange_lr ) then
     call die('eri3_genuine does not work with long-range exact-exchange')
-  endif
+  end if
   if( eri3_genuine_ .AND. calc_type%need_exchange ) then
     !call die('eri3_genuine does not work with exact-exchange')
     call issue_warning('eri3_genuine with exact-exchange is EXPERIMENTAL')
-  endif
+  end if
   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(eri3_genuine_) ) then
     call die('eri3_genuine is required for moving basis (=excit_name=ion)')
-  endif
+  end if
   if( excit_type%form == EXCIT_PROJECTILE_W_BASIS .AND. .NOT.(tddft_predictor_corrector(1:2)=='MB') ) then
     call die('Predictor-correction scheme is not valid for moving basis. Use instead MB_PC2B for instance')
-  endif
+  end if
 
   spin_fact = REAL(-nspin+3, dp)
   electrons = SUM(zvalence(:)) - charge
@@ -1079,7 +1079,7 @@ subroutine read_inputfile_namelist()
     do icenter=1, ncenter_nuclei
       write(unit_yaml, '(8x,a,"[ ",a2,", ",es18.8,", ",es18.8,", ",es18.8,"]")') '- ', &
                   element_name(zatom(icenter)), xatom(:, icenter)
-    enddo
+    end do
 
     write(unit_yaml, '(4x,a)') 'basis list:'
     do icenter=1, ncenter_basis
@@ -1087,7 +1087,7 @@ subroutine read_inputfile_namelist()
               element_name(zbasis(icenter)), TRIM(basis_name(icenter)), TRIM(auxil_basis_name(icenter))
     end do
 
-  endif
+  end if
 
 
 end subroutine read_inputfile_namelist
@@ -1132,13 +1132,13 @@ function standardize_basis_name(basis_name_in) result(basis_name_out)
 
     if( basis_name_in(istring:istring) == '*' ) then
       basis_name_out(istring:istring) = 's'
-    endif
+    end if
 
     if( basis_name_in(istring:istring) == '+' ) then
       basis_name_out(istring:istring) = 'p'
-    endif
+    end if
 
-  enddo
+  end do
 
 end function standardize_basis_name
 
@@ -1180,8 +1180,8 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
     if( ABS(length_factor - 1.0_dp ) < 1.0e-6_dp  ) then
       write(stdout, *) 'xyz or POSCAR files are always in Angstrom. However, length_unit was set to bohr'
       call die('setup_nuclei: please set length_unit to Angstrom')
-    endif
-  endif
+    end if
+  end if
 
   !
   ! Read the atom positions if no xyz file is specified
@@ -1191,7 +1191,7 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
       ncenter_basis_max = natom + nghost + nprojectile
     else
       ncenter_basis_max = natom + nghost
-    endif
+    end if
     ncenter_nuclei = natom + nprojectile
 
     natom_read     = natom + nghost + nprojectile
@@ -1231,7 +1231,7 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
           ecp_basis_name(ncenter_basis)       = standardize_basis_name(TRIM(ctmp1))
           auxil_basis_name(ncenter_basis)     = standardize_basis_name(TRIM(ctmp2))
           ecp_auxil_basis_name(ncenter_basis) = standardize_basis_name(TRIM(ctmp2))
-        endif
+        end if
 
       else
         read(line_char, *, iostat=info1) element_symbol, x_read(:, iatom), ctmp1
@@ -1242,18 +1242,18 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
             ncenter_basis = ncenter_basis + 1
             basis_name(ncenter_basis) = standardize_basis_name(TRIM(ctmp1))
             ecp_basis_name(iatom)     = standardize_basis_name(TRIM(ctmp1))
-          endif
+          end if
         else
           ! when excitation is a bare projectile, assume the last atom has no basis functions
           if( excit_type%form == EXCIT_PROJECTILE .AND. iatom == natom_read) then
             nucleus_wo_basis(iatom) = .TRUE.
           else
             ncenter_basis = ncenter_basis + 1
-          endif
+          end if
           read(line_char, *) element_symbol, x_read(:, iatom)
 
-        endif
-      endif
+        end if
+      end if
 
       !
       ! First, try to interpret element_symbol as an integer
@@ -1261,8 +1261,8 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
       ! If it fails, then assumes it is a character
       if( info /= 0 ) then
         zatom_read(iatom) = element_number(element_symbol)
-      endif
-    enddo
+      end if
+    end do
 
   else
     !
@@ -1275,7 +1275,7 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
       if( .NOT. file_exists) then
         write(stdout, *) 'Tried to open the requested xyz file:', TRIM(xyz_file)
         call die('xyz file not found')
-      endif
+      end if
       open(newunit=fu, file=TRIM(xyz_file), status='old')
       read(fu, *) natom_read
       read(fu, *) ! second line is a comment
@@ -1288,7 +1288,7 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
       if( .NOT. file_exists) then
         write(stdout, *) 'Tried to open the requested POSCAR file:', TRIM(poscar_file)
         call die('POSCAR file not found')
-      endif
+      end if
       open(newunit=fu, file=TRIM(poscar_file), status='old')
       read(fu, *) ! first line is a comment
       read(fu, *) scale_factor
@@ -1313,8 +1313,8 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
         do iatom=1, natoms_poscar(ie)
           ii = ii + 1
           elements_poscar_(ii) = elements_poscar(ie)
-        enddo
-      enddo
+        end do
+      end do
 
       ! Line with direct or cartesian
       read(fu, '(a)') line_char
@@ -1328,11 +1328,11 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
         call die('setup_nuclei: could not identify direct or cartesian in POSCAR file')
       end select
 
-    endif
+    end if
 
     if( natom /= 0 .AND. natom + nghost + nprojectile /= natom_read ) then
       call die('the number of atoms in the input file does not correspond to the number of atoms in the xyz file')
-    endif
+    end if
 
     ! natom_read read from xyz file but not from input file
     ncenter_nuclei = natom_read - nghost
@@ -1366,23 +1366,23 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
         element_symbol = elements_poscar_(iatom)
         if( .NOT. cartesian_switch_poscar ) then
           x_read(:, iatom) = a1_poscar(:) * x_read(1, iatom) + a2_poscar(:) * x_read(2, iatom) + a3_poscar(:) * x_read(3, iatom)
-        endif
-      endif
+        end if
+      end if
       !
       ! First, try to interpret element_symbol as an integer
       read(element_symbol, '(i2)', iostat=info) element
       ! If it fails, then assumes it is a character
       if( info /=0 ) then
         element = element_number(element_symbol)
-      endif
+      end if
       zatom_read(iatom) = element
-    enddo
+    end do
 
     close(fu)
 
 
 
-  endif
+  end if
 
   ! Conversion to bohr if necessary
   x_read(:, :) = x_read(:, :) * length_factor
@@ -1401,9 +1401,9 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
       if( ABS( element_ecp(ielement_ecp) - zatom(icenter) ) < 1.0e-5_dp ) then
         zvalence(icenter) = zatom(icenter) - REAL( ecp(ielement_ecp)%ncore , dp )
         exit
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
   !
   ! At this stage, natom must be set to a positive value
@@ -1415,7 +1415,7 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
     call setup_periodicity_vectors(length_unit, a1, a2, a3)
   else
     call setup_periodicity_vectors(length_unit, a1_poscar, a2_poscar, a3_poscar)
-  endif
+  end if
 
 end subroutine setup_nuclei
 

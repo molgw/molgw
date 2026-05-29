@@ -73,7 +73,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
   write(stdout, '(/,1x,a)') 'Calculate Sigma_TDHF (Bruneval-Foerster formula)'
   if( mpi_poorman_ ) then
     write(stdout, '(5x,a)')   'using poor man parallelization'
-  endif
+  end if
   write(stdout, '(/,1x,a)')     'Scaling coefficients:'
   write(stdout, '(1x,a,f6.2)') 'alpha: ', selfenergy_tdhf_alpha
   write(stdout, '(1x,a,f6.2)') 'beta:  ', selfenergy_tdhf_beta
@@ -94,8 +94,8 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
   do qstate=nsemin, nsemax
     do ustate=ncore_G+1, nvirtual_G-1
       uq(:, ustate, qstate) = eri_3center_mo(:, ustate, qstate, 1)
-    enddo
-  enddo
+    end do
+  end do
 
   if( calc_type%selfenergy_approx == SIGMA_TDSCHF ) then
     write(stdout, '(/,1x,a)') 'Calculate a static screening'
@@ -105,7 +105,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     chi_static(:, :) = wpol_static_rpa%chi(:, :, 1)
     do ibf_auxil=1, nauxil_global
       chi_static(ibf_auxil, ibf_auxil) = chi_static(ibf_auxil, ibf_auxil) + 1.0_dp
-    enddo
+    end do
     allocate(chi_up(nauxil_global, ncore_G+1:nvirtual_G-1, nsemin:nsemax))
     state_range=nvirtual_G-ncore_G-1
     nstate2 = state_range * ( nsemax - nsemin +1 )
@@ -117,7 +117,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     uq(:, :, :) = chi_up(:, :, :)
     deallocate(chi_up)
   
-  endif
+  end if
 
   call wpol%init(nstate, occupation, 0)
   nmat = wpol%npole_reso
@@ -149,7 +149,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     write(stdout, *) 'Include a TDDFT kernel contribution to the vertex'
     write(stdout, '(1x,a,f12.4)') 'Exact-exchange amount: ', alpha_hybrid
     call prepare_tddft(.FALSE., nstate, basis, c_matrix, occupation)
-  endif
+  end if
 
   ! Enforce PT2 manually for debug
   if( .FALSE. ) then
@@ -162,8 +162,8 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
       astate = wpol%transition_table(2, imat)
       wpol%pole(spole) = energy(astate, 1) - energy(istate, 1)
       x_matrix(imat, spole) = 1.0d0
-    enddo
-  endif
+    end do
+  end if
 
   call timer_vertex_selfenergy%start()
 
@@ -207,8 +207,8 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     !    ! Store ( a j | i q ) which should be set to zero to recover GW
     !    eri_tmp3o(imat,jstate) = DOT_PRODUCT( eri_3center_mo(:,astate,jstate,1), uq(:,istate,qstate) )
 
-    !  enddo
-    !enddo
+    !  end do
+    !end do
 
     ! DGEMM implementation
 
@@ -218,7 +218,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
       istate = wpol%transition_table(1, imat)
       astate = wpol%transition_table(2, imat)
       eri_P_ia(:, imat) = eri_3center_mo(:, istate, astate, 1)
-    enddo
+    end do
     call DGEMM('T', 'N', nmat, nmoo, nauxil_global, &
                1.0d0, eri_P_ia(:, :), nauxil_global, &
                eri_3center_mo(:, ncore_G+1:, pstate, 1), nauxil_global, &
@@ -237,12 +237,12 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
           istate = wpol%transition_table(1, imat)
           astate = wpol%transition_table(2, imat)
           eri_tmp2o(imat, jstate) = eri_i_a(istate, astate)
-        enddo
-      enddo
+        end do
+      end do
       deallocate(eri_i_a)
     else
         eri_tmp2o(:, :) = 0.0_dp
-    endif
+    end if
 
     ! Calculate eri_tmp3o = ( a j | i q )
     if( .NOT. DEBUG_GW ) then
@@ -257,12 +257,12 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
           astate = wpol%transition_table(2, imat)
           eri_tmp3o(imat, jstate) = eri_a_i(astate, istate)
 
-        enddo
-      enddo
+        end do
+      end do
       deallocate(eri_a_i)
     else
         eri_tmp3o(:, :) = 0.0_dp
-    endif
+    end if
 
     if( gwgamma_tddft_ ) then
       do jstate=ncore_G+1, nhomo_G
@@ -275,9 +275,9 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
           eri_tmp2o(imat, jstate) = alpha_hybrid * eri_tmp2o(imat, jstate) - fxc
           eri_tmp3o(imat, jstate) = alpha_hybrid * eri_tmp3o(imat, jstate) - fxc
           ! then fxc is used with a minus sign because the exchange Coulomb integrals are used with an additional minus sign
-        enddo
-      enddo
-    endif
+        end do
+      end do
+    end if
 
     ! Fortran version
     !num_tmp2o(:,:) = MATMUL( TRANSPOSE(xpy_matrix(:,:)) , eri_tmp1o(:,:) )
@@ -309,11 +309,11 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
                         + selfenergy_tdhf_beta  * num_tmp2o(spole, jstate)**2 ) &
                           / ( se%omega(:) + se%energy0(pstate, 1) - energy(jstate, 1) + wpol%pole(spole) - ieta )
 
-      enddo ! loop over spole
-    enddo ! loop over jstate
+      end do ! loop over spole
+    end do ! loop over jstate
     if( pstate > nhomo_G ) then
       energy_gm1 = energy_gm1 - REAL(sigma_tmp(0))
-    endif
+    end if
     sigma_tdhf(:, pstate, 1) = sigma_tdhf(:, pstate, 1) + sigma_tmp(:)
 
 
@@ -335,8 +335,8 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
     !
     !    ! Store ( a b | i q ) which should be set to zero to recover GW
     !    eri_tmp3v(imat,bstate) = DOT_PRODUCT( eri_3center_mo(:,astate,bstate,1), uq(:,istate,qstate) )
-    !  enddo
-    !enddo
+    !  end do
+    !end do
 
     ! DGEMM implementation
 
@@ -346,7 +346,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
       istate = wpol%transition_table(1, imat)
       astate = wpol%transition_table(2, imat)
       eri_P_ia(:, imat) = eri_3center_mo(:, istate, astate, 1)
-    enddo
+    end do
     call DGEMM('T', 'N', nmat, nmov, nauxil_global, &
                1.0d0, eri_P_ia(:, :), nauxil_global, &
                eri_3center_mo(:, nhomo_G+1:, pstate, 1), nauxil_global, &
@@ -365,12 +365,12 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
           istate = wpol%transition_table(1, imat)
           astate = wpol%transition_table(2, imat)
           eri_tmp2v(imat, bstate) = eri_i_a(istate, astate)
-        enddo
-      enddo
+        end do
+      end do
       deallocate(eri_i_a)
     else
         eri_tmp2v(:, :) = 0.0_dp
-    endif
+    end if
 
     ! Calculate eri_tmp3v = ( a b | i q )
     if( .NOT. DEBUG_GW ) then
@@ -385,12 +385,12 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
           astate = wpol%transition_table(2, imat)
           eri_tmp3v(imat, bstate) = eri_a_i(astate, istate)
 
-        enddo
-      enddo
+        end do
+      end do
       deallocate(eri_a_i)
     else
         eri_tmp3v(:, :) = 0.0_dp
-    endif
+    end if
 
 
     if( gwgamma_tddft_ ) then
@@ -404,9 +404,9 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
           eri_tmp2v(imat, bstate) = alpha_hybrid * eri_tmp2v(imat, bstate) - fxc
           eri_tmp3v(imat, bstate) = alpha_hybrid * eri_tmp3v(imat, bstate) - fxc
           ! then fxc is used with a minus sign because the exchange Coulomb integrals are used with an additional minus sign
-        enddo
-      enddo
-    endif
+        end do
+      end do
+    end if
 
     ! Fortran version
     !num_tmp2v(:,:) = MATMUL( TRANSPOSE(xpy_matrix(:,:)) , eri_tmp1v(:,:) )
@@ -438,16 +438,16 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
                         + selfenergy_tdhf_gamma * num_tmp1v(spole, bstate) * num_tmp2v(spole, bstate) &
                         + selfenergy_tdhf_beta  * num_tmp2v(spole, bstate)**2 ) &
                           / ( se%omega(:) + se%energy0(pstate, 1) - energy(bstate, 1) - wpol%pole(spole) + ieta )
-      enddo ! loop over spole
-    enddo ! loop over bstate
+      end do ! loop over spole
+    end do ! loop over bstate
     !$OMP END PARALLEL DO
     sigma_tdhf(:, pstate, 1) = sigma_tdhf(:, pstate, 1) + sigma_tmp(:)
     if( pstate <= nhomo_G ) then
       energy_gm2 = energy_gm2 + REAL(sigma_tmp(0))
-    endif
+    end if
 
 
-  enddo ! loop over pstate
+  end do ! loop over pstate
 
   call poorman%sum(sigma_tdhf)
 
@@ -466,7 +466,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
 
   if( gwgamma_tddft_ ) then
     call destroy_tddft()
-  endif
+  end if
 
   call timer_vertex_selfenergy%stop()
 
@@ -521,7 +521,7 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
   write(stdout, '(/,1x,a)') 'Calculate Sigma_TDHF with triplets'
   if( mpi_poorman_ ) then
     write(stdout, '(5x,a)')   'using poor man parallelization'
-  endif
+  end if
   write(stdout, '(/,1x,a)')     'Scaling coefficients:'
   write(stdout, '(1x,a,f6.2)') 'alpha:   ', selfenergy_tdhf_alpha
   write(stdout, '(1x,a,f6.2)') 'beta:    ', selfenergy_tdhf_beta
@@ -546,8 +546,8 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
   do qstate=nsemin, nsemax
     do ustate=ncore_G+1, nvirtual_G-1
       uq(:, ustate, qstate) = eri_3center_mo(:, ustate, qstate, 1)
-    enddo
-  enddo
+    end do
+  end do
 
   if( calc_type%selfenergy_approx == SIGMA_TDSCHF_PSD ) then
     write(stdout, '(/,1x,a)') 'Calculate a static screening'
@@ -557,7 +557,7 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
     chi_static(:, :) = wpol_static_rpa%chi(:, :, 1)
     do ibf_auxil=1, nauxil_global
       chi_static(ibf_auxil, ibf_auxil) = chi_static(ibf_auxil, ibf_auxil) + 1.0_dp
-    enddo
+    end do
     allocate(chi_up(nauxil_global, ncore_G+1:nvirtual_G-1, nsemin:nsemax))
     state_range=nvirtual_G-ncore_G-1
     nstate2 = state_range * ( nsemax - nsemin +1 )
@@ -569,7 +569,7 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
     uq(:, :, :) = chi_up(:, :, :)
     deallocate(chi_up)
   
-  endif
+  end if
 
   call wpol_singlet%init(nstate, occupation, 0)
   call wpol_triplet%init(nstate, occupation, 0)
@@ -612,7 +612,7 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
     write(stdout, *) 'Include a TDDFT kernel contribution to the vertex'
     write(stdout, '(1x,a,f12.4)') 'Exact-exchange amount: ', alpha_hybrid
     call prepare_tddft(.FALSE., nstate, basis, c_matrix, occupation)
-  endif
+  end if
 
   ! Enforce PT2 manually for debug
   if( .FALSE. ) then
@@ -629,8 +629,8 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
       wpol_triplet%pole(spole) = energy(astate, 1) - energy(istate, 1)
       x_matrix_singlet(imat, spole) = 1.0d0
       x_matrix_triplet(imat, spole) = 1.0d0
-    enddo
-  endif
+    end do
+  end if
 
   call timer_vertex_selfenergy%start()
 
@@ -679,8 +679,8 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
     !    ! Store ( a k | i q ) which should be set to zero to recover GW
     !    eri_tmp3o(imat, kstate) = DOT_PRODUCT( eri_3center_mo(:,astate,kstate,1), uq(:,istate,qstate) )
 
-    !  enddo
-    !enddo
+    !  end do
+    !end do
 
     ! DGEMM implementation
 
@@ -690,7 +690,7 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
       istate = wpol_singlet%transition_table(1, imat)
       astate = wpol_singlet%transition_table(2, imat)
       eri_P_ia(:, imat) = eri_3center_mo(:, istate, astate, 1)
-    enddo
+    end do
     call DGEMM('T', 'N', nmat, nmoo, nauxil_global, &
                1.0d0, eri_P_ia(:, :), nauxil_global, &
                eri_3center_mo(:, ncore_G+1:, pstate, 1), nauxil_global, &
@@ -709,12 +709,12 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
           istate = wpol_singlet%transition_table(1, imat)
           astate = wpol_singlet%transition_table(2, imat)
           eri_tmp2o(imat, kstate) = eri_i_a(istate, astate)
-        enddo
-      enddo
+        end do
+      end do
       deallocate(eri_i_a)
     else
         eri_tmp2o(:, :) = 0.0_dp
-    endif
+    end if
 
     ! Calculate eri_tmp3o = ( a k | i q )
     if( .NOT. DEBUG_GW ) then
@@ -729,12 +729,12 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
           astate = wpol_singlet%transition_table(2, imat)
           eri_tmp3o(imat, kstate) = eri_a_i(astate, istate)
 
-        enddo
-      enddo
+        end do
+      end do
       deallocate(eri_a_i)
     else
         eri_tmp3o(:, :) = 0.0_dp
-    endif
+    end if
 
     if( gwgamma_tddft_ ) then
       do kstate=ncore_G+1, nhomo_G
@@ -747,9 +747,9 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
           eri_tmp2o(imat, kstate) = alpha_hybrid * eri_tmp2o(imat, kstate) - fxc
           eri_tmp3o(imat, kstate) = alpha_hybrid * eri_tmp3o(imat, kstate) - fxc
           ! then fxc is used with a minus sign because the exchange Coulomb integrals are used with an additional minus sign
-        enddo
-      enddo
-    endif
+        end do
+      end do
+    end if
 
     ! Fortran version
     !num_tmp2o(:,:) = MATMUL( TRANSPOSE(xpy_matrix_singlet(:,:)) , eri_tmp1o(:,:) )
@@ -800,8 +800,8 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
                         + selfenergy_tdhf_zeta * num_tmp3o(spole, kstate)**2 ) &
                           / ( se%omega(:) + se%energy0(pstate, 1) - energy(kstate, 1) + wpol_singlet%pole(spole) - ieta )
 
-      enddo ! loop over spole
-    enddo ! loop over kstate
+      end do ! loop over spole
+    end do ! loop over kstate
     !$OMP END PARALLEL DO
     !$OMP PARALLEL DO COLLAPSE(2) REDUCTION(+:sigma_tmp)
     do kstate=ncore_G+1, nhomo_G
@@ -810,13 +810,13 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
                     +  selfenergy_tdhf_epsilon * num_tmp1ot(spole, kstate)**2 &
                           / ( se%omega(:) + se%energy0(pstate, 1) - energy(kstate, 1) + wpol_triplet%pole(spole) - ieta )
 
-      enddo ! loop over spole
-    enddo ! loop over kstate
+      end do ! loop over spole
+    end do ! loop over kstate
     !$OMP END PARALLEL DO
 
     if( pstate > nhomo_G ) then
       energy_gm1 = energy_gm1 - REAL(sigma_tmp(0))
-    endif
+    end if
     sigma_tdhf(:, pstate, 1) = sigma_tdhf(:, pstate, 1) + sigma_tmp(:)
 
 
@@ -838,8 +838,8 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
     !
     !    ! Store ( a c | i q ) which should be set to zero to recover GW
     !    eri_tmp3v(imat, cstate) = DOT_PRODUCT( eri_3center_mo(:,astate,cstate,1), uq(:,istate,qstate) )
-    !  enddo
-    !enddo
+    !  end do
+    !end do
 
     ! DGEMM implementation
 
@@ -849,7 +849,7 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
       istate = wpol_singlet%transition_table(1, imat)
       astate = wpol_singlet%transition_table(2, imat)
       eri_P_ia(:, imat) = eri_3center_mo(:, istate, astate, 1)
-    enddo
+    end do
     call DGEMM('T', 'N', nmat, nmov, nauxil_global, &
                1.0d0, eri_P_ia(:, :), nauxil_global, &
                eri_3center_mo(:, nhomo_G+1:, pstate, 1), nauxil_global, &
@@ -868,12 +868,12 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
           istate = wpol_singlet%transition_table(1, imat)
           astate = wpol_singlet%transition_table(2, imat)
           eri_tmp2v(imat, cstate) = eri_i_a(istate, astate)
-        enddo
-      enddo
+        end do
+      end do
       deallocate(eri_i_a)
     else
         eri_tmp2v(:, :) = 0.0_dp
-    endif
+    end if
 
     ! Calculate eri_tmp3v = ( a c | i q )
     if( .NOT. DEBUG_GW ) then
@@ -888,12 +888,12 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
           astate = wpol_singlet%transition_table(2, imat)
           eri_tmp3v(imat, cstate) = eri_a_i(astate, istate)
 
-        enddo
-      enddo
+        end do
+      end do
       deallocate(eri_a_i)
     else
         eri_tmp3v(:, :) = 0.0_dp
-    endif
+    end if
 
 
     if( gwgamma_tddft_ ) then
@@ -907,9 +907,9 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
           eri_tmp2v(imat, cstate) = alpha_hybrid * eri_tmp2v(imat, cstate) - fxc
           eri_tmp3v(imat, cstate) = alpha_hybrid * eri_tmp3v(imat, cstate) - fxc
           ! then fxc is used with a minus sign because the exchange Coulomb integrals are used with an additional minus sign
-        enddo
-      enddo
-    endif
+        end do
+      end do
+    end if
 
     ! Fortran version
     !num_tmp2v(:,:) = MATMUL( TRANSPOSE(xpy_matrix_singlet(:,:)) , eri_tmp1v(:,:) )
@@ -952,8 +952,8 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
                         + selfenergy_tdhf_beta  * num_tmp2v(spole, cstate)**2   &
                         + selfenergy_tdhf_zeta  * num_tmp3v(spole, cstate)**2 ) &
                           / ( se%omega(:) + se%energy0(pstate, 1) - energy(cstate, 1) - wpol_singlet%pole(spole) + ieta )
-      enddo ! loop over spole
-    enddo ! loop over cstate
+      end do ! loop over spole
+    end do ! loop over cstate
     !$OMP END PARALLEL DO
     !$OMP PARALLEL DO COLLAPSE(2) REDUCTION(+:sigma_tmp)
     do cstate=nhomo_G+1, nvirtual_G-1
@@ -961,16 +961,16 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
         sigma_tmp(:) = sigma_tmp(:) &
                     +   selfenergy_tdhf_epsilon * num_tmp1vt(spole, cstate)**2 &
                           / ( se%omega(:) + se%energy0(pstate, 1) - energy(cstate, 1) - wpol_triplet%pole(spole) + ieta )
-      enddo ! loop over spole
-    enddo ! loop over cstate
+      end do ! loop over spole
+    end do ! loop over cstate
     !$OMP END PARALLEL DO
     sigma_tdhf(:, pstate, 1) = sigma_tdhf(:, pstate, 1) + sigma_tmp(:)
     if( pstate <= nhomo_G ) then
       energy_gm2 = energy_gm2 + REAL(sigma_tmp(0))
-    endif
+    end if
 
 
-  enddo ! loop over pstate
+  end do ! loop over pstate
 
   call poorman%sum(sigma_tdhf)
 
@@ -992,7 +992,7 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
 
   if( gwgamma_tddft_ ) then
     call destroy_tddft()
-  endif
+  end if
 
   call timer_vertex_selfenergy%stop()
 

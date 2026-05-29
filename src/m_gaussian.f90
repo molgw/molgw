@@ -390,11 +390,11 @@ subroutine overlap_recurrence(ga, gb, s_ab)
         s_tmp_x(ixa, ixbp+1) = bp(1) * s_tmp_x(ixa, ixbp)
         if(ixbp>0) s_tmp_x(ixa, ixbp+1) = s_tmp_x(ixa, ixbp+1) + fact * ixbp * s_tmp_x(ixa, ixbp-1)
         if(ixa>0)  s_tmp_x(ixa, ixbp+1) = s_tmp_x(ixa, ixbp+1) + fact * ixa  * s_tmp_x(ixa-1, ixbp)
-      endif
+      end if
 
-    enddo
+    end do
 
-  enddo
+  end do
 
   !
   ! direction Y
@@ -417,11 +417,11 @@ subroutine overlap_recurrence(ga, gb, s_ab)
         s_tmp_y(iya, iybp+1) = bp(2) * s_tmp_y(iya, iybp)
         if(iybp>0) s_tmp_y(iya, iybp+1) = s_tmp_y(iya, iybp+1) + fact * iybp * s_tmp_y(iya, iybp-1)
         if(iya>0)  s_tmp_y(iya, iybp+1) = s_tmp_y(iya, iybp+1) + fact * iya  * s_tmp_y(iya-1, iybp)
-      endif
+      end if
 
-    enddo
+    end do
 
-  enddo
+  end do
 
   !
   ! direction Z
@@ -444,11 +444,11 @@ subroutine overlap_recurrence(ga, gb, s_ab)
         s_tmp_z(iza, izbp+1) = bp(3) * s_tmp_z(iza, izbp)
         if(izbp>0) s_tmp_z(iza, izbp+1) = s_tmp_z(iza, izbp+1) + fact * izbp * s_tmp_z(iza, izbp-1)
         if(iza>0)  s_tmp_z(iza, izbp+1) = s_tmp_z(iza, izbp+1) + fact * iza  * s_tmp_z(iza-1, izbp)
-      endif
+      end if
 
-    enddo
+    end do
 
-  enddo
+  end do
 
 
   s_ab = s_tmp_z(ga%nz, gb%nz) * ga%norm_factor * gb%norm_factor
@@ -525,11 +525,11 @@ subroutine kinetic_recurrence(ga, gb, k_ab)
                      -  ksi_ab / gb%alpha * ixbp * s_tmp_x(ixa, ixbp-1)
         if(ixa>0)  k_tmp_x(ixa, ixbp+1) = k_tmp_x(ixa, ixbp+1) + fact * ixa  * k_tmp_x(ixa-1, ixbp)
 
-      endif
+      end if
 
-    enddo
+    end do
 
-  enddo
+  end do
 
   !
   ! direction Y
@@ -567,11 +567,11 @@ subroutine kinetic_recurrence(ga, gb, k_ab)
                      -  ksi_ab / gb%alpha * iybp * s_tmp_y(iya, iybp-1)
         if(iya>0)  k_tmp_y(iya, iybp+1) = k_tmp_y(iya, iybp+1) + fact * iya  * k_tmp_y(iya-1, iybp)
 
-      endif
+      end if
 
-    enddo
+    end do
 
-  enddo
+  end do
 
   !
   ! direction Z
@@ -609,11 +609,11 @@ subroutine kinetic_recurrence(ga, gb, k_ab)
                      -  ksi_ab / gb%alpha * izbp * s_tmp_z(iza, izbp-1)
         if(iza>0)  k_tmp_z(iza, izbp+1) = k_tmp_z(iza, izbp+1) + fact * iza  * k_tmp_z(iza-1, izbp)
 
-      endif
+      end if
 
-    enddo
+    end do
 
-  enddo
+  end do
 
 
   !
@@ -705,11 +705,11 @@ subroutine nucleus_recurrence(zatom, c, ga, gb, v_ab)
                                                 + fact * ixbp * ( v_tmp_x_m(ixa, ixbp-1) -  v_tmp_x_mp1(ixa, ixbp-1) )
           if( ixa > 0 )  v_tmp_x_m(ixa, ixbp+1) = v_tmp_x_m(ixa, ixbp+1) &
                                                 + fact * ixa  * ( v_tmp_x_m(ixa-1, ixbp) -  v_tmp_x_mp1(ixa-1, ixbp) )
-        endif
+        end if
 
-      enddo
+      end do
 
-    enddo
+    end do
 
     !
     ! direction Y
@@ -739,11 +739,11 @@ subroutine nucleus_recurrence(zatom, c, ga, gb, v_ab)
                                                 + fact * iybp * ( v_tmp_y_m(iya, iybp-1) -  v_tmp_y_mp1(iya, iybp-1) )
           if( iya > 0 )  v_tmp_y_m(iya, iybp+1) = v_tmp_y_m(iya, iybp+1) &
                                                 + fact * iya  * ( v_tmp_y_m(iya-1, iybp) -  v_tmp_y_mp1(iya-1, iybp) )
-        endif
+        end if
 
-      enddo
+      end do
 
-    enddo
+    end do
 
     !
     ! direction Z
@@ -773,18 +773,18 @@ subroutine nucleus_recurrence(zatom, c, ga, gb, v_ab)
                                                 + fact * izbp * ( v_tmp_z_m(iza, izbp-1) -  v_tmp_z_mp1(iza, izbp-1) )
           if( iza > 0 )  v_tmp_z_m(iza, izbp+1) = v_tmp_z_m(iza, izbp+1) &
                                                 + fact * iza  * ( v_tmp_z_m(iza-1, izbp) -  v_tmp_z_mp1(iza-1, izbp) )
-        endif
+        end if
 
-      enddo
+      end do
 
-    enddo
+    end do
 
     v_tmp_x_mp1(0:ixam, 0:ixbm) = v_tmp_x_m(0:ixam, 0:ixbm)
     v_tmp_y_mp1(0:iyam, 0:iybm) = v_tmp_y_m(0:iyam, 0:iybm)
     v_tmp_z_mp1(0:izam, 0:izbm) = v_tmp_z_m(0:izam, 0:izbm)
 
     deallocate(fmu)
-  enddo
+  end do
 
 
   v_ab = - zatom * v_tmp_z_m(izam, izbm) * ga%norm_factor * gb%norm_factor
@@ -823,15 +823,15 @@ subroutine evaluate_gos(ga, gb, qvec, gos_ab)
   intx = 0.0_dp
   do ii=0, ga%nx+gb%nx
     intx = intx + g(ii, pp, qq(1)) * f(ii, ga%nx, gb%nx, -ga%x0(1), -gb%x0(1))
-  enddo
+  end do
   inty = 0.0_dp
   do ii=0, ga%ny+gb%ny
     inty = inty + g(ii, pp, qq(2)) * f(ii, ga%ny, gb%ny, -ga%x0(2), -gb%x0(2))
-  enddo
+  end do
   intz = 0.0_dp
   do ii=0, ga%nz+gb%nz
     intz = intz + g(ii, pp, qq(3)) * f(ii, ga%nz, gb%nz, -ga%x0(3), -gb%x0(3))
-  enddo
+  end do
 
   gos_ab = factor * intx * inty * intz * ga%norm_factor * gb%norm_factor
 
@@ -868,7 +868,7 @@ function g(ii, p, q)
     g = (0.0_dp, 0.0_dp)
     do ik=0, ii/2
       g = g + ( 0.25_dp * p )**ik * q**( ii -2 * ik )  / ( Gamma(REAL(ii+1-2*ik, dp)) * Gamma(REAL(ik+1, dp)) )
-    enddo
+    end do
     g = g * Gamma(REAL(ii+1, dp)) / p**ii
   end select
 
@@ -885,7 +885,7 @@ function f(j, l, m, a, b)
   f = 0.0_dp
   do i=MAX(0, j-m), MIN(j, l)
     f = f + cnk(l, i) * cnk(m, j-i) * a**(l-i) * b**(m+i-j)
-  enddo
+  end do
 
 end function f
 

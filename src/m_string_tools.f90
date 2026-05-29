@@ -36,7 +36,7 @@ pure function lower(str)
   do ii=1, LEN_TRIM(str)
     ic = INDEX(cap, str(ii:ii))
     if (ic > 0) lower(ii:ii) = low(ic:ic)
-  enddo
+  end do
 
 end function lower
 
@@ -55,7 +55,7 @@ pure function capitalize(str)
   do ii=1, LEN_TRIM(str)
     ic = INDEX(low, str(ii:ii))
     if (ic > 0) capitalize(ii:ii) = cap(ic:ic)
-  enddo
+  end do
 
 end function capitalize
 
@@ -145,19 +145,19 @@ subroutine append_to_list_i(new_element, list)
     nsize = SIZE(list)
   else
     nsize = 0
-  endif
+  end if
 
   ! Copy old list and free the list
   allocate(list_old(nsize))
   if( nsize > 0 ) then
     list_old(1:nsize) =list(1:nsize)
     deallocate(list)
-  endif
+  end if
 
   allocate(list(nsize+1))
   if( nsize > 0 ) then
     list(1:nsize) = list_old(1:nsize)
-  endif
+  end if
   list(nsize+1) = new_element
 
 end subroutine append_to_list_i
@@ -177,19 +177,19 @@ subroutine append_to_list_r(new_element, list)
     nsize = SIZE(list)
   else
     nsize = 0
-  endif
+  end if
 
   ! Copy old list and free the list
   allocate(list_old(nsize))
   if( nsize > 0 ) then
     list_old(1:nsize) =list(1:nsize)
     deallocate(list)
-  endif
+  end if
 
   allocate(list(nsize+1))
   if( nsize > 0 ) then
     list(1:nsize) = list_old(1:nsize)
-  endif
+  end if
   list(nsize+1) = new_element
 
 end subroutine append_to_list_r
@@ -245,7 +245,7 @@ function string_to_substrings(string_in) RESULT(array)
     array(ii) =  string(1:inextblank-1)
     string = string(inextblank+1:)
     ilen = LEN_TRIM(string)
-  enddo
+  end do
 
 end function string_to_substrings
 
@@ -276,7 +276,7 @@ function string_to_integers(string_in) RESULT(array)
     read(string(1:inextblank-1), *) array(ii)
     string = string(inextblank+1:)
     ilen = LEN_TRIM(string)
-  enddo
+  end do
 
 end function string_to_integers
 
@@ -307,7 +307,7 @@ function string_to_reals(string_in) RESULT(array)
     read(string(1:inextblank-1), *) array(ii)
     string = string(inextblank+1:)
     ilen = LEN_TRIM(string)
-  enddo
+  end do
 
 end function string_to_reals
 
@@ -390,7 +390,7 @@ function logical_to_yesno(logical_in) RESULT(yesno)
     yesno = 'yes'
   else
     yesno = 'no'
-  endif
+  end if
 
 end function logical_to_yesno
 

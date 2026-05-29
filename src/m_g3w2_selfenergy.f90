@@ -65,7 +65,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
       write(stdout, *) 'Perform an eigenvalue-self-consistent GW+SOSEX calculation'
     else
       write(stdout, *) 'Perform a one-shot GW+SOSEX calculation'
-    endif
+    end if
   case(G3W2, G3W2_NUMERICAL)
     write(stdout, *) 'Perform a one-shot GW+SOSEX calculation to prepare full G3W2'
   case default
@@ -77,13 +77,13 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
     write(stdout, *) 'Include a TDDFT kernel contribution to the vertex'
     write(stdout, '(1x,a,f12.4)') 'Exact-exchange amount: ', alpha_hybrid
     call prepare_tddft(.FALSE., nstate, basis, c_matrix, occupation)
-  endif
+  end if
 
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
     call calculate_eri_4center_mo_uks(c_matrix, ncore_G+1, nvirtual_G-1)
-  endif
+  end if
 
 
   call clean_allocate('Temporary array', w_s, ncore_G+1, nvirtual_G-1, ncore_G+1, MAX(nhomo_G, nsemax))
@@ -120,7 +120,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
               fxc = eval_fxc_rks_singlet(istate, bstate, ispin, kstate, pstate, ispin)
               call grid%sum(fxc)
               vcoul2 = alpha_hybrid * vcoul2 - fxc
-            endif
+            end if
             !
             ! calculate only the diagonal !
             do iomega=-se%nomega, se%nomega
@@ -129,12 +129,12 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
                     / ( se%energy0(pstate, ispin) + se%omega(iomega) &
                         - energy(istate, ispin) - energy(kstate, ispin) + energy(bstate, ispin) - ieta )
 
-            enddo
-          enddo
+            end do
+          end do
 
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
     !==========================
     do cstate=ncore_G+1, nvirtual_G-1
@@ -154,7 +154,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
               fxc = eval_fxc_rks_singlet(astate, jstate, ispin, cstate, pstate, ispin)
               call grid%sum(fxc)
               vcoul2 = alpha_hybrid * vcoul2 - fxc
-            endif
+            end if
             !
             ! calculate only the diagonal !
             do iomega=-se%nomega, se%nomega
@@ -162,15 +162,15 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
                   - vcoul1 * vcoul2            &
                     / ( se%energy0(pstate, ispin) + se%omega(iomega) &
                         - energy(astate, ispin) - energy(cstate, ispin) + energy(jstate, ispin) + ieta )
-            enddo
-          enddo
+            end do
+          end do
 
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
 
-  enddo
+  end do
 
   call poorman%sum(sigma_sox)
 
@@ -194,7 +194,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
           do pstate=ncore_G+1, MAX(nhomo_G, nsemax)
             ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
             w_s(:, pstate)     = MATMUL( wpol%w_s(:, spole) , eri_3center_mo(:, :, pstate, ispin) )
-          enddo
+          end do
           call auxil%sum(w_s)
         else
           ! Here just grab the precalculated value
@@ -203,7 +203,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
                                                     + (ispin-1) * index_prodstate(nvirtual_W-1, nvirtual_W-1), &
                                                    spole)
           end forall
-        endif
+        end if
 
 
 
@@ -224,7 +224,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
                   fxc = eval_fxc_rks_singlet(istate, cstate, ispin, bstate, pstate, ispin)
                   call grid%sum(fxc)
                   vcoul = alpha_hybrid * vcoul - fxc
-                endif
+                end if
 
                 do iomega=-se%nomega, se%nomega
                   sigma_sosex(iomega, pstate, ispin) = sigma_sosex(iomega, pstate, ispin) &
@@ -240,12 +240,12 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
                                  - energy(cstate, ispin) + energy(istate, ispin) + ieta )  &
                              / ( energy(bstate, ispin) - energy(istate, ispin) + pole_s - ieta )
 
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
 
         !==========================
         do jstate=ncore_G+1, nvirtual_G-1
@@ -264,19 +264,19 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
                   fxc = eval_fxc_rks_singlet(jstate, kstate, ispin, astate, pstate, ispin)
                   call grid%sum(fxc)
                   vcoul = alpha_hybrid * vcoul - fxc
-                endif
+                end if
 
                 do iomega=-se%nomega, se%nomega
                   sigma_sosex(iomega, pstate, ispin) = sigma_sosex(iomega, pstate, ispin) &
                            - w_s(kstate, pstate) * w_s(astate, jstate) * vcoul                          &
                               / ( se%energy0(pstate, ispin) + se%omega(iomega) - energy(kstate, ispin) + pole_s - ieta )  &
                               / ( -pole_s + energy(jstate, ispin) - energy(astate, ispin) + ieta )
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
 
         do astate=ncore_G+1, nvirtual_G-1
           if( (spin_fact - occupation(astate, ispin)) / spin_fact < completely_empty  ) cycle
@@ -294,7 +294,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
                   fxc = eval_fxc_rks_singlet(astate, kstate, ispin, jstate, pstate, ispin)
                   call grid%sum(fxc)
                   vcoul = alpha_hybrid * vcoul - fxc
-                endif
+                end if
 
                 do iomega=-se%nomega, se%nomega
                   sigma_sosex(iomega, pstate, ispin) = sigma_sosex(iomega, pstate, ispin) &
@@ -310,12 +310,12 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
                              / ( se%energy0(pstate, ispin) + se%omega(iomega) - energy(kstate, ispin) + pole_s - ieta )
 
 
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
 
         !==========================
         do astate=ncore_G+1, nvirtual_G-1
@@ -334,7 +334,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
                   fxc = eval_fxc_rks_singlet(astate, cstate, ispin, jstate, pstate, ispin)
                   call grid%sum(fxc)
                   vcoul = alpha_hybrid * vcoul - fxc
-                endif
+                end if
 
                 do iomega=-se%nomega, se%nomega
                   sigma_sosex(iomega, pstate, ispin) = sigma_sosex(iomega, pstate, ispin) &
@@ -342,21 +342,21 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
                              / ( se%energy0(pstate, ispin) + se%omega(iomega) - energy(cstate, ispin) - pole_s + ieta )  &
                              / ( pole_s + energy(astate, ispin) - energy(jstate, ispin) - ieta )
 
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
 
 
 
-      enddo !spole
-    enddo !ispin
+      end do !spole
+    end do !ispin
 
     call poorman%sum(sigma_sosex)
 
-  endif
+  end if
 
 
   write(stdout, '(a)') ' Sigma_c(omega) is calculated'
@@ -371,14 +371,14 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
   ! if( print_sigma_) then
   !   call write_selfenergy_omega('selfenergy_sox'    ,energy,exchange_m_vxc_diag,occupation,energy,sigma_sox)
   !   call write_selfenergy_omega('selfenergy_sosex'  ,energy,exchange_m_vxc_diag,occupation,energy,sigma_sosex)
-  ! endif
+  ! end if
 
 
   if( ABS( factor_sosex - 1.0_dp ) < 0.001 ) then
     write(stdout, '(/,a)') ' GW+SOSEX self-energy contributions at E0 (eV)'
   else
     write(stdout, '(/,a)') ' GW+SOSEX2 self-energy contributions at E0 (eV)'
-  endif
+  end if
   write(stdout, '(a)') &
      '   #          E0        SigC_SOX   SigC_G(W(w)-v)GvG SigC_TOT'
 
@@ -387,7 +387,7 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
                                          sigma_sox(0, pstate, :)%re*Ha_eV,  &
                                          sigma_sosex(0, pstate, :)%re*Ha_eV, &
                                          se%sigma(0, pstate, :)%re*Ha_eV
-  enddo
+  end do
 
 
 
@@ -398,11 +398,11 @@ subroutine sosex_selfenergy(basis, occupation, energy, c_matrix, wpol, se)
     call destroy_eri_3center_mo()
   else
     call destroy_eri_4center_mo_uks()
-  endif
+  end if
 
   if( gwgamma_tddft_ ) then
     call destroy_tddft()
-  endif
+  end if
 
   call timer_vertex_selfenergy%stop()
 
@@ -465,7 +465,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
       write(stdout, *) 'Perform an eigenvalue-self-consistent GW+SOSEX calculation'
     else
       write(stdout, *) 'Perform a one-shot GW+SOSEX calculation'
-    endif
+    end if
   case(G3W2, G3W2_NUMERICAL)
     write(stdout, *) 'Perform a one-shot GW+SOSEX calculation to prepare full G3W2'
   case default
@@ -477,7 +477,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
     call die('sosex_selfenergy_analyzed: auxil_basis is compulsory')
-  endif
+  end if
 
   if( SCREENED ) then
     call issue_warning('hardcoded: use a statically screened Coulomb interaction')
@@ -485,7 +485,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
     call wpol%evaluate((0.0_dp, 0.0_dp), chi_static)
     do ibf_auxil=1, nauxil_global
       chi_static(ibf_auxil, ibf_auxil) = chi_static(ibf_auxil, ibf_auxil) + 1.0_dp
-    enddo
+    end do
     allocate(up(nauxil_global, ncore_G+1:nvirtual_G-1, nsemin:nsemax))
     allocate(chi_up(nauxil_global, ncore_G+1:nvirtual_G-1, nsemin:nsemax))
     state_range = nvirtual_G - ncore_G-1
@@ -493,8 +493,8 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
     do pstate=nsemin, nsemax
       do ustate=ncore_G+1, nvirtual_G-1
         up(:, ustate, pstate) = eri_3center_mo(:, ustate, pstate, 1)
-      enddo
-    enddo
+      end do
+    end do
     call DGEMM('T', 'N', nauxil_global, nstate2, nauxil_global, &
                 1.0_dp, chi_static, nauxil_global, &
                        up, nauxil_global, &
@@ -506,14 +506,14 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
     do pstate=nsemin, nsemax
       do ustate=ncore_G+1, nvirtual_G-1
         chi_up(:, ustate, pstate) = eri_3center_mo(:, ustate, pstate, 1)
-      enddo
-    enddo
-  endif
+      end do
+    end do
+  end if
 
   ! Only poorman parallelization is authorized here
   if( poorman%nproc /= world%nproc ) then
     call die('sosex_selfenergy_analyzed: poorman parallelization is compulsory')
-  endif
+  end if
 
 
   call clean_allocate('Temporary array', w_s, ncore_G+1, nvirtual_G-1, ncore_G+1, MAX(nhomo_G, nsemax))
@@ -592,9 +592,9 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
           w_ovo_hhp_sox(kstate, tpole, pstate) = w_ovo_hhp_sox(kstate, tpole, pstate) &
                         - vcoul1 * vcoul2
 
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
     !==========================
     ! RING ovo
@@ -621,9 +621,9 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
           w_ovo_hhp_ring(kstate, tpole, pstate) = w_ovo_hhp_ring(kstate, tpole, pstate) &
                         + spin_fact * vcoul1 * vcoul2
 
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
     !==========================
     ! SOX vov
@@ -652,9 +652,9 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
               - vcoul1 * vcoul2 / ( omega(:) - ea + ej - ec + ieta )
           w_vov_pph_sox(cstate, tpole, pstate) = w_vov_pph_sox(cstate, tpole, pstate) &
                         - vcoul1 * vcoul2
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
     !==========================
     ! RING vov
@@ -680,11 +680,11 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
 
           w_vov_pph_ring(cstate, tpole, pstate) = w_vov_pph_ring(cstate, tpole, pstate) &
                         + spin_fact * vcoul1 * vcoul2
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
-  enddo ! pspin
+  end do ! pspin
 
   call poorman%sum(sigma_sox)
 
@@ -705,9 +705,9 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
         do pstate=ncore_G+1, MAX(nhomo_G, nsemax)
           ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
           w_s(:, pstate)     = MATMUL( wpol%w_s(:, spole) , eri_3center_mo(:, :, pstate, pspin) )
-        enddo
+        end do
         call auxil%sum(w_s)
-      endif
+      end if
 
       !==========================
       ! GW occupied
@@ -718,8 +718,8 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
           qstate = pstate
 
           w_o_hpl(kstate, spole, pstate) = w_s(kstate, pstate) * w_s(kstate, qstate)
-        enddo
-      enddo
+        end do
+      end do
 
       !==========================
       ! GW virtual
@@ -730,8 +730,8 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
           qstate = pstate
           
           w_v_ppl(cstate, spole, pstate) = w_s(cstate, pstate) * w_s(cstate, qstate)
-        enddo
-      enddo
+        end do
+      end do
 
 
       !==========================
@@ -789,10 +789,10 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
                          * REAL( -1.0_dp / ( ei - eb + Omega_s + ieta ) )
 
 
-            enddo
-          enddo
-        !enddo
-      enddo
+            end do
+          end do
+        !end do
+      end do
 
       !==========================
       ! SOSEX \Sigma^{vov}
@@ -843,11 +843,11 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
                          + w_s(cstate, qstate) * w_s(astate, jstate) * vcoul &
                  * REAL( 1.0_dp / ( ea - ej - Omega_s - ieta )  )
 
-            enddo
+            end do
 
-          enddo
-        !enddo
-      enddo
+          end do
+        !end do
+      end do
 
       !==========================
       ! SOSEX \Sigma^{ovv}
@@ -876,11 +876,11 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
                       + w_s(cstate, qstate) * w_s(bstate, istate) * vcoul &
                         * REAL( -1.0_dp / ( ei - eb - Omega_s + ieta ) )
 
-            enddo
+            end do
 
-          enddo
-        enddo
-      enddo
+          end do
+        end do
+      end do
       !==========================
       ! SOSEX \Sigma^{voo}
       do astate=nhomo_G+1, nvirtual_G-1
@@ -908,15 +908,15 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
                       + w_s(kstate, qstate) * w_s(astate, jstate) * vcoul &
                         * REAL( 1.0_dp / ( ea - ej + Omega_s - ieta ) )
 
-            enddo
+            end do
 
-          enddo
-        enddo
-      enddo
+          end do
+        end do
+      end do
 
 
-    enddo !spole
-  enddo !pspin
+    end do !spole
+  end do !pspin
 
   call poorman%sum(sigma_sosex)
 
@@ -956,8 +956,8 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
                                     + w_ovo_hhp_sox(kstate, spole, pstate), &
                                   ek - wpol%pole(spole), &
                                   ek - (ea - ei)
-      enddo
-    enddo
+      end do
+    end do
     close(file)
 
     open(newunit=file, file='weights_GWSOSEX_virt_state' // ctmp // '.dat', action='write')
@@ -990,8 +990,8 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
                                     + w_vov_pph_sox(cstate, spole, pstate), &
                                   ec + wpol%pole(spole), &
                                   ec + (ea - ei)
-      enddo
-    enddo
+      end do
+    end do
     close(file)
 
     open(newunit=file, file='selfenergy_GWSOSEX_parts_state' // ctmp // '.dat', action='write')
@@ -1003,9 +1003,9 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
       write(file, '(*(1x,f12.6))') REAL(se%energy0(pstate, 1) + se%omega(iomega) ) * Ha_eV, &
                                   sigma_sox(iomega, pstate, 1, :)%re * Ha_eV, &
                                   sigma_sosex(iomega, pstate, 1, :)%re * Ha_eV
-    enddo
+    end do
     close(file)
-  enddo
+  end do
 
   se%sigma(:, :, :) = factor_sox * SUM(sigma_sox(:, :, :, :), DIM=4 ) &
                      + factor_sosex * SUM(sigma_sosex(:, :, :, :), DIM=4)
@@ -1014,14 +1014,14 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
   ! if( print_sigma_) then
   !   call write_selfenergy_omega('selfenergy_sox'    ,energy,exchange_m_vxc_diag,occupation,energy,sigma_sox)
   !   call write_selfenergy_omega('selfenergy_sosex'  ,energy,exchange_m_vxc_diag,occupation,energy,sigma_sosex)
-  ! endif
+  ! end if
 
 
   if( ABS( factor_sosex - 1.0_dp ) < 0.001 ) then
     write(stdout, '(/,a)') ' GW+SOSEX self-energy contributions at E0 (eV)'
   else
     write(stdout, '(/,a)') ' GW+2SOSEX self-energy contributions at E0 (eV)'
-  endif
+  end if
   write(stdout, '(a)') &
      '   #          E0        SigC_SOX   SigC_G(W(w)-v)GvG SigC_TOT'
 
@@ -1030,7 +1030,7 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
                                          sigma_sox(0, pstate, :, :)%re*Ha_eV,  &
                                          sigma_sosex(0, pstate, :, :)%re*Ha_eV, &
                                          se%sigma(0, pstate, :)%re*Ha_eV
-  enddo
+  end do
 
 
 
@@ -1041,11 +1041,11 @@ subroutine sosex_selfenergy_analyzed(basis, occupation, energy, c_matrix, wpol, 
     call destroy_eri_3center_mo()
   else
     call destroy_eri_4center_mo_uks()
-  endif
+  end if
 
   if( gwgamma_tddft_ ) then
     call destroy_tddft()
-  endif
+  end if
 
   call timer_vertex_selfenergy%stop()
 
@@ -1114,14 +1114,14 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
     chi_static(:, :) = wpol_static_rpa%chi(:, :, 1)
   else
     call wpol%evaluate((0.0_dp, 0.0_dp), chi_static)
-  endif
+  end if
 
   ! Turn dynamic into static for debug purposes
   !call issue_warning('hack to recover GW+SOX for debug purposes')
   !chi_static(:,:) = 0.0d0   ! to recover GW+SOX
   do ibf_auxil=1, nauxil_global
     chi_static(ibf_auxil, ibf_auxil) = chi_static(ibf_auxil, ibf_auxil) + 1.0_dp
-  enddo
+  end do
   allocate(ib(nauxil_global))
   allocate(kp(nauxil_global))
   allocate(ip(nauxil_global))
@@ -1144,8 +1144,8 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
   do pstate=nsemin, nsemax
     do ustate=ncore_G+1, nvirtual_G-1
       up(:, ustate, pstate) = eri_3center_mo(:, ustate, pstate, 1)
-    enddo
-  enddo
+    end do
+  end do
   call DGEMM('T', 'N', nauxil_global, nstate2, nauxil_global, &
               1.0_dp, chi_static, nauxil_global, &
                      up, nauxil_global, &
@@ -1200,12 +1200,12 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
                   - w0_1 * w0_2            &
                     / ( se%energy0(pstate, ispin) + se%omega(iomega) &
                         - energy(istate, ispin) - energy(kstate, ispin) + energy(bstate, ispin) - ieta )
-            enddo
-          enddo
+            end do
+          end do
 
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
     !==========================
     do cstate=nhomo_G+1, nvirtual_G-1
@@ -1241,15 +1241,15 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
                   - w0_1 * w0_2            &
                     / ( se%energy0(pstate, ispin) + se%omega(iomega) &
                         - energy(astate, ispin) - energy(cstate, ispin) + energy(jstate, ispin) + ieta )
-            enddo
-          enddo
+            end do
+          end do
 
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
 
-  enddo
+  end do
 
 
   call poorman%sum(sigma_gvgw0g)
@@ -1274,7 +1274,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
           do pstate=ncore_G+1, MAX(nhomo_G, nsemax)
             ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v)
             w_s(:, pstate)     = MATMUL( wpol%w_s(:, spole) , eri_3center_mo(:, :, pstate, ispin) )
-          enddo
+          end do
           call auxil%sum(w_s)
         else
           ! Here just grab the precalculated value
@@ -1282,7 +1282,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
             w_s(istate, pstate) = wpol%w_s(index_prodstate(istate, pstate) &
                                      + (ispin-1) * index_prodstate(nvirtual_W-1, nvirtual_W-1), spole)
           end forall
-        endif
+        end if
 
 
         !==========================
@@ -1308,12 +1308,12 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
                            - w_s(kstate, pstate) * w_s(bstate, istate) * w0_2                          &
                               / ( se%energy0(pstate, ispin) + se%omega(iomega) - energy(kstate, ispin) + pole_s - ieta )  &
                               / ( -pole_s + energy(istate, ispin) - energy(bstate, ispin) + ieta )
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
 
         !==========================
         do istate=ncore_G+1, nvirtual_G-1
@@ -1347,12 +1347,12 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
                                  - energy(cstate, ispin) + energy(istate, ispin) + ieta )  &
                              / ( energy(bstate, ispin) - energy(istate, ispin) + pole_s - ieta )
 
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
 
         !==========================
         do astate=ncore_G+1, nvirtual_G-1
@@ -1386,12 +1386,12 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
                              / ( se%energy0(pstate, ispin) + se%omega(iomega) - energy(kstate, ispin) + pole_s - ieta )
 
 
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
 
         !==========================
         do astate=ncore_G+1, nvirtual_G-1
@@ -1417,21 +1417,21 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
                              / ( se%energy0(pstate, ispin) + se%omega(iomega) - energy(cstate, ispin) - pole_s + ieta )  &
                              / ( pole_s + energy(astate, ispin) - energy(jstate, ispin) - ieta )
 
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
 
 
 
-      enddo !spole
-    enddo !ispin
+      end do !spole
+    end do !ispin
 
     call poorman%sum(sigma_gwgw0g)
 
-  endif
+  end if
 
 
   write(stdout, '(a)') ' Sigma_c(omega) is calculated'
@@ -1449,7 +1449,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
     do pstate=nsemin, nsemax
       write(stdout, '(i4,1x,*(1x,f12.6))') pstate, se%energy0(pstate, :)*Ha_eV, &
                                           se%sigma(0, pstate, :)%re*Ha_eV
-    enddo
+    end do
 
   case(GWGW0G)
     forall(pstate=nsemin:nsemax)
@@ -1467,7 +1467,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
                                           sigma_gwgw0g(0, pstate, :)%re*Ha_eV, &
               (sigma_gwgw0g(0, pstate, 1)%re+sigma_gvgw0g(0, pstate, :)%re-sigma_gw0gw0g(0, pstate, 1)%re)*Ha_eV, &
                                           se%sigma(0, pstate, :)%re*Ha_eV
-    enddo
+    end do
   case(GWGW0RPAG)
     forall(pstate=nsemin:nsemax)
       se%sigma(:, pstate, :) = sigma_gvgw0g(:, pstate, :) + sigma_gwgw0g(:, pstate, :)
@@ -1480,7 +1480,7 @@ subroutine gwgw0g_selfenergy(occupation, energy, c_matrix, wpol, se)
                                           sigma_gvgw0g(0, pstate, :)%re*Ha_eV, &
                                           sigma_gwgw0g(0, pstate, :)%re*Ha_eV, &
                                           se%sigma(0, pstate, :)%re*Ha_eV
-    enddo
+    end do
   case default
     call die('gwgw0g_selfenergy: calculation type unknown')
   end select
@@ -1529,16 +1529,16 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
 
   if( g3w2_skip_vvv_ ) then
     call issue_warning('g3w2_selfenergy: g3w2_skip_vvv has been triggered')    
-  endif
+  end if
   if( g3w2_skip_vv_ ) then
     call issue_warning('g3w2_selfenergy: g3w2_skip_vv has been triggered')    
-  endif
+  end if
 
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
     call die('not implemented')
-  endif
+  end if
 
 
   call clean_allocate('Temporary array', w_s, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
@@ -1566,8 +1566,8 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
         do pstate=ncore_G+1, nvirtual_G-1
           ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v) in MO
           w_s(:, pstate)     = MATMUL( wpol%w_s(:, spole) , eri_3center_mo(:, :, pstate, pqspin) )
-        enddo
-      endif
+        end do
+      end if
 
       do tpole=1, wpol%npole_reso
 
@@ -1576,8 +1576,8 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
           do pstate=ncore_G+1, nvirtual_G-1
             ! Here transform (sqrt(v) * chi * sqrt(v)) into  (v * chi * v) in MO
             w_t(:, pstate)     = MATMUL( wpol%w_s(:, tpole) , eri_3center_mo(:, :, pstate, pqspin) )
-          enddo
-        endif
+          end do
+        end if
 
 
 
@@ -1607,9 +1607,9 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
 
                   sigma_g3w2(iomega, pstate, pqspin, 1) = sigma_g3w2(iomega, pstate, pqspin, 1) &
                             + num1 * num2 / denom1 / denom2 / denom3
-                enddo
-              enddo
-            enddo
+                end do
+              end do
+            end do
 
             !
             ! 001
@@ -1643,9 +1643,9 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
                   sigma_g3w2(iomega, pstate, pqspin, 2) = sigma_g3w2(iomega, pstate, pqspin, 2) &
                             + 2.0_dp * num1 * num2 / denom1 / denom2 / denom3
 
-                enddo
-              enddo
-            enddo
+                end do
+              end do
+            end do
 
 
             !
@@ -1690,9 +1690,9 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
                   sigma_g3w2(iomega, pstate, pqspin, 3) = sigma_g3w2(iomega, pstate, pqspin, 3) &
                             + num1 * num2 * num3 / denom1 / denom2 / denom3 / denom4
 
-                enddo
-              enddo
-            enddo
+                end do
+              end do
+            end do
 
             !
             ! 011 + 110
@@ -1726,10 +1726,10 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
 
                     sigma_g3w2(iomega, pstate, pqspin, 4) = sigma_g3w2(iomega, pstate, pqspin, 4) &
                               - 2.0_dp * num1 * num2 / denom1 / denom2 / denom3
-                  enddo
-                enddo
-              enddo
-            endif
+                  end do
+                end do
+              end do
+            end if
 
             !
             ! 101
@@ -1776,10 +1776,10 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
                     sigma_g3w2(iomega, pstate, pqspin, 5) = sigma_g3w2(iomega, pstate, pqspin, 5) &
                               - num1 * num2 / denom1 / denom2 / denom3
 
-                  enddo
-                enddo
-              enddo
-            endif
+                  end do
+                end do
+              end do
+            end if
 
             !
             ! 111
@@ -1803,18 +1803,18 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
 
                     sigma_g3w2(iomega, pstate, pqspin, 6) = sigma_g3w2(iomega, pstate, pqspin, 6) &
                               + num1 * num2 / denom1 / denom2 / denom3
-                  enddo
-                enddo
-              enddo
-            endif
+                  end do
+                end do
+              end do
+            end if
 
-          enddo ! iomega
-        enddo ! pstate
+          end do ! iomega
+        end do ! pstate
 
 
-      enddo !tpole
-    enddo !spole
-  enddo !pqspin
+      end do !tpole
+    end do !spole
+  end do !pqspin
 
   call poorman%sum(sigma_g3w2)
 
@@ -1834,7 +1834,7 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
 
   ! if( print_sigma_) then
   !   call write_selfenergy_omega('selfenergy_g3w2',energy,exchange_m_vxc_diag,occupation,energy,sigma_g3w2)
-  ! endif
+  ! end if
 
 
   write(stdout, '(/,a)') ' G3W2 self-energy contributions at E0 (eV)'
@@ -1846,7 +1846,7 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
     write(stdout, '(i4,1x,*(1x,f12.6))') pstate, &
                                         sigma_g3w2(0, pstate, :, :)%re*Ha_eV, &
                                         SUM(sigma_g3w2(0, pstate, :, :)%re, DIM=2)*Ha_eV
-  enddo
+  end do
   write(stdout, '(a)') &
      '   #          E0       SigC_2SOSEX SigC_G(W-v)G(W-v)G SigC_TOT'
   do pstate=nsemin, nsemax
@@ -1854,7 +1854,7 @@ subroutine g3w2_selfenergy(occupation, energy, c_matrix, wpol, se)
                                         sigma_rest(0, pstate, :)%re*Ha_eV,   &
                                         SUM(sigma_g3w2(0, pstate, :, :)%re, DIM=2)*Ha_eV, &
                                         se%sigma(0, pstate, :)%re*Ha_eV
-  enddo
+  end do
 
   deallocate(sigma_rest)
   deallocate(sigma_g3w2)
@@ -1901,10 +1901,10 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
 
   if( nspin > 1 ) then
     call die('g3w2_selfenergy_real_grid only for spin restricted')
-  endif
+  end if
   if( .NOT. has_auxil_basis ) then
     call die('g3w2_selfenergy_real_grid requires an auxiliary basis')
-  endif
+  end if
   first_omega = -se%nomega
   last_omega  = se%nomega
   write(stdout, *) first_omega, last_omega
@@ -1914,7 +1914,7 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_sigma=first_omega, last_omega
     write(stdout, '(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma, se%omega(iomega_sigma)*Ha_eV
-  enddo
+  end do
   write(stdout, '(1x,a)') '========================================================'
 
   nstate = SIZE(energy, DIM=1)
@@ -1930,7 +1930,7 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
     call polarizability(.TRUE., .TRUE., basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
   else
     call die('g3w2_selfenergy_real_grid: analytic_chi is compulsory')
-  endif
+  end if
 
   allocate(chi_omegap(nauxil_global, nauxil_global))
   allocate(chi_omegapp(nauxil_global, nauxil_global))
@@ -1982,24 +1982,24 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
                 sigmag3w2(iomega_sigma, pstate, pqspin) = sigmag3w2(iomega_sigma, pstate, pqspin) &
                                                     -1.0_dp / (2.0_dp * pi)**2 * g_u * num1 * g_v * num2 * g_w &
                                                        * domega**2
-              enddo
+              end do
 
-            enddo
-          enddo
-        enddo
-      enddo
+            end do
+          end do
+        end do
+      end do
 
 
-    enddo
-  enddo
+    end do
+  end do
   call poorman%sum(sigmag3w2)
   write(stdout, *) 'Self-energy correction (eV): '
   do pstate=nsemin, nsemax
     do iomega_sigma=first_omega, last_omega
       write(stdout, '(4x,i4,*(4x,f14.6))') pstate, (se%energy0(pstate, 1) + se%omega(iomega_sigma)%re)*Ha_eV, &
                                           sigmag3w2(iomega_sigma, pstate, 1)%re*Ha_eV
-    enddo
-  enddo
+    end do
+  end do
 
   se%sigma(:, :, :) = se%sigma(:, :, :) + sigmag3w2(:, :, :)
   deallocate(sigmag3w2)
@@ -2040,7 +2040,7 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
 
   if( .NOT. has_auxil_basis ) then
     call die('g3w2_selfenergy_imag_grid: it requires an auxiliary basis')
-  endif
+  end if
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
@@ -2050,7 +2050,7 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_sigma=first_omega, last_omega
     write(stdout, '(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma, se%omega_calc(iomega_sigma)*Ha_eV
-  enddo
+  end do
   write(stdout, '(1x,a)') '========================================================'
 
   nstate = SIZE(energy, DIM=1)
@@ -2066,7 +2066,7 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
     call wpol_analytic%evaluate(wpol_imag%omega, wpol_imag%chi)
   else
     call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.FALSE.)
-  endif
+  end if
 
   allocate(chi_omegap_up(nauxil_global, ncore_G+1:nvirtual_G-1))
   allocate(chi_omegapp_wq(nauxil_global, ncore_G+1:nvirtual_G-1))
@@ -2158,18 +2158,18 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
                                 + wpol_imag%weight_quad(iomegap) * wpol_imag%weight_quad(iomegapp)  &
                                    * ( braket1 * braket2 ) * denoms * ( -1.0_dp / (2.0_dp * pi) ) **2
 
-                enddo !iomega_sigma
+                end do !iomega_sigma
 
-              enddo
-            enddo
-          enddo
+              end do
+            end do
+          end do
 
 
-        enddo !iomegapp
-      enddo !iomegap
+        end do !iomegapp
+      end do !iomegap
 
-    enddo !pstate
-  enddo !pqspin
+    end do !pstate
+  end do !pqspin
   call poorman%sum(sigmag3w2)
 
   deallocate(chi_omegap_up)
@@ -2182,8 +2182,8 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
       write(stdout, '(2(4x,i4),4x,f16.6,1x,f16.6)')  pstate, iomega_sigma, &
                                                     se%sigma_calc(iomega_sigma, pstate, 1)%re*Ha_eV, &
                                                     sigmag3w2(iomega_sigma, pstate, 1)%re*Ha_eV
-    enddo
-  enddo
+    end do
+  end do
   se%sigma_calc(:, :, :) = se%sigma_calc(:, :, :) + sigmag3w2(:, :, :)
 
   deallocate(sigmag3w2)
@@ -2227,7 +2227,7 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
 
   if( .NOT. has_auxil_basis ) then
     call die('sosex_selfenergy_imag_grid: requires an auxiliary basis')
-  endif
+  end if
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
@@ -2236,14 +2236,14 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_sigma=first_omega, last_omega
     write(stdout, '(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma, se%omega_calc(iomega_sigma)*Ha_eV
-  enddo
+  end do
   write(stdout, '(1x,a)') '========================================================'
 
   if( SOSEX_INCLUDING_SOX ) then
     write(stdout, '(1x,a)') 'Calculate SOSEX including SOX: G*W*G*v*G'
   else
     write(stdout, '(1x,a)') 'Calculate SOSEX excluding SOX: G*(W-v)*G*v*G (SOX is calculated elsewhere)'
-  endif
+  end if
 
   nstate = SIZE(energy, DIM=1)
 
@@ -2258,7 +2258,7 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
     call polarizability(.TRUE., .TRUE., basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
   else
     call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.FALSE.)
-  endif
+  end if
 
 
   prange = nvirtual_G - ncore_G - 1
@@ -2279,12 +2279,12 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
           call wpol_analytic%evaluate(wpol_imag%omega(iomegap), chi_wp)
         else
           chi_wp(:, :) = wpol_imag%chi(:, :, iomegap)
-        endif
+        end if
         if( SOSEX_INCLUDING_SOX ) then
           do iauxil=1, nauxil_global
             chi_wp(iauxil, iauxil) = chi_wp(iauxil, iauxil) + 1.0_dp
-          enddo
-        endif
+          end do
+        end if
         write(stdout, '(1x,a,i4,a,i4)') 'Quadrature on omega prime: ', iomegap, ' / ', wpol_imag%nomega
 
         ! TODO eliminate the isignp loop and move iomega_sigma to become the most inner one
@@ -2302,7 +2302,7 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
             chi_wwp(:, :) = 0.0_dp
             do iauxil=1, nauxil_global
               chi_wwp(iauxil, iauxil) = chi_wwp(iauxil, iauxil) + 1.0_dp
-            enddo
+            end do
 
             allocate(eri3_i_m(nauxil_global, ncore_G+1:nhomo_G))
             allocate(eri3_r_m(nauxil_global, ncore_G+1:nvirtual_G-1))
@@ -2362,10 +2362,10 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
                                 + wpol_imag%weight_quad(iomegap) &
                                     * braket1 / denom1 * braket2 / denom2 / (2.0_dp * pi)
 
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
+            end do
 
             deallocate(eri3_i_m)
             deallocate(eri3_i_a)
@@ -2442,10 +2442,10 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
                                 - wpol_imag%weight_quad(iomegap) &
                                     * braket1 / denom1 * braket2 / denom2 / (2.0_dp * pi)
 
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
+            end do
 
             deallocate(eri3_a_m)
             deallocate(eri3_a_i)
@@ -2457,12 +2457,12 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
             deallocate(eri3_r_m)
 
             if( .NOT. analytic_chi_ ) call wpol_one%destroy(verbose=.FALSE.)
-          enddo !iomega_sigma
-        enddo ! isignp
-      enddo !iomegap
+          end do !iomega_sigma
+        end do ! isignp
+      end do !iomegap
 
-    enddo
-  enddo
+    end do
+  end do
   call poorman%sum(sigma_sosex)
 
   se%sigma_calc(:, :, :) = se%sigma_calc(:, :, :) + factor_sosex * sigma_sosex(:, :, :)
@@ -2499,7 +2499,7 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
 
   if( .NOT. has_auxil_basis ) then
     call die('sex_selfenergy_imag_grid: requires an auxiliary basis')
-  endif
+  end if
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
@@ -2507,7 +2507,7 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_sigma=first_omega, last_omega
     write(stdout, '(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma, se%omega_calc(iomega_sigma)*Ha_eV
-  enddo
+  end do
   write(stdout, '(1x,a)') '========================================================'
 
 
@@ -2543,12 +2543,12 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
               sigma_sox(iomega_sigma, pstate, ispin) = sigma_sox(iomega_sigma, pstate, ispin) &
                   - vcoul1 * vcoul2            &
                     / ( se%omega_calc(iomega_sigma) - energy(istate, ispin) - energy(kstate, ispin) + energy(bstate, ispin) )
-            enddo
-          enddo
+            end do
+          end do
 
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
     !==========================
     do cstate=nhomo_G+1, nvirtual_G-1
@@ -2566,14 +2566,14 @@ subroutine sox_selfenergy_imag_grid(occupation, energy, c_matrix, se)
               sigma_sox(iomega_sigma, pstate, ispin) = sigma_sox(iomega_sigma, pstate, ispin) &
                   - vcoul1 * vcoul2            &
                     / ( se%omega_calc(iomega_sigma) - energy(astate, ispin) - energy(cstate, ispin) + energy(jstate, ispin) )
-            enddo
-          enddo
+            end do
+          end do
 
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
-  enddo
+  end do
 
   call poorman%sum(sigma_sox)
   !
@@ -2633,7 +2633,7 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
     close(file_unit)
   else 
     selfenergy_switch = 'PSD'
-  endif
+  end if
 
   call timer_vertex_selfenergy%start()
 
@@ -2641,7 +2641,7 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
 
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
-  endif
+  end if
 
   ! Collapse the 2nd and 3rd indices in 3-center ERI
   nstate2 = ( nvirtual_G - ncore_G - 1 )**2
@@ -2667,7 +2667,7 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
   do spole_local=1, npole_local
     spole = INDXL2G(spole_local, MB_eri3_mo, iprow_eri3_mo, first_row, nprow_eri3_mo)
     Omega_s(spole_local) = wpol%pole(spole)
-  enddo
+  end do
 
 
   !block
@@ -2687,19 +2687,19 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
   !        matrix(:, j) = matrix(:, j) - 2.0 * Omega_s(spole)  &
   !                        / ( ( energy(astate, 1) - energy(istate, 1) )**2 - Omega_s(spole)**2 + ieta ) &
   !                        * wpol%w_s(:, spole) * wpol%w_s(j, spole)
-  !      enddo
-  !    enddo
+  !      end do
+  !    end do
   !    !do i=1, 10
   !    !  write(stdout, '(i3,*(1x,es14.3))') i, matrix(i, 1:10)
-  !    !enddo
+  !    !end do
   !    write(stdout,*) 
   !    vec(:) = MATMUL( matrix, eri_3center_mo(:, istate, astate, 1) )
   !    write(stdout, '(4(1x,i3),*(1x,es14.3))') pstate, qstate, istate, astate, &
   !             DOT_PRODUCT( vec(:), eri_3center_mo(:, pstate, qstate, 1) )
   !    write(stdout, '(4(1x,i3),*(1x,es14.3))') pstate, qstate, istate, astate, &
   !             DOT_PRODUCT( eri_3center_mo(:, pstate, qstate, 1), eri_3center_mo(:, istate, astate, 1) )
-  !  enddo
-  !  enddo
+  !  end do
+  !  end do
   !  call die('enough is enough')
   !end block
 
@@ -2714,7 +2714,7 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
     !  w_s(:, ncore_G+1:nvirtual_G-1, qstate) = MATMUL( TRANSPOSE(wpol%w_s(:, :)) , &
     !                                             eri_3center_mo(:, ncore_G+1:nvirtual_G-1, qstate, qspin) )
     !  call auxil%sum(w_s)
-    !enddo
+    !end do
 
     ! w_s^{mn} = \sum_P w_s^P * ( P | m n )
     ! Collapse the 2nd and 3rd indices
@@ -2726,15 +2726,15 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
                   blas_dp_one, wpol%w_s, 1, 1, desc_w_s_P, eri_3center_mo, 1, 1, desc_eri3_mo, &
                   blas_dp_zero, w_s, 1, 1, desc_w_s)
     else
-#endif
+#end if
       call DGEMM('T', 'N', wpol%npole_reso, nstate2, nauxil_local, &
                  blas_dp_one, wpol%w_s(1, 1), nauxil_local, eri_3center_mo(1, ncore_G+1, ncore_G+1, 1), nauxil_local, &
                  blas_dp_zero, w_s(1, ncore_G+1, ncore_G+1), wpol%npole_reso)
 #if defined(HAVE_SCALAPACK)
-    endif
-#endif
+    end if
+#end if
 
-  enddo
+  end do
 
 
   ! Spin not implemented, fix spin index here:
@@ -2769,9 +2769,9 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
                       * (  v_paik * REAL( 1.0_dp / ( ea - ei + Omega_s(:) - ieta) ) &
                          + v_piak * REAL( 1.0_dp / ( ea - ei - Omega_s(:) - ieta) ) )
 
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
     !$OMP END PARALLEL DO
 
     !$OMP PARALLEL DO PRIVATE(ei, ea, v_paic, v_piac)
@@ -2795,12 +2795,12 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
                       * (  v_paic * REAL( 1.0_dp / ( ea - ei - Omega_s(:) - ieta) ) &
                          + v_piac * REAL( 1.0_dp / ( ea - ei + Omega_s(:) - ieta) ) )
 
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
     !$OMP END PARALLEL DO
 
-  enddo
+  end do
 
   call poorman%sum(w_s_tilde)
 
@@ -2810,8 +2810,8 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
     do astate=nhomo_G+1, nvirtual_G-1
       do istate=ncore_G+1, nhomo_G
         ecorr = ecorr - spin_fact * SUM( w_s(:, istate, astate)**2 / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
-      enddo
-    enddo
+      end do
+    end do
     write(stdout, '(1x,a,f19.10)') 'GW correlation energy (Ha): ', ecorr
 
     ecorr = 0.0_dp
@@ -2819,10 +2819,10 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
       do istate=ncore_G+1, nhomo_G
         ecorr = ecorr - spin_fact * SUM( ( w_s(:, istate, astate) + w_s_tilde(:, istate, astate) )**2 &
                        / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
-      enddo
-    enddo
+      end do
+    end do
     write(stdout, '(1x,a,f19.10)') 'GW+2SOSEX_PSD correlation energy (Ha): ', ecorr
-  endif
+  end if
 
   allocate(sigma, MOLD=se%sigma)
   sigma(:, :, :) = 0.0_dp
@@ -2840,16 +2840,16 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
           sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
                  + w_s(spole_local, kstate, pstate)**2  &
                            / ( se%energy0(pstate, qspin) + se%omega(:) - energy(kstate, qspin) + Omega_s(spole_local) - ieta )
-        enddo
-      enddo
+        end do
+      end do
       do pstate=nsemin, nsemax
         do cstate=nhomo_G+1, nvirtual_G-1
           sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
                  + w_s(spole_local, cstate, pstate)**2 &
                            / ( se%energy0(pstate, qspin) + se%omega(:) - energy(cstate, qspin) - Omega_s(spole_local) + ieta )
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
     !$OMP END DO
     !$OMP END PARALLEL
 
@@ -2864,17 +2864,17 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
                  + ( w_s(spole_local, kstate, pstate) + 2.0_dp * w_s_tilde(spole_local, kstate, pstate) ) &
                         * w_s(spole_local, kstate, pstate)  &
                            / ( se%energy0(pstate, qspin) + se%omega(:) - energy(kstate, qspin) + Omega_s(spole_local) - ieta )
-        enddo
-      enddo
+        end do
+      end do
       do pstate=nsemin, nsemax
         do cstate=nhomo_G+1, nvirtual_G-1
           sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
                  + ( w_s(spole_local, cstate, pstate) + 2.0_dp * w_s_tilde(spole_local, cstate, pstate) ) &
                         * w_s(spole_local, cstate, pstate)  &
                            / ( se%energy0(pstate, qspin) + se%omega(:) - energy(cstate, qspin) - Omega_s(spole_local) + ieta )
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
     !$OMP END DO
     !$OMP END PARALLEL
 
@@ -2889,17 +2889,17 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
                  + ( w_s(spole_local, kstate, pstate) + w_s_tilde(spole_local, kstate, pstate) ) &
                         * w_s(spole_local, kstate, pstate)  &
                            / ( se%energy0(pstate, qspin) + se%omega(:) - energy(kstate, qspin) + Omega_s(spole_local) - ieta )
-        enddo
-      enddo
+        end do
+      end do
       do pstate=nsemin, nsemax
         do cstate=nhomo_G+1, nvirtual_G-1
           sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
                  + ( w_s(spole_local, cstate, pstate) + w_s_tilde(spole_local, cstate, pstate) ) &
                         * w_s(spole_local, cstate, pstate)  &
                            / ( se%energy0(pstate, qspin) + se%omega(:) - energy(cstate, qspin) - Omega_s(spole_local) + ieta )
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
     !$OMP END DO
     !$OMP END PARALLEL
 
@@ -2915,16 +2915,16 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
           sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
                  + ( w_s(spole_local, kstate, pstate) + w_s_tilde(spole_local, kstate, pstate) )**2  &
                            / ( se%energy0(pstate, qspin) + se%omega(:) - energy(kstate, qspin) + Omega_s(spole_local) - ieta )
-        enddo
-      enddo
+        end do
+      end do
       do pstate=nsemin, nsemax
         do cstate=nhomo_G+1, nvirtual_G-1
           sigma(:, pstate, qspin) = sigma(:, pstate, qspin) &
                  + ( w_s(spole_local, cstate, pstate) + w_s_tilde(spole_local, cstate, pstate) )**2 &
                            / ( se%energy0(pstate, qspin) + se%omega(:) - energy(cstate, qspin) - Omega_s(spole_local) + ieta )
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
     !$OMP END DO
     !$OMP END PARALLEL
 
@@ -2941,13 +2941,13 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
   if( PRESENT(p_matrix) ) then
     if( nsemin > ncore_G+1 .OR. nsemax < nvirtual_G-1 ) then
       call die('psd_gw2sosex_selfenergy: selfenergy_state_range too narrow to evaluate the density matrix')
-    endif
+    end if
     !
     ! Tweak w_s here: it will never be the same again
     !
     w_s(:, :, :) = w_s(:, :, :) + w_s_tilde(:, :, :)
     call selfenergy_lehmann_to_density_matrix(occupation, energy, c_matrix, w_s, wpol%pole, p_matrix)
-  endif
+  end if
 
   deallocate(Omega_s)
   call clean_deallocate('GW Lehman amplitudes w_s', w_s)
@@ -2956,7 +2956,7 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
 
   if(has_auxil_basis) then
     call destroy_eri_3center_mo()
-  endif
+  end if
 
   call timer_vertex_selfenergy%stop()
 
@@ -3011,7 +3011,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     close(file_unit)
   else
     selfenergy_switch = 'PSD'
-  endif
+  end if
 
   write(stdout, *)
   select case(TRIM(selfenergy_switch))
@@ -3031,13 +3031,13 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     write(stdout, '(1x,a,i5,1x,i5)') 'nsemin ?= ncore_G+1    ', nsemin, ncore_G+1
     write(stdout, '(1x,a,i5,1x,i5)') 'nsemax ?= nvirtual_G-1 ', nsemax, nvirtual_G-1
     call die('psd_gw2sosex_selfenergy_upfolding: selfenergy state range should contain all the active states')
-  endif
+  end if
 
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix, nsemin, nsemax, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
   else
     call die('psd_gw2sosex_selfenergy_upfolding: only works with an auxiliary basis')
-  endif
+  end if
 
 
   !
@@ -3054,7 +3054,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
                         eri_3center_mo(1, ncore_G+1, ncore_G+1, 1), nauxil_local, &
                 0.0_dp, w_s(1, ncore_G+1, ncore_G+1), wpol%npole_reso)
     call auxil%sum(w_s)
-  enddo
+  end do
 
   !
   ! Secondly, prepare tilde w_s^{mn}
@@ -3087,11 +3087,11 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
                     + w_s(spole, astate, istate) &
                           * (  v_paik * REAL( 1.0_dp / ( ea - ei + Omega_s - ieta) ) &
                              + v_piak * REAL( 1.0_dp / ( ea - ei - Omega_s - ieta) ) )
-              enddo
+              end do
 
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
         !$OMP END PARALLEL DO
 
         !$OMP PARALLEL DO PRIVATE(ei, ea, v_paic, v_piac, Omega_s)
@@ -3114,15 +3114,15 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
                     + w_s(spole, astate, istate) &
                           * (  v_paic * REAL( 1.0_dp / ( ea - ei - Omega_s - ieta) ) &
                              + v_piac * REAL( 1.0_dp / ( ea - ei + Omega_s - ieta) ) )
-              enddo
+              end do
 
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
         !$OMP END PARALLEL DO
 
-      enddo
-    enddo
+      end do
+    end do
 
   case('PT2')
     do qspin=1, nspin
@@ -3134,8 +3134,8 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
             v_pkai = DOT_PRODUCT( eri_3center_mo(:, pstate, kstate, qspin), eri_3center_mo(:, astate, istate, qspin) )
             v_piak = DOT_PRODUCT( eri_3center_mo(:, pstate, istate, qspin), eri_3center_mo(:, astate, kstate, qspin) )
             w_s_tilde(spole, kstate, pstate) =  2.0_dp * v_pkai - v_piak
-          enddo
-        enddo
+          end do
+        end do
         do cstate=nhomo_G+1, nvirtual_G-1
           do spole=1, wpol%npole_reso
             istate = wpol%transition_table(1, spole)
@@ -3143,10 +3143,10 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
             v_pcia = DOT_PRODUCT( eri_3center_mo(:, pstate, cstate, qspin), eri_3center_mo(:, istate, astate, qspin) )
             v_paic = DOT_PRODUCT( eri_3center_mo(:, pstate, astate, qspin), eri_3center_mo(:, istate, cstate, qspin) )
             w_s_tilde(spole, cstate, pstate) =  2.0_dp * v_pcia - v_paic
-          enddo
-        enddo
-      enddo
-    enddo
+          end do
+        end do
+      end do
+    end do
   end select
 
   call poorman%sum(w_s_tilde)
@@ -3156,8 +3156,8 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
   do astate=nhomo_G+1, nvirtual_G-1
     do istate=ncore_G+1, nhomo_G
       ecorr = ecorr - spin_fact * SUM( w_s(:, istate, astate)**2 / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
-    enddo
-  enddo
+    end do
+  end do
   write(stdout, '(1x,a,f19.10)') 'GW correlation energy (Ha): ', ecorr
 
   ecorr = 0.0_dp
@@ -3165,8 +3165,8 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     do istate=ncore_G+1, nhomo_G
       ecorr = ecorr - spin_fact * SUM( ( w_s(:, istate, astate) + w_s_tilde(:, istate, astate) )**2 &
                      / ( energy(astate, 1) - energy(istate, 1) + wpol%pole(:) ) )
-    enddo
-  enddo
+    end do
+  end do
   write(stdout, '(1x,a,f19.10)') 'GW+2SOSEX_PSD correlation energy (Ha): ', ecorr
 
 
@@ -3214,7 +3214,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
           istate = wpol%transition_table(1, spole)
           astate = wpol%transition_table(2, spole)
           matrix_diag(irecord+spole) = energy(qstate, qspin) + sign_q * ( energy(astate,qspin) - energy(istate, qspin) )
-        enddo
+        end do
       end select
 
       !
@@ -3230,8 +3230,8 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
         matrix_wing(irecord+1:irecord+wpol%npole_reso, :) =  w_s_tilde(1:wpol%npole_reso, qstate, ncore_G+1:nvirtual_G-1)
       end select
 
-    enddo ! qstate
-  enddo ! qspin
+    end do ! qstate
+  end do ! qspin
 
   write(stdout, '(a)') ' Matrix is setup'
 
@@ -3250,9 +3250,9 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
       write(stdout, *) 'Matrix wing', mwing, ' x ', mstate
       write(fu) matrix_wing(:, :) * Ha_eV
       close(fu)
-    endif
+    end if
     call die('psd_gw2sosex_selfenergy_upfolding: debug: dump the matrix and stop')
-  endif
+  end if
   if( .FALSE. ) then
     !
     ! Dump the super_matrix on files (1 file per SCALAPACK thread)
@@ -3265,20 +3265,20 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
       do jmat=1, mstate
         do imat=1, jmat
           write(fu, '(1x,i7,1x,i7,1x,e16.8)') imat, jmat, matrix_head(imat, jmat) * Ha_eV
-        enddo
-      enddo
+        end do
+      end do
       do imat=1, mwing
         write(fu, '(1x,i7,1x,i7,1x,e16.8)') imat + mstate, imat+mstate, matrix_diag(imat) * Ha_eV
-      enddo
-    endif
+      end do
+    end if
 
     do jmat=1, mstate
       do imat=1, mwing
         write(fu, '(1x,i7,1x,i7,1x,e16.8)') mstate + imat, jmat, matrix_wing(imat, jmat) * Ha_eV
-      enddo
-    enddo
+      end do
+    end do
     close(fu)
-  endif
+  end if
 
   !
   ! If the super_matrix is small enough, then diagonalize it!
@@ -3297,7 +3297,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     super_matrix(mstate+1:nmat, 1:mstate) = matrix_wing(:, :)
     do imat=mstate+1, nmat
       super_matrix(imat, imat) = matrix_diag(imat - mstate)
-    enddo
+    end do
 
     call diagonalize(postscf_diago_flavor, super_matrix, eigval)
 
@@ -3315,9 +3315,9 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
                                             super_matrix(1:nhomo_G-ncore_G, jmat)**2, &
                                             SUM(super_matrix(nhomo_G-ncore_G+1:mstate, jmat)**2)
 
-      endif
+      end if
 
-    enddo
+    end do
     close(fu)
     ! If eigenvalue lower than the middle of the HOMO-LUMO gap,
     ! then consider the excitation is occupied
@@ -3329,12 +3329,12 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
     if( PRESENT(p_matrix) ) then
       write(stdout, '(/,1x,a)') 'Evaluate the density-matrix P'
       call greensfunction_supermatrix_to_density_matrix(occupation, energy, c_matrix, super_matrix, eigval, p_matrix)
-    endif
+    end if
 
     call clean_deallocate('Super matrix', super_matrix)
     deallocate(eigval)
 
-  endif
+  end if
 
   call clean_deallocate('GW+2SOSEX_PSD Lehman amplitudes ~w_s', w_s_tilde)
   call clean_deallocate('GW Lehman amplitudes w_s', w_s)
@@ -3344,7 +3344,7 @@ subroutine psd_gw2sosex_selfenergy_upfolding(occupation, energy, c_matrix, wpol,
   deallocate(matrix_diag)
   if(has_auxil_basis) then
     call destroy_eri_3center_mo()
-  endif
+  end if
 
   call timer_vertex_selfenergy%stop()
 

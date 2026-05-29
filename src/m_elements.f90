@@ -60,9 +60,9 @@ function element_core(zval, zatom)
       element_core = 9
     else
       element_core = 18
-    endif
+    end if
 
-  endif
+  end if
 
 
 end function element_core
@@ -92,9 +92,9 @@ function element_core_gaussian(zval, zatom) result(element_core)
       element_core = 9
     else
       element_core = 18
-    endif
+    end if
 
-  endif
+  end if
 
 
 end function element_core_gaussian
@@ -209,9 +209,9 @@ function element_number(element_name)
       write(stdout, '(a,a)')    ' Input symbol ', element_name
       write(stdout, '(a,i3,a)') ' Element symbol is not one of first ', nelement_max, ' elements'
       call die('element symbol not understood')
-    endif
+    end if
     ielement = ielement + 1
-  enddo
+  end do
 
   element_number = ielement
 
@@ -239,11 +239,11 @@ function element_name(zatom)
   if( zatom_int == 0 ) then
     element_name='X'
     return
-  endif
+  end if
   if( zatom_int > nelement_max ) then
     write(stdout, '(a,i3,a)') 'Element symbol is not one of first ', nelement_max, ' elements'
     call die('element_name: element symbol not understood')
-  endif
+  end if
 
   ! use ABS() for anti-nucleus
   element_name = element_list(ABS(zatom_int))
@@ -275,13 +275,13 @@ function element_name_long(zatom)
   if( zatom_int > nelement_max ) then
     write(stdout, '(a,i3,a)') 'Element symbol is not one of first ', nelement_max, ' elements'
     call die('element_name_long: element symbol not understood')
-  endif
+  end if
 
   if( zatom_real > 0.0 .AND. ABS(zatom_int - zatom_real) < 1.0e-9_dp ) then
     element_name_long = element_list(ABS(zatom_int))
   else
     write(element_name_long, '(f8.4)') zatom_real
-  endif
+  end if
 
 
 end function element_name_long
@@ -351,7 +351,7 @@ subroutine element_atomicdensity(zval, zatom, coeff, alpha)
       coeff(4) = 0.0_dp
       alpha(3) = 1.0_dp
       alpha(4) = 1.0_dp
-    endif
+    end if
   case default
     alpha(1) = 0.3_dp
     coeff(1) = 2.0_dp

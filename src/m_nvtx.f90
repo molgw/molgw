@@ -102,7 +102,7 @@ contains
     ! move scalar trimmed_name into character array tempName
     do i=1,LEN(trim(name)) + 1
        tempName(i) = trimmed_name(i:i)
-    enddo
+    end do
 
     if ( .not. present(id)) then
        call nvtxRangePush(tempName)
@@ -118,7 +118,7 @@ contains
     call nvtxRangePop
   end subroutine nvtxEndRange
 
-#endif
+#end if
 
 end module m_nvtx
 !!***

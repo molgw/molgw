@@ -68,7 +68,7 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
     allocate(eri_mo_i(nstate, nstate, nstate, nspin))
-  endif
+  end if
 
 
 
@@ -85,7 +85,7 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
 
       if( .NOT. has_auxil_basis ) then
         call calculate_eri_4center_mo(c_matrix, istate, pqispin, eri_mo_i)
-      endif
+      end if
 
       fi = occupation(istate, pqispin)
       ei = energy(istate, pqispin)
@@ -116,14 +116,14 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
                 coul_iqjk = evaluate_eri_mo_ri(istate, qstate, pqispin, jstate, kstate, jkspin)
                 if( pqispin == jkspin ) then
                   coul_ijkq = evaluate_eri_mo_ri(istate, jstate, pqispin, kstate, qstate, pqispin)
-                endif
+                end if
               else
                 coul_ipkj = eri_mo_i(pstate, kstate, jstate, jkspin)
                 coul_iqjk = eri_mo_i(qstate, jstate, kstate, jkspin)
                 if( pqispin == jkspin ) then
                   coul_ijkq = eri_mo_i(jstate, kstate, qstate, pqispin)
-                endif
-              endif
+                end if
+              end if
 
               do iomega=-se%nomega, se%nomega
                 omega = se%energy0(qstate, pqispin) + se%omega(iomega)
@@ -138,7 +138,7 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
                 if(iomega==0 .AND. occupation(pstate, pqispin)>completely_empty) then
                   emp2_ring = emp2_ring + occupation(pstate, pqispin) &
                                         * fact_energy * coul_ipkj * coul_iqjk * spin_fact
-                endif
+                end if
 
                 if( pqispin == jkspin ) then
 
@@ -148,21 +148,21 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
                   if(iomega==0 .AND. occupation(pstate, pqispin)>completely_empty) then
                     emp2_sox = emp2_sox - occupation(pstate, pqispin) &
                               * fact_energy * coul_ipkj * coul_ijkq
-                  endif
+                  end if
 
-                endif
+                end if
 
 
-              enddo ! iomega
+              end do ! iomega
 
-            enddo
-          enddo
-        enddo
-      enddo
+            end do
+          end do
+        end do
+      end do
       !$OMP END DO
       !$OMP END PARALLEL
-    enddo
-  enddo ! pqispin
+    end do
+  end do ! pqispin
 
   call poorman%sum(selfenergy_ring)
   call poorman%sum(selfenergy_sox)
@@ -175,11 +175,11 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
   if( selfenergy_approx == ONE_RING ) then
     emp2_sox = 0.0_dp
     selfenergy_sox(:, :, :) = 0.0_dp
-  endif
+  end if
   if( selfenergy_approx == SOX ) then
     emp2_ring = 0.0_dp
     selfenergy_ring(:, :, :) = 0.0_dp
-  endif
+  end if
 
   if( nsemin <= ncore_G+1 .AND. nsemax >= nhomo_G ) then
     emp2 = emp2_ring + emp2_sox
@@ -189,7 +189,7 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
     write(stdout, '(a,f14.8,/)') ' MP2 correlation :', emp2
   else
     emp2 = 0.0_dp
-  endif
+  end if
 
   !$OMP PARALLEL
   !$OMP WORKSHARE
@@ -205,8 +205,8 @@ subroutine pt2_selfenergy(selfenergy_approx, basis, occupation, energy, c_matrix
                                                 REAL(selfenergy_sox(0, pstate, pqispin), dp)*Ha_eV, &
                                                 REAL(se%sigma(0, pstate, pqispin), dp)*Ha_eV
 
-    enddo
-  enddo
+    end do
+  end do
 
   if( ALLOCATED(eri_mo_i) ) deallocate(eri_mo_i)
   deallocate(selfenergy_ring)
@@ -252,7 +252,7 @@ subroutine onering_selfenergy(basis, occupation, energy, c_matrix, se, emp2)
   call gw_selfenergy_scalapack(ONE_RING, occupation, energy, c_matrix, vchi0v, se)
 #else
   call gw_selfenergy(ONE_RING, occupation, energy, c_matrix, vchi0v, se)
-#endif
+#end if
 
   call vchi0v%destroy()
 
@@ -310,7 +310,7 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
     allocate(eri_mo_i(nstate, nstate, nstate, nspin))
-  endif
+  end if
 
 
 
@@ -329,7 +329,7 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
 
       if( .NOT. has_auxil_basis ) then
         call calculate_eri_4center_mo(c_matrix, istate, pqispin, eri_mo_i)
-      endif
+      end if
 
       fi = occupation(istate, pqispin)
       ei = energy(istate, pqispin)
@@ -359,14 +359,14 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
                   coul_iqjk = evaluate_eri_mo_ri(istate, qstate, pqispin, jstate, kstate, jkspin)
                   if( pqispin == jkspin ) then
                     coul_ijkq = evaluate_eri_mo_ri(istate, jstate, pqispin, kstate, qstate, pqispin)
-                  endif
+                  end if
                 else
                   coul_ipkj = eri_mo_i(pstate, kstate, jstate, jkspin)
                   coul_iqjk = eri_mo_i(qstate, jstate, kstate, jkspin)
                   if( pqispin == jkspin ) then
                     coul_ijkq = eri_mo_i(jstate, kstate, qstate, pqispin)
-                  endif
-                endif
+                  end if
+                end if
 
                 ep = energy(pstate, pqispin)
                 eq = energy(qstate, pqispin)
@@ -381,7 +381,7 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
                 if( pstate == qstate .AND. occupation(pstate, pqispin) > completely_empty ) then
                   emp2_ring = emp2_ring + occupation(pstate, pqispin) &
                                         * fact_energy * coul_ipkj * coul_iqjk * spin_fact
-                endif
+                end if
 
                 if( pqispin == jkspin ) then
 
@@ -391,21 +391,21 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
                   if( pstate == qstate .AND. occupation(pstate, pqispin) > completely_empty ) then
                     emp2_sox = emp2_sox - occupation(pstate, pqispin) &
                               * fact_energy * coul_ipkj * coul_ijkq
-                  endif
+                  end if
 
-                endif
+                end if
 
 
 
-              enddo
-            enddo
-          enddo
-        enddo
-      enddo
+              end do
+            end do
+          end do
+        end do
+      end do
       !$OMP END DO
       !$OMP END PARALLEL
-    enddo
-  enddo ! pqispin
+    end do
+  end do ! pqispin
 
   call poorman%sum(selfenergy_ring)
   call poorman%sum(selfenergy_sox)
@@ -422,7 +422,7 @@ subroutine pt2_selfenergy_qs(basis, occupation, energy, c_matrix, s_matrix, self
     write(stdout, '(a,f14.8,/)') ' MP2 correlation :', emp2
   else
     emp2 = 0.0_dp
-  endif
+  end if
 
   !$OMP PARALLEL
   !$OMP WORKSHARE
@@ -512,7 +512,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
     call calculate_eri_4center_mo_uks(c_matrix, ncore_G+1, nvirtual_G-1)
-  endif
+  end if
 
 
   allocate(selfenergy(-se%nomega:se%nomega, ONERING:TWORINGS, nsemin:nsemax, nspin))
@@ -536,7 +536,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
       write(stdout, *) 'State ', pstate, 'is degenerated with state', pstate-1, '=> skip calculation'
       selfenergy(:, :, pstate, pqspin) = selfenergy(:, :, pstate-1, pqspin)
       cycle
-    endif
+    end if
 
     !$OMP PARALLEL &
     !$OMP& PRIVATE(eri_pqjk, eri_pjqk, eri_pqbc, eri_pbqc, eri_pqjc, eri_pjqc, eri_pqkb, eri_pkqb, &
@@ -577,9 +577,9 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
 
                 selfenergy3 = selfenergy3 - 2.0_dp * eri_pqjk * num2 * eri_kaib / ( denom1 * denom2 )
                 selfenergy4 = selfenergy4 +          eri_pjqk * num2 * eri_kaib / ( denom1 * denom2 )
-              enddo
-            enddo
-          enddo
+              end do
+            end do
+          end do
 
           ! A2   i,j   a,b,c
           do cstate=nhomo_G+1, nvirtual_G-1
@@ -597,9 +597,9 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
 
                 selfenergy3 = selfenergy3 + 2.0_dp * eri_pqbc * num2 * eri_icja / ( denom1 * denom2 )
                 selfenergy4 = selfenergy4 -          eri_pbqc * num2 * eri_icja / ( denom1 * denom2 )
-              enddo
-            enddo
-          enddo
+              end do
+            end do
+          end do
 
           ! A3,A4   i,j   a,b,c
           do istate=ncore_G+1, nhomo_G
@@ -617,9 +617,9 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
 
                 selfenergy3 = selfenergy3 + 4.0_dp * eri_pqjc * num2 * eri_acib / ( denom1 * denom2 )
                 selfenergy4 = selfenergy4 - 2.0_dp * eri_pjqc * num2 * eri_acib / ( denom1 * denom2 )
-              enddo
-            enddo
-          enddo
+              end do
+            end do
+          end do
 
           ! A5,A6   i,j,k   a,b
           do istate=ncore_G+1, nhomo_G
@@ -637,19 +637,19 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
 
                 selfenergy3 = selfenergy3 - 4.0_dp * eri_pqkb  * num2 * eri_ikja / ( denom1 * denom2 )
                 selfenergy4 = selfenergy4 + 2.0_dp * eri_pkqb  * num2 * eri_ikja / ( denom1 * denom2 )
-              enddo
-            enddo
-          enddo
-        enddo ! bstate
+              end do
+            end do
+          end do
+        end do ! bstate
         !$OMP END DO
         !$OMP SINGLE
         selfenergy(:, Ah, pstate, pqspin) = selfenergy(:, Ah, pstate, pqspin) + selfenergy3
         selfenergy(:, Ax, pstate, pqspin) = selfenergy(:, Ax, pstate, pqspin) + selfenergy4
         !$OMP END SINGLE
 
-      enddo ! astate
+      end do ! astate
 
-    endif
+    end if
 
 
     if( pt3_a_diagrams == 'NO' .OR. pt3_a_diagrams == 'YES' ) then
@@ -677,10 +677,10 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
               denom1 = omega + energy(astate, pqspin) - energy(istate, pqspin) - energy(jstate, pqspin) - ieta
               selfenergy1(iomega) = selfenergy1(iomega) + 2.0_dp * eri_pija * eri_qija / denom1
               selfenergy2(iomega) = selfenergy2(iomega) -          eri_pjia * eri_qija / denom1
-            enddo
+            end do
 
-          enddo
-        enddo
+          end do
+        end do
         !$OMP END DO
 
         !$OMP SINGLE
@@ -704,17 +704,17 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
               denom1 = omega + energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin) + ieta
               selfenergy1(iomega) = selfenergy1(iomega) + 2.0_dp * eri_paib * eri_qaib / denom1
               selfenergy2(iomega) = selfenergy2(iomega) -          eri_pbia * eri_qaib / denom1
-            enddo
+            end do
 
-          enddo
-        enddo  ! istate
+          end do
+        end do  ! istate
         !$OMP END DO
 
         !$OMP SINGLE
         selfenergy(:, ONERING, pstate, pqspin) = selfenergy(:, ONERING, pstate, pqspin) + selfenergy1(:)
         selfenergy(:, SOX_, pstate, pqspin)    = selfenergy(:, SOX_, pstate, pqspin)    + selfenergy2(:)
         !$OMP END SINGLE
-      enddo  ! astate
+      end do  ! astate
 
       !
       ! C diagrams family
@@ -743,18 +743,18 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
                   denom2 = omega + energy(istate, pqspin) - energy(cstate, pqspin) - energy(dstate, pqspin) + ieta
                   selfenergy1(iomega) = selfenergy1(iomega) + 2.0_dp * eri_paib * num2 * num3 / ( denom1 * denom2 )
                   selfenergy2(iomega) = selfenergy2(iomega) -          eri_pbia * num2 * num3 / ( denom1 * denom2 )
-                enddo
-              enddo
-            enddo
-          enddo ! bstate
+                end do
+              end do
+            end do
+          end do ! bstate
           !$OMP END DO
           !$OMP SINGLE
           selfenergy(:, Cd, pstate, pqspin) = selfenergy(:, Cd, pstate, pqspin) + selfenergy1(:)
           selfenergy(:, Cx, pstate, pqspin) = selfenergy(:, Cx, pstate, pqspin) + selfenergy2(:)
           !$OMP END SINGLE
 
-        enddo
-      enddo
+        end do
+      end do
 
       ! C2+C3   i,j,k   a,b
       do astate=nhomo_G+1, nvirtual_G-1
@@ -778,17 +778,17 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
                   denom1 = omega + energy(istate, pqspin) - energy(astate, pqspin) - energy(bstate, pqspin) + ieta
                   selfenergy1(iomega) = selfenergy1(iomega) + 4.0_dp * eri_paib * num2 * num3 / ( denom1 * denom2 )
                   selfenergy2(iomega) = selfenergy2(iomega) - 2.0_dp * eri_pbia * num2 * num3 / ( denom1 * denom2 )
-                enddo
-              enddo
-            enddo ! bstate
-          enddo
+                end do
+              end do
+            end do ! bstate
+          end do
           !$OMP END DO
           !$OMP SINGLE
           selfenergy(:, Cd, pstate, pqspin) = selfenergy(:, Cd, pstate, pqspin) + selfenergy1(:)
           selfenergy(:, Cx, pstate, pqspin) = selfenergy(:, Cx, pstate, pqspin) + selfenergy2(:)
           !$OMP END SINGLE
-        enddo
-      enddo
+        end do
+      end do
 
       ! C4+C5   i,j   a,b,c
       do astate=nhomo_G+1, nvirtual_G-1
@@ -811,17 +811,17 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
                   denom2 = energy(istate, pqspin) + energy(jstate, pqspin) - energy(bstate, pqspin) - energy(cstate, pqspin)
                   selfenergy1(iomega) = selfenergy1(iomega) + 4.0_dp * eri_pija * num2 * num3 / ( denom1 * denom2 )
                   selfenergy2(iomega) = selfenergy2(iomega) - 2.0_dp * eri_pjia * num2 * num3 / ( denom1 * denom2 )
-                enddo
-              enddo
-            enddo ! jstate
-          enddo
+                end do
+              end do
+            end do ! jstate
+          end do
           !$OMP END DO
           !$OMP SINGLE
           selfenergy(:, Cd, pstate, pqspin) = selfenergy(:, Cd, pstate, pqspin) + selfenergy1(:)
           selfenergy(:, Cx, pstate, pqspin) = selfenergy(:, Cx, pstate, pqspin) + selfenergy2(:)
           !$OMP END SINGLE
-        enddo
-      enddo
+        end do
+      end do
 
       ! C6   i,j,k,l   a
       do astate=nhomo_G+1, nvirtual_G-1
@@ -845,17 +845,17 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
                   ! Minus sign from Domcke-Cederbaum book chapter 1977 (forgotten in von niessen review in 1983)
                   selfenergy1(iomega) = selfenergy1(iomega) - 2.0_dp *  eri_pkla * num2 * num3 / ( denom1 * denom2 )
                   selfenergy2(iomega) = selfenergy2(iomega) +           eri_plka * num2 * num3 / ( denom1 * denom2 )
-                enddo
-              enddo
-            enddo ! lstate
-          enddo
+                end do
+              end do
+            end do ! lstate
+          end do
           !$OMP END DO
           !$OMP SINGLE
           selfenergy(:, Cd, pstate, pqspin) = selfenergy(:, Cd, pstate, pqspin) + selfenergy1(:)
           selfenergy(:, Cx, pstate, pqspin) = selfenergy(:, Cx, pstate, pqspin) + selfenergy2(:)
           !$OMP END SINGLE
-        enddo
-      enddo
+        end do
+      end do
 
       !
       ! D diagrams family
@@ -891,10 +891,10 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
                   selfenergy2(iomega) = selfenergy2(iomega) &
                              + (  eri_paib * eri_ijac * num3b &
                                 + eri_pbia * eri_ijac * num3a )   / ( denom1 * denom2 )
-                enddo
-              enddo
-            enddo
-          enddo
+                end do
+              end do
+            end do
+          end do
           !$OMP END DO
           !$OMP SINGLE
           selfenergy(:, TWORINGS, pstate, pqspin) = selfenergy(:, TWORINGS, pstate, pqspin) + selfenergy0(:)
@@ -902,8 +902,8 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           selfenergy(:, Deh, pstate, pqspin)      = selfenergy(:, Deh, pstate, pqspin)      + selfenergy2(:)
           !$OMP END SINGLE
 
-        enddo
-      enddo
+        end do
+      end do
 
 
       ! D2+D3   i,j   a,b,c
@@ -936,10 +936,10 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
                              + 2.0_dp * (  num1a * num2a * (-2.0_dp) * num3a + num1b * num2a * num3a ) / ( denom1 * denom2 )
                   selfenergy2(iomega) = selfenergy2(iomega) &
                              + 2.0_dp * (  num1a * num2b * num3a + num1b * num2b * num3b )   / ( denom1 * denom2 )
-                enddo
-              enddo
-            enddo
-          enddo
+                end do
+              end do
+            end do
+          end do
           !$OMP END DO
           !$OMP SINGLE
           selfenergy(:, TWORINGS, pstate, pqspin) = selfenergy(:, TWORINGS, pstate, pqspin) + selfenergy0(:)
@@ -947,8 +947,8 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
           selfenergy(:, Deh, pstate, pqspin)      = selfenergy(:, Deh, pstate, pqspin)      + selfenergy2(:)
           !$OMP END SINGLE
 
-        enddo
-      enddo
+        end do
+      end do
 
 
       ! D4+D5   i,j,k   a,b
@@ -983,18 +983,18 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
                   selfenergy2(iomega) = selfenergy2(iomega) &
                              + 2.0_dp * (  num1a * num2b * num3a &
                                          + num1b * num2b * num3b )   / ( denom1 * denom2 )
-                enddo
-              enddo
-            enddo
-          enddo
+                end do
+              end do
+            end do
+          end do
           !$OMP END DO
           !$OMP SINGLE
           selfenergy(:, TWORINGS, pstate, pqspin) = selfenergy(:, TWORINGS, pstate, pqspin) + selfenergy0(:)
           selfenergy(:, DRINGS, pstate, pqspin)   = selfenergy(:, DRINGS, pstate, pqspin)   + selfenergy1(:)
           selfenergy(:, Deh, pstate, pqspin)      = selfenergy(:, Deh, pstate, pqspin)      + selfenergy2(:)
           !$OMP END SINGLE
-        enddo
-      enddo
+        end do
+      end do
 
       ! D6   i,j,k   a,b
       do astate=nhomo_G+1, nvirtual_G-1
@@ -1026,20 +1026,20 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
                              - ( num1a * num2a * (-2.0_dp) * num3a + num1b * num2a * num3a ) / ( denom1 * denom2 )
                   selfenergy2(iomega) = selfenergy2(iomega) &
                              - ( num1a * num2b * num3a + num1b * num2b * num3b ) / ( denom1 * denom2 )
-                enddo
-              enddo
-            enddo
-          enddo
+                end do
+              end do
+            end do
+          end do
           !$OMP END DO
           !$OMP SINGLE
           selfenergy(:, TWORINGS, pstate, pqspin) = selfenergy(:, TWORINGS, pstate, pqspin) + selfenergy0(:)
           selfenergy(:, DRINGS, pstate, pqspin)   = selfenergy(:, DRINGS, pstate, pqspin)   + selfenergy1(:)
           selfenergy(:, Deh, pstate, pqspin)      = selfenergy(:, Deh, pstate, pqspin)      + selfenergy2(:)
           !$OMP END SINGLE
-        enddo
-      enddo
+        end do
+      end do
 
-    endif
+    end if
     !$OMP END PARALLEL
 
     call poorman%sum(selfenergy(:, :, pstate, :))
@@ -1059,7 +1059,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
                                      REAL(selfenergy(0, TWORINGS, pstate, pqspin), dp) * Ha_eV,         &
                                      REAL(selfenergy(0, DRINGS, pstate, pqspin), dp) * Ha_eV,           &
                                      REAL(selfenergy(0, Deh, pstate, pqspin), dp) * Ha_eV
-  enddo
+  end do
 
 
   select case(selfenergy_approx)
@@ -1080,7 +1080,7 @@ subroutine pt3_selfenergy(selfenergy_approx, selfenergy_technique, basis, occupa
     call destroy_eri_3center_mo()
   else
     call destroy_eri_4center_mo_uks()
-  endif
+  end if
 
   call timer_pt_self%stop()
 

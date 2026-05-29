@@ -120,7 +120,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
     ! M = E * C**T
     do istate=1, nstate
       matrix_tmp(istate, :) = energy(istate, ispin) * c_matrix(:, istate, ispin)
-    enddo
+    end do
     ! M = C * E * C**T
     matrix_tmp(:, :) = MATMUL( c_matrix(:, 1:nstate, ispin), matrix_tmp(1:nstate, :) )
 
@@ -129,7 +129,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
     ! Hsmall = Sbs**T * M * Sbs
     h_small(:, :, ispin) = MATMUL( TRANSPOSE(s_bigsmall), MATMUL( matrix_tmp, s_bigsmall ) )
 
-  enddo
+  end do
   call clean_deallocate('Tmp matrix', matrix_tmp)
 
   ! Diagonalize the small Hamiltonian in the small basis
@@ -155,7 +155,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
   ! Cbig = S**-1 * Sbs * tilde C
   do ispin=1, nspin
     c_big(:, :, ispin) = MATMUL( s_matrix_inv(:, :), MATMUL( s_bigsmall(:, :), c_small(:, :, ispin) ) )
-  enddo
+  end do
   call clean_deallocate('Coefficients small basis', c_small)
   call clean_deallocate('Overlap inverse S^{-1}', s_matrix_inv)
   call clean_deallocate('Big-Small overlap Sbs', s_bigsmall)
@@ -173,7 +173,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
   do while( ANY( ABS(energy(nfrozen+1, :)-energy(nfrozen, :)) < 1.0e-4_dp ) )
     nfrozen = nfrozen + 1
     if( nfrozen == nstate_small ) exit
-  enddo
+  end do
 
   write(stdout, '(1x,a,i6)') 'Leave the first states frozen up to: ', nfrozen
   c_big(:, 1:nfrozen, :) = c_matrix(:, 1:nfrozen, :)
@@ -195,7 +195,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
 
   do ispin=1, nspin
     h_bar(:, :, ispin) = MATMUL( TRANSPOSE(c_big(:, :, ispin)), MATMUL( h_big(:, :, ispin), c_big(:, :, ispin) ) )
-  enddo
+  end do
   call clean_deallocate('Hamiltonian H', h_big)
 
   allocate(energy_bar(nstate_bar, nspin))
@@ -205,7 +205,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
 
   do ispin=1, nspin
     c_big(:, 1:nstate_bar, ispin) = MATMUL( c_big(:, :, ispin), c_bar(:, :, ispin) )
-  enddo
+  end do
 
   call dump_out_energy('=== Energies in the final small basis ===', occupation(1:nstate_bar, :), energy_bar)
 
@@ -222,7 +222,7 @@ subroutine setup_virtual_smallbasis(basis, nstate, occupation, nsemax, energy, c
 
     energy_ref(:, :)     = energy(1:nstate_bar, :)
     c_matrix_ref(:, :, :) = c_matrix(:, 1:nstate_bar, :)
-  endif
+  end if
 
   !
   ! And then override the c_matrix and the energy with the fresh new ones
@@ -275,12 +275,12 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
     call issue_warning( &
      'calculate_virtual_fno: is on, however nvirtualw and nvirtualg are not set. Skipping the Frozen Natural Orbitals generation.')
     return
-  endif
+  end if
 
   if( nspin > 1 ) then
     call issue_warning('calculate_virtual_fno not implemented yet for spin polarized calculations')
     return
-  endif
+  end if
 
   ncore = ncoreg
   select case(TRIM(frozencore))
@@ -294,7 +294,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
     call calculate_eri_3center_mo(c_matrix)
   else
     call calculate_eri_4center_mo_uks(c_matrix, 1, nstate)
-  endif
+  end if
 
   do ispin=1, nspin
     !
@@ -303,7 +303,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
     do istate=ncore+1, nstate
       if( occupation(istate, ispin) < completely_empty ) cycle
       nocc = istate
-    enddo
+    end do
 
 
 
@@ -334,11 +334,11 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
                   p_matrix_mp2(astate-nsemax, bstate-nsemax)  &
                      + 0.50_dp * eri_ci_aj * eri_ci_bj / ( den_cb_ij * den_ca_ij )
 
-            enddo
-          enddo
-        enddo
-      enddo
-    enddo
+            end do
+          end do
+        end do
+      end do
+    end do
 
 
 
@@ -348,7 +348,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
     !   write(stdout,*)
     !   do astate=1,nvirtual
     !     write(stdout,'(i4,2x,es16.4)') astate,occupation_mp2(astate)
-    !   enddo
+    !   end do
     !   write(stdout,*)
 
     allocate(ham_virtual(nvirtual, nvirtual))
@@ -356,7 +356,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
     ham_virtual(:, :) = 0.0_dp
     do astate=1, nvirtual
       ham_virtual(astate, astate) = energy(astate+nsemax, ispin)
-    enddo
+    end do
 
     nvirtual_kept = nvirtualmin - 1 - nsemax
 
@@ -382,7 +382,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
     !   write(stdout,'(/,1x,a)') ' virtual state    FNO energy (eV)   reference energy (eV)'
     !   do astate=1,nvirtual_kept
     !     write(stdout,'(i4,4x,f16.5,2x,f16.5)') astate,energy_virtual_kept(astate)*Ha_eV,energy(astate+nocc,ispin)*Ha_eV
-    !   enddo
+    !   end do
     !   write(stdout,*)
 
 
@@ -394,7 +394,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
 
       energy_ref(nsemax+1:nsemax+nvirtual_kept, :)     = energy(nsemax+1:nsemax+nvirtual_kept, :)
       c_matrix_ref(:, nsemax+1:nsemax+nvirtual_kept, :) = c_matrix(:, nsemax+1:nsemax+nvirtual_kept, :)
-    endif
+    end if
 
     !
     ! And then override the c_matrix and the energy with the fresh new ones
@@ -407,7 +407,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
     deallocate(energy_virtual_kept)
     deallocate(ham_virtual_kept)
     deallocate(p_matrix_mp2, occupation_mp2)
-  enddo
+  end do
 
 
 
@@ -415,7 +415,7 @@ subroutine calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_ma
     call destroy_eri_3center_mo()
   else
     call destroy_eri_4center_mo_uks()
-  endif
+  end if
 
   write(stdout, '(1x,a)') 'Optimized empty states with Frozen Natural Orbitals'
 
@@ -454,9 +454,9 @@ subroutine destroy_fno(basis, nstate, energy, c_matrix)
     call gather_distributed_copy(desc_bb_sb, c_local, c_matrix)
     if( desc_bb_sb(CTXT_) > 0 ) then
       call clean_deallocate('Distributed C', c_local)
-    endif
+    end if
 
-  endif
+  end if
 
 
 end subroutine destroy_fno
@@ -500,9 +500,9 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
     do ispin=1, nspin
       write(stdout, '(1x,a,*(1x,f12.6))') 'HF eigenvalues at truncation (eV): ', energy(rdm_filtering_no, ispin) * Ha_eV, &
                                                                                 energy(rdm_filtering_no+1, ispin) * Ha_eV
-    enddo
+    end do
     call issue_warning('rdm_filtering_mo choice breaks an energy shell (above 1.0e-6 Ha tolerance)')
-  endif
+  end if
 
 
   allocate(p_matrix_mo_virtual(nvo, nvo, nspin))
@@ -527,18 +527,18 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
                                      nvo_occ(rdm_filtering_no, ispin)
     if( ABS(nvo_occ(rdm_filtering_no, 1) - nvo_occ(rdm_filtering_no+1, 1)) < 1.0e-8_dp ) then
       call issue_warning('rdm_filtering_no choice breaks an occupation shell (above 1.0e-8 tolerance)')
-    endif
+    end if
     
     allocate(hfock_nvo(nvo, nvo))
     hfock_nvo(:, :) = 0.0_dp
     do pstate=rdm_filtering_mo_+1, rdm_filtering_mo_+nvo
       hfock_nvo(pstate-rdm_filtering_mo_, pstate-rdm_filtering_mo_) = energy(pstate, ispin)
-    enddo
+    end do
 
     hfock_filtered(:, :, ispin) = 0.0_dp
     do pstate=1, rdm_filtering_mo_
       hfock_filtered(pstate, pstate, ispin) = energy(pstate, ispin)
-    enddo
+    end do
     hfock_filtered(rdm_filtering_mo_+1:nstate_filtered, rdm_filtering_mo_+1:nstate_filtered, ispin) = &
                         MATMUL( TRANSPOSE(p_matrix_mo_virtual(:, 1:rdm_filtering_no, ispin)), &
                                   MATMUL( hfock_nvo, p_matrix_mo_virtual(:, 1:rdm_filtering_no, ispin) ) )
@@ -557,7 +557,7 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
     c_matrix_no_mo(:, :, ispin) = 0.0_dp
     do pstate=1, rdm_filtering_mo_
       c_matrix_no_mo(pstate, pstate, ispin) = 1.0_dp
-    enddo
+    end do
     c_matrix_no_mo(rdm_filtering_mo_+1:nstate, rdm_filtering_mo_+1:nstate_filtered, ispin) = &
                    MATMUL( p_matrix_mo_virtual(1:nvo, 1:rdm_filtering_no, ispin), &
                            cfock_filtered(rdm_filtering_mo_+1:nstate_filtered, rdm_filtering_mo_+1:nstate_filtered) )
@@ -575,7 +575,7 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
     !                                cfock_filtered(rdm_filtering_mo_+1:nstate_filtered, rdm_filtering_mo_+1:nstate_filtered) ) )
     !deallocate(cfock_filtered)
 
-  enddo
+  end do
 
   call dump_out_energy('=== HF Energies in filtered virtual space ===', occupation(1:nstate_filtered, :), ehf_filtered)
 
@@ -591,7 +591,7 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
     deallocate(hfock_ao)
 
     deallocate(s_matrix)
-  endif
+  end if
 
   if( print_cc4s_files_ ) then
     call write_cc4s_eigenenergies(occupation, ehf_filtered, rootname=cc4s_output)
@@ -607,8 +607,8 @@ subroutine setup_fno_from_density_matrix(basis, occupation, energy, c_matrix, p_
       call calculate_eri_3center_mo(c_matrix_nvo, 1, nstate_filtered, 1, nstate_filtered)
       call write_cc4s_coulombvertex(nauxil_global, eri_3center_mo, rootname=cc4s_output)
       call destroy_eri_3center_mo()
-    endif
-  endif
+    end if
+  end if
 
   deallocate(ehf_filtered, hfock_filtered)
   

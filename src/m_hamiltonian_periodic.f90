@@ -9,7 +9,7 @@
 #include "molgw.h"
 #if !defined(NO_LIBINT)
 #include<libint2/libint2_params.h>
-#endif
+#end if
 
 module m_hamiltonian_periodic
   use m_definitions
@@ -33,7 +33,7 @@ module m_hamiltonian_periodic
   use m_hamiltonian_onebody
 #if defined(HAVE_FFTW3)
   use m_fftw3
-#endif
+#end if
   implicit none
 
   integer, private :: nx                ! local copy of input variable fft_neighbors
@@ -89,12 +89,12 @@ subroutine set_fft_grid(basis)
   maximum_extension = 0.0_dp
   do ibf=1, basis%nbf
     maximum_extension = MAX(maximum_extension, basis%bff(ibf)%radius)
-  enddo
+  end do
   if( maximum_extension > minimal_image_distance * (1 + fft_neighbors) * 0.30_dp) then
     call issue_warning('Basis set too diffuse compared to box dimensions. Consider increasing the replication fft_neighbors')
     write(stdout, '(1x,a,f8.2)') 'Basis extension    (bohr): ', maximum_extension
     write(stdout, '(1x,a,f8.2)') 'Box image distance (bohr): ', minimal_image_distance * (1 + fft_neighbors)
-  endif
+  end if
 
   ! Direction 1
   nfftx = CEILING( NORM2(aprim(:, 1)) * SQRT(2.0_dp * fft_ecut) / pi )
@@ -116,7 +116,7 @@ subroutine set_fft_grid(basis)
   nfft_local = 0
   do ifft_global=1, nfft_global
     if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) nfft_local = nfft_local + 1
-  enddo
+  end do
   write(stdout,'(1x,a,i9,a,i9)') 'This MPI task treats ', nfft_local , ' grid points out of ', nfft_global
 
   allocate(rgrid(3, nfft_local))
@@ -130,10 +130,10 @@ subroutine set_fft_grid(basis)
         if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
           ifft_local = ifft_local + 1
           rgrid(:, ifft_local) = MATMUL( aprim(:, :), [DBLE(i1)/nfft1, DBLE(i2)/nfft2, DBLE(i3)/nfft3] )
-        endif
-      enddo
-    enddo
-  enddo
+        end if
+      end do
+    end do
+  end do
 
   !
   ! set fft_batch_size so to avoid temporary arrays larger than 100 Mb
@@ -167,9 +167,9 @@ subroutine set_fft_grid(basis)
       fft_rcut = ( 3.0_dp / (4.0_dp * pi) * volume )**(1.0_dp/3.0_dp)
     else
       fft_rcut = fft_coulomb_cutoff
-    endif
+    end if
     write(stdout, '(1x,a,f12.4)') 'Spherical cutoff (bohr): ', fft_rcut
-  endif
+  end if
   write(stdout, *)
 
 contains
@@ -188,8 +188,8 @@ contains
       if( fft_grids(i) > nfftx) then
           next_in_grid = fft_grids(i)
           exit
-      endif
-    enddo
+      end if
+    end do
 
   end function next_in_grid
 
@@ -222,9 +222,9 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
         call setup_overlap_onecell(basis, shift, s_matrix)
         overlap_ao(:, :) = overlap_ao(:, :) + s_matrix(:, :)
 
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   deallocate(s_matrix)
 
@@ -236,13 +236,13 @@ subroutine setup_overlap_periodic(basis, overlap_ao)
   ! Check normalization
   do ibf=1, basis%nbf
     normalization(ibf) = overlap_ao(ibf, ibf)
-  enddo
+  end do
 
   if( MAXVAL(ABS(normalization - 1.0_dp)) > 1.0e-4_dp ) then
     write(stdout, '(1x,a,f12.6)') 'Some basis functions are normalized at: ', MINVAL(normalization)
     write(stdout, '(1x,a,f12.6)') 'Some basis functions are normalized at: ', MAXVAL(normalization)
     call issue_warning('Basis functions are not perfectly normalized. Consider increasing fft_neighbors')
-  endif
+  end if
 
 
 end subroutine setup_overlap_periodic
@@ -305,7 +305,7 @@ subroutine setup_overlap_onecell(basis, shift, s_matrix)
                            array_cart)
 
       call transform_libcint_to_molgw(basis%gaussian_type, li, lj, array_cart, matrix)
-#endif
+#end if
 
       deallocate(alphaA, cA)
 
@@ -314,9 +314,9 @@ subroutine setup_overlap_onecell(basis, shift, s_matrix)
 
       deallocate(array_cart, matrix)
 
-    enddo
+    end do
     deallocate(alphaB, cB)
-  enddo
+  end do
 
 
   if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_overlap%stop()
@@ -350,9 +350,9 @@ subroutine setup_kinetic_periodic(basis, kin_ao)
         call setup_kinetic_onecell(basis, shift, hkin)
         kin_ao(:, :) = kin_ao(:, :) + hkin(:, :)
 
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   deallocate(hkin)
 
@@ -421,7 +421,7 @@ subroutine setup_kinetic_onecell(basis, shift, kin_ao)
                            array_cart)
 
       call transform_libint_to_molgw(basis%gaussian_type, li, lj, array_cart, matrix)
-#endif
+#end if
 
       deallocate(alphaA, cA)
 
@@ -431,9 +431,9 @@ subroutine setup_kinetic_onecell(basis, shift, kin_ao)
 
       deallocate(array_cart, matrix)
 
-    enddo
+    end do
     deallocate(alphaB, cB)
-  enddo
+  end do
 
 
   if( TIMING_current_stage /= TIMING_POSTSCF ) call timer_hamiltonian_kin%stop()
@@ -458,14 +458,14 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
 
 #if !defined(HAVE_FFTW3)
   call die('setup_nucleus_periodic: requires FFTW at compilation time')
-#endif
+#end if
 
 
   if( TIMING_current_stage == TIMING_POSTSCF ) then
     call timer_tddft_hamiltonian_nuc%start()
   else
     call timer_hamiltonian_nuc%start()
-  endif
+  end if
 
   write(stdout, '(/,1x,a)') 'Calculate periodic nucleus term'
 
@@ -502,7 +502,7 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
     call timer_tddft_hamiltonian_nuc%stop()
   else
     call timer_hamiltonian_nuc%stop()
-  endif
+  end if
 
 
 end subroutine setup_nucleus_periodic
@@ -526,7 +526,7 @@ subroutine setup_hxc_periodic(basis, p_matrix, h_ao, ehartree, exc)
 
   if( calc_type%is_dft ) then
     call setup_vxc_periodic(basis, vloc, exc)
-  endif
+  end if
 
   call timer_pbc_potential_to_hao%start()
   call calculate_hao_periodic(basis, vloc, h_ao)
@@ -559,7 +559,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, vloc, ehartree, h_ao)
 
 #if !defined(HAVE_FFTW3)
   call die('setup_hartree_periodic: requires FFTW at compilation time')
-#endif
+#end if
 
   select type(p_matrix)
   type is(real(dp))
@@ -587,12 +587,12 @@ subroutine setup_hartree_periodic(basis, p_matrix, vloc, ehartree, h_ao)
     rhoelecr_was_read = read_restart_rhogrid()
   else
     rhoelecr_was_read = .FALSE.
-  endif
+  end if
   first_step = .FALSE.
 
   if( .NOT. rhoelecr_was_read ) then
     call calculate_density_periodic(basis, p_matrix_local, rhoelecr)
-  endif
+  end if
 
   ! Kerker is not working properly
   !call kerker_precond(rhoelecr(:, 1))
@@ -615,12 +615,12 @@ subroutine setup_hartree_periodic(basis, p_matrix, vloc, ehartree, h_ao)
   !
   do ispin=1, nspin
     vloc(:, ispin) = vloc(:, ispin) + vhartreegrid(:)
-  enddo
+  end do
 
   if( PRESENT(h_ao) ) then
     call calculate_hao_periodic(basis, vhartreegrid, h_ao)
     call dump_out_matrix(.FALSE., '=== Hartree contribution (FFTW) ===', h_ao)
-  endif
+  end if
 
   call timer_xxdft_hartree%stop()
 
@@ -661,12 +661,12 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
     call copy_libxc_info(dft_xc_in, dft_xc_local)
   else
     call copy_libxc_info(dft_xc, dft_xc_local)
-  endif
+  end if
 
   if( dft_xc_local(1)%nxc == 0 ) then
     write(stdout, *) 'No DFT xc to calculate'
     return
-  endif
+  end if
 
   allocate(vxcgrid(nfft_local, nspin))
   exc_xc = 0.0_dp
@@ -702,11 +702,11 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
     if( nspin == 2 ) then
       sigma(2, :) = SUM(gradrhor(1, :, :) * gradrhor(2, :, :), DIM=2)
       sigma(3, :) = SUM(gradrhor(2, :, :)**2, DIM=2)
-    endif
+    end if
 
     allocate(vsigma(2 * nspin + 1, nfft_local))
 
-  endif
+  end if
 
 
   call timer_xxdft_libxc%start()
@@ -728,7 +728,7 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
       do ifft_local=1, nfft_local
         call xc_gga_exc_vxc(dft_xc_local(ixc)%func, 1_C_INT, &
             rhor(1, ifft_local), sigma(1, ifft_local), excgrid(ifft_local), vrho(1, ifft_local), vsigma(1, ifft_local))
-      enddo
+      end do
 
       ! Remove too small densities to stabilize the computation
       ! especially useful for Becke88
@@ -737,8 +737,8 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
           excgrid(ifft_local)   = 0.0_dp
           vrho(:, ifft_local)   = 0.0_dp
           vsigma(:, ifft_local) = 0.0_dp
-        endif
-      enddo
+        end if
+      end do
 
       ! Evaluation of
       ! vxcgrad(r) = −∇ ⋅ (2 vσ(r) ∇n(r))
@@ -757,7 +757,7 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
 
     exc_xc = exc_xc + dft_xc_local(ixc)%coeff * SUM( SUM(rhor(:, :), DIM=1 ) * excgrid(:)) * volume / REAL(nfft_global, dp)
 
-  enddo
+  end do
 
   call grid%sum(exc_xc)
 
@@ -778,7 +778,7 @@ subroutine setup_vxc_periodic(basis, vloc, exc_xc, vxc_ao, dft_xc_in)
 
   if( PRESENT(vxc_ao) ) then
     call calculate_hao_periodic(basis, vxcgrid, vxc_ao)
-  endif
+  end if
 
   call timer_xxdft_xc%stop()
 
@@ -818,10 +818,10 @@ subroutine evaluate_gradrho_periodic(rhor, gradrhor)
           if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
             ifft_local = ifft_local + 1
             rhor_fftw(i1, i2, i3) = rhor(ispin, ifft_local)
-          endif
-        enddo
-      enddo
-    enddo
+          end if
+        end do
+      end do
+    end do
     call grid%sum(rhor_fftw)
 
     !
@@ -847,9 +847,9 @@ subroutine evaluate_gradrho_periodic(rhor, gradrhor)
         do ig2=1, nfft2
           do ig1=1, nfft1/2+1
             gradg_fftw(ig1, ig2, ig3) = im * gvec(idir, ig1, ig2, ig3) * rhog_fftw(ig1, ig2, ig3)
-          enddo
-        enddo
-      enddo
+          end do
+        end do
+      end do
 
       psr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
       call C_F_POINTER(psr, gradr_fftw, [nfft1, nfft2, nfft3])
@@ -869,15 +869,15 @@ subroutine evaluate_gradrho_periodic(rhor, gradrhor)
             if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
               ifft_local = ifft_local + 1
               gradrhor(ispin, ifft_local, idir) = gradr_fftw(i1, i2, i3)
-            endif
-          enddo
-        enddo
-      enddo
+            end if
+          end do
+        end do
+      end do
 
 
-    enddo ! loop over cartesian axes
+    end do ! loop over cartesian axes
 
-  enddo ! spin loop
+  end do ! spin loop
 
   call fftw_free(pr)
   call fftw_free(pg)
@@ -887,7 +887,7 @@ subroutine evaluate_gradrho_periodic(rhor, gradrhor)
 #else
   gradrhor(:, :, :) = 0.0_dp ! Fake operation to cheat on the unused dummy variable check of the compiler
   call die('evaluate_gradrho_periodic: requires to be compiled with FFTs (-DHAVE_FFTW3)')
-#endif
+#end if
 
 end subroutine evaluate_gradrho_periodic
 
@@ -929,10 +929,10 @@ subroutine evaluate_divergence_periodic(gradrhor, sigmar, divergence)
             if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
               ifft_local = ifft_local + 1
               fieldr_fftw(i1, i2, i3) = 2.0_dp * gradrhor(ispin, ifft_local, idir) * sigmar(ispin, ifft_local)
-            endif
-          enddo
-        enddo
-      enddo
+            end if
+          end do
+        end do
+      end do
       call grid%sum(fieldr_fftw)
 
       !
@@ -952,9 +952,9 @@ subroutine evaluate_divergence_periodic(gradrhor, sigmar, divergence)
         do ig2=1, nfft2
           do ig1=1, nfft1/2+1
             divg_fftw(ig1, ig2, ig3) = im * gvec(idir, ig1, ig2, ig3) * fieldg_fftw(ig1, ig2, ig3)
-          enddo
-        enddo
-      enddo
+          end do
+        end do
+      end do
 
       psr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
       call C_F_POINTER(psr, divr_fftw, [nfft1, nfft2, nfft3])
@@ -974,14 +974,14 @@ subroutine evaluate_divergence_periodic(gradrhor, sigmar, divergence)
             if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
               ifft_local = ifft_local + 1
               divergence(ispin, ifft_local) = divergence(ispin, ifft_local) + divr_fftw(i1, i2, i3)
-            endif
-          enddo
-        enddo
-      enddo
+            end if
+          end do
+        end do
+      end do
 
-    enddo
+    end do
 
-  enddo ! spin loop
+  end do ! spin loop
 
   call fftw_free(pr)
   call fftw_free(pg)
@@ -991,7 +991,7 @@ subroutine evaluate_divergence_periodic(gradrhor, sigmar, divergence)
 #else
   divergence(:, :) = 0.0_dp ! Fake operation to cheat on the unused dummy variable check of the compiler
   call die('evaluate_divergence_periodic: requires to be compiled with FFTs (-DHAVE_FFTW3)')
-#endif
+#end if
 
 end subroutine evaluate_divergence_periodic
 
@@ -1041,10 +1041,10 @@ subroutine calculate_density_periodic(basis, p_matrix, rhor)
                  = rhor(first:last, ispin) + SUM( bfr(:, first:last) * tmp(:, 1:current_batch_size), DIM=1)
       first = last + 1
       if( first > nfft_local ) exit
-    enddo
+    end do
 
 
-  enddo ! end of spin loop
+  end do ! end of spin loop
 
   call clean_deallocate('P * phi', tmp)
 
@@ -1087,7 +1087,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
 
   if( .NOT. ALLOCATED(bfr) ) then
     call die('setup_exchange_periodic: basis function on FFT grid should be available at this stage')
-  endif
+  end if
 
   nocc = get_number_occupied_states(occupation)
 
@@ -1099,7 +1099,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   do ig_global=1, ng_global
     irank = MODULO(ig_global - 1, grid%nproc)
     ng_local_mpi(irank + 1) = ng_local_mpi(irank + 1) + 1
-  enddo
+  end do
   ng_local = ng_local_mpi(grid%rank + 1)
 
   allocate(vg_sqrt(nfft1 / 2 + 1, nfft2, nfft3))
@@ -1112,9 +1112,9 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
         case(1)
           vg_sqrt(ig1, ig2, ig3) = SQRT(vcoulg_cutoff(ig1, ig2, ig3))
         end select
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   ! Transpose bfr -> bfrt
   call transpose_bfr(bfrt, desct)
@@ -1177,7 +1177,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
         ! Cast the complex FFT into a real array (G index will be summed over then the order does not matter)
         phiphig1(:, ibf_local) = TRANSFER(phiphig_fftw, [1.0_dp, 1.0_dp])
 
-      enddo ! loop over ibf_local
+      end do ! loop over ibf_local
 
 
       call timer_tmp8%start()
@@ -1190,11 +1190,11 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
         call DESCINIT(desc2, ng_global, basis%nbf, 1, 1, first_row, first_col, cntxt_rd, MAX(1, ng_local), info)
         call PDGEMR2D(ng_global, basis%nbf, phiphig1, 1, 1, desc1, phiphig, 1, 1, desc2, cntxt_cd)
       else
-#endif
+#end if
         phiphig(:, :) = phiphig1(:, :)
 #if defined(HAVE_SCALAPACK)
-      endif
-#endif
+      end if
+#end if
       call timer_tmp8%stop()
 
       call timer_tmp9%start()
@@ -1206,9 +1206,9 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
       call timer_tmp9%stop()
       call timer_tmp0%stop()
 
-    enddo
+    end do
     call matrix_lower_to_full(h_ao(:, :, ispin))
-  enddo
+  end do
 
   call clean_deallocate('Temporary phiphi(G)', phiphig)
   call clean_deallocate('Temporary phiphi(G)', phiphig1)
@@ -1230,7 +1230,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   ex = 0.0_dp
   h_ao(:, :, :) = 0.0_dp
   call die('setup_exchange_periodic: requires FFTW3 activation')
-#endif
+#end if
 
 end subroutine setup_exchange_periodic
 
@@ -1255,7 +1255,7 @@ subroutine transpose_bfr(bfrt, desct)
     if( ntlocal /= SIZE(bfrt, DIM=2) ) call die("transpose_bfr: incorrect dimension 2")
   else
     allocate(bfrt(mtlocal, ntlocal))
-  endif
+  end if
 
   call DESCINIT(desct, nfft_global, nbf, 1, 1, first_row, first_col, cntxt_cd, MAX(1, mtlocal), info)
 
@@ -1264,11 +1264,11 @@ subroutine transpose_bfr(bfrt, desct)
     call PDTRAN(nfft_global, nbf, 1.0d0, bfr, 1, 1, desc_bfr, &
                 0.0d0, bfrt, 1, 1, desct)
   else
-#endif
+#end if
     bfrt(:, :) = TRANSPOSE(bfr(:, :))
 #if defined(HAVE_SCALAPACK)
-  endif
-#endif
+  end if
+#end if
 
 end subroutine transpose_bfr
 
@@ -1300,7 +1300,7 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
 
   if( .NOT. ALLOCATED(bfr) ) then
     call die('calculate_coulombvertex_periodic: basis function on FFT grid should be available at this stage')
-  endif
+  end if
 
   allocate(phi_i(nfft_local))
   allocate(phi_j(nfft_local))
@@ -1320,10 +1320,10 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
           ig_global = ig_global + 1
           irank = MODULO(ig_global - 1, grid%nproc)
           ng_local_mpi(irank + 1) = ng_local_mpi(irank + 1) + 1
-        endif
-      enddo
-    enddo
-  enddo
+        end if
+      end do
+    end do
+  end do
   ! ng_local: number of G vectors for the current MPI rank
   ! ng_global: total number of G vectors
   ng_local = ng_local_mpi(grid%rank + 1)
@@ -1344,9 +1344,9 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
         case(1)
           vg_sqrt(ig1, ig2, ig3) = SQRT(vcoulg_cutoff(ig1, ig2, ig3))
         end select
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   ! 2 * ng_local: because each G brings 1 complex number, so 2 real components.
   call clean_allocate('3-center integrals in PW auxiliary basis', eri_3center_mo_periodic, 2 * ng_local, nstate, nstate, nspin)
@@ -1389,9 +1389,9 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
           do ig2=1, nfft2
             do ig1=1, nfft1/2+1
               phiphig_fftw(ig1, ig2, ig3) = vg_sqrt(ig1, ig2, ig3) * phiphig_fftw(ig1, ig2, ig3)
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
 
         ! When G_1 /= 0, all the terms should be accounted with double weight,
         !   due to real to complex (r2c) FFT transform that only gives G_1 >=0
@@ -1415,16 +1415,16 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
                   eri_3center_mo_periodic(ig_local:ig_local+1, istate, jstate, ispin) = &
                       TRANSFER(phiphig_fftw(ig1, ig2, ig3), [1.0_dp, 1.0_dp])
                   ig_local = ig_local + 1
-                endif
-              endif
-            enddo
-          enddo
-        enddo
+                end if
+              end if
+            end do
+          end do
+        end do
 
-      enddo
+      end do
 
-    enddo
-  enddo
+    end do
+  end do
 
   rtmp = DOT_PRODUCT(eri_3center_mo_periodic(:, 1, 1, 1), eri_3center_mo_periodic(:, 1, 1, 1) )
   call grid%sum(rtmp)
@@ -1442,7 +1442,7 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
 
 #else
   call die('calculate_coulombvertex_periodic: requires FFTW3 activation')
-#endif
+#end if
 
 end subroutine calculate_coulombvertex_periodic
 
@@ -1466,7 +1466,7 @@ pure function vcoulg_cutoff(ig1, ig2, ig3) result(vcoulg)
     vcoulg = 4.0_dp * pi / g2  * ( 1.0_dp - COS( SQRT(g2) * fft_rcut ) )
   else
     vcoulg = 2.0_dp * pi * fft_rcut**2
-  endif
+  end if
 
 end function vcoulg_cutoff
 
@@ -1490,7 +1490,7 @@ pure function vcoulg(ig1, ig2, ig3)
     vcoulg = 4.0_dp * pi / g2
   else
     vcoulg = 0.0_dp
-  endif
+  end if
 
 end function vcoulg
 
@@ -1570,13 +1570,13 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
           do jbf=1, basis%nbf
             do ibf=1, basis%nbf
               h_ao(ibf, jbf, ispin) = h_ao(ibf, jbf, ispin) + SUM( bfr(ibf, :) * vloc(:, ispin) * bfr(jbf, :) )
-            enddo
-          enddo
+            end do
+          end do
 
         case(2) ! Blas level 2
           do ifft_local=1, nfft_local
             call DSYR('L', basis%nbf, vloc(ifft_local, ispin), bfr(:, ifft_local), 1, h_ao(:, :, ispin), basis%nbf)
-          enddo
+          end do
 
         case(3) ! Blas level 3
 
@@ -1589,15 +1589,15 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
               if( vloc(ifft_local, ispin) > 0.0_dp ) then
                 ipos = ipos + 1
                 tmp1(:, ipos) = bfr(:, ifft_local) * SQRT(vloc(ifft_local, ispin))
-              endif
-            enddo
+              end if
+            end do
 
             ! Positive vloc
             call DSYRK('L', 'N', basis%nbf, npos, 1.0d0, tmp1, basis%nbf, &
                        0.0_dp, h_ao(:, :, ispin), basis%nbf)
 
             call clean_deallocate('TMP1', tmp1)
-          endif
+          end if
 
           nneg = COUNT( vloc(:, ispin) < 0.0_dp )
           nneg_batch = MIN(nneg, fft_batch_size)
@@ -1616,7 +1616,7 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
                 ifft_local_first_in_batch = ifft_local   ! ifft_local_first_in_batch = nfft_local + 1
                 current_batch_size = ineg - 1
                 exit
-              endif
+              end if
 
               if( vloc(ifft_local, ispin) < 0.0_dp ) then
                 ineg = ineg + 1
@@ -1626,23 +1626,23 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
                   exit
                 else
                   tmp2(:, ineg) = bfr(:, ifft_local) * SQRT(-vloc(ifft_local, ispin))
-                endif
-              endif
-            enddo
+                end if
+              end if
+            end do
 
             ! Negative vloc
             if( current_batch_size > 0 ) then
               call DSYRK('L', 'N', basis%nbf, current_batch_size, -1.0d0, tmp2, basis%nbf, &
                          1.0_dp, h_ao(:, :, ispin), basis%nbf)
-            endif
-          enddo
+            end if
+          end do
 
           call clean_deallocate('TMP2', tmp2)
         end select
 
         call matrix_lower_to_full(h_ao(:, :, ispin))
 
-      enddo
+      end do
       h_ao(:, :, :) = h_ao(:, :, :) * volume / REAL(nfft_global, KIND=dp)
 
     rank(1)
@@ -1661,12 +1661,12 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
         do jbf=1, basis%nbf
           do ibf=1, basis%nbf
             h_ao(ibf, jbf) = h_ao(ibf, jbf) + SUM( bfr(ibf, :) * vloc(:) * bfr(jbf, :) )
-          enddo
-        enddo
+          end do
+        end do
       case(2) ! BLAS level 2
         do ifft_local=1, nfft_local
           call DSYR('L', basis%nbf, vloc(ifft_local), bfr(:, ifft_local), 1, h_ao(:, :), basis%nbf)
-        enddo
+        end do
       case(3) ! Blas level 3
         ! Split cases when vloc is positive or negative
         npos = COUNT( vloc(:) > 0.0_dp )
@@ -1683,8 +1683,8 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
           else
             ineg = ineg + 1
             tmp2(:, ineg) = bfr(:, ifft_local) * SQRT(-vloc(ifft_local))
-          endif
-        enddo
+          end if
+        end do
 
         ! Positive vloc
         call DSYRK('L', 'N', basis%nbf, npos, 1.0d0, tmp1, basis%nbf, &
@@ -1742,7 +1742,7 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
   allocate(rho, MOLD=vloc)
   do irad=1, nrad
     rho(irad) = -( d2vdr2(irad) + 2.0_dp * dvdr(irad) / rrad(irad)) / (4.0_dp * pi)
-  enddo
+  end do
   deallocate(dvdr, d2vdr2)
 
   ! clean up rho
@@ -1751,11 +1751,11 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
 
   do irad=nrad, 1, -1
     if( ABS(rho(irad)) > 1.0e-6_dp ) exit
-  enddo
+  end do
   irmax = irad
   do irad=1, nrad
     if( rrad(irad) > 1.0e-3_dp ) exit
-  enddo
+  end do
   irmin = irad
 
   nrad = irmax - irmin + 1
@@ -1783,7 +1783,7 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
   !DEBUG
   !do irad=1, nrad
   !  write(1001,'(*(es20.10,1x))') rradfinal(irad), rhofinal(irad)
-  !enddo
+  !end do
 
   !
   ! Loop over the unit-cell regular grid
@@ -1794,7 +1794,7 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
   agrid = rradfinal(3) / rradfinal(2)
   if( ABS( rradfinal(101) / rradfinal(100) - agrid ) > 1.0e-6_dp ) then
     call die('prepare_nuclei_density_periodic: vloc grid is not logarithmic. Not implemented')
-  endif
+  end if
 
   rhonuclr(:) = 0.0_dp
 
@@ -1816,17 +1816,17 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
 
             !do irad=1, nrad
             !  if( rradfinal(irad) > dr ) exit
-            !enddo
+            !end do
 
             rhonuclr(ifft_local) = rhonuclr(ifft_local) &
                                    + ( rradfinal(irad) - dr   ) / ( rradfinal(irad) - rradfinal(irad-1) ) * rhofinal(irad-1) &
                                    + ( dr - rradfinal(irad-1) ) / ( rradfinal(irad) - rradfinal(irad-1) ) * rhofinal(irad)
 
-          enddo
-        enddo
-      enddo
-    enddo
-  enddo
+          end do
+        end do
+      end do
+    end do
+  end do
   !$OMP END DO
   !$OMP END PARALLEL
 
@@ -1842,7 +1842,7 @@ subroutine prepare_nuclei_density_periodic(rhonuclr, selfenergy)
   if( ABS( factor - 1.0_dp ) > 0.05_dp ) then
     call die('prepare_nuclei_density_periodic: wrong nucleus total charge. ' // &
              'FFT grid is certainly too coarse. Try to increase fft_ecut.')
-  endif
+  end if
 
 
 contains
@@ -1864,14 +1864,14 @@ contains
         read(file_unit, *, iostat=iostat)
         if (iostat /= 0) exit
         nrad = nrad + 1
-    enddo
+    end do
     rewind(file_unit)
 
     ! Allocate and read
     allocate(r(nrad), phi(nrad))
     do irad = 1, nrad
         read(file_unit, *) r(irad), phi(irad)
-    enddo
+    end do
     close(file_unit)
 
   end subroutine read_potential_data
@@ -1901,7 +1901,7 @@ contains
         b = (h2 - h1) / (h1 * h2)
         c = h1 / (h2 * (h1 + h2))
         dphi_dr(i) = a*phi(i-1) + b*phi(i) + c*phi(i+1)
-    enddo
+    end do
 
     ! Backward difference for last point
     h1 = r(n-1) - r(n-2)
@@ -1925,7 +1925,7 @@ contains
       total_charge = total_charge &
            + 4.0_dp * pi * 0.5_dp * ( r(irad + 1) - r(irad) )   &
                * ( r(irad)**2 * rho(irad) + r(irad + 1)**2 * rho(irad + 1) )
-    enddo
+    end do
   end function calculate_total_charge
 
   subroutine calculate_selfenergy(r, rho, total_charge, selfenergy)
@@ -2021,8 +2021,8 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
       if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then
         element_has_ecp = .TRUE.
         exit
-      endif
-    enddo
+      end if
+    end do
 
     if( ecp(ie)%ecp_format /= ECP_GTH ) call die('prepare_nuclei_density_analytic_periodic: only for GTH pseudos')
 
@@ -2032,7 +2032,7 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
     ci(:) = 0.0_dp
     do iloc=1, ecp(ie)%gth_nloc
       ci(iloc) = ecp(ie)%gth_cipp(iloc)
-    enddo
+    end do
     alphapp = 1.0_dp / SQRT(2.0_dp) / rloc
 
     !
@@ -2059,10 +2059,10 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
 
             rhonuclr(ifft_local) = rhonuclr(ifft_local) + gth_rhonucl(dr)
 
-          enddo
-        enddo
-      enddo
-    enddo
+          end do
+        end do
+      end do
+    end do
     !$OMP END DO
     !$OMP END PARALLEL
 
@@ -2071,7 +2071,7 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
 
     selfenergy = selfenergy + selfenergy_nucleus
 
-  enddo ! icenter
+  end do ! icenter
 
   zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
   call grid%sum(zval)
@@ -2085,7 +2085,7 @@ subroutine prepare_nuclei_density_analytic_periodic(rhonuclr, selfenergy)
   if( ABS( factor - 1.0_dp ) > 0.01_dp ) then
     call die('prepare_nuclei_density_periodic: wrong nucleus total charge. ' // &
              'FFT grid is certainly too coarse. Try to increase fft_ecut.')
-  endif
+  end if
 
   rhonuclr(:) = rhonuclr(:) * factor
   zval = -SUM(rhonuclr(:)) * volume / REAL(nfft_global, KIND=dp)
@@ -2154,7 +2154,7 @@ pure function selfenergy_quadrature() result(integral)
     rr = rr + stepr
     integral = integral + 0.5_dp * stepr * 4.0_dp * pi * rr**2  &
                             * gth_rhonucl(rr) * gth_potnucl(rr)
-  enddo
+  end do
 
 
 end function selfenergy_quadrature
@@ -2203,10 +2203,10 @@ subroutine poisson_solver_fft(rhor, vcoulr)
         if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
           ifft_local = ifft_local + 1
           rhor_fftw(i1, i2, i3) = rhor(ifft_local)
-        endif
-      enddo
-    enddo
-  enddo
+        end if
+      end do
+    end do
+  end do
   call grid%sum(rhor_fftw)
 
   !
@@ -2232,17 +2232,17 @@ subroutine poisson_solver_fft(rhor, vcoulr)
       do ig2=1, nfft2
         do ig1=1, nfft1/2+1
           vg_fftw(ig1, ig2, ig3) = vcoulg(ig1, ig2, ig3) * rhog_fftw(ig1, ig2, ig3)
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
   case(1)
     do ig3=1, nfft3
       do ig2=1, nfft2
         do ig1=1, nfft1/2+1
           vg_fftw(ig1, ig2, ig3) = vcoulg_cutoff(ig1, ig2, ig3) * rhog_fftw(ig1, ig2, ig3)
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
   end select
 
   pvr = fftw_alloc_real(INT(nfft_global, C_SIZE_T))
@@ -2263,10 +2263,10 @@ subroutine poisson_solver_fft(rhor, vcoulr)
         if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
           ifft_local = ifft_local + 1
           vcoulr(ifft_local) = vr_fftw(i1, i2, i3)
-        endif
-      enddo
-    enddo
-  enddo
+        end if
+      end do
+    end do
+  end do
 
   call fftw_free(pr)
   call fftw_free(pg)
@@ -2276,7 +2276,7 @@ subroutine poisson_solver_fft(rhor, vcoulr)
 #else
   vcoulr(:) = rhor(:) ! Fake operation to cheat on the unused dummy variable check of the compiler
   call die('poisson_solver_fft: requires to be compiled with FFTs (-DHAVE_FFTW3)')
-#endif
+#end if
 
 
 end subroutine poisson_solver_fft
@@ -2308,7 +2308,7 @@ subroutine calculate_basis_functions_periodic(basis)
   gt = get_gaussian_type_tag(basis%gaussian_type)
   if( gt /= PUREG) then
     call die('calculate_basis_functions_periodic: only pure solid harmonics implemented')
-  endif
+  end if
 
   !$OMP PARALLEL PRIVATE(li, ibf1, ibf2, dr, dr_shifted)
   !$OMP DO
@@ -2320,13 +2320,13 @@ subroutine calculate_basis_functions_periodic(basis)
     ! relative position to the shell center
     do concurrent(ifft=1:nfft_local)
       dr(:, ifft) = rgrid(:, ifft) - basis%shell(ishell)%x0(:)
-    enddo
+    end do
     ! transform to reduced coordinates
     dr(:, :) = MATMUL( aprim_inv, dr)
     ! minimum image convention
     do concurrent(ifft=1:nfft_local)
       dr(:, ifft) = dr(:, ifft) - NINT(dr(:, ifft))
-    enddo
+    end do
     ! transform back to cartesian coordinates
 
     do i3=-nx, nx
@@ -2335,7 +2335,7 @@ subroutine calculate_basis_functions_periodic(basis)
 
           do concurrent(ifft=1:nfft_local)
             dr_shifted(:, ifft) = dr(:, ifft) + [i1, i2, i3]
-          enddo
+          end do
 
 
           dr_shifted(:, :) = MATMUL( aprim, dr_shifted)
@@ -2345,41 +2345,41 @@ subroutine calculate_basis_functions_periodic(basis)
             do concurrent(ifft=1:nfft_local)
               bfr(ibf1:ibf2, ifft) = bfr(ibf1:ibf2, ifft) &
                  + eval_l0(dr_shifted(:, ifft), basis%shell(ishell)%alpha, basis%shell(ishell)%coeff)
-            enddo
+            end do
           case(1)
             do concurrent(ifft=1:nfft_local)
               bfr(ibf1:ibf2, ifft) = bfr(ibf1:ibf2, ifft) &
                  + eval_l1(dr_shifted(:, ifft), basis%shell(ishell)%alpha, basis%shell(ishell)%coeff)
-            enddo
+            end do
           case(2)
             do concurrent(ifft=1:nfft_local)
               bfr(ibf1:ibf2, ifft) = bfr(ibf1:ibf2, ifft) &
                  + eval_l2(dr_shifted(:, ifft), basis%shell(ishell)%alpha, basis%shell(ishell)%coeff)
-            enddo
+            end do
           case(3)
             do concurrent(ifft=1:nfft_local)
               bfr(ibf1:ibf2, ifft) = bfr(ibf1:ibf2, ifft) &
                  + eval_l3(dr_shifted(:, ifft), basis%shell(ishell)%alpha, basis%shell(ishell)%coeff)
-            enddo
+            end do
           case(4)
             do concurrent(ifft=1:nfft_local)
               bfr(ibf1:ibf2, ifft) = bfr(ibf1:ibf2, ifft) &
                  + eval_l4(dr_shifted(:, ifft), basis%shell(ishell)%alpha, basis%shell(ishell)%coeff)
-            enddo
+            end do
           case(5)
             do concurrent(ifft=1:nfft_local)
               bfr(ibf1:ibf2, ifft) = bfr(ibf1:ibf2, ifft) &
                  + eval_l5(dr_shifted(:, ifft), basis%shell(ishell)%alpha, basis%shell(ishell)%coeff)
-            enddo
+            end do
           case default
             call die('angular momentum l > 5 not implemented')
           end select
 
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
-  enddo
+  end do
   !$OMP END DO
   !$OMP END PARALLEL
 
@@ -2395,11 +2395,11 @@ subroutine calculate_basis_functions_periodic(basis)
     write(stdout, *) 'Be aware that the largest norm is:', MAXVAL(normalization_pbc(:))
     ! Set normalization_pbc to 1 so that does not do anything
     normalization_pbc(:) = 1.0_dp
-  endif
+  end if
 
   do ibf=1, basis%nbf
     bfr(ibf, :) = bfr(ibf, :) / SQRT(normalization_pbc(ibf))
-  enddo
+  end do
 
 
   call timer_pbc_eval_bf%stop()
@@ -2451,8 +2451,8 @@ subroutine setup_nucleus_gth_nonlocal_periodic(basis, h_ecp)
       if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then
         element_has_ecp = .TRUE.
         exit
-      endif
-    enddo
+      end if
+    end do
     if( .NOT. element_has_ecp ) cycle
 
     C(:) = xatom(:, icenter)
@@ -2504,21 +2504,21 @@ subroutine setup_nucleus_gth_nonlocal_periodic(basis, h_ecp)
                                            ipl, array_cart_C)
 
                 array_cart(:) = array_cart_C(:)
-#endif
+#end if
                 call transform_libint_to_molgw_gth_projector(basis%gaussian_type, li, lj, array_cart, matrix)
 
                 proj_i(jbf1:jbf2, :, ipl) = proj_i(jbf1:jbf2, :, ipl) + TRANSPOSE(matrix(:, :))
 
-              enddo
-            enddo
-          enddo
+              end do
+            end do
+          end do
 
 
           deallocate(array_cart, array_cart_C, matrix)
-        enddo ! jshell
+        end do ! jshell
 
         deallocate(cC, alphaC)
-      enddo ! ipl
+      end do ! ipl
 
       ijpl = 0
       do ipl=1, ecp(ie)%gth_npl(il)
@@ -2530,13 +2530,13 @@ subroutine setup_nucleus_gth_nonlocal_periodic(basis, h_ecp)
           else
             call DSYR2K('L', 'N', basis%nbf, ni, ecp(ie)%gth_hijl(ijpl, il), proj_i(:, :,ipl), basis%nbf, &
                         proj_i(:, :, jpl), basis%nbf, 1.0_dp, h_tmp, basis%nbf)
-          endif
-        enddo
-      enddo
+          end if
+        end do
+      end do
 
       deallocate(proj_i)
 
-    enddo ! il
+    end do ! il
 
     deallocate(env_local)
 
@@ -2544,7 +2544,7 @@ subroutine setup_nucleus_gth_nonlocal_periodic(basis, h_ecp)
 
     h_ecp(:, :) = h_ecp(:, :) + h_tmp(:, :)
 
-  enddo ! icenter
+  end do ! icenter
 
   call world%sum(h_ecp)
 
@@ -2573,8 +2573,8 @@ subroutine write_restart_rhogrid()
 
     if( is_iomaster ) then
       write(rhofile) rho_tmp(:)
-    endif
-  enddo
+    end if
+  end do
 
   if( is_iomaster ) close(rhofile)
 
@@ -2616,9 +2616,9 @@ function read_restart_rhogrid()
         if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
           ifft_local = ifft_local + 1
           rhoelecr(ifft_local, ispin) = rho_tmp(ifft_global)
-        endif
-      enddo
-    enddo
+        end if
+      end do
+    end do
 
     if( is_iomaster ) close(rhofile)
 
@@ -2626,7 +2626,7 @@ function read_restart_rhogrid()
 
     read_restart_rhogrid = .TRUE.
     deallocate(rho_tmp)
-  endif
+  end if
 
 end function read_restart_rhogrid
 
@@ -2650,8 +2650,8 @@ function rho_local_to_global(rho_local) RESULT(rho_global)
     if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
       ifft_local = ifft_local + 1
       rho_global(ifft_global) = rho_local(ifft_local)
-    endif
-  enddo
+    end if
+  end do
   call grid%sum(rho_global)
 
 
@@ -2677,8 +2677,8 @@ function rho_global_to_local(rho_global) RESULT(rho_local)
     if( MODULO(ifft_global - 1, grid%nproc) == grid%rank ) then
       ifft_local = ifft_local + 1
       rho_local(ifft_local) = rho_global(ifft_global)
-    endif
-  enddo
+    end if
+  end do
 
 end function rho_global_to_local
 
@@ -2695,7 +2695,7 @@ subroutine renormalize_pbc(matrix_ao)
 
   do concurrent(jbf=1:SIZE(matrix_ao, DIM=2))
     matrix_ao(:, jbf) = matrix_ao(:, jbf) / SQRT(normalization_pbc(:) * normalization_pbc(jbf))
-  enddo
+  end do
 
 end subroutine renormalize_pbc
 
@@ -2715,7 +2715,7 @@ subroutine write_cube_file_periodic_wfn(c_matrix)
 
   if( .NOT. ALLOCATED(bfr) ) then
     call die('write_cube_file_wfn: bug')
-  endif
+  end if
 
   do ispin=1, nspin
     do istate=cube_state_min, cube_state_max
@@ -2730,10 +2730,10 @@ subroutine write_cube_file_periodic_wfn(c_matrix)
         dr(:, 2) = aprim(:, 2) / nfft2
         dr(:, 3) = aprim(:, 3) / nfft3
         call write_cube_file('wfn_' // key4 // '_' // key1 // '.cube', nfft1, nfft2, nfft3, dr, phi_global_i, comment='phi')
-      endif
-    enddo
+      end if
+    end do
 
-  enddo
+  end do
 
 end subroutine write_cube_file_periodic_wfn
 

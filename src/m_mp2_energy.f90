@@ -71,8 +71,8 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
     do istate=ncore+1, nstate
       if( occupation(istate, iaspin) < completely_empty ) cycle
       nocc(iaspin) = istate
-    enddo
-  enddo
+    end do
+  end do
 
 
   do iaspin=1, nspin
@@ -101,7 +101,7 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
               if( ABS(energy_denom) < 1.d-18) then
                 write(stdout, *) 'you skipped something'
                 cycle
-              endif
+              end if
 
               energy_denom =  fact / energy_denom
 
@@ -112,22 +112,22 @@ subroutine mp2_energy_ri(occupation, energy, c_matrix, emp2)
               if(iaspin==jbspin) then
                 tmp_ibja = evaluate_eri_mo_ri(istate, bstate, iaspin, jstate, astate, jbspin)
                 contrib2 = contrib2 - 0.5_dp * energy_denom * tmp_iajb*tmp_ibja / spin_fact
-              endif
+              end if
 
-            enddo
-          enddo
-        enddo
-      enddo !jbspin
+            end do
+          end do
+        end do
+      end do !jbspin
 
-    enddo ! istate
+    end do ! istate
 
-  enddo !iaspin
+  end do !iaspin
 
   if(kappa_hybrid/=zero) then
     write(stdout, '(/,a,f16.10)')       ' MP2 contributions will be scaled by :', kappa_hybrid
     contrib1=kappa_hybrid*contrib1
     contrib2=kappa_hybrid*contrib2
-  endif
+  end if
 
   emp2 = contrib1 + contrib2
   write(stdout, '(/,a)')       ' MP2 contributions'
@@ -187,8 +187,8 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
     do istate=ncore+1, nstate
       if( occupation(istate, iaspin) < completely_empty ) cycle
       nocc(iaspin) = istate
-    enddo
-  enddo
+    end do
+  end do
 
   do iaspin=1, nspin
 
@@ -216,7 +216,7 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
               if( ABS(energy_denom) < 1.d-18) then
                 write(stdout, *) 'you skipped something'
                 cycle
-              endif
+              end if
 
               energy_denom =  fact / energy_denom
 
@@ -227,22 +227,22 @@ subroutine mp2_energy_ri_cmplx(occupation, energy, c_matrix_cmplx, emp2)
               if(iaspin==jbspin) then
                 tmp_ibja = evaluate_eri_mo_ri_cmplx(istate, bstate, iaspin, jstate, astate, jbspin)
                 contrib2 = contrib2 - 0.5_dp * energy_denom * conjg(tmp_iajb)*tmp_ibja / spin_fact
-              endif
+              end if
 
-            enddo
-          enddo
-        enddo
-      enddo !jbspin
+            end do
+          end do
+        end do
+      end do !jbspin
 
-    enddo ! istate
+    end do ! istate
 
-  enddo !iaspin
+  end do !iaspin
 
   if(kappa_hybrid/=zero) then
     write(stdout, '(/,a,f16.10)')       ' MP2 contributions will be scaled by :', kappa_hybrid
     contrib1=kappa_hybrid*contrib1
     contrib2=kappa_hybrid*contrib2
-  endif
+  end if
 
   emp2 = real(contrib1 + contrib2)
   write(stdout, '(/,a)')       ' MP2 contributions'
@@ -282,8 +282,8 @@ subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
   do istate=1, nocc
     do jstate=1, nocc ! Recall         r      r      r'     r'
       exx=exx-real(evaluate_eri_mo_ri_x2c(istate, jstate, jstate, istate), dp)
-    enddo
-  enddo
+    end do
+  end do
   exx = 0.5_dp*exx
 
 
@@ -305,7 +305,7 @@ subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
   do istate=1, nstate/2
     energy_vec(2*istate-1)=energy(istate, 1)
     energy_vec(2*istate  )=energy(istate, 2)
-  enddo
+  end do
 
   emp2 = 0.0_dp
   contrib1 = ( 0.0_dp, 0.0_dp )
@@ -326,25 +326,25 @@ subroutine mp2_energy_ri_x2c(nstate, nocc, energy, c_matrix_rel, emp2, exx)
            if( ABS(energy_denom) < 1.d-18) then
              write(stdout, *) 'you skipped something'
              cycle
-           endif
+           end if
 
            tmp_iajb = evaluate_eri_mo_ri_x2c(istate, astate, jstate, bstate)
            tmp_ibja = evaluate_eri_mo_ri_x2c(istate, bstate, jstate, astate)
       
            contrib1 = contrib1 + conjg(tmp_iajb-tmp_ibja)*(tmp_iajb-tmp_ibja)/energy_denom
 
-        enddo
+        end do
 
-      enddo
+      end do
 
-    enddo
+    end do
 
-  enddo
+  end do
 
   if(kappa_hybrid/=zero) then
     write(stdout, '(/,a,f16.10)')       ' MP2 contributions will be scaled by :', kappa_hybrid
     contrib1=kappa_hybrid*contrib1
-  endif
+  end if
 
   emp2 = 0.25_dp*real(contrib1)
 
@@ -408,8 +408,8 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
     do istate=ncore+1, nstate
       if( occupation(istate, iaspin) < completely_empty ) cycle
       nocc(iaspin) = istate
-    enddo
-  enddo
+    end do
+  end do
 
 
   ! From Helgaker's book
@@ -441,8 +441,8 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
 
               x_ijab = x_ijab + 0.5_dp * evaluate_eri_mo_ri(astate, cstate, iaspin, bstate, dstate, jbspin) * t_ijcd
 
-            enddo
-          enddo
+            end do
+          end do
 
           !
           ! Contrib2
@@ -454,8 +454,8 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
 
               x_ijab = x_ijab + 0.5_dp * evaluate_eri_mo_ri(kstate, istate, iaspin, lstate, jstate, jbspin) * t_klab
 
-            enddo
-          enddo
+            end do
+          end do
 
           !
           ! Contrib3
@@ -478,22 +478,22 @@ subroutine mp3_energy_ri(occupation, energy, c_matrix, emp3)
               x_ijab = x_ijab - evaluate_eri_mo_ri(bstate, jstate, iaspin, kstate, cstate, jbspin) * t_kiac
 
 
-            enddo
-          enddo
+            end do
+          end do
 
           contrib1 = contrib1 + t_ijab_tilde * x_ijab
 
-        enddo
-      enddo
-    enddo
-  enddo
+        end do
+      end do
+    end do
+  end do
 
   if(kappa_hybrid/=zero) then
     write(stdout, '(/,a,f16.10)')       ' MP3 contributions will be scaled by :', kappa_hybrid
     contrib1=kappa_hybrid*contrib1
     contrib2=kappa_hybrid*contrib2
     contrib3=kappa_hybrid*contrib3
-  endif
+  end if
 
   emp3 = contrib1 + contrib2 + contrib3
   ! write(stdout,'(/,a)')       ' MP3 contributions'
@@ -552,7 +552,7 @@ subroutine mp2_energy(occupation, c_matrix, energy, emp2)
     do istate=ncoreg+1, nstate
       if( occupation(istate, iaspin) < completely_empty ) cycle
       nocc = istate
-    enddo
+    end do
 
 
     do istate=ncoreg+1, nocc
@@ -569,10 +569,10 @@ subroutine mp2_energy(occupation, c_matrix, energy, emp2)
               if( negligible_basispair(ibf, abf) ) cycle
               tmp_ixxx(abf, jbf, bbf) = tmp_ixxx(abf, jbf, bbf) &
                 + c_matrix(ibf, istate, iaspin) * eri(ibf, abf, jbf, bbf)
-            enddo
-          enddo
-        enddo
-      enddo
+            end do
+          end do
+        end do
+      end do
 
       do jbspin=1, nspin
         do jstate=ncoreg+1, nstate
@@ -583,9 +583,9 @@ subroutine mp2_energy(occupation, c_matrix, energy, emp2)
             do jbf=1, nbf
               do abf=1, nbf
                 tmp_ixjx(abf, bbf) = tmp_ixjx(abf, bbf) + c_matrix(jbf, jstate, jbspin) * tmp_ixxx(abf, jbf, bbf)
-              enddo
-            enddo
-          enddo
+              end do
+            end do
+          end do
 
           do astate=1, nstate
             if( occupation(astate, iaspin) > spin_fact - completely_empty ) cycle
@@ -594,17 +594,17 @@ subroutine mp2_energy(occupation, c_matrix, energy, emp2)
             do bbf=1, nbf
               do abf=1, nbf
                 tmp_iajx(bbf) = tmp_iajx(bbf) + c_matrix(abf, astate, iaspin) * tmp_ixjx(abf, bbf)
-              enddo
-            enddo
+              end do
+            end do
 
             if(iaspin==jbspin) then
               tmp_ixja(:) = 0.0_dp
               do abf=1, nbf
                 do bbf=1, nbf
                   tmp_ixja(bbf) = tmp_ixja(bbf) + c_matrix(abf, astate, iaspin) * tmp_ixjx(bbf, abf)
-                enddo
-              enddo
-            endif
+                end do
+              end do
+            end if
 
             do bstate=1, nstate
               if( occupation(bstate, jbspin) > spin_fact - completely_empty ) cycle
@@ -618,7 +618,7 @@ subroutine mp2_energy(occupation, c_matrix, energy, emp2)
               if( ABS(energy_denom) < 1.d-18) then
                 write(stdout, *) 'you skipped something'
                 cycle
-              endif
+              end if
 
               energy_denom =  fact / energy_denom
 
@@ -629,16 +629,16 @@ subroutine mp2_energy(occupation, c_matrix, energy, emp2)
               if(iaspin==jbspin) then
                 tmp_ibja = SUM( tmp_ixja(:) * c_matrix(:, bstate, jbspin) )
                 contrib2 = contrib2 - 0.5_dp * energy_denom * tmp_iajb*tmp_ibja / spin_fact
-              endif
+              end if
 
-            enddo
-          enddo
-        enddo
-      enddo !jbspin
+            end do
+          end do
+        end do
+      end do !jbspin
 
-    enddo ! istate
+    end do ! istate
 
-  enddo !iaspin
+  end do !iaspin
 
   deallocate(tmp_ixxx)
 
@@ -646,7 +646,7 @@ subroutine mp2_energy(occupation, c_matrix, energy, emp2)
     write(stdout, '(/,a,f16.10)')       ' MP2 contributions will be scaled by :', kappa_hybrid
     contrib1=kappa_hybrid*contrib1
     contrib2=kappa_hybrid*contrib2
-  endif
+  end if
 
   emp2 = contrib1 + contrib2
   write(stdout, '(/,a)')       ' MP2 contributions'

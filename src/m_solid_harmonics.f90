@@ -31,7 +31,7 @@
 #include "molgw.h"
 #if !defined(NO_LIBINT)
 #include<libint2/libint2_params.h>
-#endif
+#end if
 
 
 
@@ -94,7 +94,7 @@ pure function eval_l0(dr, alpha, c) result(shell)
   expo = 0.0_dp
   do i=1, n
     expo = expo + EXP(-alpha(i) * r2) * c(i)
-  enddo
+  end do
   shell(1) = expo
 
 end function eval_l0
@@ -118,7 +118,7 @@ pure function eval_l1(dr, alpha, c) result(shell)
   expo = 0.0_dp
   do i=1, n
     expo = expo + EXP(-alpha(i) * r2) * c(i)
-  enddo
+  end do
 
   shell(1) = y * expo
   shell(2) = z * expo
@@ -146,7 +146,7 @@ pure function eval_l2(dr, alpha, c) result(shell)
   expo = 0.0_dp
   do i=1, n
     expo = expo + EXP(-alpha(i) * r2) * c(i)
-  enddo
+  end do
 
   a0  = SQRT(1.0_dp/12.0_dp)
 
@@ -178,7 +178,7 @@ pure function eval_l3(dr, alpha, c) result(shell)
   expo = 0.0_dp
   do i=1, n
     expo = expo + EXP(-alpha(i) * r2) * c(i)
-  enddo
+  end do
 
   a0  = SQRT(1.0_dp/60.0_dp)
   a1  = SQRT(1.0_dp/40.0_dp)
@@ -215,7 +215,7 @@ pure function eval_l4(dr, alpha, c) result(shell)
   expo = 0.0_dp
   do i=1, n
     expo = expo + EXP(-alpha(i) * r2) * c(i)
-  enddo
+  end do
 
   a0 = SQRT(1.0_dp/6720)
   a1 = SQRT(1.0_dp/168)
@@ -256,7 +256,7 @@ pure function eval_l5(dr, alpha, c) result(shell)
   expo = 0.0_dp
   do i=1, n
     expo = expo + EXP(-alpha(i) * r2) * c(i)
-  enddo
+  end do
 
   a0 = SQRT(1.0_dp/60480)
   a1 = SQRT(1.0_dp/36288)

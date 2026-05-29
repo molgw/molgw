@@ -12,7 +12,7 @@ module m_timing
   use m_warning, only: die
 #if defined(HAVE_NVTX)
   use m_nvtx
-#endif
+#end if
 
   implicit none
 
@@ -364,7 +364,7 @@ subroutine timer_init(t, label, id)
   else
     id_last_used = id_last_used + 1
     t%id = id_last_used
-  endif
+  end if
   t%running              = .FALSE.
   t%label                = label
   t%timing(:)            = 0.0_dp
@@ -384,13 +384,13 @@ subroutine timer_start(t)
   if( t%running ) then
     write(stdout, *) 'Timer is already started:', t%label
     call die('timer_start: timer already started: ' // TRIM(t%label))
-  endif
+  end if
 
   t%running = .TRUE.
 
 #if defined(HAVE_NVTX)
   call nvtxStartRange(t%label, t%id)
-#endif
+#end if
 
   call system_clock(COUNT=count_tmp)
   t%start_time = count_tmp
@@ -409,13 +409,13 @@ subroutine timer_stop(t)
   if( .NOT. t%running ) then
     write(stdout, *) 'Timer had never been started:', t%label
     call die('timer_stop: timer had never been started: ' // TRIM(t%label))
-  endif
+  end if
 
   t%running = .FALSE.
 
 #if defined(HAVE_NVTX)
   call nvtxEndRange()
-#endif
+#end if
 
   call system_clock(COUNT=count_tmp)
   t%timing(TIMING_current_stage) = t%timing(TIMING_current_stage) &
@@ -435,7 +435,7 @@ function timer_get(t, stage) RESULT(time)
     time = t%timing(stage)
   else
     time = t%timing(TIMING_current_stage)
-  endif
+  end if
 
 end function timer_get
 
@@ -645,7 +645,7 @@ subroutine timer_print(t, level, stage)
     timing = SUM(t%timing(:))
     calls  = SUM(t%calls(:))
     t%has_been_printed(:) = .TRUE.
-  endif
+  end if
 
   ! No output if this timer was never used
   if( calls < 1 ) return
@@ -654,7 +654,7 @@ subroutine timer_print(t, level, stage)
     write(stdout, '(1x,a'//key//',4x,f12.2)') TRIM(t%label), timing
   else
     write(stdout, '(1x,a,1x,a,4x,f12.2,2x,i8)') TRIM(prepend), TRIM(t%label), timing, calls
-  endif
+  end if
 
 end subroutine timer_print
 

@@ -15,7 +15,7 @@ module m_elpa
 
 #if defined(HAVE_ELPA)
   use elpa
-#endif
+#end if
 
   implicit none
 
@@ -48,7 +48,7 @@ module m_elpa
     integer :: gpu = 0
   end type elpa_hdl_t
 
-#endif
+#end if
 
 contains  !==============================================================================
 !!***
@@ -260,7 +260,7 @@ subroutine elpa_func_get_communicators(elpa_hdl, mpi_comm_parent, process_row, p
     err = elpa_hdl%elpa%setup()
     write(msg, '(3a)') "Error when setting '", varname, "'during ELPA communicators setup"
     call elpa_func_error_handler(err_code=err, err_msg=msg)
-  endif
+  end if
 
   elpa_hdl%mpi_comm_parent = mpi_comm_parent
   elpa_hdl%process_row = process_row
@@ -474,7 +474,7 @@ end subroutine elpa_func_solve_evp_complex
 
 !----------------------------------------------------------------------
 
-#endif
+#end if
 
 end module m_elpa
 !!***

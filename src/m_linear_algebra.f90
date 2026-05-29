@@ -75,8 +75,8 @@ subroutine matrix_lower_to_full_dp(matrix)
   do jmat=1, nmat
     do imat=jmat+1, nmat
       matrix(jmat, imat) = matrix(imat, jmat)
-    enddo
-  enddo
+    end do
+  end do
 
 end subroutine matrix_lower_to_full_dp
 
@@ -93,8 +93,8 @@ subroutine matrix_lower_to_full_cdp(matrix)
   do jmat=1, nmat
     do imat=jmat+1, nmat
       matrix(jmat, imat) = CONJG( matrix(imat, jmat) )
-    enddo
-  enddo
+    end do
+  end do
 
 end subroutine matrix_lower_to_full_cdp
 
@@ -114,7 +114,7 @@ function matrix_trace(matrix)
   matrix_trace = 0.0_dp
   do i1=1, n1
     matrix_trace = matrix_trace + matrix(i1, i1)
-  enddo
+  end do
 
 end function matrix_trace
 
@@ -134,7 +134,7 @@ function matrix_trace_cmplx(matrix)
   matrix_trace_cmplx = ( 0.0_dp, 0.0_dp )
   do i1=1, n1
     matrix_trace_cmplx = matrix_trace_cmplx + matrix(i1, i1)
-  enddo
+  end do
 
 end function matrix_trace_cmplx
 
@@ -153,9 +153,9 @@ function matrix_is_symmetric(matrix)
       if( ABS( matrix(imat, jmat) - matrix(jmat, imat) ) > 1.0e-5_dp ) then
         matrix_is_symmetric=.FALSE.
         return
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
 end function matrix_is_symmetric
 
@@ -758,7 +758,7 @@ subroutine svd_dp(A, U, S, VT)
 
   if( SIZE(S) /= MIN(m, n) ) then
     call die('svd_dp: error in dimension of S')
-  endif
+  end if
 
   ! Query optimal workspace size
   lwork = -1
@@ -776,7 +776,7 @@ subroutine svd_dp(A, U, S, VT)
   ! Check for success
   if (info /= 0) then
     call die('svd_dp: SVD failed')
-  endif
+  end if
 
   ! Deallocate workspace
   deallocate(work)
@@ -813,7 +813,7 @@ subroutine diagonalize_davidson(tolerance, nstep, ham, neig, eigval, eigvec)
   if( mm_max > nmat ) then
     nstep = nmat / neig
     mm_max = mm * nstep
-  endif
+  end if
 
   allocate(bb(nmat, mm_max))
   allocate(atilde(mm_max, mm_max))
@@ -854,7 +854,7 @@ subroutine diagonalize_davidson(tolerance, nstep, ham, neig, eigval, eigvec)
                     - lambda(ieig) * MATMUL( bb(:, 1:mm) , alphavec(1:mm, ieig) )
 
       residual_norm = MAX( residual_norm , NORM2(qq(:, ieig)) )
-    enddo
+    end do
 
     write(stdout, '(1x,a,1x,i4,1x,es12.4)') 'Max residual norm for cycle: ', icycle, residual_norm
 
@@ -865,7 +865,7 @@ subroutine diagonalize_davidson(tolerance, nstep, ham, neig, eigval, eigvec)
       eigvec(:, 1:neig) = MATMUL( bb(:, 1:mm) , alphavec(1:mm, 1:neig) )
       deallocate(lambda, alphavec)
       exit
-    endif
+    end if
 
 
     !
@@ -883,7 +883,7 @@ subroutine diagonalize_davidson(tolerance, nstep, ham, neig, eigval, eigvec)
 
     deallocate(lambda, alphavec)
 
-  enddo ! icycle
+  end do ! icycle
 
   deallocate(ab, atilde)
 
@@ -906,10 +906,10 @@ subroutine orthogonalize(vec)
     do jvec=1, ivec-1
       vec(:, ivec) = vec(:, ivec) - vec(:, jvec) * DOT_PRODUCT( vec(:, ivec) , vec(:, jvec) ) &
                                        / DOT_PRODUCT( vec(:, jvec) , vec(:, jvec) )
-    enddo
+    end do
     ! Normalize
     vec(:, ivec) = vec(:, ivec) / NORM2( vec(:, ivec) )
-  enddo
+  end do
 
 end subroutine orthogonalize
 
@@ -935,15 +935,15 @@ subroutine check_unitarity(cmat)
         if(ABS(cmat_tmp(imat, jmat)-1.0_dp)>tol) then
           write(stdout, *) imat, jmat, cmat_tmp(imat, jmat)
           call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
-        endif
+        end if
       else
         if(ABS(cmat_tmp(imat, jmat))>tol) then
           write(stdout, *) imat, jmat, cmat_tmp(imat, jmat)
           call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
-        endif
-      endif
-    enddo
-  enddo
+        end if
+      end if
+    end do
+  end do
   cmat_tmp = MATMUL( TRANSPOSE(CONJG(cmat)) , cmat )
   do imat=1, nmat
     do jmat=1, nmat
@@ -951,15 +951,15 @@ subroutine check_unitarity(cmat)
         if(ABS(cmat_tmp(imat, jmat)-1.0_dp)>tol) then
           write(stdout, *) imat, jmat, cmat_tmp(imat, jmat)
           call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
-        endif
+        end if
       else
         if(ABS(cmat_tmp(imat, jmat))>tol) then
           write(stdout, *) imat, jmat, cmat_tmp(imat, jmat)
           call die('MATRIX IS NOT UNITARY/ORTHOGONAL')
-        endif
-      endif
-    enddo
-  enddo
+        end if
+      end if
+    end do
+  end do
 
 end subroutine check_unitarity
 
@@ -1050,7 +1050,7 @@ subroutine joint_diagonalization(A, tol, V, converged)
   V(:, :) = 0.0_dp
   do i = 1, m
     V(i, i) = 1.0_dp
-  enddo
+  end do
 
   converged = .FALSE.
   do while (.NOT. converged)
@@ -1063,7 +1063,7 @@ subroutine joint_diagonalization(A, tol, V, converged)
           g(2) = g(2) + (A(p, q, i) + A(q, p, i )) * &
                         (A(p, p, i) - A(q, q, i ))
           g(3) = g(3) + (A(p, q, i) + A(q, p, i ))**2
-        enddo
+        end do
 
         ton  = g(1) - g(3)
         toff = g(2)
@@ -1079,27 +1079,27 @@ subroutine joint_diagonalization(A, tol, V, converged)
               Aiq = A(i, q, j)
               A(i, p, j) =  c * Aip + s * Aiq
               A(i, q, j) = -s * Aip + c * Aiq
-            enddo
-          enddo
+            end do
+          end do
           do j = 1, n
             do i = 1, m
               Api = A(p, i, j)
               Aqi = A(q, i, j)
               A(p, i, j) =  c * Api + s * Aqi
               A(q, i, j) = -s * Api + c * Aqi
-            enddo
-          enddo
+            end do
+          end do
 
           do i = 1, m
             Vip = V(i, p)
             Viq = V(i, q)
             V(i, p) =  c * Vip + s * Viq
             V(i, q) = -s * Vip + c * Viq
-          enddo
-        endif
-      enddo
-    enddo
-  enddo
+          end do
+        end if
+      end do
+    end do
+  end do
 
 
 end subroutine joint_diagonalization
@@ -1119,7 +1119,7 @@ function check_identity(matrix, tolerance) RESULT(is_identity)
     tolerance_ = tolerance
   else
     tolerance_ = 1.0e-9_dp
-  endif
+  end if
 
   mmat = SIZE(matrix, DIM=1)
   nmat = SIZE(matrix, DIM=2)
@@ -1132,28 +1132,28 @@ function check_identity(matrix, tolerance) RESULT(is_identity)
         if( imat == jmat ) then
           if( ABS(matrix(imat, jmat) - 1.0_dp) > tolerance_ ) then
             is_identity = .FALSE.
-          endif
+          end if
         else
           if( ABS(matrix(imat, jmat)) > tolerance_ ) then
             is_identity = .FALSE.
-          endif
-        endif
-      enddo
-    enddo
+          end if
+        end if
+      end do
+    end do
   type is (complex(dp))
     do jmat=1, nmat
       do imat=1, mmat
         if( imat == jmat ) then
           if( ABS(matrix(imat, jmat) - (1.0_dp, 0.0_dp)) > tolerance_ ) then
             is_identity = .FALSE.
-          endif
+          end if
         else
           if( ABS(matrix(imat, jmat)) > tolerance_ ) then
             is_identity = .FALSE.
-          endif
-        endif
-      enddo
-    enddo
+          end if
+        end if
+      end do
+    end do
   end select
 
 

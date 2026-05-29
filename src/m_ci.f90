@@ -91,7 +91,7 @@ pure function gamma_sign_keyud(keyud, istate, ispin)
     gamma_sign_keyud = POPPAR( IAND(keyud(1), MASKR(istate-nfrozen_ci, KIND=key_int)) ) * 2 - 1
   else
     gamma_sign_keyud = ( MODULO( POPPAR(keyud(1)) + POPPAR( IAND(keyud(2), MASKR(istate-nfrozen_ci, KIND=key_int)) ) , 2) ) * 2 - 1
-  endif
+  end if
 
 end function gamma_sign_keyud
 
@@ -108,10 +108,10 @@ pure function get_keyud(sporbup, sporbdown) result(keyud)
   keyud(:) = 0_key_int
   do ielec=1, SIZE(sporbup)
     keyud(1) = keyud(1) + SHIFTL(1_key_int, sporbup(ielec)-1-nfrozen_ci)
-  enddo
+  end do
   do ielec=1, SIZE(sporbdown)
     keyud(2) = keyud(2) + SHIFTL(1_key_int, sporbdown(ielec)-1-nfrozen_ci)
-  enddo
+  end do
 
 end function get_keyud
 
@@ -137,13 +137,13 @@ subroutine increment_sporb(sporb)
         sporb(ielec) = sporb(ielec) + 1
         do jelec=ielec+1, nelec
           sporb(jelec) = sporb(jelec-1) + 1
-        enddo
+        end do
         exit
-      endif
-    enddo
+      end if
+    end do
     ! If there is no room to increment again, then return a conventional zero
     if( .NOT. room ) sporb(:) = 0
-  endif
+  end if
 
 end subroutine increment_sporb
 
@@ -174,7 +174,7 @@ subroutine get_spins_from_keyud(keyud, ispin)
   ispin(:) = 2
   do ielec=1, POPCNT(keyud(1))
     ispin(ielec) = 1
-  enddo
+  end do
 
 end subroutine get_spins_from_keyud
 
@@ -194,14 +194,14 @@ subroutine get_states_from_keyud(keyud, istate)
     if( BTEST(keyud(1), ipos) ) then
       ielec = ielec + 1
       istate(ielec) = ipos + 1 + nfrozen_ci
-    endif
-  enddo
+    end if
+  end do
   do ipos=0, BIT_SIZE(keyud(2))-1
     if( BTEST(keyud(2), ipos) ) then
       ielec = ielec + 1
       istate(ielec) = ipos + 1 + nfrozen_ci
-    endif
-  enddo
+    end if
+  end do
 
 end subroutine get_states_from_keyud
 
@@ -231,7 +231,7 @@ subroutine prepare_ci(basis, nstate_in, nfrozen_in, c_matrix)
   call setup_nucleus(basis, hnuc)
   if( nelement_ecp > 0 ) then
     call setup_nucleus_ecp(basis, hnuc)
-  endif
+  end if
   h_1e(:, :) = h_1e(:, :) + hnuc(:, :)
 
   ! Calculate the one-electron hamiltonian on the eigenstate basis
@@ -304,7 +304,7 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
     write(stdout, *) 'nelec=', conf%nelec
     write(stdout, *) 'spinz=', conf%sz
     call die('setup_configurations_ci: spin multiplicity is not compatible with the number of electrons')
-  endif
+  end if
 
   select case(conf%sz)
   case(-100)
@@ -362,11 +362,11 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
         istate = (isporb+1)/2
         if( ref_sporb(isporb) == 1 ) &
          keyud_ref(ispin, iref) = keyud_ref(ispin, iref) + SHIFTL(1_key_int, istate-1)
-      enddo
+      end do
       if( get_spinz_from_keyud(keyud_ref(:, iref)) /= spinstate ) then
         call die('setup_configuration_ci: manual_ci_ref_xx file does not represent the correct spin state')
-      endif
-    enddo
+      end if
+    end do
     close(fu)
 
   else
@@ -376,12 +376,12 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
     do ielec=1, conf%nelec_valence
       ispin = 2 - MODULO(ielec, 2)
       keyud_ref(ispin, 1) = keyud_ref(ispin, 1) + SHIFTL(1_key_int, (ielec-1)/2)
-    enddo
-  endif
+    end do
+  end if
   write(stdout, '(1x,a,i4)') 'Number of reference states: ', nref
   do iref=1, nref
     write(stdout, '(1x,a,*(1x,b64.64))') 'Reference state key: ', keyud_ref(:, iref)
-  enddo
+  end do
 
 
   allocate(sporbup(conf%nelec_valence_up))
@@ -391,14 +391,14 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
   ! First, determine the total number of CI configurations
   do ielec=1, conf%nelec_valence_up
     sporbup(ielec) = ielec + nfrozen_ci
-  enddo
+  end do
 
   iconf = 0
   ! Spin up loop
   do
     do ielec=1, conf%nelec_valence_down
       sporbdown(ielec) = ielec + nfrozen_ci
-    enddo
+    end do
 
     keyud_test = get_keyud(sporbup, sporbdown)
     order_up = keys_diff_order(keyud_test(1), keyud_ref(1, :))
@@ -413,20 +413,20 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
         ! Check if the excitation is not too high
         if( order_up + order_down <= 2*excitation_max ) then
           iconf = iconf + 1
-        endif
+        end if
         if( SIZE(sporbdown) > 0 ) then
           call increment_sporb(sporbdown)
           if( sporbdown(1) == 0 ) exit
         else
           exit
-        endif
-      enddo
+        end if
+      end do
 
-    endif
+    end if
 
     call increment_sporb(sporbup)
     if( sporbup(1) == 0 ) exit
-  enddo
+  end do
   conf%nconf = iconf
 
   allocate(conf%keyud(2, conf%nconf))
@@ -435,14 +435,14 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
   ! Second, generate and store all the keys
   do ielec=1, conf%nelec_valence_up
     sporbup(ielec) = ielec + nfrozen_ci
-  enddo
+  end do
 
   iconf = 0
   ! Spin up loop
   do
     do ielec=1, conf%nelec_valence_down
       sporbdown(ielec) = ielec + nfrozen_ci
-    enddo
+    end do
 
     keyud_test = get_keyud(sporbup, sporbdown)
     order_up = keys_diff_order(keyud_test(1), keyud_ref(1, :))
@@ -458,21 +458,21 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
         if( order_up + order_down <= 2*excitation_max ) then
           iconf = iconf + 1
           conf%keyud(:, iconf) = keyud_test(:)
-        endif
+        end if
 
         if( SIZE(sporbdown) > 0 ) then
           call increment_sporb(sporbdown)
           if( sporbdown(1) == 0 ) exit
         else
           exit
-        endif
-      enddo
+        end if
+      end do
 
-    endif
+    end if
 
     call increment_sporb(sporbup)
     if( sporbup(1) == 0 ) exit
-  enddo
+  end do
 
   deallocate(sporbup, sporbdown)
   deallocate(keyud_ref)
@@ -481,7 +481,7 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
   if( iconf /= conf%nconf ) then
     write(stdout, *) 'iconf=', iconf, 'conf%nconf=', conf%nconf
     call die('setup_configurations_ci: bug')
-  endif
+  end if
 
 
   write(stdout, '(/,3(1x,a,i2,/),1x,a,i8)')       &
@@ -499,8 +499,8 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
     do lstate=1, nfrozen_ci
       h_frozen_frozen = h_frozen_frozen + 2.0_dp * evaluate_eri_mo(kstate, kstate, 1, lstate, lstate, 1) &
                                        - evaluate_eri_mo(kstate, lstate, 1, kstate, lstate, 1)
-    enddo
-  enddo
+    end do
+  end do
   !
   ! Calculate the frozen-active contribution to the Hamiltonian
   !
@@ -513,10 +513,10 @@ subroutine setup_configurations_ci(nelec, spinstate, ci_type_in, conf)
         h_frozen_active(lstate) = h_frozen_active(lstate) &
                      + 2.0_dp * evaluate_eri_mo(kstate, kstate, 1, lstate, lstate, 1) &
                      - 1.0_dp * evaluate_eri_mo(kstate, lstate, 1, kstate, lstate, 1)
-      enddo
-    enddo
+      end do
+    end do
 
-  endif
+  end if
 
   call timer_ci_config%stop()
 
@@ -585,7 +585,7 @@ function keysud_diff_order(keyud1, keysud2) RESULT(order)
   order = 1000
   do iref=1, SIZE(keysud2, DIM=2)
     order = MIN(order, keyud_diff_order(keyud1, keysud2(:, iref)) )
-  enddo
+  end do
 
 end function keysud_diff_order
 
@@ -602,7 +602,7 @@ function keys_diff_order(key1, keys2) RESULT(order)
   order = 1000
   do iref=1, SIZE(keys2)
     order = MIN(order, key_diff_order(key1, keys2(iref)) )
-  enddo
+  end do
 
 end function keys_diff_order
 
@@ -651,14 +651,14 @@ function hamiltonian_ci(keyudi, keyudj) RESULT(h_ci_ij)
     do ielec=1, nelec_valence
       istate = iistate(ielec)
       h_ci_ij = h_ci_ij + h_frozen_active(istate)
-    enddo
+    end do
 
     !
     ! 1-body part
     !
     do ielec=1, nelec_valence
       h_ci_ij = h_ci_ij + h_1body(iistate(ielec), iistate(ielec))
-    enddo
+    end do
     !
     ! 2-body part
     !
@@ -674,8 +674,8 @@ function hamiltonian_ci(keyudi, keyudj) RESULT(h_ci_ij)
          h_ci_ij = h_ci_ij  &
                     - 0.5_dp * evaluate_eri_mo(istate, jstate, 1, jstate, istate, 1)
 
-      enddo
-    enddo
+      end do
+    end do
 
     deallocate(iistate, jjstate)
     deallocate(iispin, jjspin)
@@ -704,7 +704,7 @@ function hamiltonian_ci(keyudi, keyudj) RESULT(h_ci_ij)
       kspin = -1
       istate = TRAILZ(keyudii(2)) + nfrozen_ci + 1
       kstate = TRAILZ(keyudjj(2)) + nfrozen_ci + 1
-    endif
+    end if
 
     sign_factor = gamma_sign_keyud(keyudi, istate, ispin) * gamma_sign_keyud(keyudj, kstate, kspin)
 
@@ -724,7 +724,7 @@ function hamiltonian_ci(keyudi, keyudj) RESULT(h_ci_ij)
       do mstate=1, nfrozen_ci
         h_ci_ij = h_ci_ij + 2.0_dp * evaluate_eri_mo(istate, kstate, 1, mstate, mstate, 1) * sign_factor   &
                                   - evaluate_eri_mo(istate, mstate, 1, kstate, mstate, 1) * sign_factor
-      enddo
+      end do
 
 
       do mstate=nfrozen_ci+1, nfrozen_ci+BIT_SIZE(keyud_iand(1))
@@ -734,8 +734,8 @@ function hamiltonian_ci(keyudi, keyudj) RESULT(h_ci_ij)
 
           if( ispin == mspin ) &
            h_ci_ij = h_ci_ij - evaluate_eri_mo(istate, mstate, 1, mstate, kstate, 1)  * sign_factor
-        endif
-      enddo
+        end if
+      end do
 
       do mstate=nfrozen_ci+1, nfrozen_ci+BIT_SIZE(keyud_iand(2))
         if( BTEST(keyud_iand(2), mstate-nfrozen_ci-1) ) then
@@ -744,10 +744,10 @@ function hamiltonian_ci(keyudi, keyudj) RESULT(h_ci_ij)
 
           if( ispin == mspin ) &
            h_ci_ij = h_ci_ij - evaluate_eri_mo(istate, mstate, 1, mstate, kstate, 1)  * sign_factor
-        endif
-      enddo
+        end if
+      end do
 
-    endif
+    end if
 
 
   case(4)
@@ -836,8 +836,8 @@ subroutine build_ci_hamiltonian(conf, desc_hci, h_ci)
 
       h_ci(iconf, jconf) = hamiltonian_ci(conf%keyud(:, iconf_global), conf%keyud(:, jconf_global))
 
-    enddo
-  enddo
+    end do
+  end do
 
   call timer_ham_ci%stop()
 
@@ -874,8 +874,8 @@ subroutine build_ci_hamiltonian_sparse(conf, desc, h)
     jconf_global = rowindex_local_to_global(desc, jconf)
     do iconf=1, jconf_global-1   ! Use symmetry of H
       if( keyud_diff_order(conf%keyud(:, iconf), conf%keyud(:, jconf_global)) <= 4 ) h%nnz = h%nnz + 1
-    enddo
-  enddo
+    end do
+  end do
   h%nnz_total = REAL( h%nnz , dp )
   call auxil%sum(h%nnz_total)
   write(stdout, '(1x,a,i10)')  ' CI hamiltonian elements on this proc: ', h%nnz
@@ -913,10 +913,10 @@ subroutine build_ci_hamiltonian_sparse(conf, desc, h)
       h%val(ii) = h_ij
       h%row_ind(ii) = iconf
 
-    enddo
+    end do
     h%col_ptr(jconf+1) = ii + 1
 
-  enddo
+  end do
 
   h%nnz_total = REAL( h%col_ptr(mvec+1) , dp)
   call auxil%sum(h%nnz_total)
@@ -962,12 +962,12 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
     ns_occ  = conf_p%nstate
     write(stdout, '(1x,a,i4)') 'Hole     part will be evaluated with excitations: ', ns_occ
     write(stdout, '(1x,a,i3,a,sp,i4)') 'Previous CI calculation had spin state Sz(', conf_p%nelec, '): ', conf_p%sz
-  endif
+  end if
   if( ALLOCATED(conf_m%keyud) ) then
     ns_virt = conf_m%nstate
     write(stdout, '(1x,a,i4)') 'Electron part will be evaluated with excitations: ', ns_virt
     write(stdout, '(1x,a,i3,a,sp,i4)') 'Previous CI calculation had spin state Sz(', conf_m%nelec, '): ', conf_m%sz
-  endif
+  end if
 
 
 
@@ -980,8 +980,8 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
     do iconf=1, SIZE(eigvec_0, DIM=1)
       iconf_global = rowindex_local_to_global(desc_0, iconf)
       eigvec0(iconf_global) = eigvec_0(iconf, jconf)
-    enddo
-  enddo
+    end do
+  end do
   call world%sum(eigvec0)
 
 
@@ -1011,7 +1011,7 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
           ispin  = 1
         else
           ispin  = 2
-        endif
+        end if
         istate = TRAILZ(IEOR(keyudi(ispin), keyudj(ispin))) + nfrozen_ci + 1
 
         !
@@ -1022,20 +1022,20 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
           if( kconf_global > ns_occ ) cycle
           fs_occ(istate, ispin, kconf_global) = fs_occ(istate, ispin, kconf_global) &
                                  + eigvec_p(iconf, kconf) * eigvec0(jconf) * gamma_sign_keyud(keyudi, istate, ispin)
-        enddo
+        end do
 
-      enddo
-    enddo
+      end do
+    end do
 
     call world%sum(fs_occ)
 
     do is=1, ns_occ
       es_occ(is) = energy_0(1) - energy_p(is)
-    enddo
+    end do
     write(stdout, '(1x,a,f12.6,4x,f12.6)') '-IP (eV) and Weight: ', es_occ(1) * Ha_eV, fs_occ(conf_0%nelec/2, 2, 1)**2
     write(stdout, '(1x,a,f12.6,/)')        'Lowest excit.  (eV): ', es_occ(ns_occ) * Ha_eV
 
-  endif
+  end if
 
 
   !
@@ -1065,7 +1065,7 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
           ispin  = 1
         else
           ispin  = 2
-        endif
+        end if
         istate = TRAILZ(IEOR(keyudi(ispin), keyudj(ispin))) + nfrozen_ci + 1
 
         !
@@ -1076,21 +1076,21 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
           if( kconf_global > ns_virt ) cycle
           fs_virt(istate, ispin, kconf_global) = fs_virt(istate, ispin, kconf_global)  &
                          + eigvec_m(iconf, kconf) * eigvec0(jconf) * gamma_sign_keyud(keyudj, istate, ispin)
-        enddo
+        end do
 
 
-      enddo
-    enddo
+      end do
+    end do
 
     call world%sum(fs_virt)
 
     do is=1, ns_virt
       es_virt(is) = energy_m(is) - energy_0(1)
-    enddo
+    end do
 
     write(stdout, '(1x,a,f12.6,4x,f12.6,/)') '-EA (eV) and Weight: ', es_virt(1) * Ha_eV, fs_virt(conf_0%nelec/2+1, 2, 1)**2
 
-  endif
+  end if
 
 
   !
@@ -1114,10 +1114,10 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
         gi_w = (0.0_dp, 0.0_dp)
         do is=1, ns_virt
           gi_w = gi_w + fs_virt(istate, ispin, is)**2 / ( se%energy0(istate, 1) + se%omega(iomega) - es_virt(is) + ieta )
-        enddo
+        end do
         do is=1, ns_occ
           gi_w = gi_w + fs_occ(istate, ispin, is)**2 / ( se%energy0(istate, 1) + se%omega(iomega) - es_occ(is) - ieta )
-        enddo
+        end do
         g0i_w = 1.0_dp / ( se%energy0(istate, 1) + se%omega(iomega) - energy_gks(istate, 1) &
                              + ieta * SIGN(1.0_dp, REAL(istate-conf_0%nelec/2-0.5_dp, dp)) )
 
@@ -1126,10 +1126,10 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
                                          gi_w / Ha_eV, g0i_w / Ha_eV, sigmai_w * Ha_eV, &
                                          ABS(AIMAG(gi_w)) / pi / Ha_eV, &
                                          ABS(AIMAG(g0i_w)) / pi / Ha_eV
-      enddo
+      end do
       close(unit_gf)
-    enddo
-  enddo
+    end do
+  end do
 
   !
   ! Output CI Green's function summed over spin
@@ -1144,26 +1144,26 @@ subroutine full_ci_nelectrons_selfenergy(energy_gks)
       gi_w = 0.0_dp
       do is=1, ns_virt
         gi_w = gi_w + SUM(fs_virt(istate, :, is)**2) / ( se%energy0(istate, 1) + se%omega(iomega) - es_virt(is) + ieta )
-      enddo
+      end do
       do is=1, ns_occ
         gi_w = gi_w + SUM(fs_occ(istate, :, is)**2) / ( se%energy0(istate, 1) + se%omega(iomega) - es_occ(is) - ieta )
-      enddo
+      end do
 
       write(unit_gf, '(8(1x,es18.8))') (se%energy0(istate, 1) + se%omega(iomega)) * Ha_eV, &
                                       gi_w / Ha_eV, ABS(AIMAG(gi_w)) / pi / Ha_eV
-    enddo
+    end do
     close(unit_gf)
 
     open(newunit=unit_gf, file='exact_spectral_function_state'//ctmp3//'.dat', action='write')
     do is=1, ns_virt
       write(unit_gf, '(8(1x,es18.8))') es_virt(is) * Ha_eV, SUM(fs_virt(istate, :, is)**2)
-    enddo
+    end do
     do is=1, ns_occ
       write(unit_gf, '(8(1x,es18.8))') es_occ(is) * Ha_eV, SUM(fs_occ(istate, :, is)**2)
-    enddo
+    end do
     close(unit_gf)
 
-  enddo
+  end do
 
 
 
@@ -1232,7 +1232,7 @@ subroutine full_ci_nelectrons(save_coefficients, nelectron, spinstate, nuc_nuc)
     conf%nstate = MIN(ci_nstate, conf%nconf)
   else
     conf%nstate = MIN(ci_nstate_self, conf%nconf)
-  endif
+  end if
 
   allocate(energy(conf%nconf))
   ehf = hamiltonian_ci(conf%keyud(:, 1), conf%keyud(:, 1))
@@ -1245,7 +1245,7 @@ subroutine full_ci_nelectrons(save_coefficients, nelectron, spinstate, nuc_nuc)
     if( nprow_sd * npcol_sd > 1 ) then
       write(stdout, '(1x,a,i5,a,i5)') 'Use SCALAPACK proc grid: ', nprow_sd, ' x ', npcol_sd
       write(stdout, '(1x,a,i5,a,i5)') '        Sub-matrix size: ', mham, ' x ', nham
-    endif
+    end if
 
     call clean_allocate('CI hamiltonian', h_ci, mham, nham)
 
@@ -1268,7 +1268,7 @@ subroutine full_ci_nelectrons(save_coefficients, nelectron, spinstate, nuc_nuc)
     call DESCINIT(desc_vec, conf%nconf, conf%nstate, mb, mb, first_row, first_col, cntxt_eri3_mo, MAX(1, mvec), info)
     call clean_allocate('CI eigenvectors', eigvec, mvec, nvec)
     eigvec(:, :) = 0.0_dp
-  endif
+  end if
 
   if( conf%nstate == conf%nconf ) then
     call timer_ci_diago%start()
@@ -1292,7 +1292,7 @@ subroutine full_ci_nelectrons(save_coefficients, nelectron, spinstate, nuc_nuc)
         call clean_deallocate('Sparce CI values', h%val)
         call clean_deallocate('Sparce CI indexes', h%row_ind)
         deallocate(h%col_ptr)
-      endif
+      end if
 
     else
 
@@ -1315,14 +1315,14 @@ subroutine full_ci_nelectrons(save_coefficients, nelectron, spinstate, nuc_nuc)
         call timer_ci_diago%stop()
         call translate_eigvec_ci(conf_sd, desc_vec_sd, eigvec_sd, conf, desc_vec, eigvec)
         call clean_deallocate('CISD eigenvectors', eigvec_sd)
-      endif
+      end if
 
       call timer_ci_diago%start()
       call diagonalize_davidson_ci(toldav, filename_eigvec, conf, conf%nstate, energy, desc_vec, eigvec)
       call timer_ci_diago%stop()
 
-    endif
-  endif
+    end if
+  end if
 
 
   call clean_deallocate('CI hamiltonian', h_ci)
@@ -1412,7 +1412,7 @@ subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval,
   if( PRESENT(h) ) then
     write(stdout, '(1x,a,f10.3)') 'Sparse matrix incore implementation with storage size (Mb): ', &
                                 h%nnz * 8.0_dp / 1024.0_dp**2
-  endif
+  end if
 
   mvec = SIZE(eigvec(:, :), DIM=1)
   nvec = SIZE(eigvec(:, :), DIM=2)
@@ -1434,7 +1434,7 @@ subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval,
   ! All procs have the full diagonal
   do iconf=1, conf%nconf
     ham_diag(iconf) = hamiltonian_ci(conf%keyud(:, iconf), conf%keyud(:, iconf))
-  enddo
+  end do
 
   nstep = nstep_dav
   mm     = 0
@@ -1444,7 +1444,7 @@ subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval,
     mm_max = neig_calc * nstep
     write(stdout, '(1x,a)')    'Diagonalization problem is too small'
     write(stdout, '(1x,a,i4)') 'Number of Davidson steps has been reduced to ', nstep
-  endif
+  end if
 
   !
   ! Find the smallest diagonal terms => good candidates for initial trial vectors
@@ -1457,11 +1457,11 @@ subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval,
       if( ham_diag(iconf) < value_min ) then
         value_min = ham_diag(iconf)
         index_min = iconf
-      endif
-    enddo
+      end if
+    end do
     index_trial(ieig) = index_min
     still_available(index_min) = .FALSE.
-  enddo
+  end do
 
   mbb = NUMROC(conf%nconf, mb, iprow, first_row, nprow)
   nbb = NUMROC(mm_max    , nb, ipcol, first_col, npcol)
@@ -1483,8 +1483,8 @@ subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval,
       iglobal = rowindex_local_to_global(desc_bb, ilocal)
       bb(ilocal, ieig) = MIN( EXP( -REAL(iglobal, dp) ) , 0.1_dp )
       if( iglobal == index_trial(ieig) ) bb(ilocal, ieig) = 1.0_dp
-    enddo
-  enddo
+    end do
+  end do
   !
   ! Then override them in case eigvec isn't empty
   rtmp = ABS(eigvec(1, 1))
@@ -1492,7 +1492,7 @@ subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval,
   if( rtmp > 1.0e-12_dp ) then
     write(stdout, *) 'Found existing eigenvectors'
     bb(:, 1:neig_calc) = eigvec(:, :)
-  endif
+  end if
   call orthogonalize_sca(desc_bb, 1, neig_calc, bb)
 
 
@@ -1528,7 +1528,7 @@ subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval,
     ! qq = qq * Lambda
     do ieig=1, neig_calc
       call PDSCAL(conf%nconf, lambda(ieig), qq, 1, ieig, desc_qq, 1)
-    enddo
+    end do
 
 
     ! qq = ab * alphavec - lambda * bb * alphavec
@@ -1542,7 +1542,7 @@ subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval,
       norm2_i = 0.0_dp
       call PDNRM2(conf%nconf, norm2_i, qq, 1, ieig, desc_qq, 1)
       residual_norm = MAX( residual_norm , norm2_i )
-    enddo
+    end do
     call world%max(residual_norm)
 
     write(stdout, '(1x,a,i4,1x,i5,1x,es12.4,1x,f19.10)') 'Cycle, Subspace dim, Max residual norm, Electronic energy: ', &
@@ -1557,11 +1557,11 @@ subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval,
     if( residual_norm < tolerance ) then
       write(stdout, '(1x,a,es12.4)') 'Desired accuracy has been reached: ', toldav
       exit
-    endif
+    end if
     if( icycle == nstep ) then
       write(stdout, '(1x,a,es12.4)') 'Maximum number of Davidson steps performed without reaching desired accuracy: ', toldav
       exit
-    endif
+    end if
 
 
     !
@@ -1572,8 +1572,8 @@ subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval,
       do ilocal=1, mqq
         iglobal = rowindex_local_to_global(desc_qq, ilocal)
         qq(ilocal, jlocal) = qq(ilocal, jlocal) / ( lambda(jglobal) - ham_diag(iglobal) )
-      enddo
-    enddo
+      end do
+    end do
 
     call PDGEMR2D(conf%nconf, neig_calc, qq, 1, 1, desc_qq, bb, 1, mm+1, desc_bb, cntxt)
 
@@ -1586,7 +1586,7 @@ subroutine diagonalize_davidson_ci(tolerance, filename, conf, neig_calc, eigval,
     deallocate(lambda)
 
 
-  enddo ! icycle
+  end do ! icycle
 
   if( ALLOCATED(lambda) ) deallocate(lambda)
   call clean_deallocate('Trial vectors', bb)
@@ -1622,8 +1622,8 @@ subroutine get_ab()
         kconf_global = indxl2g_pure(kconf, mb, iprow, first_row, nprow)
         do iconf=iconf_min, iconf_max
           h_iblock(iconf, kconf) = hamiltonian_ci(conf%keyud(:, iconf), conf%keyud(:, kconf_global))
-        enddo
-      enddo
+        end do
+      end do
 
       !ab_iblock(:,:) = MATMUL( h_iblock(:,:) , bb(:,mm+1:mm+neig_calc) )
       call DGEMM('N', 'N', mb_local, neig_calc,mvec,     &
@@ -1636,10 +1636,10 @@ subroutine get_ab()
       if( iprow == rdest ) then
         iconf = rowindex_global_to_local(desc_bb, iconf_min)
         ab(iconf:iconf+mb_local-1, mm+1:mm+neig_calc) = ab_iblock(:, :)
-      endif
+      end if
       deallocate(h_iblock)
       deallocate(ab_iblock)
-    enddo
+    end do
 
   else
 
@@ -1650,7 +1650,7 @@ subroutine get_ab()
       do iconf=1, mvec
         iconf_global = rowindex_local_to_global(desc_bb, iconf)
         bb_i(iconf_global) =  bb(iconf, ieig)
-      enddo
+      end do
 
       call DGSUM2D(cntxt, 'A', ' ', conf%nconf,1,bb_i,1,-1,-1)
 
@@ -1662,26 +1662,26 @@ subroutine get_ab()
 
         do jj=h%col_ptr(kconf), h%col_ptr(kconf+1)-1
           ab_i(kconf_global) = ab_i(kconf_global) + h%val(jj) * bb_i(h%row_ind(jj))
-        enddo
-      enddo
+        end do
+      end do
 
       do kconf=1, mvec
         do ii=h%col_ptr(kconf), h%col_ptr(kconf+1)-1
           ab_i(h%row_ind(ii)) = ab_i(h%row_ind(ii)) + h%val(ii) * bb(kconf, ieig)
-        enddo
-      enddo
+        end do
+      end do
 
       call DGSUM2D(cntxt, 'A', ' ', conf%nconf,1,ab_i,1,-1,-1)
 
       do iconf=1, mvec
         iconf_global = rowindex_local_to_global(desc_bb, iconf)
         ab(iconf, ieig) = ab_i(iconf_global)
-      enddo
+      end do
 
-    enddo
+    end do
     deallocate(ab_i, bb_i)
 
-  endif
+  end if
 
 end subroutine get_ab
 
@@ -1689,7 +1689,7 @@ end subroutine get_ab
   eigval(:)   = 0.0_dp
   eigvec(:, :) = 0.0_dp
   call die('diagonalize_davidson_ci: only works with a compilation using SCALAPACK')
-#endif
+#end if
 
 end subroutine diagonalize_davidson_ci
 
@@ -1719,11 +1719,11 @@ subroutine translate_eigvec_ci(conf_in, desc_vec_in, eigvec_in, conf_out, desc_v
   ! Preliminary checks
   if( conf_in%nelec /= conf_out%nelec ) then
     call die('translate_eigvec_ci: configuration spaces have different number of electrons')
-  endif
+  end if
 
   if( conf_in%nelec_valence /= conf_out%nelec_valence ) then
     call die('translate_eigvec_ci: configuration spaces have different number of active electrons')
-  endif
+  end if
 
   do iconf_in=1, conf_in%nconf
     found = .FALSE.
@@ -1732,7 +1732,7 @@ subroutine translate_eigvec_ci(conf_in, desc_vec_in, eigvec_in, conf_out, desc_v
       eigvec_tmp(:) = eigvec_in(iconf_in_local, 1:neig)
     else
       eigvec_tmp(:) = 0.0_dp
-    endif
+    end if
     call auxil%sum(eigvec_tmp)
 
     do iconf_out=1, conf_out%nconf
@@ -1743,13 +1743,13 @@ subroutine translate_eigvec_ci(conf_in, desc_vec_in, eigvec_in, conf_out, desc_v
         if( iconf_out_local /= 0 ) &
          eigvec_out(iconf_out_local, 1:neig) = eigvec_tmp(:)
 
-      endif
-    enddo
+      end if
+    end do
 
     if( .NOT. found) then
       call die('translate_eigvec_ci: final configuration spaces does not contain the initial configuration space')
-    endif
-  enddo
+    end if
+  end do
 
   deallocate(eigvec_tmp)
 
@@ -1790,17 +1790,17 @@ subroutine write_eigvec_ci(filename, conf, desc_vec, eigvec, eigval, residual_no
     write(cifile) conf%nstate
     write(cifile) residual_norm
     write(cifile) eigval(1:conf%nstate)
-  endif
+  end if
 
   do ieig=1, neig
     eigvec_tmp(:) = 0.0_dp
     do iconf_local=1, SIZE(eigvec(:, :), DIM=1)
       iconf = rowindex_local_to_global(desc_vec, iconf_local)
       eigvec_tmp(iconf) = eigvec(iconf_local, ieig)
-    enddo
+    end do
     call auxil%sum(eigvec_tmp)
     if( is_iomaster ) write(cifile) eigvec_tmp(:)
-  enddo
+  end do
   if( is_iomaster ) close(cifile)
 
   deallocate(eigvec_tmp)
@@ -1843,7 +1843,7 @@ subroutine read_eigvec_ci(filename, conf, desc_vec, eigvec, eigval, nstate_read,
   if( .NOT. file_exists ) then
     write(stdout, '(1x,a,a,a)') 'File ', TRIM(filename), ' does not exist'
     return
-  endif
+  end if
 
   write(stdout, '(/,1x,a,a)')   'Read the CI eigvectors from file: ', TRIM(filename)
 
@@ -1858,13 +1858,13 @@ subroutine read_eigvec_ci(filename, conf, desc_vec, eigvec, eigval, nstate_read,
     call issue_warning(TRIM(filename)//' file not compatible: ignore it')
     close(cifile)
     return
-  endif
+  end if
 
   if( nstate_read < conf%nstate ) then
     call issue_warning(TRIM(filename)//' file contains fewer states than required. Read and use them anyway')
     close(cifile)
     return
-  endif
+  end if
 
 
   allocate(eigvec_tmp(conf%nconf))
@@ -1877,8 +1877,8 @@ subroutine read_eigvec_ci(filename, conf, desc_vec, eigvec, eigval, nstate_read,
 
       eigvec(iconf_local, ieig) = eigvec_tmp(iconf)
 
-    enddo
-  enddo
+    end do
+  end do
   close(cifile)
 
 
