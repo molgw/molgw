@@ -101,11 +101,11 @@ subroutine init_atoms(natom_in, nghost_in, nucleus_wo_basis, zatom_read, x_read,
 
   if( nprojectile /= 0 ) then
     vel_nuclei(:, ncenter_nuclei) = vel_projectile(:)
-  endif
+  end if
 
   if( excit_name == 'ION' .OR. excit_name == 'ANTIION' ) then
     vel_basis(:, ncenter_basis) = vel_projectile(:)
-  endif
+  end if
 
   ! Allocate force arrays (tiny memory footprint anyway)
   allocate(force(3, ncenter_nuclei))
@@ -131,11 +131,11 @@ subroutine init_atoms(natom_in, nghost_in, nucleus_wo_basis, zatom_read, x_read,
   if( nprojectile /= 0 ) then
     xatom(:, ncenter_nuclei) = x_read(:, natom_read)
     zatom(ncenter_nuclei)   = zatom_read(natom_read)
-  endif
+  end if
 
   if( excit_name == "ANTINUCLEUS" .OR. excit_name == "ANTIION" ) then
     zatom(ncenter_nuclei) = -zatom(ncenter_nuclei)
-  endif
+  end if
   !
   ! In case of a projectile excitation, offer the possibility to tweak
   ! the charge of the projectile with an input variable
@@ -152,7 +152,7 @@ subroutine init_atoms(natom_in, nghost_in, nucleus_wo_basis, zatom_read, x_read,
     jcenter = jcenter + 1
     xbasis(:, jcenter) = x_read(:, iatom)
     zbasis(jcenter)   = NINT(zatom_read(iatom))
-  enddo
+  end do
 
   !
   ! Check for atoms too close
@@ -162,9 +162,9 @@ subroutine init_atoms(natom_in, nghost_in, nucleus_wo_basis, zatom_read, x_read,
         write(stdout, *) 'Atoms', iatom, jatom
         write(stdout, *) 'are closer than 0.2 bohr'
         call issue_warning('Some atoms are too close')
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
   !
   ! Find the covalent bonds based on simple distance criterium
@@ -174,9 +174,9 @@ subroutine init_atoms(natom_in, nghost_in, nucleus_wo_basis, zatom_read, x_read,
       bond_length =  element_covalent_radius(NINT(zatom(iatom))) + element_covalent_radius(NINT(zatom(jatom)))
       if( NORM2( xatom(:, iatom)-xatom(:, jatom) ) <  1.2_dp * bond_length  ) then
         nbond = nbond + 1
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
   !
   ! Does the molecule have inversion symmetry?
@@ -193,21 +193,21 @@ subroutine init_atoms(natom_in, nghost_in, nucleus_wo_basis, zatom_read, x_read,
         xnormal(:) = xnormal(:) / NORM2(xnormal(:))
         linear=.FALSE.
         exit
-      endif
-    enddo
+      end if
+    end do
     if( .NOT. linear) then
       do iatom=1, ncenter_nuclei
         if( ABS(DOT_PRODUCT( xatom(:, iatom) , xnormal(:) )) > tol_geom ) planar=.FALSE.
-      enddo
+      end do
     else
       planar=.FALSE.
-    endif
+    end if
   else
     ! Molecule is linear
     ! Set planar to FALSE for safety
     linear=.TRUE.
     planar=.FALSE.
-  endif
+  end if
 
 
 end subroutine init_atoms
@@ -224,7 +224,7 @@ function atoms_core_states()
   atoms_core_states=0
   do icenter=1, ncenter_nuclei
     atoms_core_states = atoms_core_states + element_core(zvalence(icenter), zatom(icenter))
-  enddo
+  end do
 
 end function atoms_core_states
 
@@ -240,7 +240,7 @@ function atoms_core_states_gaussian() result(atoms_core_states)
   atoms_core_states=0
   do icenter=1, ncenter_nuclei
     atoms_core_states = atoms_core_states + element_core_gaussian(zvalence(icenter), zatom(icenter))
-  enddo
+  end do
 
 end function atoms_core_states_gaussian
 
@@ -262,10 +262,10 @@ subroutine get_bondcenter(ibond, xbond)
         if(jbond==ibond) then
           xbond(:) = 0.5_dp * ( xatom(:, icenter) - xatom(:, jcenter) )
           return
-        endif
-      endif
-    enddo
-  enddo
+        end if
+      end if
+    end do
+  end do
 
 end subroutine get_bondcenter
 
@@ -335,9 +335,9 @@ subroutine relax_atoms(lbfgs_plan, etotal)
     do idir=1, 3
       if( ABS( xnew(idir, iatom) - xatom(idir, iatom) ) > 0.20_dp ) then
         xnew(idir, iatom) = xatom(idir, iatom) + SIGN( 0.20_dp , xnew(idir, iatom) - xatom(idir, iatom) )
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
   ! assume here that all atoms are both nuclei centers and basis centers  (no ghost, no projectile)
   xatom(:, :) = xnew(:, :)
@@ -359,20 +359,20 @@ subroutine output_positions()
     write(stdout, '(1x,a,i3,2x,a8,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ', iatom, &
                                                             element_name_long(zatom(iatom)), ': ',  &
                                                             xatom(:, iatom), xatom(:, iatom)*bohr_A
-  enddo
+  end do
 
   if( nghost_ > 0 ) write(stdout, '(a)') ' == ghost list'
   do ighost=ncenter_nuclei-nprojectile+1, ncenter_nuclei-nprojectile+nghost_
     write(stdout, '(1x,a,i3,2x,a8,a,3(1x,f12.6),6x,3(1x,f12.6))') 'ghost ', iatom, &
                                             element_name_long(zbasis(ighost)), ': ',  &
                                             xbasis(:, ighost), xbasis(:, ighost)*bohr_A
-  enddo
+  end do
   if( nprojectile > 0 ) then
     write(stdout, '(a)') ' == projectile'
     write(stdout, '(1x,a,i3,2x,a8,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ', ncenter_nuclei, &
                                                             element_name_long(zatom(ncenter_nuclei)), ': ',  &
                                                             xatom(:, ncenter_nuclei), xatom(:, ncenter_nuclei)*bohr_A
-  endif
+  end if
 
 
   write(stdout, '(1x,a,/)') '================================'
@@ -397,9 +397,9 @@ subroutine output_projectile_position()
       write(stdout, '(1x,a,i3,2x,a4,a2,a,3(1x,f12.6),6x,3(1x,f12.6))') 'atom  ', ncenter_nuclei, &
                                                             'anti', element_name(zatom(ncenter_nuclei)), ': ',  &
                                                             xatom(:, ncenter_nuclei), xatom(:, ncenter_nuclei)*bohr_A
-    endif
+    end if
 
-  endif
+  end if
 
 end subroutine output_projectile_position
 
@@ -416,8 +416,8 @@ subroutine nucleus_nucleus_energy(energy)
   do icenter=1, ncenter_nuclei
     do jcenter=icenter+1, ncenter_nuclei
       energy = energy + zvalence(icenter) * zvalence(jcenter) / SQRT( SUM( (xatom(:, icenter) - xatom(:, jcenter))**2) )
-    enddo
-  enddo
+    end do
+  end do
 
 end subroutine nucleus_nucleus_energy
 
@@ -435,8 +435,8 @@ subroutine nucleus_nucleus_force()
       force_nuc_nuc(:, icenter) = force_nuc_nuc(:, icenter) &
                         + zvalence(icenter) * zvalence(jcenter) / ( SUM( (xatom(:, icenter) - xatom(:, jcenter))**2) )**1.50_dp &
                                * ( xatom(:, icenter) - xatom(:, jcenter) )
-    enddo
-  enddo
+    end do
+  end do
 
 end subroutine nucleus_nucleus_force
 
@@ -452,7 +452,7 @@ subroutine find_inversion()
   xcenter(:) = 0.0_dp
   do icenter=1, ncenter_nuclei-nprojectile
     xcenter(:) = xcenter(:) + xatom(:, icenter) / REAL(ncenter_nuclei-nprojectile, dp)
-  enddo
+  end do
 
   do icenter=1, ncenter_nuclei-nprojectile
     xtmp(:) = 2.0_dp * xcenter(:) - xatom(:, icenter)
@@ -461,10 +461,10 @@ subroutine find_inversion()
       if( NORM2( xtmp(:) - xatom(:, jcenter) ) < tol_geom ) then
         if( ABS(zatom(icenter)-zatom(jcenter)) < tol_geom ) found = .TRUE.
         exit
-      endif
-    enddo
+      end if
+    end do
     inversion = inversion .AND. found
-  enddo
+  end do
 
 end subroutine find_inversion
 
@@ -501,15 +501,15 @@ subroutine setup_periodicity_vectors(length_unit, a1, a2, a3)
 
   if( NORM2(a1) > 1.0e-1_dp ) then
     aprim(:, 1) = a1(:) * length_factor
-  endif
+  end if
 
   if( NORM2(a2) > 1.0e-1_dp ) then
     aprim(:, 2) = a2(:) * length_factor
-  endif
+  end if
 
   if( NORM2(a3) > 1.0e-1_dp ) then
     aprim(:, 3) = a3(:) * length_factor
-  endif
+  end if
 
   pbc_ = NORM2(aprim) > 1.0e-1_dp
 
@@ -520,7 +520,7 @@ subroutine setup_periodicity_vectors(length_unit, a1, a2, a3)
     ! Calculate the reciprocal lattice vectors
     if( volume < 0.0_dp ) then
       call die('setup_periodicity_vectors: periodic vectors are in indirect order. Swap two of them to recover direct order.')
-    endif
+    end if
     aprim_inv(:, :) = inverse_3x3_matrix(aprim)
     bprim(:, :) = 2.0_dp * pi * TRANSPOSE(aprim_inv)
     recip_volume = determinant_3x3_matrix(bprim)
@@ -532,9 +532,9 @@ subroutine setup_periodicity_vectors(length_unit, a1, a2, a3)
           if( i1 == 0 .AND. i2 == 0 .AND. i3 == 0 ) cycle
           x(:) = MATMUL(aprim, [i1, i2, i3])
           minimal_image_distance = MIN(minimal_image_distance, NORM2(x(:)) )
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
     write(stdout, '(/,1x,a,/)') 'Periodic boundary conditions are switched on'
     write(stdout, '(1x,a)') 'Primitive cell vectors (bohr):'
@@ -550,7 +550,7 @@ subroutine setup_periodicity_vectors(length_unit, a1, a2, a3)
     write(stdout, '(1x,a,1x,f12.6)') 'Volume (bohr**-3):', recip_volume
     write(stdout, '(1x,a)')  '==============================================='
 
- endif
+ end if
 
 
 end subroutine setup_periodicity_vectors

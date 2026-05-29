@@ -133,15 +133,15 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
     noft_fcidump_in=.false.
     write(msgw, '(a)') 'The FCIDUMP file is not available with RI.'
     call issue_warning(msgw)
-  endif
+  end if
   if( noft_fcidump_in .and. noft_complex=='yes' ) then
     noft_fcidump_in=.false.
     write(msgw, '(a)') 'The FCIDUMP file is not available with complex orbitals.'
     call issue_warning(msgw)
-  endif
+  end if
   if( (noft_dft=='yes' .and. noft_complex=='yes') .and. noft_rsinter=='yes' ) then
     call die('molgw: RS-NOFT only works with complex orbs. and noft_rsinter="no".')
-  endif
+  end if
 
   !
   ! Perform a relativistic or a non-relativistic NOFT calculations
@@ -164,7 +164,7 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
      NO_COEF_cmplx=matmul(NO_COEF_cmplx, tmp_mat0_cmplx) ! rotate to the basis where Hcore (=Hcore^X2C) is diagonal
      call clean_deallocate('tmp_mat0_cmplx', tmp_mat0_cmplx, noft_verbose)
      call clean_deallocate('tmp_mat_cmplx', tmp_mat_cmplx, noft_verbose)
-   endif
+   end if
 
    ! TODO: call noft suborutine from module standalone, do SCF, etc, etc
    c_matrix_rel=NO_COEF_cmplx
@@ -181,14 +181,14 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
      call clean_allocate('AhCORE_cmplx', AhCORE_cmplx, basis%nbf, basis%nbf)
    else
      call clean_allocate('AhCORE', AhCORE, basis%nbf, basis%nbf)
-   endif
+   end if
    call clean_allocate('NO_occ', occ, basis%nbf,1)
    call clean_allocate('NO_energies', energy, basis%nbf, 1)
    if(noft_complex=='yes') then
      call clean_allocate('NO_COEF_cmplx', NO_COEF_cmplx, basis%nbf, basis%nbf)
    else
      call clean_allocate('NO_COEF', NO_COEF, basis%nbf, basis%nbf)
-   endif
+   end if
    occ(:, :)    = zero
    energy(:, :) = zero
    ! Save Atomic Orbital hCORE integrals
@@ -196,7 +196,7 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
      AhCORE_cmplx(:, :) = hkin(:, :) + hnuc(:, :)
    else
      AhCORE(:, :) = hkin(:, :) + hnuc(:, :)
-   endif
+   end if
    
    ! Initially copy c_matrix (HF orbs) to NO_COEF
    if(noft_complex=='yes') then
@@ -208,14 +208,14 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
        if(noft_nophases=='yes') ran_num=0.0e0
        write(stdout, '(a,I10,a,f8.5,a,f8.5,a)') ' MO', istate, ': (', real(exp(im*ran_num)), ',', aimag(exp(im*ran_num)),')'
        NO_COEF_cmplx(:, istate)=exp(im*ran_num)*c_matrix(:, istate, 1)
-     enddo
+     end do
      write(stdout, *) ' '
    else
      NO_COEF(:, :)=zero
      do istate=1, nstate_noft
        NO_COEF(:, istate)=c_matrix(:, istate, 1)
-     enddo
-   endif
+     end do
+   end if
    ! Replace NO_COEF by Hcore orbs for the initial GUESS?
    if(TRIM(init_hamiltonian)=='CORE') then
      call clean_allocate('tmp_mat0', tmp_mat0, basis%nbf, basis%nbf, noft_verbose)
@@ -223,7 +223,7 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
      tmp_mat0(:, :)=zero
      do istate=1, nstate_noft
        tmp_mat0(:, istate)=c_matrix(:, istate, 1)
-     enddo
+     end do
      allocate(Work(1))
      tmp_mat=matmul(hkin, tmp_mat0)+matmul(hnuc, tmp_mat0)
      tmp_mat=matmul(transpose(tmp_mat0), tmp_mat)
@@ -235,7 +235,7 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
        allocate(Work(lwork))
        energy=zero
        call DSYEV('V', 'L', basis%nbf, tmp_mat, basis%nbf, energy(:, 1),Work,lwork,info)
-     endif
+     end if
      if(noft_complex=='yes') then
        NO_COEF_cmplx=matmul(NO_COEF_cmplx, tmp_mat)
        write(stdout, '(/,a)') ' Adding New Random Imaginary Phases '
@@ -245,16 +245,16 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
          if(noft_nophases=='yes') ran_num=0.0e0
          write(stdout, '(a,I10,a,f8.5,a,f8.5,a)') ' MO', istate, ': (', real(exp(im*ran_num)), ',', aimag(exp(im*ran_num)),')'
          NO_COEF_cmplx(:, istate)=exp(im*ran_num)*NO_COEF_cmplx(:, istate)
-       enddo
+       end do
        write(stdout, *) ' '
      else
        NO_COEF=matmul(NO_COEF, tmp_mat)
-     endif
+     end if
      write(stdout, '(/,a,/)') ' Approximate Hamiltonian Hcore used as GUESS in NOFT calc.'
      call clean_deallocate('tmp_mat0', tmp_mat0, noft_verbose)
      call clean_deallocate('tmp_mat', tmp_mat, noft_verbose)
      deallocate(Work)
-   endif
+   end if
    
    ! Build NO_COEF_cmplx with phases times NO_COEF (real)
    if(TRIM(init_hamiltonian)=='NOFT' .and. noft_complex=='yes') then
@@ -266,14 +266,14 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
          read(iunit, iostat=istat) iorb, iorb1, coeff_old
          if(istat/=0) then
           exit
-         endif
+         end if
          if(((iorb/=0).and.(iorb1/=0)).and.iorb*iorb1<=basis%nbf*basis%nbf) then
           NO_COEF_cmplx(iorb, iorb1)=coeff_old
          else
           exit
-         endif
-        enddo
-       endif
+         end if
+        end do
+       end if
        write(stdout, '(/,a)') ' Adding New Random Imaginary Phases '
        write(stdout, '(a,/)') ' ---------------------------------- '
        do istate=1, nstate_noft
@@ -281,13 +281,13 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
          if(noft_nophases=='yes') ran_num=0.0e0
          write(stdout, '(a,I10,a,f7.5,a,f7.5,a)') ' MO', istate, ': (', real(exp(im*ran_num)), ',', aimag(exp(im*ran_num)),')'
          NO_COEF_cmplx(:, istate)=exp(im*ran_num)*NO_COEF_cmplx(:, istate)
-       enddo
+       end do
        write(stdout, *) ' '
        write(stdout, '(/,a,/)') ' Reading the NO_COEF_BIN file to set the initial complex NO_COEF.'
      else
        write(stdout, '(/,a,/)') ' Could not find the NO_COEF_BIN file to set the initial complex NO_COEF.'
-     endif
-   endif
+     end if
+   end if
    
    ! Not ready for open-shell calcs. (TODO)
    nelectrons = NINT(electrons)
@@ -301,8 +301,8 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
        exit
      else
        nstate_coupled=nstate_coupled-1
-     endif
-   enddo
+     end if
+   end do
    
    !
    ! Setup the grids for the quadrature of DFT potential/energy
@@ -313,21 +313,21 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
        irs_noft=1
      else
        irs_noft=2
-     endif
+     end if
      if( noft_dft0=='yes' ) then ! Do usual NOFT and add a posteriori the DFT -> (NOFT+DFT)@NOFT
       irs_noft_tmp = irs_noft
       irs_noft = 0
-     endif
+     end if
      if( .not.calc_type%need_exchange_lr ) then
        write(msgw, '(a)') 'LR exchange is needed for RS-NOFT.'
        call die(msgw)
-     endif
+     end if
      write(stdout, '(a)') ' '
      write(stdout, '(a,f10.5)') ' RS-NOFT amount of exact exchange (alpha_hybrid)           ', alpha_hybrid
      write(stdout, '(a,f10.5)') ' RS-NOFT amount of long-range exact exchange (beta_hybrid) ', beta_hybrid
      write(stdout, '(a,f10.5)') ' RS-NOFT error function parameter (gamma_hybrid)           ', gamma_hybrid
      call init_dft_grid(basis, grid_level, dft_xc(1)%needs_gradient, .TRUE., BATCH_SIZE)
-   endif
+   end if
    
    ! Call module initialization and run NOFT calc.
    if(noft_complex=='yes') then
@@ -346,7 +346,7 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
         Enoft, noft_tolE, Vnn, Aoverlap, occ(:, 1), mo_ints, ofile_name, NO_COEF_cmplx=NO_COEF_cmplx, &
         lowmemERI=(noft_lowmemERI=='yes'),&
         Lpower=noft_Lpower_, fcidump=noft_fcidump_in, irange_sep=irs_noft, hessian=(noft_hessian=='yes'))
-     endif
+     end if
    
    else
    
@@ -362,9 +362,9 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
         imethocc, imethorb, noft_nscf, iprintdmn, iprintswdmn, iprintints, noft_ithresh_lambda, noft_ndiis, &
         Enoft, noft_tolE, Vnn, Aoverlap, occ(:, 1), mo_ints, ofile_name, NO_COEF=NO_COEF, lowmemERI=(noft_lowmemERI=='yes'),&
         Lpower=noft_Lpower_, fcidump=noft_fcidump_in, irange_sep=irs_noft, hessian=(noft_hessian=='yes'))
-     endif
+     end if
    
-   endif
+   end if
    
    if( irs_noft/=0 .or. irs_noft_tmp/=0) then ! Compute total Energy for range-sep NOFT switching off the hamiltonian_xc (we only need hCORE=T+Vext).
      if(irs_noft_tmp/=0) then ! So, we restart for (NOFT+DFT)@NOFT to compute ExcDFT but we will not update orbs nor occs.
@@ -382,9 +382,9 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
           mo_ints, ofile_name, NO_COEF=NO_COEF, lowmemERI=(noft_lowmemERI=='yes'), restart=.true., ireadGAMMAS=1, ireadOCC=0, &
           ireadCOEF=1, ireadFdiag=1, iNOTupdateOCC=1, iNOTupdateORB=1, Lpower=noft_Lpower_, fcidump=(noft_fcidump=='yes'), &
           irange_sep=irs_noft)
-       endif
+       end if
        call system("rm tmp_dft_noft")
-     endif
+     end if
      noft_edft=.true.     ! So, we restart but we will not update orbs nor occs.
      call clean_allocate('T_Vext', T_Vext, basis%nbf, noft_verbose)
      write(ofile_name, '(a)') 'tmp_dft_noft'
@@ -400,7 +400,7 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
         mo_ints, ofile_name, NO_COEF=NO_COEF, lowmemERI=(noft_lowmemERI=='yes'), restart=.true., ireadGAMMAS=1, ireadOCC=0,&
         ireadCOEF=1, ireadFdiag=1, iNOTupdateOCC=1, iNOTupdateORB=1, Lpower=noft_Lpower_, &
         fcidump=(noft_fcidump=='yes'), irange_sep=irs_noft)
-     endif
+     end if
      Enoft=Enoft+ExcDFT
      write(stdout, '(/,a,2x,f19.10)')   ' Nucleus-Nucleus (Ha):', Vnn
      write(stdout, '(a,2x,f19.10)')     ' Hcore Energy (Ha)   :', sum(T_Vext(:)*occ(:, 1))
@@ -408,7 +408,7 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
      call system("rm tmp_dft_noft")
      call clean_deallocate('T_Vext', T_Vext, noft_verbose)
      call destroy_dft_grid()
-   endif
+   end if
    
    ! If required print post-procesing files
    occupation(1:nstate_occ, 1)=occ(1:nstate_occ, 1)
@@ -420,20 +420,20 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
          ! Update c_matrix with real part of optimized NO_COEF
          do istate=1, nstate_noft
            c_matrix(:, istate, 1)=real(NO_COEF_cmplx(:, istate))
-         enddo
+         end do
          call print_wfn_file('NOFT_RE', basis, occ_print, c_matrix, Enoft, energy)
          ! Update c_matrix with imaginary part of optimized NO_COEF
          do istate=1, nstate_noft
            c_matrix(:, istate, 1)=aimag(NO_COEF_cmplx(:, istate))
-         enddo
+         end do
          call print_wfn_file('NOFT_IM', basis, occ_print, c_matrix, Enoft, energy)
          call clean_deallocate('Occ_print', occ_print, noft_verbose)
-       endif
+       end if
      else
        ! Update c_matrix with optimized NO_COEF
        do istate=1, nstate_noft
          c_matrix(:, istate, 1)=NO_COEF(:, istate)
-       enddo
+       end do
        ! Select the post-procesing files
        if(print_wfn_ .or. print_cube_ .or. print_wfn_files_ ) then
          call clean_allocate('Occ_print', occ_print, nstate_noft, 1, noft_verbose)
@@ -443,25 +443,25 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
          if( print_cube_ ) call plot_cube_wfn('NOFT', basis, occ_print, c_matrix)
          if( print_wfn_files_ ) call print_wfn_file('NOFT', basis, occ_print, c_matrix, Enoft, energy)
          call clean_deallocate('Occ_print', occ_print, noft_verbose)
-       endif
-     endif
-   endif
+       end if
+     end if
+   end if
    
    ! Deallocate arrays and print the normal termination
    if(noft_complex=='yes') then
      call clean_deallocate('AhCORE_cmplx', AhCORE_cmplx)
    else
      call clean_deallocate('AhCORE', AhCORE)
-   endif
+   end if
    call clean_deallocate('NO_occ', occ)
    call clean_deallocate('NO_energies', energy)
    if(noft_complex=='yes') then
      call clean_deallocate('NO_COEF_cmplx', NO_COEF_cmplx)
    else
      call clean_deallocate('NO_COEF', NO_COEF)
-   endif
+   end if
 
-  endif
+  end if
 
   write(stdout, '(/,a)') ' =================================================='
   write(stdout, '(a)')   ' NOFT SCF loop ends here'
@@ -519,8 +519,8 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
     do istate=1, nstate_noft
       do ispin=1, nspin
         tmp_c_matrix_cmplx(:, istate, ispin)=NO_COEF_cmplx(:, istate)
-      enddo
-    enddo
+      end do
+    end do
 
     ! Add the sr-NOFT term
     if( noft_NOTvxc=='yes ' ) do_xc_dft_tmp=.false.
@@ -538,26 +538,26 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
           do istate=1, nstate_occ
             do ispin=1, nspin
               occupation(istate, ispin)=Occ(istate)
-            enddo
-          enddo
-        endif
+            end do
+          end do
+        end if
         call dft_exc_vxc_batch(BATCH_SIZE, basis_pointer, occupation, tmp_c_matrix_cmplx, hamiltonian_xc, ExcDFT, dm2_JK=DM2_JK)
         if(present(Edft_xc)) Edft_xc=ExcDFT
-      endif   
+      end if   
       hamiltonian_xc(:, :, 1)=SUM(hamiltonian_xc(:, :, :), DIM=3)
       if ( nspin==2 ) hamiltonian_xc(:, :, 1)=0.5e0*hamiltonian_xc(:, :, 1)
       hCORE_cmplx=matmul(conjg(transpose(NO_COEF_cmplx(:, :))), matmul(hamiltonian_xc(:, :, 1), NO_COEF_cmplx(:, :)))
       call clean_deallocate('hamiltonian_xc', hamiltonian_xc, noft_verbose)
       call clean_deallocate('occupation', occupation, noft_verbose)
-    endif      
+    end if      
 
     ! T+Vext+V_xc(?) part
     hCORE_cmplx=hCORE_cmplx+matmul(conjg(transpose(NO_COEF_cmplx)), matmul(AhCORE_cmplx, NO_COEF_cmplx))
     if( noft_edft ) then
       do istate=1, nstate_noft
         T_Vext(istate)=real(hCORE_cmplx(istate, istate))
-      enddo
-    endif
+      end do
+    end if
 
   else
 
@@ -567,8 +567,8 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
     do istate=1, nstate_noft
       do ispin=1, nspin
         tmp_c_matrix(:, istate, ispin)=NO_COEF(:, istate)
-      enddo
-    enddo
+      end do
+    end do
 
     ! Add the sr-NOFT term
     if( noft_NOTvxc=='yes ' ) do_xc_dft_tmp=.false.
@@ -586,28 +586,28 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
           do istate=1, nstate_occ
             do ispin=1, nspin
               occupation(istate, ispin)=Occ(istate)
-            enddo
-          enddo
-        endif
+            end do
+          end do
+        end if
         call dft_exc_vxc_batch(BATCH_SIZE, basis_pointer, occupation, tmp_c_matrix, hamiltonian_xc, ExcDFT, dm2_JK=DM2_JK)
         if(present(Edft_xc)) Edft_xc=ExcDFT
-      endif
+      end if
       hamiltonian_xc(:, :, 1)=SUM(hamiltonian_xc(:, :, :), DIM=3)
       if ( nspin==2 ) hamiltonian_xc(:, :, 1)=0.5e0*hamiltonian_xc(:, :, 1)
       hCORE=matmul(transpose(NO_COEF(:, :)), matmul(hamiltonian_xc(:, :, 1), NO_COEF(:, :)))
       call clean_deallocate('hamiltonian_xc', hamiltonian_xc, noft_verbose)
       call clean_deallocate('occupation', occupation, noft_verbose)
-    endif
+    end if
 
     ! T+Vext+V_xc(?) part
     hCORE=hCORE+matmul(transpose(NO_COEF), matmul(AhCORE, NO_COEF))
     if( noft_edft ) then
       do istate=1, nstate_noft
         T_Vext(istate)=hCORE(istate, istate)
-      enddo
-    endif
+      end do
+    end if
 
-  endif
+  end if
 
   ! Molecular ERImol including all two-body interactions (maybe also including sr-ERImol)
   if( irs_noft/=0 ) then
@@ -637,16 +637,16 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
               ERImol(pstate, istate, jstate, jstate)=alpha_hybrid*ERI_pkji &
                +beta_hybrid*evaluate_eri_mo_ri_lr(pstate, jstate, 1, istate, jstate, 1)
               ERImolLsr(pstate, istate, jstate)=ERI_pkji-ERImol(pstate, istate, jstate, jstate)
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
         call destroy_eri_3center_mo(verbose=noft_verbose, long_range=long_range)
       else            ! Normal case (not using RI)
         !TODO
         write(msgw, '(a)') 'LR exchange requires RI for RS-NOFT (hint: include the RI basis).'
         call die(msgw)
-      endif
-    endif
+      end if
+    end if
 
     if(present(ERImol_cmplx) .and. present(ERImolJsr_cmplx) .and. present(ERImolLsr_cmplx)) then
       ERImol_cmplx(:, :, :, :)=complex_zero; ERImolJsr_cmplx(:, :, :)=complex_zero; ERImolLsr_cmplx(:, :, :)=complex_zero
@@ -674,16 +674,16 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
               ERImol_cmplx(pstate, istate, jstate, jstate)=alpha_hybrid*ERI_pkji_cmplx & 
                +beta_hybrid*evaluate_eri_mo_ri_lr_cmplx(pstate, jstate, 1, jstate, istate, 1)    ! Using K
               ERImolLsr_cmplx(pstate, istate, jstate)=ERI_pkji-ERImol_cmplx(pstate, istate, jstate, jstate)
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
         call destroy_eri_3center_mo_cmplx(verbose=noft_verbose, long_range=long_range)
       else            ! Normal case (not using RI)
         !TODO
         write(msgw, '(a)') 'LR exchange requires RI for RS-NOFT (hint: include the RI basis).'
         call die(msgw)
-      endif
-    endif
+      end if
+    end if
 
   else
 
@@ -699,10 +699,10 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
              do pstate=1, nstate_noft
               do qstate=1, nstate_noft
                ERImol_cmplx(qstate, pstate, jstate, istate)=evaluate_eri_mo_ri_cmplx(qstate, jstate, 1, pstate, istate, 1)
-              enddo
-             enddo
-            enddo
-           enddo
+              end do
+             end do
+            end do
+           end do
           else
            do istate=1, nstate_occ
              do jstate=1, nstate_occ
@@ -710,15 +710,15 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
                  ERImol_cmplx(pstate, istate, jstate, istate)=evaluate_eri_mo_ri_cmplx(pstate, jstate, 1, istate, istate, 1) ! <pi|ji> format used for ERImol
                  ERImol_cmplx(pstate, jstate, jstate, istate)=evaluate_eri_mo_ri_cmplx(pstate, jstate, 1, jstate, istate, 1) ! <pj|ji> format used for ERImol
                  ERImol_cmplx(pstate, istate, jstate, jstate)=evaluate_eri_mo_ri_cmplx(pstate, jstate, 1, istate, jstate, 1) ! <pi|jj> format used for ERImol
-               enddo
-             enddo
-           enddo
-          endif
+               end do
+             end do
+           end do
+          end if
           call destroy_eri_3center_mo_cmplx(noft_verbose)
         else            ! Normal case (not using RI)
           call form_erimol(nbf, nstate_noft, nstate_kji, c_matrix_cmplx=tmp_c_matrix_cmplx, ERImol_cmplx=ERImol_cmplx)
-        endif
-      endif
+        end if
+      end if
 
     else
 
@@ -732,10 +732,10 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
              do pstate=1, nstate_noft
               do qstate=1, nstate_noft
                ERImol(qstate, pstate, jstate, istate)=evaluate_eri_mo_ri(qstate, jstate, 1, pstate, istate, 1)
-              enddo
-             enddo
-            enddo
-           enddo
+              end do
+             end do
+            end do
+           end do
           else
            do istate=1, nstate_occ
              do jstate=1, nstate_occ
@@ -743,26 +743,26 @@ subroutine mo_ints(nbf, nstate_occ, nstate_kji, Occ, DM2_JK, NO_COEF, hCORE, ERI
                  ERImol(pstate, istate, jstate, istate)=evaluate_eri_mo_ri(pstate, jstate, 1, istate, istate, 1) ! <pi|ji> format used for ERImol
                  ERImol(pstate, jstate, jstate, istate)=evaluate_eri_mo_ri(pstate, jstate, 1, jstate, istate, 1) ! <pj|ji> format used for ERImol
                  ERImol(pstate, istate, jstate, jstate)=evaluate_eri_mo_ri(pstate, jstate, 1, istate, jstate, 1) ! <pi|jj> format used for ERImol
-               enddo
-             enddo
-           enddo
-          endif
+               end do
+             end do
+           end do
+          end if
           call destroy_eri_3center_mo(noft_verbose)
         else            ! Normal case (not using RI)
           call form_erimol(nbf, nstate_noft, nstate_kji, c_matrix=tmp_c_matrix, ERImol=ERImol)
-        endif
-      endif
+        end if
+      end if
 
-    endif
+    end if
 
-  endif
+  end if
 
   ! Deallocate tmp_c_matrix
   if(noft_complex=='yes') then
     call clean_deallocate('tmp_c_matrix', tmp_c_matrix_cmplx, noft_verbose)
   else
     call clean_deallocate('tmp_c_matrix', tmp_c_matrix, noft_verbose)
-  endif
+  end if
 
 end subroutine mo_ints
 
@@ -790,10 +790,10 @@ subroutine mo_ints_x2c(nstate_occ, nstate_kji, NO_COEF_x2c, hCORE_x2c, ERImol_x2
        do pstate=1, nstate_noft
         do qstate=1, nstate_noft
          ERImol_x2c(qstate, pstate, jstate, istate)=evaluate_eri_mo_ri_x2c(qstate, jstate, pstate, istate)
-        enddo
-       enddo
-      enddo
-     enddo
+        end do
+       end do
+      end do
+     end do
     else
      do istate=1, nstate_occ
        do jstate=1, nstate_occ    ! Delta_ij contributions (Hartee and exchange terms incl. ubar and bar)
@@ -801,21 +801,21 @@ subroutine mo_ints_x2c(nstate_occ, nstate_kji, NO_COEF_x2c, hCORE_x2c, ERImol_x2
            ! For 2nd, 4th, and 5th terms in Eq. 64 Rel-RDMFT paper SciPost Chem. 1, 004 (2022)
            ERImol_x2c(pstate, istate, jstate, istate)=evaluate_eri_mo_ri_x2c(pstate, jstate, istate, istate) ! <li|ji> format used for ERImol
            ERImol_x2c(pstate, jstate, jstate, istate)=evaluate_eri_mo_ri_x2c(pstate, jstate, jstate, istate) ! <lj|ji> format used for ERImol
-         enddo
-       enddo
+         end do
+       end do
        do jstate=1, nstate_occ/2  ! Pi_ij contributions (i.e. <\ubar{i} \bar{i} | \ubar{j} \bar{j}>, <\bar{i} \ubar{i} | \bar{j} \ubar{j}>,
          do pstate=1, nstate_noft ! <\ubar{i} \bar{i} | \bar{j} \ubar{j}>, and <\bar{i} \ubar{i} | \ubar{j} \bar{j}>)
            ! For 6th and 7th terms in Eq. 64 Rel-RDMFT paper SciPost Chem. 1, 004 (2022) NOTE: Focus on the types of 2-RDM elements NOT on the integrals of Eq. 64
            ERImol_x2c(pstate, istate, 2*jstate-1, 2*jstate  )=evaluate_eri_mo_ri_x2c(pstate, 2*jstate-1, istate, 2*jstate  ) ! <li|\ubar{j} \bar{j} > format used for ERImol
            ERImol_x2c(pstate, istate, 2*jstate  , 2*jstate-1)=evaluate_eri_mo_ri_x2c(pstate, 2*jstate  , istate, 2*jstate-1) ! <li|\bar{j} \ubar{j} > format used for ERImol
-         enddo
-       enddo
-     enddo
-    endif
+         end do
+       end do
+     end do
+    end if
     call destroy_eri_3center_mo_x2c()
   else            ! TODO: Normal case (not using RI)
     call die("NOFT X2C needs an auxiliary basis")
-  endif
+  end if
 
 end subroutine mo_ints_x2c
 

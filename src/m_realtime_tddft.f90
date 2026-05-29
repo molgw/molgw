@@ -142,7 +142,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
     write(stdout, *) 'Set new occupations for TDDFT'
     ! electrons already contains -charge
     call set_occupation(0.0_dp, electrons+charge-tddft_charge, tddft_magnetization, RESHAPE([0.0_dp], [1, 1]), occupation)
-  endif
+  end if
 
   if( read_tddft_restart_ .AND. restart_tddft_is_correct ) then
     nocc = get_nocc_from_restart()
@@ -247,12 +247,12 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
   ! Remember: the projectile is always the last atom
   do iatom=1, ncenter_nuclei-nprojectile
     fixed_atom_list(iatom) = iatom
-  enddo
+  end do
   call setup_nucleus(basis, hamiltonian_nucleus, fixed_atom_list)
 
   if( nelement_ecp > 0 ) then
     call setup_nucleus_ecp(basis, hamiltonian_nucleus, fixed_atom_list)
-  endif
+  end if
 
   if( write_step / time_step - NINT( write_step / time_step ) > 1.0e-10_dp .OR. write_step < time_step ) then
     call die("realtime_tddft_propagation: write_step is not a multiple of time_step or smaller than time_step.")
@@ -260,7 +260,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
 
   if( calc_type%is_dft ) then
     call init_dft_grid(basis, tddft_grid_level, dft_xc(1)%needs_gradient, .TRUE., BATCH_SIZE)
-  endif
+  end if
 
   ! Getting starting value of the Hamiltonian
   ! itau=0 to avoid excitation calculation
@@ -385,7 +385,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
   if( excit_type%form == EXCIT_LIGHT ) then
     call setup_density_matrix_cmplx(c_matrix_cmplx, occupation, p_matrix_cmplx)
     call static_dipole(basis, p_matrix_in=p_matrix_cmplx, dipole_ao_in=dipole_ao, dipole_out=dipole)
-  endif
+  end if
 
 
   if( print_cube_rho_tddft_ ) call plot_cube_wfn_cmplx(nstate, nocc, basis, occupation, c_matrix_cmplx, 0)
@@ -447,7 +447,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
       call hdf_write_dataset(p_mat_group, 'snap_0', p_matrix_MO_block)
 
     end if
-#endif
+#end if
 
   end if
 
@@ -524,7 +524,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
     !    write(stdout, '(1x,a,i4,a,i7)') 'C**H*S*C is not identity for spin ', &
     !    ispin, ' at itau= ', itau
     !  end if
-    !enddo
+    !end do
 
     if( tddft_force_ ) then
       en_tddft%work_p_nonconserv = en_tddft%work_p_nonconserv &
@@ -532,7 +532,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
       en_tddft%work_p            = en_tddft%work_p &
                                    + DOT_PRODUCT( force_projectile(:), vel_nuclei(:, ncenter_nuclei) ) &
                                           * time_step
-    endif
+    end if
 
     write(stdout, '(1x,a,2(1x,es16.8))') 'Electron count from Tr(PS): ', &
                                         SUM( SUM( p_matrix_cmplx(:, :, :), DIM=3 ) * s_matrix(:, :) )
@@ -582,7 +582,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
         write(snap_name, '(a,i0)') 'snap_', iwrite_step
 #if defined(HAVE_HDF5)
         if (is_iomaster) call hdf_write_dataset(p_mat_group, TRIM(snap_name), p_matrix_MO_block)
-#endif 
+#end if 
         deallocate(p_matrix_real)
         deallocate(p_matrix_MO_real)
       end if
@@ -634,7 +634,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
     if(print_c_matrix_cmplx_hdf5_) call hdf_close_group(c_mat_group)
     if(print_p_matrix_MO_block_hdf5_) call hdf_close_group(p_mat_group)
     call hdf_close_file(fid)
-#endif
+#end if
   end if
 
   if(print_tddft_restart_) then
@@ -781,7 +781,7 @@ subroutine stationary_c_matrix(basis,               &
   allocate( h_hist_cmplx(basis%nbf, basis%nbf, nspin, nhist) )
   do ihist=1, nhist
     h_hist_cmplx(:, :, :, ihist) = h_cmplx(:, :, :)
-  enddo
+  end do
 
   ! Self-consistency loop for C(t0)
   ! M = H - iD + mv**2*S is Hermitian at t0 if the projectile and the target do not overlap
@@ -854,7 +854,7 @@ subroutine stationary_c_matrix(basis,               &
       else
         if( icycle == ncycle_max ) call die("stationary_c_matrix: === TDDFT CONVERGENCE NOT REACHED ===")
       end if
-    endif
+    end if
 
     !
     ! History mixing to damp the charge oscillations (poor man solution)
@@ -862,7 +862,7 @@ subroutine stationary_c_matrix(basis,               &
     p_matrix_cmplx_hist(:, :, :) = p_matrix_cmplx(:, :, :)
     do ihist=nhist, 2, -1
       h_hist_cmplx(:, :, :, ihist) = h_hist_cmplx(:, :, :, ihist-1)
-    enddo
+    end do
     h_hist_cmplx(:, :, :, 1) = h_cmplx(:, :, :)
     ! Simple mixing of H over the last nhist iterations
     h_cmplx = SUM( h_hist_cmplx(:, :, :, :) , DIM=4) / REAL(nhist, dp)
@@ -897,7 +897,7 @@ subroutine update_basis_eri(basis, auxil_basis)
     call init_libcint(basis)
     call deallocate_eri_4center()
     call calculate_eri(print_eri_, basis, 0.0_dp)
-  endif
+  end if
 
 end subroutine update_basis_eri
 
@@ -968,7 +968,7 @@ subroutine setup_fixed_basis_force(basis, p_matrix_cmplx)
   ! Get the electron-nucleus force
   do idir=1, 3
     force_projectile(idir) = -SUM( SUM(p_matrix_cmplx(:, :, :), DIM=3) * h_nuc_grad(:, :, ncenter_nuclei, idir) )
-  enddo
+  end do
 
   ! Add the nucleus-nucleus force
   call nucleus_nucleus_force()
@@ -1018,32 +1018,32 @@ subroutine setup_mb_force(basis, s_matrix, c_matrix_cmplx, h_cmplx, occupation, 
     ! If A is not a projectile then BboldAdagger is zero
     if( ALL( ABS(basis%bff(ibf)%v0(:)) < 1.0e-6_dp ) ) then
       BboldAdagger(ibf, :, :) = 0.0_dp
-    endif
+    end if
     Bdagger(ibf, :) =  basis%bff(ibf)%v0(1) * BboldAdagger(ibf, :, 1) &
                     + basis%bff(ibf)%v0(2) * BboldAdagger(ibf, :, 2) &
                     + basis%bff(ibf)%v0(3) * BboldAdagger(ibf, :, 3)
-  enddo
+  end do
  
   ! M = S^{-1} * ( H - i D )
   do ispin=1, nspin
     m_matrix(:, :, ispin) = h_cmplx(:, :, ispin) - im * TRANSPOSE(Bdagger(:, :))
     m_matrix(:, :, ispin) = MATMUL( s_matrix_inv(:, :) , m_matrix(:, :, ispin) )
-  enddo
+  end do
   
   do idir=1, 3
     do ispin=1, nspin
       DboldA1(:, :, ispin, idir) = MATMUL( BboldAdagger(:, :, idir), m_matrix(:, :, ispin) ) 
       DboldA1(:, :, ispin, idir) = DboldA1(:, :, ispin, idir) + TRANSPOSE( CONJG(DboldA1(:, :, ispin, idir)) )
-    enddo
-  enddo
+    end do
+  end do
 
   ! F = Tr( DboldA1 * P )
   ctmp(:) = 0.0_dp
   do idir=1, 3
     do ispin=1, nspin
       ctmp(idir) = ctmp(idir) + SUM( DboldA1(:, :, ispin, idir) * p_matrix_cmplx(:, :, ispin) )
-    enddo
-  enddo
+    end do
+  end do
 
 
   ! This routine returns s_hess = < grad_R_A phi_alpha | grad_R_B phi_beta >
@@ -1063,7 +1063,7 @@ subroutine setup_mb_force(basis, s_matrix, c_matrix_cmplx, h_cmplx, occupation, 
     cc_matrix(ibf, :, 3) = basis%bff(ibf)%v0(1) * s_matrix_hess(ibf, :, 1, 3) &
                        + basis%bff(ibf)%v0(2) * s_matrix_hess(ibf, :, 2, 3) &
                        + basis%bff(ibf)%v0(3) * s_matrix_hess(ibf, :, 3, 3)
-  enddo
+  end do
 
   deallocate(s_matrix_hess)
   
@@ -1071,8 +1071,8 @@ subroutine setup_mb_force(basis, s_matrix, c_matrix_cmplx, h_cmplx, occupation, 
     ! If beta is not on a projectile, then the gradient is not contributing to the force on the projectile
     if( ALL( ABS(basis%bff(jbf)%v0(:)) < 1.0e-6_dp ) ) then
       cc_matrix(:, jbf, :) = 0.0_dp
-    endif
-  enddo
+    end if
+  end do
 
   do idir=1, 3
     do ispin=1, nspin
@@ -1080,10 +1080,10 @@ subroutine setup_mb_force(basis, s_matrix, c_matrix_cmplx, h_cmplx, occupation, 
         do jbf=1, basis%nbf
           ctmp(idir) = ctmp(idir) + im * ( cc_matrix(jbf, ibf, idir) - cc_matrix(ibf, jbf, idir) ) &
                                         * p_matrix_cmplx(ibf, jbf, ispin)
-        enddo
-      enddo
-    enddo
-  enddo
+        end do
+      end do
+    end do
+  end do
 
 
   deallocate(cc_matrix)
@@ -1108,8 +1108,8 @@ subroutine setup_mb_force(basis, s_matrix, c_matrix_cmplx, h_cmplx, occupation, 
                                -SUM( 2.0 * SUM(p_matrix_cmplx(jbf, :, :)%re, DIM=2) * h_kin_grad(jbf, :, idir) )
       force_projectile_nonconserv(idir) = force_projectile_nonconserv(idir) &
                                -SUM( 2.0 * SUM(p_matrix_cmplx(jbf, :, :)%re, DIM=2) * h_nuc_grad(jbf, :, ncenter_nuclei+1, idir) )
-    enddo
-  enddo
+    end do
+  end do
 
 
 
@@ -1150,7 +1150,7 @@ subroutine mb_related_updates(basis,                &
     call moving_basis_set(basis)
     call destroy_libcint(basis)
     call init_libcint(basis)
-  endif
+  end if
   call moving_basis_set(basis_p)
   call destroy_libcint(basis_p)
   call destroy_libcint(basis_t)
@@ -1172,8 +1172,8 @@ subroutine mb_related_updates(basis,                &
     if( calc_type%is_dft ) then
       call destroy_dft_grid()
       call init_dft_grid(basis, tddft_grid_level, dft_xc(1)%needs_gradient, .FALSE., BATCH_SIZE)
-    endif
-  endif
+    end if
+  end if
 
 end subroutine mb_related_updates
 
@@ -1226,7 +1226,7 @@ subroutine predictor_corrector(basis,                  &
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call mb_related_updates(basis, auxil_basis, .TRUE., &
              time_cur, 0.0_dp, s_matrix, d_matrix, .TRUE.)
-    endif
+    end if
 
     ! Propagate C(t) -> C(t+dt) using M(t) = S(t)^-1 * ( H(t) - i*D(t) )
     call propagate_nonortho(time_step, s_matrix, d_matrix, c_matrix_cmplx, h_cmplx, tddft_propagator)
@@ -1261,7 +1261,7 @@ subroutine predictor_corrector(basis,                  &
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call mb_related_updates(basis, auxil_basis, .FALSE., &
              time_cur, 3.0_dp/4.0_dp, s_matrix, d_matrix, .FALSE.)
-    endif
+    end if
 
 
     ! Propagate C(t) -> C(t+dt/2) using M(t+dt/4) = S(t+dt/4)^-1 * ( H(t+td/4) - i*D(t+dt/4) )
@@ -1271,7 +1271,7 @@ subroutine predictor_corrector(basis,                  &
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call mb_related_updates(basis, auxil_basis, .TRUE., &
              time_cur, 1.0_dp/2.0_dp, s_matrix, d_matrix, .TRUE.)
-    endif
+    end if
 
     ! Evaluate H(t+dt/2)
     allocate(p_matrix_cmplx(basis%nbf, basis%nbf, nspin))
@@ -1298,8 +1298,8 @@ subroutine predictor_corrector(basis,                  &
       ! Moving_basis spurious forces corrections due to incomplete basis
       if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
         call setup_mb_force(basis, s_matrix, c_matrix_hist_cmplx(:, :, :, 1), h_cmplx, occupation, p_matrix_cmplx, .FALSE.)
-      endif
-    endif
+      end if
+    end if
     deallocate(p_matrix_cmplx)
 
     !--4--PROPAGATION----| C(t)---U[M(t+dt/2)]--->C(t+dt)
@@ -1331,7 +1331,7 @@ subroutine predictor_corrector(basis,                  &
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call mb_related_updates(basis, auxil_basis, .FALSE., &
              time_cur, 3.0_dp/4.0_dp, s_matrix, d_matrix, .FALSE.)
-    endif
+    end if
 
     ! Propagate C(t) -> C(t+dt/2) using M(t+dt/4) = S(t+dt/4)^-1 * ( H(t+td/4) - i*D(t+dt/4) )
     call propagate_nonortho(time_step/2.0_dp, s_matrix, d_matrix, c_matrix_hist_cmplx(:, :, :, 1), h_cmplx, tddft_propagator)
@@ -1340,7 +1340,7 @@ subroutine predictor_corrector(basis,                  &
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call mb_related_updates(basis, auxil_basis, .TRUE., &
              time_cur, 1.0_dp/2.0_dp, s_matrix, d_matrix, .TRUE.)
-    endif
+    end if
 
     ! Calculate H(t+dt/2)
     call setup_hamiltonian_cmplx(basis,                        &
@@ -1367,7 +1367,7 @@ subroutine predictor_corrector(basis,                  &
     if( excit_type%form == EXCIT_PROJECTILE_W_BASIS ) then
       call mb_related_updates(basis, auxil_basis, .TRUE., &
              time_cur, 0.0_dp, s_matrix, d_matrix, .TRUE.)
-    endif
+    end if
 
     ! Calculate H(t+dt)
     allocate(p_matrix_cmplx(basis%nbf, basis%nbf, nspin))
@@ -1440,7 +1440,7 @@ subroutine predictor_corrector(basis,                  &
     !Fixed bases have Hellman-Feynman force
     if( tddft_force_ ) then
       call setup_fixed_basis_force(basis, p_matrix_cmplx)
-    endif
+    end if
     deallocate(p_matrix_cmplx)
 
     !--4--PROPAGATION----| C(8/4)---U[H(10/4)]--->C(12/4)
@@ -1772,7 +1772,7 @@ subroutine print_in_tddft_files(time_cur, itau)
   write(stdout, '(a34,1x,f19.10)') 'RT-TDDFT Total Energy       (Ha):', en_tddft%total
   if( tddft_force_ ) then
     write(stdout, '(a34,1x,f19.10)') 'RT-TDDFT work on projectile (Ha):', en_tddft%work_p + en_tddft%work_p_nonconserv
-  endif
+  end if
 
   select case(excit_type%form)
   case(EXCIT_PROJECTILE, EXCIT_PROJECTILE_W_BASIS)
@@ -1908,7 +1908,7 @@ subroutine initialize_q(nstate, nocc, nspin, c_matrix_orth_start_complete_cmplx,
     istate_cut(1, 1) = 1; istate_cut(1, 2) = 1;
     istate_cut(2, 1) = 2; istate_cut(2, 2) = nstate;
     call issue_warning('initialize_q: manual_q_matrix_param file was not found')
-  endif
+  end if
 
   ! Header for the q_matrix file
   write(header, "(A10,3(A18))") "# time(au)", "x_proj", "y_proj", "z_proj"
@@ -2022,8 +2022,8 @@ subroutine write_restart_tddft(nstate, time_cur, occupation, c_matrix_tddft)
   do ispin=1, nspin
     do istate=1, nocc
       write(restartfile) c_matrix_tddft(:, istate, ispin)
-    enddo
-  enddo
+    end do
+  end do
 
   close(restartfile)
 
@@ -2057,7 +2057,7 @@ subroutine check_restart_tddft(nstate, occupation, restart_is_correct)
     write(stdout, '(/,a)') ' No RESTART_TDDFT file found'
     restart_is_correct=.FALSE.
     return
-  endif
+  end if
 
   open(newunit=restartfile, file='RESTART_TDDFT', form='unformatted', status='old', action='read')
 
@@ -2084,7 +2084,7 @@ subroutine check_restart_tddft(nstate, occupation, restart_is_correct)
   read(restartfile) occupation_read(:, :)
   if( (ANY( ABS( occupation_read(:, :) - occupation(:, :) )  > 1.0e-5_dp )) .AND. temperature > 1.0e-8_dp ) then
     call issue_warning('RESTART file: Occupations have changed')
-  endif
+  end if
   deallocate(occupation_read)
 
   ! Current time
@@ -2117,12 +2117,12 @@ subroutine check_restart_tddft(nstate, occupation, restart_is_correct)
    .OR. ANY( ABS( x_read(:, 1:natom_read-nprojectile) &
                  - xatom(:, 1:natom_read-nprojectile) ) > 1.0e-5_dp ) ) then
     call issue_warning('RESTART_TDDFT file: Atom geometry has changed')
-  endif
+  end if
 
   if( ANY( ABS( xbasis_read(:, 1:nbasis_read-nprojectile) &
              - xbasis(:, 1:nbasis_read-nprojectile) ) > 1.0e-5_dp ) ) then
     call issue_warning('RESTART_TDDFT file: Basis geometry has changed')
-  endif
+  end if
 
   deallocate(zatom_read, x_read, xbasis_read)
 
@@ -2157,7 +2157,7 @@ subroutine read_restart_tddft(nstate, time_min, occupation, c_matrix_tddft)
   if(.NOT. file_exists) then
     write(stdout, '(/,a)') ' No RESTART_TDDFT file found'
     return
-  endif
+  end if
 
   open(newunit=restartfile, file='RESTART_TDDFT', form='unformatted', status='old', action='read')
 
@@ -2181,8 +2181,8 @@ subroutine read_restart_tddft(nstate, time_min, occupation, c_matrix_tddft)
       call dump_out_occupation('=== Occupations ===', occupation)
     else
       call issue_warning('RESTART file: Occupations have changed')
-    endif
-  endif
+    end if
+  end if
   deallocate(occupation_read)
 
   ! Current Time
@@ -2202,8 +2202,8 @@ subroutine read_restart_tddft(nstate, time_min, occupation, c_matrix_tddft)
   do ispin=1, nspin
     do istate=1, nocc
       read(restartfile) c_matrix_tddft(:, istate, ispin)
-    enddo
-  enddo
+    end do
+  end do
 
   close(restartfile)
 
@@ -2227,7 +2227,7 @@ function get_nocc_from_restart() result(nocc_read)
   if(.NOT. file_exists) then
     write(stdout, '(/,a)') ' No RESTART_TDDFT file found'
     return
-  endif
+  end if
 
   open(newunit=restartfile, file='RESTART_TDDFT', form='unformatted', status='old', action='read')
 
@@ -2531,7 +2531,7 @@ subroutine propagate_orth_ham_1(nstate, basis, time_step_cur, c_matrix_orth_cmpl
       ! M1 = A * e^{-idt*e}
       do jstate=1, nstate
         m_tmp_1(:, jstate) = a_matrix_orth_cmplx(:, jstate) * EXP( -im * time_step_cur * energy_tddft(jstate) )
-      enddo
+      end do
 
       ! M2 = M1 * A**H = (A * e^{-idt*e} ) * A**H
       call ZGEMM('N', 'C', nstate, nstate, nstate, (1.0d0, 0.0d0), m_tmp_1, nstate,             &
@@ -2576,7 +2576,7 @@ subroutine propagate_orth_ham_1(nstate, basis, time_step_cur, c_matrix_orth_cmpl
       c_matrix_cmplx(:, :, ispin)%im = m_tmpr2(:, :)
 
       deallocate(m_tmpr1, m_tmpr2)
-    endif
+    end if
 
 
     call timer_propagate_matmul%stop()
@@ -2686,7 +2686,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
   call setup_density_matrix_cmplx(c_matrix_cmplx, occupation, p_matrix_cmplx)
   if( PRESENT(p_matrix_cmplx_out) ) then
     p_matrix_cmplx_out(:, :, :) = p_matrix_cmplx(:, :, :)
-  endif
+  end if
 
   !--Hamiltonian - Hartree Exchange Correlation---
   call calculate_hamiltonian_hxc_ri_cmplx(basis,                    &
@@ -2722,7 +2722,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
           hamiltonian_cmplx(:, :, ispin) = hamiltonian_cmplx(:, :, ispin) - dipole_ao(:, :, idir) * excit_field_time(idir, itau)
           en_tddft%excit = en_tddft%excit &
                  + excit_field_time(idir, itau) * REAL( SUM(dipole_ao(:, :, idir) * p_matrix_cmplx(:, :, ispin)) )
-        enddo
+        end do
       end do
     end if
 
@@ -2745,7 +2745,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
 
     do ispin=1, nspin
       hamiltonian_cmplx(:, :, ispin) = hamiltonian_cmplx(:, :, ispin) + hamiltonian_projectile(:, :)
-    enddo
+    end do
     en_tddft%excit = REAL( SUM( hamiltonian_projectile(:, :) * SUM(p_matrix_cmplx(:, :, :), DIM=3) ), dp)
     deallocate(hamiltonian_projectile)
 
@@ -2761,11 +2761,11 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
       call recalc_nucleus(basis_t, basis_p, hamiltonian_nucleus)
       !do iatom=1, ncenter_nuclei-nprojectile
       !  fixed_atom_list(iatom) = iatom
-      !enddo
+      !end do
       !call setup_nucleus(basis, hamiltonian_nucleus, fixed_atom_list)
 !      do iatom=1, ncenter_nuclei-nprojectile
 !        fixed_atom_list(iatom) = iatom
-!      enddo
+!      end do
 !      write(stdout, * ) 'test'
 !      write(stdout, * ) ncenter_nuclei-nprojectile, natom
 !      call setup_nucleus_ecp(basis, hamiltonian_nucleus, fixed_atom_list)
@@ -2782,7 +2782,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
 
     do ispin=1, nspin
       hamiltonian_cmplx(:, :, ispin) = hamiltonian_cmplx(:, :, ispin) + hamiltonian_projectile(:, :)
-    enddo
+    end do
     en_tddft%excit = REAL( SUM( hamiltonian_projectile(:, :) * SUM(p_matrix_cmplx(:, :, :), DIM=3) ), dp)
     deallocate(hamiltonian_projectile)
 
@@ -2790,7 +2790,7 @@ subroutine setup_hamiltonian_cmplx(basis,                   &
 
   do ispin=1, nspin
     hamiltonian_cmplx(:, :, ispin) = hamiltonian_cmplx(:, :, ispin) + hamiltonian_kinetic(:, :) + hamiltonian_nucleus(:, :)
-  enddo
+  end do
 
   if( excit_type%form /= EXCIT_PROJECTILE_W_BASIS ) then
     ! Perform the canonical transform from the original basis to the orthogonal one
@@ -2842,7 +2842,7 @@ subroutine diagonalize_hamiltonian_ortho(h_small_cmplx, a_matrix_orth_cmplx, ene
     a_matrix_orth_cmplx(:, :) = m_tmpr(:, :)
 
     deallocate(m_tmpr)
-  endif
+  end if
 
   call timer_propagate_diago%stop()
 
@@ -2872,14 +2872,14 @@ subroutine transform_hamiltonian_ortho(x_matrix, h_cmplx, h_small_cmplx)
     write(stdout, '(1x,a)') 'Transform the hamiltonian into the canonical orthogonal basis: MKL extension, complex '
   else
     write(stdout, '(1x,a)') 'Transform the hamiltonian into the canonical orthogonal basis: MKL extension, real'
-  endif
+  end if
 #else
   if( algo_cmplx ) then
     write(stdout, '(1x,a)') 'Transform the hamiltonian into the canonical orthogonal basis: complex '
   else
     write(stdout, '(1x,a)') 'Transform the hamiltonian into the canonical orthogonal basis: real'
-  endif
-#endif
+  end if
+#end if
 
   nbf    = SIZE(x_matrix, DIM=1)
   nstate = SIZE(x_matrix, DIM=2)
@@ -2911,7 +2911,7 @@ subroutine transform_hamiltonian_ortho(x_matrix, h_cmplx, h_small_cmplx)
       call ZGEMM('C', 'N', nstate, nstate, nbf, COMPLEX_ONE, x_matrix_cmplx(1, 1), nbf, &
                                                        m_tmp(1, 1), nbf,  &
                                            COMPLEX_ZERO, h_small_cmplx(:, :, ispin), nstate)
-#endif
+#end if
 
       deallocate(m_tmp)
       deallocate(x_matrix_cmplx)
@@ -2938,13 +2938,13 @@ subroutine transform_hamiltonian_ortho(x_matrix, h_cmplx, h_small_cmplx)
       call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, x_matrix, nbf, &
                                                  m_tmpr2, nbf,  &
                                            0.0d0, m_tmpr1, nstate)
-#endif
+#end if
       h_small_cmplx(:, :, ispin) = m_tmpr1(:, :)
       deallocate(m_tmpr1)
       deallocate(m_tmpr2)
 
 
-    endif
+    end if
   end do ! spin loop
 
   call timer_tddft_ham_orthobasis%stop()

@@ -59,8 +59,8 @@ pure function get_number_occupied_states(occupation) result(nocc)
     do istate=1, nstate
       if( occupation(istate, ispin) < completely_empty )  cycle
       nocc = MAX(nocc, istate)
-    enddo
-  enddo
+    end do
+  end do
 
 
 end function get_number_occupied_states
@@ -88,7 +88,7 @@ subroutine setup_density_matrix_real(c_matrix, occupation, p_matrix)
   if( ANY( occupation(:, :) < -1.0e-1_dp ) ) then
     write(stdout, *) 'Min occupation:', MINVAL(occupation)
     call die('setup_density_matrix: negative occupation number should not happen here.')
-  endif
+  end if
   ! Find the number of occupatied states
   nocc = get_number_occupied_states(occupation)
 
@@ -99,7 +99,7 @@ subroutine setup_density_matrix_real(c_matrix, occupation, p_matrix)
 
     do istate=1, nocc
       c_matrix_sqrtocc(:, istate) = c_matrix(:, istate, ispin) * SQRT(occupation(istate, ispin))
-    enddo
+    end do
 
     call DSYRK('L', 'N', nbf, nocc, 1.0d0, c_matrix_sqrtocc, nbf, 0.0d0, p_matrix(1, 1, ispin), nbf)
 
@@ -107,9 +107,9 @@ subroutine setup_density_matrix_real(c_matrix, occupation, p_matrix)
     do jbf=1, nbf
       do ibf=jbf+1, nbf
         p_matrix(jbf, ibf, ispin) = p_matrix(ibf, jbf, ispin)
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   deallocate(c_matrix_sqrtocc)
 
@@ -146,7 +146,7 @@ subroutine setup_density_matrix_cmplx(c_matrix_cmplx, occupation, p_matrix_cmplx
 
     do istate=1, nocc
       c_matrix_sqrtocc(:, istate) = c_matrix_cmplx(:, istate, ispin) * SQRT(occupation(istate, ispin))
-    enddo
+    end do
     call ZHERK('L', 'N', nbf, nocc, 1.0d0, c_matrix_sqrtocc, nbf, 0.0d0, p_matrix_cmplx(1, 1, ispin), nbf)
 
 
@@ -154,10 +154,10 @@ subroutine setup_density_matrix_cmplx(c_matrix_cmplx, occupation, p_matrix_cmplx
     do jbf=1, nbf
       do ibf=jbf+1, nbf
         p_matrix_cmplx(jbf, ibf, ispin) = CONJG( p_matrix_cmplx(ibf, jbf, ispin) )
-      enddo
-    enddo
+      end do
+    end do
 
-  enddo
+  end do
 
   deallocate(c_matrix_sqrtocc)
 
@@ -191,16 +191,16 @@ subroutine setup_energy_density_matrix(c_matrix, occupation, energy, q_matrix)
     do istate=1, nstate
       if( occupation(istate, ispin) < completely_empty ) cycle
       call DSYR('L', nbf, occupation(istate, ispin)*energy(istate, ispin), c_matrix(:, istate, ispin), 1, q_matrix(:, :), nbf)
-    enddo
-  enddo
+    end do
+  end do
 
 
   ! Symmetrize
   do jbf=1, nbf
     do ibf=jbf+1, nbf
       q_matrix(jbf, ibf) = q_matrix(ibf, jbf)
-    enddo
-  enddo
+    end do
+  end do
 
   call timer_density_matrix%stop()
 
@@ -230,7 +230,7 @@ subroutine setup_anomalous_density_matrix_real(c_matrix, sqrt_occ_hole, p_annom_
   if( ANY( sqrt_occ_hole(:, :) < -1.0e-5_dp ) ) then
     write(stdout, *) 'Min sqrt(occ  hole):', MINVAL(sqrt_occ_hole)
     call die('setup_density_matrix: negative occupation number should not happen here.')
-  endif
+  end if
   ! Find the number of occupatied states
   nocc = get_number_occupied_states(sqrt_occ_hole)
 
@@ -241,7 +241,7 @@ subroutine setup_anomalous_density_matrix_real(c_matrix, sqrt_occ_hole, p_annom_
 
     do istate=1, nocc
       c_matrix_sqrtsqrtocchole(:, istate) = c_matrix(:, istate, ispin) * SQRT(sqrt_occ_hole(istate,ispin))
-    enddo
+    end do
 
     call DSYRK('L', 'N', nbf, nocc, 1.0d0, c_matrix_sqrtsqrtocchole, nbf, 0.0d0, p_annom_matrix(1, 1, ispin), nbf)
 
@@ -249,9 +249,9 @@ subroutine setup_anomalous_density_matrix_real(c_matrix, sqrt_occ_hole, p_annom_
     do jbf=1, nbf
       do ibf=jbf+1, nbf
         p_annom_matrix(jbf, ibf, ispin) = p_annom_matrix(ibf, jbf, ispin)
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   deallocate(c_matrix_sqrtsqrtocchole)
 
@@ -287,7 +287,7 @@ subroutine test_density_matrix(p_matrix, s_matrix)
     !call dump_out_matrix(1, '=== PSP ===', matrix)
     !call dump_out_matrix(1, '===  P  ===', p_matrix(:, :, ispin))
 
-  enddo
+  end do
 
   deallocate(matrix)
 
@@ -326,7 +326,7 @@ subroutine set_occupation(temperature, electrons_in, magnetization, energy, occu
       do istate=1, nstate
         occupation(istate, :) = MIN(remaining_electrons(:), spin_fact)
         remaining_electrons(:)  = remaining_electrons(:) - occupation(istate, :)
-      enddo
+      end do
     else
       write(stdout, *)
       write(stdout, *) 'occupations are read from file: manual_occupations'
@@ -338,10 +338,10 @@ subroutine set_occupation(temperature, electrons_in, magnetization, energy, occu
       read(occfile, *) nlines
       do ilines=1, nlines
         read(occfile, *) occupation(ilines, :)
-      enddo
+      end do
       close(occfile)
       write(stdout, *) 'occupations set, closing file'
-    endif
+    end if
 
   else
 
@@ -375,12 +375,12 @@ subroutine set_occupation(temperature, electrons_in, magnetization, energy, occu
 
       !     write(*, *) iter, mu, mu_change, 0.10_dp / REAL(iter), electrons_mu
 
-    enddo
+    end do
 
     write(stdout, '(1x,a,f12.6)') 'Fermi level (Ha): ', mu
     write(stdout, '(1x,a,f12.6)') 'Fermi level (eV): ', mu * Ha_eV
 
-  endif
+  end if
 
   !
   ! final check
@@ -390,9 +390,9 @@ subroutine set_occupation(temperature, electrons_in, magnetization, energy, occu
     write(stdout, *) 'electrons', electrons
     do istate=1, nstate
       write(stdout, *) istate, occupation(istate, :)
-    enddo
+    end do
     call die('FAILURE in set_occupation')
-  endif
+  end if
 
   call dump_out_occupation('=== Occupations ===', occupation)
 
@@ -432,17 +432,17 @@ subroutine dump_out_occupation(title, occupation)
 
   if( nspin == 2 ) then
     write(stdout, '(a)') '           spin 1       spin 2 '
-  endif
+  end if
 
   select case(nspin)
   case(1)
     do istate=MAX(1, ihomo-noutput), MIN(ihomo+noutput, nstate)
       write(stdout, '(1x,i5,2(2(1x,f12.5)),2x)') istate, occupation(istate, 1)
-    enddo
+    end do
   case(2)
     do istate=MAX(1, ihomo-noutput), MIN(ihomo+noutput, nstate)
       write(stdout, '(1x,i5,2(2(1x,f12.5)),2x)') istate, occupation(istate, 1), occupation(istate, 2)
-    enddo
+    end do
   end select
   write(stdout, *)
 
@@ -478,11 +478,11 @@ subroutine dump_out_energy(title, occupation, energy, is_x2c, is_ksb)
         write(stdout, '(a)') '            bar 1       ubar 2        bar 1       ubar 2'
       else
         write(stdout, '(a)') '           spin 1       spin 2       spin 1       spin 2'
-      endif
+      end if
     else
       write(stdout, '(a)') '           spin 1       spin 2       spin 1       spin 2'
-    endif
-  endif
+    end if
+  end if
   if(.NOT. is_ksb_) then
     do istate=MAX(1, nocc-MAXSIZE/2), MIN(nstate, nocc+MAXSIZE/2)
       select case(nspin)
@@ -499,10 +499,10 @@ subroutine dump_out_energy(title, occupation, energy, is_x2c, is_ksb)
             write(stdout, '(a)') '  -----------------------------'
           else
             write(stdout, '(a)') '  -------------------------------------------------------'
-          endif
-        endif
-      endif
-    enddo
+          end if
+        end if
+      end if
+    end do
   else
     do istate=1,nstate
       select case(nspin)
@@ -518,10 +518,10 @@ subroutine dump_out_energy(title, occupation, energy, is_x2c, is_ksb)
           write(stdout, '(a)') '  -----------------------------'
         else
           write(stdout, '(a)') '  -------------------------------------------------------'
-        endif
-      endif
-    enddo
-  endif
+        end if
+      end if
+    end do
+  end if
 
   write(stdout, *)
 
@@ -553,8 +553,8 @@ subroutine dump_out_energy_yaml(title, energy, lb, ub)
     do istate=istart, iend
       write(char6, '(i6)') istate
       write(unit_yaml, '(8x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', energy(istate, ispin) * Ha_eV
-    enddo
-  enddo
+    end do
+  end do
 
 
 end subroutine dump_out_energy_yaml
@@ -582,30 +582,30 @@ subroutine output_homolumo(calculation_name, occupation, energy, istate_min, ist
 
       if( occupation(istate, ispin)/spin_fact > completely_empty ) then
         ehomo_tmp = MAX( ehomo_tmp , energy(istate, ispin) )
-      endif
+      end if
 
       if( occupation(istate, ispin)/spin_fact < 1.0_dp - completely_empty ) then
         elumo_tmp = MIN( elumo_tmp , energy(istate, ispin) )
-      endif
+      end if
 
-    enddo
+    end do
 
     ehomo(ispin) = ehomo_tmp
     elumo(ispin) = elumo_tmp
 
-  enddo
+  end do
 
 
   write(stdout, *)
   if( ALL( ehomo(:) > -1.0e6_dp ) ) then
     write(stdout, '(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name), 'HOMO energy    (eV):', ehomo(:) * Ha_eV
-  endif
+  end if
   if( ALL( elumo(:) <  1.0e6_dp ) ) then
     write(stdout, '(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name), 'LUMO energy    (eV):', elumo(:) * Ha_eV
-  endif
+  end if
   if( ALL( ehomo(:) > -1.0e6_dp ) .AND. ALL( elumo(:) <  1.0e6_dp ) ) then
     write(stdout, '(1x,a,1x,a,2(3x,f12.6))') TRIM(calculation_name), 'HOMO-LUMO gap  (eV):', ( elumo(:)-ehomo(:) ) * Ha_eV
-  endif
+  end if
   write(stdout, *)
 
 
@@ -653,8 +653,8 @@ subroutine h_ao_to_mo_diag(c_matrix, h_ao, diag_mo)
       ! C_i**T * (H * C_i)
       diag_mo(istate, ispin) = DOT_PRODUCT( c_matrix(:, istate, ispin) , vector_tmp(:) )
 
-    enddo
-  enddo
+    end do
+  end do
   deallocate(vector_tmp)
 
 end subroutine h_ao_to_mo_diag
@@ -707,9 +707,9 @@ subroutine h_ao_to_mo(c_matrix, h_ao, h_mo)
     call DGEMM('T', 'N', nstate, nstate, nbf, 1.0d0, c_matrix(1, 1, ispin), nbf, &
                                               matrix_tmp(1, 1), nbf,          &
                                         0.0d0, h_mo(1, 1, ispin), nstate)
-#endif
+#end if
 
-  enddo
+  end do
   deallocate(matrix_tmp)
 
 end subroutine h_ao_to_mo
@@ -778,9 +778,9 @@ subroutine h_mo_to_ao(c_matrix, s_matrix, h_mo, h_ao)
                tmp_matrix_real(1, 1), nbf, &
                SC_matrix_real(1, 1), nbf, &
                0.0d0, h_ao(1, 1, ispin), nstate)
-#endif
+#end if
 
-  enddo
+  end do
 
   deallocate(SC_matrix_real)
   deallocate(tmp_matrix_real)
@@ -828,9 +828,9 @@ subroutine p_mo_to_ao(c_matrix, p_mo, p_ao)
     call DGEMM('N', 'T', nbf, nbf, nstate, 1.0d0, matrix_tmp(1, 1), nbf, &
                                            c_matrix(1, 1, ispin), nbf,  &
                                      0.0d0, p_ao(1, 1, ispin), nbf)
-#endif
+#end if
 
-  enddo
+  end do
   deallocate(matrix_tmp)
 
 end subroutine p_mo_to_ao
@@ -895,9 +895,9 @@ subroutine p_ao_to_mo_real(c_matrix, s_matrix, p_ao, p_mo)
                SC_matrix_real(1, 1), nbf, &
                tmp_matrix_real(1, 1), nbf, 0.0d0, &
                p_mo(1, 1, ispin), nstate)
-#endif
+#end if
 
-  enddo
+  end do
 
   deallocate(SC_matrix_real)
   deallocate(tmp_matrix_real)
@@ -971,9 +971,9 @@ subroutine p_ao_to_mo_cmplx(c_matrix, s_matrix, p_ao, p_mo)
                SC_matrix_cmplx(:, :), nbf, &
                tmp_matrix_cmplx(:, :), nbf, (0.0d0, 0.0d0), &
                p_mo(:, :, ispin), nstate)
-#endif
+#end if
 
-  enddo
+  end do
 
   deallocate(SC_matrix_real)
   deallocate(SC_matrix_cmplx)
@@ -1016,7 +1016,7 @@ subroutine evaluate_s2_operator(occupation, c_matrix, s_matrix)
   do istate=1, nstate
     if( occupation(istate, 1) > 1.0e-6_dp ) nocc1 = istate
     if( occupation(istate, 2) > 1.0e-6_dp ) nocc2 = istate
-  enddo
+  end do
 
   if( nocc1 > 0 .AND. nocc2 > 0 ) then
     ! S * C_spin2
@@ -1032,11 +1032,11 @@ subroutine evaluate_s2_operator(occupation, c_matrix, s_matrix)
     do istate=1, nocc1
       do jstate=1, nocc2
         s2 = s2 - ABS( c1sc2_matrix(istate, jstate) * occupation(istate, 1) * occupation(jstate, 2) )**2
-      enddo
-    enddo
+      end do
+    end do
 
     deallocate(sc2_matrix, c1sc2_matrix)
-  endif
+  end if
 
   write(stdout, '(/,a,f8.4)') ' Total Spin S**2: ', s2
   write(stdout, '(a,f8.4)')   ' Instead of:      ', s2_exact
@@ -1064,7 +1064,7 @@ subroutine level_shifting_up(s_matrix, c_matrix, occupation, level_shifting_ener
 
   if( level_shifting_energy < 0.0_dp ) then
     call die('level_shifting_energy has to be positive!')
-  endif
+  end if
 
   nstate = SIZE(occupation, DIM=1)
   allocate(matrix_tmp, MOLD=s_matrix)
@@ -1078,8 +1078,8 @@ subroutine level_shifting_up(s_matrix, c_matrix, occupation, level_shifting_ener
         sqrt_level_shifting(istate) = SQRT( level_shifting_energy )
       else
         sqrt_level_shifting(istate) = 0.0_dp
-      endif
-    enddo
+      end if
+    end do
     forall(istate=1:nstate)
       matrix_tmp(:, istate) =  c_matrix(:, istate, ispin) * sqrt_level_shifting(istate)
     end forall
@@ -1093,7 +1093,7 @@ subroutine level_shifting_up(s_matrix, c_matrix, occupation, level_shifting_ener
     ! Finally update the total hamiltonian
     hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + matrix_tmp(:, :)
 
-  enddo
+  end do
 
   deallocate(matrix_tmp)
   deallocate(sqrt_level_shifting)
@@ -1119,7 +1119,7 @@ subroutine level_shifting_down(s_matrix, c_matrix, occupation, level_shifting_en
 
   if( level_shifting_energy < 0.0_dp ) then
     call die('level_shifting_energy has to be positive!')
-  endif
+  end if
 
   nstate = SIZE(occupation, DIM=1)
   allocate(matrix_tmp, MOLD=s_matrix)
@@ -1131,9 +1131,9 @@ subroutine level_shifting_down(s_matrix, c_matrix, occupation, level_shifting_en
     do istate=1, nstate
       if( occupation(istate, ispin) < completely_empty ) then
         energy(istate, ispin) = energy(istate, ispin) - level_shifting_energy
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
 
   do ispin=1, nspin
@@ -1144,8 +1144,8 @@ subroutine level_shifting_down(s_matrix, c_matrix, occupation, level_shifting_en
         sqrt_level_shifting(istate) = SQRT( level_shifting_energy )
       else
         sqrt_level_shifting(istate) = 0.0_dp
-      endif
-    enddo
+      end if
+    end do
     forall(istate=1:nstate)
       matrix_tmp(:, istate) =  c_matrix(:, istate, ispin) * sqrt_level_shifting(istate)
     end forall
@@ -1159,7 +1159,7 @@ subroutine level_shifting_down(s_matrix, c_matrix, occupation, level_shifting_en
     ! Finally update the total hamiltonian
     hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) - matrix_tmp(:, :)
 
-  enddo
+  end do
 
   deallocate(matrix_tmp)
   deallocate(sqrt_level_shifting)
@@ -1210,9 +1210,9 @@ subroutine setup_x_matrix(TOL_OVERLAP, s_matrix, nstate, x_matrix)
     if( s_eigval(jbf) > TOL_OVERLAP ) then
       istate = istate + 1
       x_matrix(:, istate) = matrix_tmp(:, jbf) / SQRT( s_eigval(jbf) )
-    endif
+    end if
 
-  enddo
+  end do
 
   deallocate(matrix_tmp, s_eigval)
 
@@ -1245,7 +1245,7 @@ subroutine setup_sqrt_overlap(s_matrix, s_matrix_sqrt)
 
   do jbf=1, nbf
     y_matrix(:, jbf) = matrix_tmp(:, jbf) * SQRT( s_eigval(jbf) )
-  enddo
+  end do
 
   ! Calculate S^{1/2} matrix
   s_matrix_sqrt(:, :) = MATMUL( matrix_tmp(:, :), TRANSPOSE( y_matrix(:, :) ) )
@@ -1291,10 +1291,10 @@ subroutine orthogonalize_c_matrix(s_matrix, c_matrix)
   call diagonalize(' ', xt, eigval)
   if( ANY(eigval(:) < 0.0_dp) ) then
     call die('orthogonalize_c_matrix: overlap is not positive-definite')
-  endif
+  end if
   do ibf=1, nbf
     xt(:, ibf) = xt(:, ibf) * SQRT(eigval(ibf))
-  enddo
+  end do
   ! xt = X**T
   xt(:, :) = TRANSPOSE(xt(:, :))
   deallocate(eigval)
@@ -1310,7 +1310,7 @@ subroutine orthogonalize_c_matrix(s_matrix, c_matrix)
     call invert(xt)
     c_matrix(:, :, ispin) = MATMUL(xt, c_matrix(:, :, ispin))
 
-  enddo
+  end do
 
 
 end subroutine orthogonalize_c_matrix
@@ -1343,9 +1343,9 @@ subroutine setup_sqrt_density_matrix(p_matrix, p_matrix_sqrt, p_matrix_occ)
         p_matrix_sqrt(:, ibf, ispin) = 0.0_dp
       else
         p_matrix_sqrt(:, ibf, ispin) = p_matrix_sqrt(:, ibf, ispin) * SQRT( p_matrix_occ(ibf, ispin) )
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
   call timer_sqrt_density_matrix%stop()
 
@@ -1379,7 +1379,7 @@ subroutine get_c_matrix_from_p_matrix(p_matrix, c_matrix, occupation)
     ! Diagonalization with or without SCALAPACK
     call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, p_matrix_sqrt(:, :, ispin), occupation_tmp(:, ispin))
 
-  enddo
+  end do
 
   occupation_tmp(:, :) = -occupation_tmp(:, :)
 
@@ -1389,7 +1389,7 @@ subroutine get_c_matrix_from_p_matrix(p_matrix, c_matrix, occupation)
     call issue_warning('get_c_matrix_from_p_matrix: negative occupation numbers')
     write(stdout, '(1x,a,i4)')     'Number of negative eigenvalues: ', nbf - nstate
     write(stdout, '(1x,a,*(1x,es18.8))') 'Most negative eigenvalue: ', occupation_tmp(nbf, :)
-  endif
+  end if
 
   !
   ! Keep all the states, even those with negative occupations
@@ -1432,7 +1432,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
   integer  :: m_small, n_small
   real(dp), allocatable :: ham_local(:, :), c_matrix_local(:, :), s_matrix_local(:, :)
   real(dp), allocatable :: h_small(:, :)
-#endif
+#end if
   integer  :: ispin
   real(dp), allocatable :: h_small2(:, :, :)
   !=====
@@ -1488,8 +1488,8 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
         do ilocal=1, mc
           iglobal = INDXL2G(ilocal, block_row, iprow, first_row, nprow)
           s_matrix_local(ilocal, jlocal) = x_matrix(iglobal, jglobal)
-        enddo
-      enddo
+        end do
+      end do
 
 
 
@@ -1504,8 +1504,8 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
           do ilocal=1, mh
             iglobal = INDXL2G(ilocal, block_row, iprow, first_row, nprow)
             ham_local(ilocal, jlocal) = hamiltonian(iglobal, jglobal, ispin)
-          enddo
-        enddo
+          end do
+        end do
 
         !       h_small(:, :) = MATMUL( TRANSPOSE(x_matrix(:, :)) , &
         !                                MATMUL( hamiltonian(:, :, ispin) , x_matrix(:, :) ) )
@@ -1542,8 +1542,8 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
           do ilocal=1, mc
             iglobal = INDXL2G(ilocal, block_row, iprow, first_row, nprow)
             c_matrix(iglobal, jglobal, ispin) = c_matrix_local(ilocal, jlocal)
-          enddo
-        enddo
+          end do
+        end do
 
 
         ! Nullify the eigval array for all CPUs but one, so that the all_reduce
@@ -1553,7 +1553,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
 
 
         call timer_diago_hamiltonian%stop()
-      enddo
+      end do
 
       deallocate(ham_local, c_matrix_local, s_matrix_local, h_small)
 
@@ -1561,7 +1561,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
 
     else
       energy(:, :) = 0.0_dp
-    endif
+    end if
 
 
     ! Poor man distribution TODO replace by a broadcast
@@ -1569,7 +1569,7 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
     call world%sum(c_matrix)
 
   else ! only one proc selected
-#endif
+#end if
 
     allocate(h_small2(nstate, nstate, 1))
 
@@ -1604,13 +1604,13 @@ subroutine diagonalize_hamiltonian_scalapack(hamiltonian, x_matrix, energy, c_ma
 
 
       call timer_diago_hamiltonian%stop()
-    enddo
+    end do
 
     deallocate(h_small2)
 
 #if defined(HAVE_SCALAPACK)
-  endif
-#endif
+  end if
+#end if
 
 end subroutine diagonalize_hamiltonian_scalapack
 
@@ -1636,16 +1636,16 @@ subroutine compute_KSB_dm1_and_trace(nstate,chem_pot,trace_dm1,H_KSB,U_QP,energy
     do istate=1,nstate
       U_QP(istate       ,istate       ,ispin) = U_QP(istate       ,istate       ,ispin) - chem_pot
       U_QP(nstate+istate,nstate+istate,ispin) = U_QP(nstate+istate,nstate+istate,ispin) + chem_pot
-    enddo
+    end do
     call diagonalize(' ',U_QP(:,:,ispin),energy_QP(:,ispin),U_QP(:,:,ispin))
     do istate=1,nstate
       DM1(1:nstate,1:nstate,ispin)=DM1(1:nstate,1:nstate,ispin) &
        +matmul(U_QP(1:nstate,istate:istate,ispin),transpose(U_QP(1:nstate,istate:istate,ispin)))
-    enddo
+    end do
     do istate=1,nstate
       trace_dm1=trace_dm1+DM1(istate,istate,ispin)
-    enddo
-  enddo
+    end do
+  end do
   trace_dm1=spin_fact*trace_dm1
 
 end subroutine compute_KSB_dm1_and_trace
@@ -1701,10 +1701,10 @@ subroutine adjust_chem_pot_ksb(nstate,nelectrons,chem_pot,trace_dm1,H_KSB,U_QP,e
      else
       if( abs(trace_down-nelectrons) < abs(trace_old-nelectrons) ) then
        chem_pot=chem_pot-delta_chem_pot
-      endif
-     endif
-   endif
-  enddo
+      end if
+     end if
+   end if
+  end do
   trace_dm1=trace_old
 
   ! Do  final search
@@ -1724,7 +1724,7 @@ subroutine adjust_chem_pot_ksb(nstate,nelectrons,chem_pot,trace_dm1,H_KSB,U_QP,e
    chem_pot_change = -(trace_dm1-nelectrons)/(grad_electrons+1.0d-10)
    ! Maximum change is bounded within +/- 0.10
    chem_pot_change = max( min( chem_pot_change , 0.1d0 / real(isteps) ), -0.1d0 / real(isteps) )
-  enddo
+  end do
   call compute_KSB_dm1_and_trace(nstate,chem_pot,trace_dm1,H_KSB,U_QP,energy_QP,DM1)
 
   write(stdout, '(1x,a,f15.10,a,i5,a)') 'Optimized chemical potential ',chem_pot,' Ha. in', isteps,' iterations.' 

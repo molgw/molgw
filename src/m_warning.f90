@@ -61,15 +61,15 @@ subroutine output_all_warnings(unit_yaml)
     write(stdout, '(/,a,/)') ' SUMMARY of all the WARNINGS issued during the run:'
     do iwarning=1, nwarning
       write(stdout, '(i2,a,5x,a)') iwarning, '.', warning_list(iwarning)
-    enddo
+    end do
     write(stdout, '(/)')
-  endif
+  end if
   if( PRESENT(unit_yaml) ) then
     write(unit_yaml, '(/,a)')  'warnings:'
     do iwarning=1, nwarning
       write(unit_yaml, '(4x,a,a)') '- ', warning_list(iwarning)
-    enddo
-  endif
+    end do
+  end if
 
 end subroutine output_all_warnings
 
@@ -99,7 +99,7 @@ subroutine assert_experimental()
 #else
   write(stdout, *) 'This part of the code is experimental. It should not be used unless you know what you are doing'
   call die('Compilation with -DACTIVATE_EXPERIMENTAL is required')
-#endif
+#end if
 
 end subroutine assert_experimental
 

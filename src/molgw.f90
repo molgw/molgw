@@ -67,7 +67,7 @@ program molgw
   use m_force
 #if defined(HAVE_ELPA)
   use elpa
-#endif
+#end if
   implicit none
 
   !=====
@@ -141,17 +141,17 @@ program molgw
   ! Prepare relaxation with LBFGS
   if( move_nuclei == 'relax' ) then
     call lbfgs_init(lbfgs_plan, 3*natom, 5, diag_guess=2.0_dp)
-  endif
+  end if
  
   !
   ! Initialize the HDF5 environment
 #if defined(HAVE_HDF5)
   call hdf_init() 
-#endif
+#end if
 
 #if defined(HAVE_ELPA)
   if(elpa_init(ELPA_MIN_VERSION) /= ELPA_OK) call die("molgw: error when initialising ELPA")
-#endif
+#end if
 
  
   !
@@ -161,7 +161,7 @@ program molgw
  
     if( move_nuclei == 'relax' ) then
       write(stdout, '(/,/,1x,a,i5,/)') ' === LBFGS step ', istep
-    endif
+    end if
  
     call timers_setstage(TIMING_PRESCF)
     call timer_prescf%start()
@@ -203,7 +203,7 @@ program molgw
       write(stdout, *) 'Setting up the basis set for wavefunctions'
       call init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type, &
                           even_tempered_alpha, even_tempered_beta, even_tempered_n_list, basis)
-    endif
+    end if
  
  
     !
@@ -222,8 +222,8 @@ program molgw
       else
         call init_basis_set(basis_path, auxil_basis_name, ecp_auxil_basis_name, gaussian_type, &
                             even_tempered_alpha, even_tempered_beta, even_tempered_n_list, auxil_basis)
-      endif
-    endif
+      end if
+    end if
 
 #if defined(HAVE_LIBCINT)
     if( has_auxil_basis .AND. .NOT. pbc_ ) then
@@ -233,8 +233,8 @@ program molgw
       call init_libcint(auxil_basis)
     else
       call init_libcint(basis)
-    endif
-#endif
+    end if
+#end if
 
     ! Do some experimental analysis
     if( print_rho_grid_ ) call dm_dump(basis)
@@ -244,7 +244,7 @@ program molgw
     !  also precalculate the basis functions on the FFT grid and store them
     if( pbc_ ) then
       call set_fft_grid(basis)
-    endif
+    end if
 
 
     !
@@ -273,9 +273,9 @@ program molgw
       if( TRIM(check_CdSC_x2c) == 'yes' ) then
         call check_CdaggerSC_I(basis, electrons, c_matrix_rel, s_matrix_rel, x_matrix_rel, energy_rel, &
         &  hamiltonian_kin_nuc_rel, s_matrix, x_matrix)
-      endif
+      end if
       deallocate(energy_rel)
-    endif
+    end if
    
     allocate(occupation(nstate, nspin))
     allocate(energy(nstate, nspin))
@@ -311,7 +311,7 @@ program molgw
         ! for Range-separated hybrids, calculate the long-range ERI
         if(calc_type%need_exchange_lr) then
           call calculate_eri(print_eri_, basis, rcut)
-        endif
+        end if
    
       else
    
@@ -324,12 +324,12 @@ program molgw
         if(calc_type%need_exchange_lr ) then
           ! 2-center and 3-center integrals
           call calculate_eri_ri(basis, auxil_basis, rcut)
-        endif
+        end if
    
         call reshuffle_distribution_3center()
    
-      endif
-    endif
+      end if
+    end if
     ! ERI integrals have been computed and stored
     !
    
@@ -351,7 +351,7 @@ program molgw
     else
       restart_type = NO_RESTART
       call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate, nspin)
-    endif
+    end if
     is_restart       = ( restart_type /= NO_RESTART )
     is_big_restart   = ( restart_type == BIG_RESTART )
     is_basis_restart = ( restart_type == BASIS_RESTART )
@@ -385,8 +385,8 @@ program molgw
       call setup_nucleus(basis, hamiltonian_nucleus)
       if( nelement_ecp > 0 ) then
         call setup_nucleus_ecp(basis, hamiltonian_nucleus)
-      endif
-    endif
+      end if
+    end if
 
     if( TRIM(parabolic_conf) == 'yes' ) call setup_para_conf(basis, hamiltonian_nucleus)
    
@@ -415,8 +415,8 @@ program molgw
       if( restart_type /= BIG_RESTART ) then
         call issue_warning('RESTART file has been ignored, since it does not contain the required empty states')
         is_restart = .FALSE.
-      endif
-    endif
+      end if
+    end if
    
    
     if( .NOT. is_restart) then
@@ -427,8 +427,8 @@ program molgw
         ! Init. guess for c_matrix_rel
         !
         call init_c_matrix_x2c(basis, c_matrix_rel, x_matrix_rel, hamiltonian_kin_nuc_rel)
-      endif
-    endif
+      end if
+    end if
    
     call timer_prescf%stop()
     call timers_setstage(TIMING_SCF)
@@ -498,7 +498,7 @@ program molgw
             write(stdout, '(8(2x,f14.6))') occupation(:, 1)
             write(stdout, '(1x,a,f14.6)') 'Trace:', SUM(occupation(:, 1))
             write(stdout, *)
-          endif
+          end if
 
           if( bogoliubov_scf_ ) then
             call scf_loop(is_restart,                                     &
@@ -515,11 +515,11 @@ program molgw
                                      occupation, energy,                        &
                                      hamiltonian_fock,                          &
                                      c_matrix, en_gks, scf_has_converged)
-          endif
+          end if
 
-        endif
-      endif
-    endif
+        end if
+      end if
+    end if
    
     !
     ! Big RESTART file written if converged
@@ -529,20 +529,20 @@ program molgw
     else
       if( print_restart_ ) then
         call write_restart(SMALL_RESTART, 'RESTART', basis, occupation, c_matrix, energy)
-      endif
-    endif
+      end if
+    end if
     if( pbc_ .AND. scf_has_converged ) then
       call write_restart_rhogrid()
-    endif
+    end if
 
     !
     ! HDF5 file with scf data
     if( scf_has_converged .AND. print_hdf5_ ) then
       call print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy)
-    endif
+    end if
     if( print_molden_ ) then
       call write_molden_file('molgw.MOLDEN', basis, occupation, energy, c_matrix)
-    endif
+    end if
    
     !
     ! If requested, evaluate the forces
@@ -571,30 +571,30 @@ program molgw
           deallocate(energy, occupation)
           call destroy_basis_set(basis)
           if(has_auxil_basis) call destroy_basis_set(auxil_basis)
-        endif
-      endif
-    endif
+        end if
+      end if
+    end if
 
 #if defined(HAVE_LIBCINT)
     ! Reinitialize LIBCINT if atoms move
     call destroy_libcint(basis)
     if(has_auxil_basis) call destroy_libcint(auxil_basis)
-#endif
+#end if
 
-  enddo ! istep
+  end do ! istep
 
 
 
   if( move_nuclei == 'relax' ) then
     call lbfgs_destroy(lbfgs_plan)
-  endif
+  end if
 
   ! This overrides the value of scf_has_converged
   if( assume_scf_converged_ ) scf_has_converged = .TRUE.
   if( .NOT. scf_has_converged .AND. nscf > 0) then
     call issue_warning('SCF loop is not converged. The postscf calculations (if any) will be skipped. ' // &
                        'Use keyword assume_scf_converged to override this security check')
-  endif
+  end if
 
   !
   !
@@ -612,14 +612,14 @@ program molgw
     call init_libcint(auxil_basis)
   else
     call init_libcint(basis)
-  endif
-#endif
+  end if
+#end if
 
   if ( (.NOT. x2c_) .AND. (.NOT. complex_scf_) ) then
     !
     ! Evaluate spin contamination
     call evaluate_s2_operator(occupation, c_matrix, s_matrix)
-  endif
+  end if
 
   ! Computing on top of a gaussian calculation
   if( assume_scf_converged_ .AND. TRIM(init_hamiltonian) == 'GAUSSIAN') then
@@ -628,19 +628,19 @@ program molgw
       call write_restart(SMALL_RESTART, 'RESTART', basis, occupation, c_matrix, energy)
     else
       call die(' The number of states is not equal to the number of basis functions in Gaussian for restart.')
-    endif
-  endif
+    end if
+  end if
   if( TRIM(init_hamiltonian) == 'CC4S_FILES' ) then
     if(has_auxil_basis) call destroy_eri_3center()
     call read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, s_matrix, hamiltonian_fock, cc4s_input)
     call read_cc4s_coulombvertex(cc4s_input)
     call setup_hartreefock_totalenergy_mo(occupation, energy)
-  endif
+  end if
 
   if( print_cc4s_files_ ) then
     if( TRIM(scf) /= 'HF') then
       call issue_warning("CC4S files are only meaningful when using scf ='HF'. Assuming expert user.")
-    endif
+    end if
     ! Call selfenergy_set_state_range to set up ncore_G and nvirtual_G
     call selfenergy_set_state_range(nstate, occupation)
     call write_cc4s_eigenenergies(occupation(ncore_G+1:nvirtual_G-1,:), &
@@ -654,8 +654,8 @@ program molgw
       call write_cc4s_coulombvertex(desc_eri3_mo_periodic(M_), eri_3center_mo_periodic, desc=desc_eri3_mo_periodic, &
                                     rootname=cc4s_output)
       call destroy_eri_3center_mo_periodic()
-    endif
-  endif
+    end if
+  end if
 
   if( print_multipole_ ) then
     !
@@ -664,27 +664,27 @@ program molgw
     !
     ! Evaluate the static quadrupole
     call static_quadrupole(basis, occupation, c_matrix)
-  endif
+  end if
 
   if( pbc_ .AND. cube_state_max - cube_state_min > 0) then
     call write_cube_file_periodic_wfn(c_matrix)
-  endif
+  end if
 
   if( print_wfn_ ) then
     call plot_wfn(basis, c_matrix)
     call plot_rho('GKS', basis, occupation, c_matrix)
-  endif
+  end if
   if( print_cube_ ) call plot_cube_wfn('GKS', basis, occupation, c_matrix)
   if( print_wfn_files_ )  then
     call print_wfn_file('GKS', basis, occupation, c_matrix, en_gks%total, energy, print_all=print_all_MO_wfn_file_)
-  endif
+  end if
   if( print_pdos_ ) then
     call clean_allocate('Square-Root of Overlap S{1/2}', s_matrix_sqrt, basis%nbf, basis%nbf)
     call setup_sqrt_overlap(s_matrix, s_matrix_sqrt)
     call mulliken_pdos(basis, s_matrix, c_matrix, occupation, energy)
     call lowdin_pdos(basis, s_matrix_sqrt, c_matrix, occupation, energy)
     call clean_deallocate('Square-Root of Overlap S{1/2}', s_matrix_sqrt)
-  endif
+  end if
   if( print_spatial_extension_ ) call spatial_extension(basis, c_matrix)
   if( print_dens_traj_ ) call plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, 0, 0.0_dp)
   if( print_dens_traj_points_set_ ) call plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix, 0, 0.0_dp)
@@ -700,7 +700,7 @@ program molgw
     else              ! non-relativistic
       call noft_energy(basis, occupation, en_noft%total, en_noft%nuc_nuc, &
       &               Aoverlap=s_matrix, c_matrix=c_matrix, hkin=hamiltonian_kinetic, hnuc=hamiltonian_nucleus)
-    endif
+    end if
 
     write(stdout, '(a,2x,f19.10,/)') ' NOFT Total Energy (Ha):', en_noft%total
     write(stdout, '(/,1x,a)')  'Natural occupations: '
@@ -708,7 +708,7 @@ program molgw
     write(stdout, '(1x,a,f14.6)') 'Trace:', SUM(occupation(:, 1))
     write(stdout, *)
 
-  endif
+  end if
 
   !
   ! RT-TDDFT Simulation (only if SCF cycles were converged)
@@ -727,7 +727,7 @@ program molgw
         .OR. use_correlated_density_matrix_ ) &
       .AND. scf_has_converged ) then
     call get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, hamiltonian_kinetic, hamiltonian_nucleus, hamiltonian_fock)
-  endif
+  end if
 
   call clean_deallocate('Overlap matrix S', s_matrix)
   call clean_deallocate('Kinetic operator T', hamiltonian_kinetic)
@@ -743,7 +743,7 @@ program molgw
   if( calc_type%selfenergy_approx > 0 .AND. calc_type%selfenergy_technique /= QS ) then
     call clean_allocate('Sigx - Vxc', exchange_m_vxc, nstate, nstate, nspin)
     call setup_exchange_m_vxc(basis, occupation, energy, c_matrix, hamiltonian_fock, exchange_m_vxc)
-  endif
+  end if
   call clean_deallocate('Fock operator F', hamiltonian_fock)
 
   !
@@ -754,12 +754,12 @@ program molgw
     call wpol%init(nstate, occupation, 0)
     call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol)
     call wpol%destroy()
-  endif
+  end if
   if( ( TRIM(postscf) == 'CPHF' .OR. TRIM(postscf) == 'CPKS' ) .AND. scf_has_converged ) then
     call wpol%init(nstate, occupation, 0)
     call coupled_perturbed(basis, occupation, energy, c_matrix, wpol) ! Internally, it will call polarizability
     call wpol%destroy()
-  endif
+  end if
 
   !
   ! If RSH calculations were performed, then deallocate the LR integrals which
@@ -781,12 +781,12 @@ program molgw
 
     if( virtual_fno_ ) then
       call calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_matrix)
-    endif
+    end if
     if(has_auxil_basis) then
       call calculate_eri_3center_mo(c_matrix)
     else
       call calculate_eri_4center_mo_uks(c_matrix, 1, MIN(nstate, nvirtualg-1))  ! TODO set the nstate_min to a more finely tuned value
-    endif
+    end if
 
     call prepare_ci(basis, MIN(nstate, nvirtualg-1), ncoreg, c_matrix)
 
@@ -795,32 +795,32 @@ program molgw
     if(calc_type%is_selfenergy) then
       if( ci_greens_function == 'BOTH' .OR. ci_greens_function == 'HOLES' ) then
         call full_ci_nelectrons( 1, NINT(electrons)-1, 1, en_gks%nuc_nuc)
-      endif
+      end if
       if( ci_greens_function == 'BOTH' .OR. ci_greens_function == 'ELECTRONS' ) then
         call full_ci_nelectrons(-1, NINT(electrons)+1, 1, en_gks%nuc_nuc)
-      endif
+      end if
       call full_ci_nelectrons_selfenergy(energy)
-    endif
+    end if
 
 
     if(has_auxil_basis) then
       call destroy_eri_3center_mo()
     else
       call destroy_eri_4center_mo_uks()
-    endif
+    end if
 
     call destroy_ci()
 
     if( virtual_fno_ ) then
       call destroy_fno(basis, nstate, energy, c_matrix)
-    endif
+    end if
 
-  endif
+  end if
 
   if( has_auxil_basis .AND. calc_type%is_lr_mbpt .AND. (rcut_mbpt > 1.0e-6_dp) ) then
     ! 2-center and 3-center integrals
     call calculate_eri_ri(basis, auxil_basis, rcut_mbpt)
-  endif
+  end if
   !
   ! final evaluation for RPAx total energy
   ! (can also use imaginary freqs. to speed-up dRPA (RPA) and dRPA (RPA+)
@@ -828,7 +828,7 @@ program molgw
   if( TRIM(postscf(1:3)) == 'RPA' .OR. TRIM(postscf) == 'BSE-I' ) then
     en_mbpt = en_gks
     call acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbpt)
-  endif
+  end if
 
   !
   ! final evaluation for MP2 total energy
@@ -843,7 +843,7 @@ program molgw
           call mp2_energy_ri(occupation, energy, c_matrix, en_gks%mp2)
         else
           call mp2_energy(occupation, c_matrix, energy, en_gks%mp2)
-        endif
+        end if
 
       else                         ! complex
 
@@ -852,9 +852,9 @@ program molgw
         else
           call issue_warning('MP2 with complex orbitals is available only with RI')
           en_gks%mp2 = 0.0_dp
-        endif
+        end if
 
-      endif
+      end if
 
       write(stdout, '(a,2x,f19.10)') ' MP2 Energy       (Ha):', en_gks%mp2
       write(stdout, *)
@@ -862,7 +862,7 @@ program molgw
       
       if(kappa_hybrid/=zero) then
         en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp2
-      endif
+      end if
 
     else                    ! relativistic
     
@@ -872,7 +872,7 @@ program molgw
         call issue_warning('X2C MP2 is available only with RI')
         en_gks%exx = 0.0_dp
         en_gks%mp2 = 0.0_dp
-      endif
+      end if
     
       write(stdout, '(a,2x,f19.10)') ' MP2 Energy       (Ha):', en_gks%mp2
       write(stdout, *)
@@ -880,14 +880,14 @@ program molgw
 
       if(kappa_hybrid/=zero) then
         en_gks%total = en_gks%nuc_nuc + en_gks%kin_nuc + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp2
-      endif
+      end if
 
-    endif
+    end if
 
     write(stdout, '(a,2x,f19.10)') ' MP2 Total Energy (Ha):', en_gks%total
     write(stdout, *)
 
-  endif
+  end if
 
 
   !
@@ -898,7 +898,7 @@ program molgw
       call mp3_energy_ri(occupation, energy, c_matrix, en_gks%mp3)
     else
       call die('MP3 energy without RI not implemented')
-    endif
+    end if
     write(stdout, '(a,2x,f19.10)') ' MP3 Energy       (Ha):', en_gks%mp3
     write(stdout, *)
 
@@ -906,16 +906,16 @@ program molgw
 
     if(kappa_hybrid/=zero) then
       en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp3
-    endif
+    end if
 
     write(stdout, '(a,2x,f19.10)') ' MP3 Total Energy (Ha):', en_gks%total
     write(stdout, *)
 
-  endif
+  end if
 
   if( calc_type%is_mp2 .OR. calc_type%is_mp3 ) then
     call print_energy_yaml('mbpt energy', en_gks)
-  endif
+  end if
 
 
   !
@@ -926,7 +926,7 @@ program molgw
     call selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m_vxc, en_mbpt)
     call print_energy_yaml('mbpt energy', en_mbpt)
     call clean_deallocate('Sigx - Vxc', exchange_m_vxc)
-  endif
+  end if
 
 
   !
@@ -934,7 +934,7 @@ program molgw
   !
   if( pbc_ ) then
     call destroy_fft_grid()
-  endif
+  end if
   call destroy_eri_3center_mo(force=.TRUE.)
   call clean_deallocate('Full RKB wavefunctions C', c_matrix_rel)
   call clean_deallocate('Wavefunctions C_cmplx', c_matrix_cmplx)
@@ -952,7 +952,7 @@ program molgw
 #if defined(HAVE_LIBCINT)
   call destroy_libcint(basis)
   if(has_auxil_basis) call destroy_libcint(auxil_basis)
-#endif
+#end if
 
   call destroy_cart_to_pure_transforms()
 
@@ -963,11 +963,11 @@ program molgw
 
 #if defined(HAVE_ELPA)
   call elpa_uninit()
-#endif
+#end if
 
 #if defined(HAVE_HDF5)
   call hdf_finalize() 
-#endif
+#end if
 
 end program molgw
 

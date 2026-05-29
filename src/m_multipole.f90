@@ -54,7 +54,7 @@ subroutine static_dipole(basis, occupation, c_matrix_in, p_matrix_in, dipole_ao_
     call setup_dipole_ao(basis, dipole_ao)
   else
     dipole_ao(:, :, :) = dipole_ao_in(:, :, :)
-  endif
+  end if
 
   allocate(p_matrix(basis%nbf, basis%nbf, nspin))
   if( .NOT. PRESENT(p_matrix_in) ) then
@@ -66,27 +66,27 @@ subroutine static_dipole(basis, occupation, c_matrix_in, p_matrix_in, dipole_ao_
     type is (real(dp))
       p_matrix(:, :, :) = p_matrix_in(:, :, :)
     end select
-  endif
+  end if
 
 
   ! Calculate electronic part with a minus sign (for electrons)
   do idir=1, 3
     dipole(idir) = -SUM( dipole_ao(:, :, idir) * SUM( p_matrix(:, :, :) , DIM=3 ) )
-  enddo
+  end do
 
   deallocate(dipole_ao, p_matrix)
 
   ! Add the nuclear part
   do icenter=1, ncenter_nuclei
     dipole(:) = dipole(:) + zvalence(icenter) * xatom(:, icenter)
-  enddo
+  end do
 
   if( .NOT. PRESENT(dipole_out) ) then
     write(stdout, '(1x,a,3(2x,f14.6))') 'Dipole (a.u.):  ', dipole(:)
     write(stdout, '(1x,a,3(2x,f14.6))') 'Dipole (Debye): ', dipole(:) * au_debye
   else
     dipole_out(:) = dipole(:)
-  endif
+  end if
 
 
 end subroutine static_dipole
@@ -120,16 +120,16 @@ subroutine static_quadrupole(basis, occupation, c_matrix)
   do jdir=1, 3
     do idir=1, 3
       quad(idir, jdir) = -SUM( quad_ao(:, :, idir, jdir) * SUM( p_matrix(:, :, :) , DIM=3 ) )
-    enddo
-  enddo
+    end do
+  end do
 
   deallocate(quad_ao)
 
   do icenter=1, ncenter_nuclei
     do jdir=1, 3
       quad(:, jdir) = quad(:, jdir) + zvalence(icenter) * xatom(:, icenter) * xatom(jdir, icenter)
-    enddo
-  enddo
+    end do
+  end do
 
   write(stdout, '(1x,a,3(2x,f14.6))') 'Quadrupole (a.u.):    ', quad(1, :)
   write(stdout, '(1x,a,3(2x,f14.6))') '                      ', quad(2, :)
@@ -199,10 +199,10 @@ subroutine spatial_extension(basis, c_matrix)
       mean(istate, ispin)     = DOT_PRODUCT( c_matrix(:, istate, ispin), &
                                   MATMUL( trace_dipole_ao(:, :) , c_matrix(:, istate, ispin) ) )
 
-    enddo
+    end do
 
     write(stdout, '(1x,i6,2x,*(2x,f12.3))') istate, SQRT( variance(istate, :) - mean(istate, :)**2 )
-  enddo
+  end do
   write(stdout, '(1x,70("="),/)')
 
   deallocate(trace_dipole_ao)
@@ -217,9 +217,9 @@ subroutine spatial_extension(basis, c_matrix)
       do istate=1, SIZE(c_matrix, DIM=2)
         write(char6, '(i6)') istate
         write(unit_yaml, '(8x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', SQRT( variance(istate, ispin) - mean(istate, ispin)**2 )
-      enddo
-    enddo
-  endif
+      end do
+    end do
+  end if
 
 
 

@@ -11,7 +11,7 @@
 #include "molgw.h"
 #if !defined(NO_LIBINT)
 #include<libint2/libint2_params.h>
-#endif
+#end if
 
 module m_libint_tools
   use m_definitions
@@ -77,7 +77,7 @@ module m_libint_tools
       real(C_DOUBLE), intent(inout) :: elecpotAB(*)
 
     end subroutine libint_elecpot
-#endif
+#end if
 
 #if (LIBINT2_DERIV_ONEBODY_ORDER > 0)
     subroutine libint_overlap_grad(amA, contrdepthA, A, alphaA, cA, &
@@ -138,7 +138,7 @@ module m_libint_tools
       real(C_DOUBLE), intent(inout) :: elecpotBz(*)
 
     end subroutine libint_elecpot_grad
-#endif
+#end if
 #if (LIBINT2_DERIV_ERI_ORDER >0)
     subroutine libint_4center_grad(amA, contrdepthA, A, alphaA, cA, &
                                    amB, contrdepthB, B, alphaB, cB, &
@@ -181,7 +181,7 @@ module m_libint_tools
       real(C_DOUBLE), intent(inout) :: eriDz(*)
 
     end subroutine libint_4center_grad
-#endif
+#end if
 
     subroutine libint_init(ammax, has_onebody, has_gradient) bind(C)
       import :: C_INT, C_BOOL
@@ -374,9 +374,9 @@ subroutine transform_libint_to_molgw_3d(gaussian_type_left, am1, gaussian_type_r
           matrix_out(i1, i2, i3) = array_in(ii) * cart_to_pure_norm(am1, CARTG)%matrix(i1, i1) &
                                               * cart_to_pure_norm(am2, CARTG)%matrix(i2, i2) &
                                               * cart_to_pure_norm(am3, CARTG)%matrix(i3, i3)
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
   else
 
     allocate(matrix_tmp1(n1, n2c*n3c))
@@ -393,11 +393,11 @@ subroutine transform_libint_to_molgw_3d(gaussian_type_left, am1, gaussian_type_r
 
       ! Transform the 3rd index
       matrix_out(i1, :, :) = MATMUL( matrix_tmp2(:, :) , cart_to_pure_norm(am3, gt_tagr)%matrix(:, :) )
-    enddo
+    end do
 
     deallocate(matrix_tmp1, matrix_tmp2)
 
-  endif
+  end if
 
 end subroutine transform_libint_to_molgw_3d
 
@@ -453,8 +453,8 @@ subroutine transform_libint_to_molgw_4d(gaussian_type, am1, am2, am3, am4, array
 
       ! Transform the 4th index
       matrix_out(i1, i2, :, :) = MATMUL( matrix_tmp3(:, :) , cart_to_pure_norm(am4, gt_tag)%matrix(:, :) )
-    enddo
-  enddo
+    end do
+  end do
 
   deallocate(matrix_tmp1, matrix_tmp2, matrix_tmp3)
 

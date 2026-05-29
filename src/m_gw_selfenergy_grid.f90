@@ -56,7 +56,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
   integer              :: meri3, neri3
 #if defined(HAVE_SCALAPACK)
   real(dp), allocatable :: eri3_sca(:, :)
-#endif
+#end if
   !=====
 
   call timer_rpa_dynamic%start()
@@ -64,7 +64,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
   write(stdout, '(/,1x,a)') 'Calculation of RPA polarizability on imaginary axis grid'
 #if defined(HAVE_SCALAPACK)
   write(stdout, '(1x,a,i4,a,i4)') 'SCALAPACK grid', nprow_sd, ' x ', npcol_sd
-#endif
+#end if
 
   nstate = SIZE(occupation, DIM=1)
 
@@ -73,7 +73,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
 
   if( .NOT. has_auxil_basis ) then
     call die('dynamical_polarizability_sca requires an auxiliary basis')
-  endif
+  end if
 
 
 
@@ -91,7 +91,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
   if( has_auxil_basis ) then
     call calculate_eri_3center_mo(c_matrix, nlumo_W, nvirtual_W-1, ncore_W+1, nhomo_W, &
                                      timing=timer_aomo_pola)
-  endif
+  end if
 
 
   !
@@ -103,7 +103,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
 
 #if defined(HAVE_SCALAPACK)
   call clean_allocate('TMP 3-center MO integrals', eri3_sca, meri3, neri3)
-#endif
+#end if
   call clean_allocate('TMP 3-center MO integrals', eri3_t, nauxil_local, wpol%npole_reso)
   call clean_allocate('Chi0', chi0, wpol%mchi, wpol%nchi)
   call clean_allocate('1-Chi0', one_m_chi0, wpol%mchi, wpol%nchi)
@@ -134,18 +134,18 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
 
       eri3_t(:, t_ia) = eri_3center_mo(:, astate, istate, iaspin) * factor_sqrt
 
-    enddo
+    end do
 
 #if defined(HAVE_SCALAPACK)
     call PDGEMR2D(nauxil_global, wpol%npole_reso, eri3_t, 1, 1, desc_eri3_t, &
                                                  eri3_sca, 1, 1, desc_eri3_final, wpol%desc_chi(CTXT_))
-#endif
+#end if
 
 #if defined(HAVE_SCALAPACK)
     call PDSYRK('L', 'N', nauxil_global, wpol%npole_reso, 1.0_dp, eri3_sca, 1, 1, desc_eri3_final, 0.0_dp, chi0,1,1,wpol%desc_chi)
 #else
     call DSYRK('L', 'N', nauxil_global, wpol%npole_reso, 1.0_dp, eri3_t, nauxil_global, 0.0_dp, chi0,nauxil_global)
-#endif
+#end if
     chi0(:, :) = -chi0(:, :)
 
 
@@ -160,8 +160,8 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
       do ilocal=1, wpol%mchi
         iglobal = rowindex_local_to_global_descriptor(wpol%desc_chi, ilocal)
         if( iglobal == jglobal ) one_m_chi0(ilocal, jlocal) = one_m_chi0(ilocal, jlocal) + 1.0_dp
-      enddo
-    enddo
+      end do
+    end do
 
 
     one_m_chi0m1(:, :) = one_m_chi0(:, :)
@@ -185,14 +185,14 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
                1.0_dp, one_m_chi0m1, nauxil_global, &
                       chi0        , nauxil_global, &
                0.0_dp, wpol%chi(:, :, iomega), nauxil_global)
-#endif
+#end if
 
 
-  enddo
+  end do
 
 #if defined(HAVE_SCALAPACK)
   call clean_deallocate('TMP 3-center MO integrals', eri3_sca)
-#endif
+#end if
   call clean_deallocate('TMP 3-center MO integrals', eri3_t)
   call clean_deallocate('1-Chi0', one_m_chi0)
   call clean_deallocate('(1-Chi0)**-1', one_m_chi0m1)
@@ -235,7 +235,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
 
   if( .NOT. has_auxil_basis ) then
     call die('gw_selfenergy_imag_scalapack requires an auxiliary basis')
-  endif
+  end if
 
   call timer_gw_self%start()
 
@@ -243,7 +243,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_calc=1, se%nomega_calc
     write(stdout, '(1x,i4,1x,f14.4,1x,f14.4)') iomega_calc, se%omega_calc(iomega_calc)*Ha_eV
-  enddo
+  end do
   write(stdout, '(1x,a)') '========================================================'
 
   nstate = SIZE(energy, DIM=1)
@@ -254,7 +254,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
   ! Get the processor grid included in the input wpol%desc_chi
   call BLACS_GRIDINFO(wpol%desc_chi(CTXT_), nprow, npcol, iprow, ipcol)
   write(stdout, '(1x,a,i4,a,i4)') 'SCALAPACK grid', nprow, ' x ', npcol
-#endif
+#end if
 
 
   if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timer_aomo_gw)
@@ -284,7 +284,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
                                                                       eri3_sca, 1, 1, desc_eri3_final, wpol%desc_chi(CTXT_))
 #else
       eri3_sca(:, 1:prange) = eri_3center_mo(:, ncore_G+1:nvirtual_G-1, mstate, mpspin)
-#endif
+#end if
 
 
       do iomegap=1, wpol%nomega
@@ -298,7 +298,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
                    1.0_dp, wpol%chi(:, :, iomegap), nauxil_global,    &
                           eri3_sca            , nauxil_global,    &
                    0.0_dp, chi_eri3_sca        , nauxil_global)
-#endif
+#end if
 
         !$OMP PARALLEL PRIVATE(pstate, v_chi_v_p)
         !$OMP DO REDUCTION(+:sigmaigw)
@@ -314,14 +314,14 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
                                + 1.0_dp / ( ( se%omega_calc(:) - energy(pstate, mpspin) )  &
                                               - wpol%omega(iomegap) )  ) &
                            * v_chi_v_p /  (2.0_dp * pi)
-        enddo
+        end do
         !$OMP END DO
         !$OMP END PARALLEL
 
-      enddo
+      end do
 
-    enddo
-  enddo
+    end do
+  end do
   call world%sum(sigmaigw)
 
   se%sigma_calc(:, :, :) = sigmaigw(:, :, :)
@@ -364,7 +364,7 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
 
   if( .NOT. has_auxil_basis ) then
     call die('gw_selfenergy_coutour_scalapack requires an auxiliary basis')
-  endif
+  end if
 
   call timer_gw_self%start()
 
@@ -372,7 +372,7 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_sigma=-se%nomega, se%nomega
     write(stdout, '(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma, se%omega(iomega_sigma)*Ha_eV
-  enddo
+  end do
   write(stdout, '(1x,a)') '========================================================'
 
   nstate = SIZE(energy, DIM=1)
@@ -394,18 +394,18 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
           de = energy(pstate, mpspin) - (se%energy0(mstate, mpspin) + se%omega(iomega_sigma)%re)
           if( de < -eta ) cycle
           de_max = MAX(de_max, de)
-        enddo
-      enddo
+        end do
+      end do
       do pstate=nlumo_G, nvirtual_G-1
         do iomega_sigma=-se%nomega, se%nomega
           ! only poles in the third quadrant  \theta( omega - e_p)
           de = se%energy0(mstate, mpspin) + se%omega(iomega_sigma)%re - energy(pstate, mpspin)
           if( de < -eta ) cycle
           de_max = MAX(de_max, de)
-        enddo
-      enddo
-    enddo
-  enddo
+        end do
+      end do
+    end do
+  end do
 
   write(stdout, '(1x,a,f12.6)') 'Maximum real frequency needed (eV): ', de_max * Ha_eV
   call wpol_real%init(nstate, occupation, nomega_chi_real, grid_type=REAL_LINEAR, omega_max=de_max)
@@ -464,12 +464,12 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
                              * v_chi_v_p /  (2.0_dp * pi)
           end where
 
-        enddo
+        end do
         !$OMP END DO
         !$OMP END PARALLEL
 
         deallocate(tmp2)
-      enddo
+      end do
 
 
       !
@@ -500,8 +500,8 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
           deallocate(tmp)
           call vchiv_sqrt_tmp%destroy()
 
-        enddo
-      enddo
+        end do
+      end do
 
       !
       ! Residues for empty states
@@ -529,12 +529,12 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
           deallocate(tmp)
           call vchiv_sqrt_tmp%destroy()
 
-        enddo
-      enddo
+        end do
+      end do
 
 
-    enddo
-  enddo
+    end do
+  end do
   call world%sum(sigmagw)
 
   se%sigma(:, :, :) = sigmagw(:, :, :)
@@ -574,7 +574,7 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
 
   if( .NOT. has_auxil_basis ) then
     call die('gw_selfenergy_grid requires an auxiliary basis')
-  endif
+  end if
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
@@ -584,7 +584,7 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_sigma=first_omega, last_omega
     write(stdout, '(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma, se%omega_calc(iomega_sigma)*Ha_eV
-  enddo
+  end do
   write(stdout, '(1x,a)') '========================================================'
 
   nstate = SIZE(energy, DIM=1)
@@ -602,7 +602,7 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
     call wpol_analytic%evaluate(wpol_imag%omega, wpol_imag%chi)
   else
     call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.FALSE.)
-  endif
+  end if
 
 
   prange = nvirtual_G - ncore_G - 1
@@ -646,15 +646,15 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
                                               - wpol_imag%omega(iomegap) )  ) &
                            * v_chi_v_p /  (2.0_dp * pi)
 
-        enddo
+        end do
         !$OMP END DO
         !$OMP END PARALLEL
 
         deallocate(tmp2)
-      enddo
+      end do
 
-    enddo
-  enddo
+    end do
+  end do
   call poorman%sum(sigmagw)
 
   se%sigma_calc(:, :, :) = sigmagw(:, :, :)
@@ -702,7 +702,7 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
 
   if( .NOT. has_auxil_basis ) then
     call die('gw_selfenergy_grid requires an auxiliary basis')
-  endif
+  end if
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
@@ -712,7 +712,7 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_sigma=first_omega, last_omega
     write(stdout, '(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma, se%omega_calc(iomega_sigma)*Ha_eV
-  enddo
+  end do
   write(stdout, '(1x,a)') '========================================================'
 
   nstate = SIZE(energy, DIM=1)
@@ -728,7 +728,7 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
     call polarizability(.TRUE., .TRUE., basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
   else
     call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.FALSE.)
-  endif
+  end if
 
 
   prange = nvirtual_G - ncore_G - 1
@@ -752,11 +752,11 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
             call wpol_analytic%evaluate(wpol_imag%omega(iomegap), chi_wp)
           else
             chi_wp(:, :) = wpol_imag%chi(:, :, iomegap)
-          endif
-        endif
+          end if
+        end if
         do iauxil=1, nauxil_global
           chi_wp(iauxil, iauxil) = chi_wp(iauxil, iauxil) + 1.0_dp
-        enddo
+        end do
         write(stdout, '(1x,a,i4,a,i4)') 'Quadrature on iwp: ', iomegap, ' / ', wpol_imag%nomega
 
         !
@@ -780,11 +780,11 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
                 wpol_one%omega(1) = omega_cmplx
                 call wpol_one%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.FALSE., verbose=.FALSE.)
                 chi_wwp(:, :) = wpol_one%chi(:, :, 1)
-              endif
-            endif
+              end if
+            end if
             do iauxil=1, nauxil_global
               chi_wwp(iauxil, iauxil) = chi_wwp(iauxil, iauxil) + 1.0_dp
-            enddo
+            end do
             !write(stdout,*) iomegap,isignp,iomega_sigma,se%omega_calc(iomega_sigma)
 
             allocate(eri3_i_m(nauxil_global, ncore_G+1:nhomo_G))
@@ -845,10 +845,10 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
                                 + wpol_imag%weight_quad(iomegap) &
                                     * braket1 / denom1 * braket2 / denom2 / (2.0_dp * pi)
 
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
+            end do
 
             deallocate(eri3_i_m)
             deallocate(eri3_i_a)
@@ -925,10 +925,10 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
                                 - wpol_imag%weight_quad(iomegap) &
                                     * braket1 / denom1 * braket2 / denom2 / (2.0_dp * pi)
 
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
+            end do
 
             deallocate(eri3_a_m)
             deallocate(eri3_a_i)
@@ -940,12 +940,12 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
             deallocate(eri3_r_m)
 
             if( .NOT. analytic_chi_ ) call wpol_one%destroy(verbose=.FALSE.)
-          enddo !iomega_sigma
-        enddo ! isignp
-      enddo !iomegap
+          end do !iomega_sigma
+        end do ! isignp
+      end do !iomegap
 
-    enddo
-  enddo
+    end do
+  end do
   call poorman%sum(sigmagw)
 
   se%sigma_calc(:, :, :) = se%sigma_calc(:, :, :) + sigmagw(:, :, :)

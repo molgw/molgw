@@ -55,7 +55,7 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   if( .NOT. MOLGW_has_gradient) then
     call issue_warning('calculate_force: impossible to calculate gradient if LIBINT does not support the gradients')
     return
-  endif
+  end if
 
   call timer_force%start()
 
@@ -80,10 +80,10 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
         if( ANY( ABS(p_matrix(ibf, jbf, :) / spin_fact) > TOL_DENSITY_MATRIX ) ) then
           skip_shellpair(ishell, jshell) = .FALSE.
           skip_shellpair(jshell, ishell) = .FALSE.
-        endif
-      enddo
-    enddo
-  enddo
+        end if
+      end do
+    end do
+  end do
   write(stdout, '(1x,a,i6,a,i6)') 'Shell pair skipped due to low density matrix screening:', &
                                  COUNT( skip_shellpair(:, :) ), ' / ', basis%nshell**2
 
@@ -104,7 +104,7 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   do ibf=1, basis%nbf
     iatom = basis%bff(ibf)%icenter
     force_ovp(:, iatom) = force_ovp(:, iatom) + 2.0_dp * MATMUL( r_matrix(ibf, :) , grad_onebody(:, ibf, :) )
-  enddo
+  end do
   deallocate(grad_onebody)
 
 
@@ -118,7 +118,7 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   do ibf=1, basis%nbf
     iatom = basis%bff(ibf)%icenter
     force_kin(:, iatom) = force_kin(:, iatom) + 2.0_dp * MATMUL( SUM( p_matrix(ibf, :, :), DIM=2) , grad_onebody(ibf, :, :) )
-  enddo
+  end do
   deallocate(grad_onebody)
 
 
@@ -133,14 +133,14 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
     iatom = basis%bff(ibf)%icenter
     force_nuc(:, iatom) = force_nuc(:, iatom) &
         + 2.0_dp * MATMUL( SUM( p_matrix(ibf, :, :), DIM=2) , grad_nucleus(ibf, :, natom+1, :) )
-  enddo
+  end do
 
   force_hellfeyn(:, :) = 0.0_dp
   do iatom=1, natom
     force_hellfeyn(1, iatom) = force_hellfeyn(1, iatom) + SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 1) )
     force_hellfeyn(2, iatom) = force_hellfeyn(2, iatom) + SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 2) )
     force_hellfeyn(3, iatom) = force_hellfeyn(3, iatom) + SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 3) )
-  enddo
+  end do
   force_nuc(:, :) = force_nuc(:, :) + force_hellfeyn(:, :)
 
 
@@ -171,7 +171,7 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
               .AND.  skip_shellpair(ishell, kshell) .AND. skip_shellpair(jshell, lshell)  &
               .AND.  skip_shellpair(ishell, lshell) .AND. skip_shellpair(jshell, kshell) ) then
         cycle
-      endif
+      end if
 
       ! Libint ordering is strict!
       if( basis%shell(ishell)%am + basis%shell(jshell)%am > basis%shell(kshell)%am + basis%shell(lshell)%am ) cycle
@@ -190,7 +190,7 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
           fact = -4.0_dp
         else
           fact = -2.0_dp
-        endif
+        end if
 
         iatom = basis%shell(ishell)%icenter
         do lbf=basis%shell(lshell)%istart, basis%shell(lshell)%iend
@@ -203,10 +203,10 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
                                                        jbf-basis%shell(jshell)%istart+1,       &
                                                        kbf-basis%shell(kshell)%istart+1,       &
                                                        lbf-basis%shell(lshell)%istart+1, :)
-              enddo
-            enddo
-          enddo
-        enddo
+              end do
+            end do
+          end do
+        end do
 
         if( ishell /= jshell ) then
           iatom = basis%shell(jshell)%icenter
@@ -220,11 +220,11 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
                                                          jbf-basis%shell(jshell)%istart+1,       &
                                                          kbf-basis%shell(kshell)%istart+1,       &
                                                          lbf-basis%shell(lshell)%istart+1, :)
-                enddo
-              enddo
-            enddo
-          enddo
-        endif
+                end do
+              end do
+            end do
+          end do
+        end if
 
         !
         ! When the opposite is not calculated by LIBINT:
@@ -233,7 +233,7 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
             fact = -4.0_dp
           else
             fact = -2.0_dp
-          endif
+          end if
 
           iatom = basis%shell(kshell)%icenter
           do lbf=basis%shell(lshell)%istart, basis%shell(lshell)%iend
@@ -246,10 +246,10 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
                                                          jbf-basis%shell(jshell)%istart+1,       &
                                                          kbf-basis%shell(kshell)%istart+1,       &
                                                          lbf-basis%shell(lshell)%istart+1, :)
-                enddo
-              enddo
-            enddo
-          enddo
+                end do
+              end do
+            end do
+          end do
 
           if( kshell /= lshell ) then
             iatom = basis%shell(lshell)%icenter
@@ -263,15 +263,15 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
                                                            jbf-basis%shell(jshell)%istart+1,       &
                                                            kbf-basis%shell(kshell)%istart+1,       &
                                                            lbf-basis%shell(lshell)%istart+1, :)
-                  enddo
-                enddo
-              enddo
-            enddo
-          endif
+                  end do
+                end do
+              end do
+            end do
+          end if
 
 
-        endif
-      endif
+        end if
+      end if
 
       !
       ! Exchange
@@ -289,10 +289,10 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
                                                        jbf-basis%shell(jshell)%istart+1,       &
                                                        kbf-basis%shell(kshell)%istart+1,       &
                                                        lbf-basis%shell(lshell)%istart+1, :)
-              enddo
-            enddo
-          enddo
-        enddo
+              end do
+            end do
+          end do
+        end do
 
         if( kshell /= lshell ) then
           iatom = basis%shell(ishell)%icenter
@@ -306,11 +306,11 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
                                                          jbf-basis%shell(jshell)%istart+1,       &
                                                          kbf-basis%shell(kshell)%istart+1,       &
                                                          lbf-basis%shell(lshell)%istart+1, :)
-                enddo
-              enddo
-            enddo
-          enddo
-        endif
+                end do
+              end do
+            end do
+          end do
+        end if
 
         if( ishell /= jshell ) then
           iatom = basis%shell(jshell)%icenter
@@ -324,10 +324,10 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
                                                          jbf-basis%shell(jshell)%istart+1,       &
                                                          kbf-basis%shell(kshell)%istart+1,       &
                                                          lbf-basis%shell(lshell)%istart+1, :)
-                enddo
-              enddo
-            enddo
-          enddo
+                end do
+              end do
+            end do
+          end do
 
           if( kshell /= lshell ) then
             iatom = basis%shell(jshell)%icenter
@@ -341,12 +341,12 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
                                                            jbf-basis%shell(jshell)%istart+1,       &
                                                            kbf-basis%shell(kshell)%istart+1,       &
                                                            lbf-basis%shell(lshell)%istart+1, :)
-                  enddo
-                enddo
-              enddo
-            enddo
-          endif
-        endif
+                  end do
+                end do
+              end do
+            end do
+          end if
+        end if
 
         !
         ! When the opposite is not calculated by LIBINT:
@@ -362,10 +362,10 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
                                                          jbf-basis%shell(jshell)%istart+1,       &
                                                          kbf-basis%shell(kshell)%istart+1,       &
                                                          lbf-basis%shell(lshell)%istart+1, :)
-                enddo
-              enddo
-            enddo
-          enddo
+                end do
+              end do
+            end do
+          end do
 
           if( ishell /= jshell ) then
             iatom = basis%shell(kshell)%icenter
@@ -379,11 +379,11 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
                                                            jbf-basis%shell(jshell)%istart+1,       &
                                                            kbf-basis%shell(kshell)%istart+1,       &
                                                            lbf-basis%shell(lshell)%istart+1, :)
-                  enddo
-                enddo
-              enddo
-            enddo
-          endif
+                  end do
+                end do
+              end do
+            end do
+          end if
 
           if( kshell /= lshell ) then
             iatom = basis%shell(lshell)%icenter
@@ -397,10 +397,10 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
                                                            jbf-basis%shell(jshell)%istart+1,       &
                                                            kbf-basis%shell(kshell)%istart+1,       &
                                                            lbf-basis%shell(lshell)%istart+1, :)
-                  enddo
-                enddo
-              enddo
-            enddo
+                  end do
+                end do
+              end do
+            end do
             if( ishell /= jshell ) then
               iatom = basis%shell(lshell)%icenter
               do lbf=basis%shell(lshell)%istart, basis%shell(lshell)%iend
@@ -413,22 +413,22 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
                                                              jbf-basis%shell(jshell)%istart+1,       &
                                                              kbf-basis%shell(kshell)%istart+1,       &
                                                              lbf-basis%shell(lshell)%istart+1, :)
-                    enddo
-                  enddo
-                enddo
-              enddo
+                    end do
+                  end do
+                end do
+              end do
 
-            endif
+            end if
 
-          endif
+          end if
 
-        endif
-      endif
+        end if
+      end if
 
 
       deallocate(shell_gradA, shell_gradB, shell_gradC, shell_gradD)
-    enddo
-  enddo
+    end do
+  end do
 
   deallocate(skip_shellpair)
 
@@ -448,17 +448,17 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   write(*, '(1x,a,22x,a,19x,a,19x,a)') 'Atoms', 'Fx', 'Fy','Fz'
   do iatom=1, natom
     write(*, '(3x,a,i4,a,2x,3(2x,f19.10))') 'H-F force atom   ', iatom, ':', force_hellfeyn(:, iatom)
-  enddo
+  end do
   write(stdout, '(/,1x,a)') ' ====== Pulay Forces ====== '
   write(*, '(1x,a,22x,a,19x,a,19x,a)') 'Atoms', 'Fx', 'Fy','Fz'
   do iatom=1, natom
     write(*, '(3x,a,i4,a,2x,3(2x,f19.10))') 'Pulay force atom ', iatom, ':', force(:, iatom) - force_hellfeyn(:, iatom)
-  enddo
+  end do
   write(stdout, '(/,1x,a)') ' ====== Total Forces ====== '
   write(*, '(1x,a,22x,a,19x,a,19x,a)') 'Atoms', 'Fx', 'Fy','Fz'
   do iatom=1, natom
     write(*, '(3x,a,i4,a,2x,3(2x,f19.10))') 'Total force atom ', iatom, ':', force(:, iatom)
-  enddo
+  end do
   write(stdout, '(1x,a,/)') ' ==================== '
 
 

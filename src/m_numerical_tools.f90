@@ -62,7 +62,7 @@ subroutine coeffs_gausslegint(xmin, xmax, x, weights, n)
         p2=p1
         p1=((2.0_dp*j - 1.0_dp)*z*p2 - (j-1.0_dp)*p3)/j
 
-      enddo
+      end do
 
       pp=n*(p2-z*p1)/(1.0_dp - z**2)
       z1=z
@@ -70,14 +70,14 @@ subroutine coeffs_gausslegint(xmin, xmax, x, weights, n)
 
       if(abs(z-z1) < tol) exit
 
-    enddo
+    end do
 
     x(i)=xmean-xl*z
     x(n+1-i)=xmean+xl*z
     weights(i)=2.0_dp * xl/((1.0_dp-z**2)*pp**2)
     weights(n+1-i)=weights(i)
 
-  enddo
+  end do
 
 end subroutine coeffs_gausslegint
 
@@ -107,7 +107,7 @@ function pade(z_in, f_in, z_out) RESULT(f_out)
   do ip=1, np-1
     Az(ip+1) = Az(ip) + ( z_out - z_in(ip) ) * aa(ip+1) * Az(ip-1)
     Bz(ip+1) = Bz(ip) + ( z_out - z_in(ip) ) * aa(ip+1) * Bz(ip-1)
-  enddo
+  end do
 
   f_out = Az(np) / Bz(np)
 
@@ -134,11 +134,11 @@ subroutine calculate_pade_a(aa, z_in, f_in)
   do ip=2, np
     do jp=ip, np
       gtmp(ip, jp) = (gtmp(ip-1, ip-1) - gtmp(ip-1, jp)) / ( (z_in(jp) - z_in(ip-1)) * gtmp(ip-1, jp) )
-    enddo
-  enddo
+    end do
+  end do
   do ip=1, np
     aa(ip) = gtmp(ip, ip)
-  enddo
+  end do
 
   deallocate(gtmp)
 

@@ -46,25 +46,25 @@ subroutine destroy_eri_3center()
 
   if(ALLOCATED(eri_2center)) then
     call clean_deallocate('2-center integrals', eri_2center)
-  endif
+  end if
   if(ALLOCATED(eri_2center_inv)) then
     call clean_deallocate('2-center integrals inverse', eri_2center_inv)
-  endif
+  end if
   if(ALLOCATED(eri_2center_sqrtinv)) then
     call clean_deallocate('2-center integrals inverse square-root', eri_2center_sqrtinv)
-  endif
+  end if
   if(ALLOCATED(eri_2center_sqrt)) then
     call clean_deallocate('2-center integrals square-root', eri_2center_sqrt)
-  endif
+  end if
   if(ALLOCATED(eri_2center_lr)) then
     call clean_deallocate('LR 2-center integrals', eri_2center_lr)
-  endif
+  end if
   if(ALLOCATED(eri_2center_inv_lr)) then
     call clean_deallocate('LR 2-center integrals inverse', eri_2center_inv_lr)
-  endif
+  end if
   if(ALLOCATED(eri_2center_sqrtinv_lr)) then
     call clean_deallocate('LR 2-center integrals inverse square-root', eri_2center_sqrtinv_lr)
-  endif
+  end if
   call destroy_eri_3center_lowerlevel()
 
 end subroutine destroy_eri_3center
@@ -92,7 +92,7 @@ subroutine calculate_eri(print_eri_, basis, rcut)
       !$OMP PARALLEL DO SCHEDULE(static,1)
       do iint=1, nint_4center
         eri_4center(iint) = 0.0_dp
-      enddo
+      end do
       !$OMP END PARALLEL DO
     else
       call clean_allocate('4-center LR integrals', eri_4center_lr, nint_4center)
@@ -101,20 +101,20 @@ subroutine calculate_eri(print_eri_, basis, rcut)
       !$OMP PARALLEL DO SCHEDULE(static,1)
       do iint=1, nint_4center
         eri_4center_lr(iint) = 0.0_dp
-      enddo
+      end do
       !$OMP END PARALLEL DO
-    endif
+    end if
 
     if( .NOT. read_eri(rcut) ) then
       call calculate_eri_4center(basis, rcut)
       if( print_eri_ ) then
         call dump_out_eri(rcut)
-      endif
-    endif
+      end if
+    end if
 
   else
     write(stdout, '(/,1x,a)') 'Out of core option: no 4-center integrals ever stored'
-  endif
+  end if
 
   call timer_eri_4center%stop()
 
@@ -157,14 +157,14 @@ subroutine calculate_eri_4center(basis, rcut)
   else
     write(stdout, '(/,a)') ' Calculate and store the LR 4-center Coulomb integrals (LIBCINT)'
     call set_erf_screening_length_libcint(basis, rcut)
-  endif
+  end if
 #else
   if( .NOT. is_longrange ) then
     write(stdout, '(/,a)') ' Calculate and store the 4-center Coulomb integrals (LIBINT)'
   else
     write(stdout, '(/,a)') ' Calculate and store the LR 4-center Coulomb integrals (LIBINT)'
-  endif
-#endif
+  end if
+#end if
 
 
   ! ymbyun 2018/05/21
@@ -249,7 +249,7 @@ subroutine calculate_eri_4center(basis, rcut)
                          am3, ng3, x03, alpha3, coeff3, &
                          am4, ng4, x04, alpha4, coeff4, &
                          rcut_libint, int_shell)
-#endif
+#end if
 
       call transform_libint_to_molgw(basis%gaussian_type, ami, amj, amk, aml, int_shell, integrals)
 
@@ -262,10 +262,10 @@ subroutine calculate_eri_4center(basis, rcut)
                                       basis%shell(jshell)%istart+jbf-1, &
                                       basis%shell(kshell)%istart+kbf-1, &
                                       basis%shell(lshell)%istart+lbf-1) ) = integrals(ibf, jbf, kbf, lbf)
-              enddo
-            enddo
-          enddo
-        enddo
+              end do
+            end do
+          end do
+        end do
       else
         do lbf=1, nl
           do kbf=1, nk
@@ -275,11 +275,11 @@ subroutine calculate_eri_4center(basis, rcut)
                                          basis%shell(jshell)%istart+jbf-1, &
                                          basis%shell(kshell)%istart+kbf-1, &
                                          basis%shell(lshell)%istart+lbf-1) ) = integrals(ibf, jbf, kbf, lbf)
-              enddo
-            enddo
-          enddo
-        enddo
-      endif
+              end do
+            end do
+          end do
+        end do
+      end if
 
 
       deallocate(integrals)
@@ -291,8 +291,8 @@ subroutine calculate_eri_4center(basis, rcut)
       deallocate(coeff4)
 
 
-    enddo
-  enddo
+    end do
+  end do
   !$OMP END DO
   !$OMP END PARALLEL
 
@@ -300,7 +300,7 @@ subroutine calculate_eri_4center(basis, rcut)
     write(stdout, '(a,/)') ' All 4-center ERI have been calculated'
   else
     write(stdout, '(a,/)') ' All LR 4-center ERI have been calculated'
-  endif
+  end if
 
 
 end subroutine calculate_eri_4center
@@ -338,7 +338,7 @@ subroutine calculate_eri_4center_shell(basis, rcut, ijshellpair, klshellpair, &
   call set_erf_screening_length_libcint(basis, rcut)
 #else
   rcut_libint = rcut
-#endif
+#end if
 
 
   kshell = index_shellpair(1, klshellpair)
@@ -414,7 +414,7 @@ subroutine calculate_eri_4center_shell(basis, rcut, ijshellpair, klshellpair, &
                      am4, ng4, x04, alpha4, coeff4, &
                      rcut_libint, &
                      shell_libint)
-#endif
+#end if
 
   call transform_libint_to_molgw(basis%gaussian_type, ami, amj, amk, aml, shell_libint, shellABCD)
 
@@ -553,7 +553,7 @@ subroutine calculate_eri_4center_shell_grad(basis, rcut, ijshellpair, klshellpai
                           gradBx, gradBy, gradBz, &
                           gradCx, gradCy, gradCz, &
                           gradDx, gradDy, gradDz)
-#endif
+#end if
 
   call transform_libint_to_molgw(basis%gaussian_type, ami, amj, amk, aml, gradAx, grad_tmp)
   shell_gradA(:, :, :, :, 1) = grad_tmp(:, :, :, :)
@@ -635,7 +635,7 @@ subroutine calculate_eri_ri(basis, auxil_basis, rcut)
     end do
     !mask(:)       = ( basis%shell(:)%icenter       == MAXVAL(basis%shell(:)%icenter) )
     !mask_auxil(:) = ( auxil_basis%shell(:)%icenter == MAXVAL(auxil_basis%shell(:)%icenter) )
-  endif
+  end if
 
 
   !
@@ -645,25 +645,25 @@ subroutine calculate_eri_ri(basis, auxil_basis, rcut)
     call timer_tddft_eri_2center%start()
   else
     call timer_eri_2center%start()
-  endif
+  end if
 
   if( recalculation ) then
     call calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_auxil)
   else
     call calculate_integrals_eri_2center_scalapack(auxil_basis, rcut)
-  endif
+  end if
 
   if( eri3_genuine_ ) then
     call calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
   else
     call calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
-  endif
+  end if
 
   if( TIMING_current_stage == TIMING_POSTSCF ) then
     call timer_tddft_eri_2center%stop()
   else
     call timer_eri_2center%stop()
-  endif
+  end if
 
 
   !
@@ -673,23 +673,23 @@ subroutine calculate_eri_ri(basis, auxil_basis, rcut)
     call timer_tddft_eri_3center%start()
   else
     call timer_eri_3center%start()
-  endif
+  end if
 
   if( eri3_genuine_ ) then
     if( recalculation ) then
       call calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, mask, mask_auxil)
     else
       call calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut)
-    endif
+    end if
   else
     call calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
-  endif
+  end if
 
   if( TIMING_current_stage == TIMING_POSTSCF ) then
     call timer_tddft_eri_3center%stop()
   else
     call timer_eri_3center%stop()
-  endif
+  end if
 
 
   if( ALLOCATED(mask) )       deallocate(mask)
@@ -734,7 +734,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
     call timer_tddft_eri_2center_ints%start()
   else
     call timer_eri_2center_ints%start()
-  endif
+  end if
 
 
   is_longrange = (rcut > 1.0e-12_dp)
@@ -751,15 +751,15 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
 #else
     write(stdout, '(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBINT): ', &
                                nprow_3center, ' x ', npcol_3center
-#endif
+#end if
 #else
 #if defined(HAVE_LIBCINT)
     write(stdout, '(a)') ' 2-center integrals (LIBCINT)'
     call set_erf_screening_length_libcint(auxil_basis, 0.0_dp)
 #else
     write(stdout, '(a)') ' 2-center integrals (LIBINT)'
-#endif
-#endif
+#end if
+#end if
   else
 #if defined(HAVE_SCALAPACK)
 #if defined(HAVE_LIBCINT)
@@ -769,16 +769,16 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
 #else
     write(stdout, '(a,i4,a,i4)') ' 2-center LR integrals distributed using a SCALAPACK grid (LIBINT): ', &
                                nprow_3center, ' x ', npcol_3center
-#endif
+#end if
 #else
 #if defined(HAVE_LIBCINT)
     write(stdout, '(a)') ' 2-center integrals (LIBCINT)'
     call set_erf_screening_length_libcint(auxil_basis, rcut)
 #else
     write(stdout, '(a)') ' 2-center LR integrals (LIBINT)'
-#endif
-#endif
-  endif
+#end if
+#end if
+  end if
 
 
   call set_auxil_block_size(auxil_basis%nbf/(npcol_eri3_ao*2))
@@ -805,8 +805,8 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
                                     COUNT(mask_auxil(:)), ' / ', auxil_basis%nshell
       if( SIZE(eri_2center, DIM=1) /= mlocal .OR. SIZE(eri_2center, DIM=2) /= nlocal ) then
         call die('calculate_integrals_eri_2center_scalapack: recalculation but wrong dimensions of eri_2center')
-      endif
-    endif
+      end if
+    end if
 
 
     !$OMP PARALLEL PRIVATE(amk, nk, do_shell, kglobal, ami, ni, iglobal, &
@@ -822,7 +822,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
       do kbf=1, nk
         kglobal = auxil_basis%shell(kshell)%istart + kbf - 1
         do_shell = do_shell .OR. ( ipcol_3center == INDXG2P(kglobal, NB_3center, 0, first_col, npcol_3center) )
-      enddo
+      end do
 
       if( .NOT. do_shell ) cycle
 
@@ -843,7 +843,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
         do ibf=1, ni
           iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
           do_shell = do_shell .OR. ( iprow_3center == INDXG2P(iglobal, MB_3center, 0, first_row, nprow_3center) )
-        enddo
+        end do
 
         if( .NOT. do_shell ) cycle
 
@@ -852,7 +852,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
         !
         if( recalculation ) then
           if( mask_auxil(ishell) .EQV. mask_auxil(kshell) ) cycle
-        endif
+        end if
 
         n1c = number_basis_function_am( 'CART' ,  ami )
         n3c = number_basis_function_am( 'CART' ,  amk )
@@ -868,7 +868,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
         else
           cint_info = cint2c2e_sph(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
                                   auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, LIBCINT_opt)
-        endif
+        end if
         call transform_libcint_to_molgw(auxil_basis%gaussian_type, ami, amk, int_shell, integrals)
 
 #else
@@ -895,7 +895,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
         deallocate(coeff1, coeff3)
 
         call transform_libint_to_molgw(auxil_basis%gaussian_type, ami, amk, int_shell, integrals)
-#endif
+#end if
 
         deallocate(int_shell)
 
@@ -907,7 +907,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
             klocal = INDXG2L(kglobal, NB_3center, 0, first_col, npcol_3center)
           else
             cycle
-          endif
+          end if
 
           do ibf=1, ni
             iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
@@ -916,29 +916,29 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
               ilocal = INDXG2L(iglobal, MB_3center, 0, first_row, nprow_3center)
             else
               cycle
-            endif
+            end if
 
 
             eri_2center(ilocal, klocal) = integrals(ibf, kbf)
 
-          enddo
-        enddo
+          end do
+        end do
 
         deallocate(integrals)
 
-      enddo   ! ishell
-    enddo   ! kshell
+      end do   ! ishell
+    end do   ! kshell
     !$OMP END DO
     !$OMP END PARALLEL
 
-  endif
+  end if
 
 
   if( TIMING_current_stage == TIMING_POSTSCF ) then
     call timer_tddft_eri_2center_ints%stop()
   else
     call timer_eri_2center_ints%stop()
-  endif
+  end if
 
 end subroutine calculate_integrals_eri_2center_scalapack
 
@@ -958,14 +958,14 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
     call timer_tddft_eri_2center_invert%start()
   else
     call timer_eri_2center_invert%start()
-  endif
+  end if
 
   is_longrange = (rcut > 1.0e-12_dp)
 
   if( eri3_genuine_ .AND. is_longrange ) then
     call die('calculate_inverse_eri_2center_scalapack: eri3_genuine is not yet compatible' // &
              'with range-separated hybrids')
-  endif
+  end if
 
   if( .NOT. is_longrange ) then
 #if defined(HAVE_SCALAPACK)
@@ -973,15 +973,15 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
                                nprow_3center, ' x ', npcol_3center
 #else
     write(stdout, '(a)') ' 2-center integrals inversion (LIBINT)'
-#endif
+#end if
   else
 #if defined(HAVE_SCALAPACK)
     write(stdout, '(a,i4,a,i4)') ' 2-center LR integrals inversion using a SCALAPACK grid (LIBINT): ', &
                                nprow_3center, ' x ', npcol_3center
 #else
     write(stdout, '(a)') ' 2-center LR integrals inversion (LIBINT)'
-#endif
-  endif
+#end if
+  end if
 
 
   if( cntxt_3center > 0 ) then
@@ -1004,7 +1004,7 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
       eri_2center_inv_lr(:, :) = eri_2center(:, :)
       nauxil_global_lr = auxil_basis%nbf
       call distribute_auxil_basis_lr(nauxil_global_lr)
-    endif
+    end if
 
     !
     ! Invert the 2-center integral matrix
@@ -1029,9 +1029,9 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
     call invert_symmetric(eri_2center_inv)
     call matrix_lower_to_full_dp(eri_2center_inv)
 
-#endif
+#end if
 
-  endif
+  end if
 
 
   write(stdout, '(/,1x,a)')      'All 2-center integrals have been calculated, inverted and stored'
@@ -1040,7 +1040,7 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
     call timer_tddft_eri_2center_invert%stop()
   else
     call timer_eri_2center_invert%stop()
-  endif
+  end if
 
 end subroutine calculate_inverse_eri_2center_scalapack
 
@@ -1075,15 +1075,15 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
                                nprow_3center, ' x ', npcol_3center
 #else
     write(stdout, '(a)') ' 2-center integrals inverse square-root'
-#endif
+#end if
   else
 #if defined(HAVE_SCALAPACK)
     write(stdout, '(a,i4,a,i4)') ' 2-center LR integrals inverse square-root using a SCALAPACK grid: ', &
                                nprow_3center, ' x ', npcol_3center
 #else
     write(stdout, '(a)') ' 2-center LR integrals inverse square-root'
-#endif
-  endif
+#end if
+  end if
 
 
   if( cntxt_3center > 0 ) then
@@ -1109,7 +1109,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
     call diagonalize_scalapack(' ', scalapack_block_min, eri_2center,eigval)
     call move_alloc(eri_2center, eri_2center_eigvec)
 
-#endif
+#end if
 
     !
     ! Skip the too small eigenvalues if not genuine
@@ -1118,7 +1118,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
 
   else
     nauxil_kept    = 0
-  endif
+  end if
   call poorman%max(nauxil_kept)
   nauxil_neglect = auxil_basis%nbf - nauxil_kept
 
@@ -1138,7 +1138,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
       nlocal = NUMROC(nauxil_kept    , NB_3center, ipcol_3center, first_col, npcol_3center)
       call DESCINIT(desc_2center_sqrtinv, auxil_basis%nbf, nauxil_kept, MB_3center, NB_3center, &
                      first_row, first_col, cntxt_3center, MAX(1, mlocal), info)
-    endif
+    end if
   else
     nauxil_global_lr = nauxil_kept
     ! Prepare the distribution of the 3-center integrals
@@ -1154,8 +1154,8 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
       nlocal = NUMROC(nauxil_kept    , NB_3center, ipcol_3center, first_col, npcol_3center)
       call DESCINIT(desc_2center_sqrtinv_lr, auxil_basis%nbf, nauxil_kept, MB_3center, NB_3center, &
                      first_row, first_col, cntxt_3center, MAX(1, mlocal), info)
-    endif
-  endif
+    end if
+  end if
 
 
   !
@@ -1165,7 +1165,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
   if( cntxt_3center < 0 ) then
     call timer_eri_2center_inverse_sqrt%stop()
     return
-  endif
+  end if
 
 
 #if defined(HAVE_SCALAPACK)
@@ -1182,7 +1182,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
     do jglobal=1, nauxil_global
       invsqrt_j = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
       call PDSCAL(auxil_basis%nbf, invsqrt_j, eri_2center_sqrtinv, 1, jglobal, desc_2center_sqrtinv, 1)
-    enddo
+    end do
 
   else
 
@@ -1196,9 +1196,9 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
     do jglobal=1, nauxil_global_lr
       invsqrt_j = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
       call PDSCAL(auxil_basis%nbf, invsqrt_j, eri_2center_sqrtinv_lr, 1, jglobal, desc_2center_sqrtinv_lr, 1)
-    enddo
+    end do
 
-  endif
+  end if
 
 
 #else
@@ -1208,16 +1208,16 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
     do jglobal=1, nauxil_global
       invsqrt_j = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
       eri_2center_sqrtinv(:, jglobal) = eri_2center_eigvec(:, jglobal+nauxil_neglect) * invsqrt_j
-    enddo
+    end do
   else
     call clean_allocate('LR 2-center integrals inverse square-root', eri_2center_sqrtinv_lr, mlocal, nlocal)
     do jglobal=1, nauxil_global_lr
       invsqrt_j = 1.0_dp / SQRT( eigval(jglobal+nauxil_neglect) )
       eri_2center_sqrtinv_lr(:, jglobal) = eri_2center_eigvec(:, jglobal+nauxil_neglect) * invsqrt_j
-    enddo
-  endif
+    end do
+  end if
 
-#endif
+#end if
 
   !
   ! Experimental part that stores eri_2center_sqrt only if file manual_eri2sqrt exists
@@ -1238,14 +1238,14 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
     do jglobal=1, nauxil_global
       sqrt_j = SQRT( eigval(jglobal+nauxil_neglect) )
       call PDSCAL(auxil_basis%nbf, sqrt_j, eri_2center_sqrt, 1, jglobal, desc_2center_sqrtinv, 1)
-    enddo
+    end do
 #else
     do jglobal=1, nauxil_global
       sqrt_j = SQRT( eigval(jglobal+nauxil_neglect) )
       eri_2center_sqrt(:, jglobal) = eri_2center_eigvec(:, jglobal+nauxil_neglect) * sqrt_j
-    enddo
-#endif
-  endif
+    end do
+#end if
+  end if
 
 
 
@@ -1308,14 +1308,14 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
   if( recalculation ) then
     if( SIZE(mask) /= basis%nshell .OR. SIZE(mask_auxil) /= auxil_basis%nshell ) &
        call die('calculate_integrals_eri_3center_scalapack: dimension problem in the masks')
-  endif
+  end if
 
 
   if( .NOT. is_longrange ) then
     nauxil_kept = nauxil_global
   else
     nauxil_kept = nauxil_global_lr
-  endif
+  end if
 
   if( .NOT. is_longrange ) then
 #if defined(HAVE_LIBCINT)
@@ -1323,13 +1323,13 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
     call set_erf_screening_length_libcint(basis, 0.0_dp)
 #else
     write(stdout, '(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBINT 3center)'
-#endif
+#end if
   else
     call die('calculate_integrals_eri_3center_scalapack: eri3_genuine is not compatible with range-separated hybrid')
-  endif
+  end if
 #if defined(HAVE_SCALAPACK)
   write(stdout, '(a,i4,a,i4)') ' 3-center integrals distributed using a SCALAPACK grid: ', nprow_3center, ' x ', npcol_3center
-#endif
+#end if
 
 
   !
@@ -1345,7 +1345,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
     else
       mlocal = 0
       nlocal = 0
-    endif
+    end if
     call poorman%max(mlocal)
     call poorman%max(nlocal)
     !
@@ -1361,8 +1361,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
                                       COUNT(mask_auxil(:)), ' / ', auxil_basis%nshell
       if( SIZE(eri_3center, DIM=1) /= mlocal .OR. SIZE(eri_3center, DIM=2) /= nlocal ) then
         call die('calculate_integrals_eri_3center_scalapack: recalculation but wrong dimensions of eri_3center')
-      endif
-    endif
+      end if
+    end if
   else
     if( cntxt_3center > 0 ) then
       mlocal = NUMROC(npair            , MB_3center, iprow_3center, first_row, nprow_3center)
@@ -1372,11 +1372,11 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
     else
       mlocal = 0
       nlocal = 0
-    endif
+    end if
     call poorman%max(mlocal)
     call poorman%max(nlocal)
     call clean_allocate('LR 3-center integrals SCALAPACK', eri_3center_lr, mlocal, nlocal)
-  endif
+  end if
 
 
   !
@@ -1388,7 +1388,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
     call timer_eri_3center_ints%start()
   else
     call timer_tddft_eri_3center_ints%start()
-  endif
+  end if
 
   !
   ! Skip section for procs that do not participate to the distribution (ortho paral)
@@ -1420,7 +1420,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
       do ibf=1, ni
         iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
         do_shell = do_shell .OR. ( ipcol_3center == INDXG2P(iglobal, NB_3center, 0, first_col, npcol_3center) )
-      enddo
+      end do
       if( .NOT. do_shell ) cycle
 
       am1 = ami
@@ -1451,8 +1451,8 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
             klpair_global = index_pair(basis%shell(kshell)%istart+kbf-1, basis%shell(lshell)%istart+lbf-1)
 
             do_shell = do_shell .OR. ( iprow_3center == INDXG2P(klpair_global, MB_3center, 0, first_row, nprow_3center) )
-          enddo
-        enddo
+          end do
+        end do
 
         if( .NOT. do_shell ) cycle
 
@@ -1462,7 +1462,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
         if( recalculation ) then
           if( ( mask_auxil(ishell) .EQV. mask(kshell) ) &
               .AND. ( mask_auxil(ishell) .EQV. mask(lshell) ) ) cycle
-        endif
+        end if
 
 
         libint_calls = libint_calls + 1
@@ -1482,7 +1482,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
         else
           cint_info = cint3c2e_sph(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
                                   basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, LIBCINT_opt)
-        endif
+        end if
         call transform_libcint_to_molgw(auxil_basis%gaussian_type, ami, basis%gaussian_type, amk, aml, int_shell, integrals)
 
 #else
@@ -1507,7 +1507,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
         deallocate(alpha3, alpha4)
         deallocate(coeff3, coeff4)
         call transform_libint_to_molgw(auxil_basis%gaussian_type, ami, basis%gaussian_type, amk, aml, int_shell, integrals)
-#endif
+#end if
 
 
         do lbf=1, nl
@@ -1527,20 +1527,20 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
 
               eri_3center(ilocal, jlocal) = integrals(ibf, kbf, lbf) * factor
 
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
 
         deallocate(integrals)
         deallocate(int_shell)
 
 
 
-      enddo ! klshellpair
+      end do ! klshellpair
 
       deallocate(alpha1, coeff1)
 
-    enddo ! ishell
+    end do ! ishell
     !$OMP END DO
     !$OMP END PARALLEL
 
@@ -1553,28 +1553,28 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
                                 ( REAL(libint_calls, dp) / ( REAL(nshellpair, dp)*REAL(auxil_basis%nshell, dp) ) - 1.0_dp ) &
                                 * 100.0_dp
 
-  endif
+  end if
 
   if( .NOT. is_longrange ) then
     if( cntxt_3center < 0 ) then
       eri_3center(:, :) = 0.0_dp
-    endif
+    end if
     call poorman%sum(eri_3center)
     write(stdout, '(/,1x,a,/)') 'All 3-center integrals have been calculated and stored'
   else
     if( cntxt_3center < 0 ) then
       eri_3center_lr(:, :) = 0.0_dp
-    endif
+    end if
     call poorman%sum(eri_3center_lr)
     write(stdout, '(/,1x,a,/)') 'All LR 3-center integrals have been calculated and stored'
-  endif
+  end if
 
 
   if( .NOT. recalculation ) then
     call timer_eri_3center_ints%stop()
   else
     call timer_tddft_eri_3center_ints%stop()
-  endif
+  end if
 
 
 end subroutine calculate_integrals_eri_3center_scalapack
@@ -1630,7 +1630,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
     nauxil_kept = nauxil_global
   else
     nauxil_kept = nauxil_global_lr
-  endif
+  end if
 
   if( .NOT. is_longrange ) then
 #if defined(HAVE_LIBCINT)
@@ -1638,25 +1638,25 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
     call set_erf_screening_length_libcint(basis, 0.0_dp)
 #else
     write(stdout, '(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBINT 3center)'
-#endif
+#end if
   else
 #if defined(HAVE_LIBCINT)
     write(stdout, '(/,a)')    ' Calculate and store all the LR 3-center Electron Repulsion Integrals (LIBCINT 3center)'
     call set_erf_screening_length_libcint(basis, rcut)
 #else
     write(stdout, '(/,a)')    ' Calculate and store all the LR 3-center Electron Repulsion Integrals (LIBINT 3center)'
-#endif
-  endif
+#end if
+  end if
 
 #if defined(HAVE_SCALAPACK)
   write(stdout, '(a,i4,a,i4)') ' 3-center integrals distributed using a SCALAPACK grid: ', nprow_3center, ' x ', npcol_3center
-#endif
+#end if
 
   !
   !  Set batch here
   if( eri3_nbatch > 1 ) then
     write(stdout, '(1x,a,i4,/)') 'Use several batches to reduce the memory peak: ', eri3_nbatch
-  endif
+  end if
 
 
   !
@@ -1672,7 +1672,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
     else
       mlocal = 0
       nlocal = 0
-    endif
+    end if
     call poorman%max(mlocal)
     call poorman%max(nlocal)
     call clean_allocate('3-center integrals SCALAPACK', eri_3center, mlocal, nlocal)
@@ -1685,11 +1685,11 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
     else
       mlocal = 0
       nlocal = 0
-    endif
+    end if
     call poorman%max(mlocal)
     call poorman%max(nlocal)
     call clean_allocate('LR 3-center integrals SCALAPACK', eri_3center_lr, mlocal, nlocal)
-  endif
+  end if
 
 
   !
@@ -1707,7 +1707,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
     if( eri3_nbatch > 1 ) then
       write(stdout, *) 'Batch:', ibatch, ' / ',eri3_nbatch
       write(stdout, *) 'Basis function pairs in this batch: ', mpair
-    endif
+    end if
 
     !
     ! First part: calls to LIBINT
@@ -1745,7 +1745,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
         do ibf=1, ni
           iglobal = auxil_basis%shell(ishell)%istart + ibf - 1
           do_shell = do_shell .OR. ( ipcol_3center == INDXG2P(iglobal, NB_3center, 0, first_col, npcol_3center) )
-        enddo
+        end do
 
         if( .NOT. do_shell ) cycle
 
@@ -1780,8 +1780,8 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
               ! Shift origin due to batches
               klpair_global = klpair_global - ipair_first + 1
               do_shell = do_shell .OR. ( iprow_3center == INDXG2P(klpair_global, MB_3center, 0, first_row, nprow_3center) )
-            enddo
-          enddo
+            end do
+          end do
 
           if( .NOT. do_shell ) cycle
 
@@ -1803,7 +1803,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
           else
             cint_info = cint3c2e_sph(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
                                     basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, LIBCINT_opt)
-          endif
+          end if
           call transform_libcint_to_molgw(auxil_basis%gaussian_type, ami, basis%gaussian_type, amk, aml, int_shell, integrals)
 
 #else
@@ -1828,7 +1828,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
           deallocate(alpha3, alpha4)
           deallocate(coeff3, coeff4)
           call transform_libint_to_molgw(auxil_basis%gaussian_type, ami, basis%gaussian_type, amk, aml, int_shell, integrals)
-#endif
+#end if
 
 
           do lbf=1, nl
@@ -1853,22 +1853,22 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
 
                 eri_3center_tmp(ilocal, jlocal) = integrals(ibf, kbf, lbf) * factor
 
-              enddo
-            enddo
-          enddo
+              end do
+            end do
+          end do
 
 
           deallocate(int_shell)
           deallocate(integrals)
 
-        enddo ! klshellpair
+        end do ! klshellpair
         deallocate(alpha1, coeff1)
 
-      enddo ! ishell
+      end do ! ishell
       !$OMP END DO
       !$OMP END PARALLEL
 
-    endif
+    end if
 
 
     call timer_eri_3center_ints%stop()
@@ -1890,7 +1890,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
                   1.0_dp, eri_3center_tmp, mpair,   &
                          eri_2center_sqrtinv, auxil_basis%nbf,       &
                   0.0_dp, eri_3center(ipair_first, 1), npair)
-#endif
+#end if
       else
 #if defined(HAVE_SCALAPACK)
         call PDGEMM('N', 'N', mpair, nauxil_kept,auxil_basis%nbf, &
@@ -1902,9 +1902,9 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
                   1.0_dp, eri_3center_tmp, mpair,              &
                          eri_2center_sqrtinv_lr, auxil_basis%nbf,     &
                   0.0_dp, eri_3center_lr(ipair_first, 1), npair)
-#endif
-      endif
-    endif
+#end if
+      end if
+    end if
 
     call timer_eri_3center_matmul%stop()
 
@@ -1914,7 +1914,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
     !
     ! Loop over batches ends here
     !
-  enddo
+  end do
 
 
   write(stdout, '(1x,a,i20)')      'Number of calls to libint of this proc: ', libint_calls
@@ -1930,7 +1930,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
     call clean_deallocate('2-center integrals inverse square-root', eri_2center_sqrtinv)
     if( cntxt_3center < 0 ) then
       eri_3center(:, :) = 0.0_dp
-    endif
+    end if
     call poorman%sum(eri_3center)
     write(stdout, '(/,1x,a,/)') 'All 3-center integrals have been calculated and stored'
 
@@ -1939,11 +1939,11 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
     call clean_deallocate('LR 2-center integrals inverse square-root', eri_2center_sqrtinv_lr)
     if( cntxt_3center < 0 ) then
       eri_3center_lr(:, :) = 0.0_dp
-    endif
+    end if
     call poorman%sum(eri_3center_lr)
     write(stdout, '(/,1x,a,/)') 'All LR 3-center integrals have been calculated and stored'
 
-  endif
+  end if
 
 
 
@@ -2020,7 +2020,7 @@ subroutine calculate_eri_approximate_hartree(basis, x0_rho, coeff_rho, alpha_rho
                        am3, ng3, x03, alpha3, coeff3, &
                        am4, ng4, x04, alpha4, coeff4, &
                        0.0_C_DOUBLE, int_shell)
-#endif
+#end if
     call transform_libint_to_molgw(basis%gaussian_type, 0, basis%gaussian_type, amk, aml, int_shell, integrals)
 
 
@@ -2034,9 +2034,9 @@ subroutine calculate_eri_approximate_hartree(basis, x0_rho, coeff_rho, alpha_rho
         else
           vhrho(ibf, jbf) = integrals(1, kbf, lbf)
           vhrho(jbf, ibf) = integrals(1, kbf, lbf)
-        endif
-      enddo
-    enddo
+        end if
+      end do
+    end do
 
 
 
@@ -2045,7 +2045,7 @@ subroutine calculate_eri_approximate_hartree(basis, x0_rho, coeff_rho, alpha_rho
     deallocate(alpha1, alpha3, alpha4)
     deallocate(coeff1, coeff3, coeff4)
 
-  enddo
+  end do
 
 
 end subroutine calculate_eri_approximate_hartree

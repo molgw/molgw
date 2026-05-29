@@ -177,8 +177,8 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
     cart_to_pure(il, CARTG)%matrix(:, :) = 0.0_dp
     do ii=1, nic
       cart_to_pure(il, CARTG)%matrix(ii, ii) = 1.0_dp
-    enddo
-  enddo
+    end do
+  end do
 
 
   !
@@ -204,9 +204,9 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
           do iu=0, it
             if( 2*it-2*iu == nx .AND. 2*iu == ny .AND. il - 2*it == nz ) then
               rtmp = rtmp + (-1)**it * 0.50_dp**(2*it) * cnk(il-it, it) * cnk(il, it) * cnk(it, iu)
-            endif
-          enddo
-        enddo
+            end if
+          end do
+        end do
         cart_to_pure_norm(il, PUREG)%matrix(kk, il+1) = rtmp / SQRT( double_factorial(2*il-1) )
 
         do im=1, il
@@ -219,13 +219,13 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
                  .AND. il - im - 2*it == nz ) then
                   rtmp = rtmp + (-1)**(it+is) * 0.50_dp**(im+2*it) * SQRT( 2.0_dp * ank(il+im, il) / ank(il, il-im) ) &
                            * cnk(it, iu) * cnk(im, 2*is+1) * cnk(il-it, im+it) * cnk(il, it)
-                endif
+                end if
 
-              enddo
-            enddo
-          enddo
+              end do
+            end do
+          end do
           cart_to_pure_norm(il, PUREG)%matrix(kk, il+1-im) = rtmp / SQRT( double_factorial(2*il-1) )
-        enddo
+        end do
 
         do im=1, il
           rtmp = 0.0_dp
@@ -237,18 +237,18 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
                  .AND. il - im - 2*it == nz ) then
                   rtmp = rtmp + (-1)**(it+is) * 0.50_dp**(im+2*it) * SQRT( 2.0_dp * ank(il+im, il) / ank(il, il-im) ) &
                            * cnk(it, iu) * cnk(im, 2*is) * cnk(il-it, im+it) * cnk(il, it)
-                endif
+                end if
 
-              enddo
-            enddo
-          enddo
+              end do
+            end do
+          end do
           cart_to_pure_norm(il, PUREG)%matrix(kk, il+1+im) = rtmp / SQRT( double_factorial(2*il-1) )
-        enddo
+        end do
 
 
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   ! Fix the p-orbital ordering if necessary
   if( .NOT. pypzpx_order_in ) then
@@ -256,7 +256,7 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
     cart_to_pure_norm(1, PUREG)%matrix(1, 3) = 1.0_dp / SQRT( double_factorial(1) )
     cart_to_pure_norm(1, PUREG)%matrix(2, 1) = 1.0_dp / SQRT( double_factorial(1) )
     cart_to_pure_norm(1, PUREG)%matrix(3, 2) = 1.0_dp / SQRT( double_factorial(1) )
-  endif
+  end if
 
 
   !
@@ -275,9 +275,9 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
         cart_to_pure(il, PUREG)%matrix(kk, :) = cart_to_pure_norm(il, PUREG)%matrix(kk, :) &
                      * SQRT( double_factorial(2*nx-1) * double_factorial(2*ny-1) * double_factorial(2*nz-1) )
 
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   !
   ! Store the transforms for CARTESIAN from GAUSSIAN/MOLDEN to MOLGW/LIBCINT
@@ -372,8 +372,8 @@ subroutine setup_cart_to_pure_transforms(pypzpx_order_in)
     do ii=1, ni
       g2m_cart(il)%reindex(ii) = ni + 1 - ii
       m2g_cart(il)%reindex(ii) = ni + 1 - ii
-    enddo
-  enddo
+    end do
+  end do
 
   molden2m_cart(4)%reindex( 1) = 1
   molden2m_cart(4)%reindex( 2) = 4
@@ -429,7 +429,7 @@ subroutine destroy_cart_to_pure_transforms()
     deallocate(m2g_cart(il)%reindex)
     deallocate(m2molden_cart(il)%reindex)
     deallocate(molden2m_cart(il)%reindex)
-  enddo
+  end do
   deallocate(cart_to_pure_norm)
   deallocate(cart_to_pure)
   deallocate(g2m_cart)
@@ -455,7 +455,7 @@ function cnk(n, k)
   do i=0, k-1
     num   = num   * REAL(n-i, KIND=dp)
     denom = denom * ( REAL(i, KIND=dp) + 1.0_dp)
-  enddo
+  end do
   cnk = num / denom
 
 end function cnk
@@ -473,7 +473,7 @@ function ank(n, k)
   ank   = 1.0_dp
   do i=n, k+1, -1
     ank   = ank   * REAL(i, KIND=dp)
-  enddo
+  end do
 
 end function ank
 

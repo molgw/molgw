@@ -106,7 +106,7 @@ subroutine scf_loop(is_restart, &
   ! Setup the grids for the quadrature of DFT potential/energy
   if( calc_type%is_dft ) then
     call init_dft_grid(basis, grid_level, dft_xc(1)%needs_gradient, .TRUE., BATCH_SIZE)
-  endif
+  end if
 
   !
   ! Setup the density matrix: p_matrix
@@ -117,7 +117,7 @@ subroutine scf_loop(is_restart, &
   if( ABS(pbe_plus_alpha) > 1.0e-6_dp ) then
     call clean_allocate('+alpha potental', hamiltonian_pbealpha, basis%nbf, basis%nbf)
     call setup_pbe_plus_alpha(basis, hamiltonian_pbealpha)
-  endif
+  end if
 
   !
   ! Start the big scf loop
@@ -135,12 +135,12 @@ subroutine scf_loop(is_restart, &
     en_gks%kinetic  = SUM( hamiltonian_kinetic(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
     do ispin=1, nspin
       hamiltonian(:, :, ispin) = hamiltonian_kinetic(:, :)
-    enddo
+    end do
 
     en_gks%nucleus  = SUM( hamiltonian_nucleus(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
     do ispin=1, nspin
       hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + hamiltonian_nucleus(:, :)
-    enddo
+    end do
 
 
     !
@@ -150,8 +150,8 @@ subroutine scf_loop(is_restart, &
       do ispin=1, nspin
         hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + hamiltonian_pbealpha(:, :)
         en_gks%pbe_alpha = SUM( hamiltonian_pbealpha(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
-      enddo
-    endif
+      end do
+    end if
 
     !
     ! Hartree contribution to the Hamiltonian
@@ -164,16 +164,16 @@ subroutine scf_loop(is_restart, &
         ! Don't do anything since hartree will be contained in HXC
         !
         hamiltonian_hartree(:, :) = 0.0_dp
-      endif
+      end if
     else
       ! is_core completely neglects the electron-electron interaction. (This is exact for 1 electron.)
       hamiltonian_hartree(:, :) = 0.0_dp
       en_gks%hartree = 0.0_dp
-    endif
+    end if
 
     do ispin=1, nspin
       hamiltonian(:, :, ispin) = hamiltonian(:, :, ispin) + hamiltonian_hartree(:, :)
-    enddo
+    end do
 
 
     !
@@ -188,13 +188,13 @@ subroutine scf_loop(is_restart, &
     if( .NOT. pbc_ ) then
       if( calc_type%is_dft ) then
         call dft_exc_vxc_batch(BATCH_SIZE, basis, occupation, c_matrix, hamiltonian_xc, en_gks%xc)
-      endif
+      end if
     else
       !
       ! With PBC, hamiltonian_xc is actually H+XC hamiltonian
       !
       call setup_hxc_periodic(basis, p_matrix, hamiltonian_xc, en_gks%hartree, en_gks%xc)
-    endif
+    end if
 
     !
     ! LR Exchange contribution to the Hamiltonian
@@ -207,7 +207,7 @@ subroutine scf_loop(is_restart, &
       en_gks%exx_hyb = en_gks%exx_hyb * beta_hybrid
       hamiltonian_xc(:, :, :) = hamiltonian_xc(:, :, :) + hamiltonian_exx(:, :, :) * beta_hybrid
 
-    endif
+    end if
 
     !
     ! Exchange contribution to the Hamiltonian
@@ -219,7 +219,7 @@ subroutine scf_loop(is_restart, &
       en_gks%exx_hyb = en_gks%exx_hyb + alpha_hybrid * en_gks%exx
       hamiltonian_xc(:, :, :) = hamiltonian_xc(:, :, :) + hamiltonian_exx(:, :, :) * alpha_hybrid
 
-    endif
+    end if
 
 
     !
@@ -236,7 +236,7 @@ subroutine scf_loop(is_restart, &
       if( ABS(en_gks%rpa) > 1.e-6_dp) then
         en_gks%total = en_gks%total + en_gks%rpa
         write(stdout, '(/,a,f19.10)') ' RPA Total energy (Ha): ', en_gks%total
-      endif
+      end if
 
       !
       ! Set the range of states on which to evaluate the self-energy
@@ -251,7 +251,7 @@ subroutine scf_loop(is_restart, &
       hamiltonian_xc(:, :, :) = hamiltonian_xc(:, :, :) + selfenergy_ao(:, :, :)
       deallocate(selfenergy_ao)
 
-    endif
+    end if
 
     !
     ! QSPT2
@@ -275,7 +275,7 @@ subroutine scf_loop(is_restart, &
       hamiltonian_xc(:, :, :) = hamiltonian_xc(:, :, :) + selfenergy_ao(:, :, :)
       deallocate(selfenergy_ao)
 
-    endif
+    end if
 
     !
     ! Add the XC part of the hamiltonian to the total hamiltonian
@@ -290,8 +290,8 @@ subroutine scf_loop(is_restart, &
       do ispin=1,nspin
         hamiltonian(basis_t%nbf + 1:, basis_t%nbf + 1:, ispin) = hamiltonian(basis_t%nbf + 1:, basis_t%nbf + 1:, ispin) &
                 + scf_energy_shift * s_matrix(basis_t%nbf + 1:, basis_t%nbf + 1:)  
-      enddo
-    endif
+      end do
+    end if
 
 
     ! All the components of the energy have been calculated at this stage
@@ -309,7 +309,7 @@ subroutine scf_loop(is_restart, &
     ! All the unoccupied states are penalized with an energy =  level_shifting_energy
     if( level_shifting_energy > 1.0e-6_dp ) then
       call level_shifting_up(s_matrix, c_matrix, occupation, level_shifting_energy, hamiltonian)
-    endif
+    end if
 
     ! DIIS or simple mixing on the hamiltonian
     call hamiltonian_prediction(s_matrix, x_matrix, p_matrix, hamiltonian, en_gks%total)
@@ -329,7 +329,7 @@ subroutine scf_loop(is_restart, &
     ! So that the "physical" energies are written down
     if( level_shifting_energy > 1.0e-6_dp ) then
       call level_shifting_down(s_matrix, c_matrix, occupation, level_shifting_energy, energy, hamiltonian)
-    endif
+    end if
 
     call dump_out_energy('=== Energies ===', occupation, energy)
 
@@ -345,20 +345,20 @@ subroutine scf_loop(is_restart, &
     write(stdout, '(a25,1x,f19.10)') 'Hartree Energy  (Ha):', en_gks%hartree
     if(calc_type%need_exchange) then
       write(stdout, '(a25,1x,f19.10)') 'Exchange Energy (Ha):', en_gks%exx_hyb
-    endif
+    end if
     if( calc_type%is_dft ) then
       write(stdout, '(a25,1x,f19.10)') 'XC Energy       (Ha):', en_gks%xc
-    endif
+    end if
     if( ABS(en_gks%pbe_alpha) > 1.0e-8_dp )  then
       write(stdout, '(a25,1x,f19.10)') '+ alpha correction (Ha):', en_gks%pbe_alpha
-    endif
+    end if
     write(stdout, '(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):', en_gks%total
 
 
     ! If fractional occupancies are allowed, then recalculate the occupations
     if( temperature_ > 1.0e-8_dp ) then
       call set_occupation(temperature_, electrons, magnetization, energy, occupation)
-    endif
+    end if
 
     !
     ! Setup the new density matrix: p_matrix
@@ -382,12 +382,12 @@ subroutine scf_loop(is_restart, &
     ! Write down a "small" RESTART file at each step
     if( print_restart_ ) then
       call write_restart(SMALL_RESTART, 'RESTART', basis, occupation, c_matrix, energy)
-    endif
+    end if
 
 
     !
     ! end of the big SCF loop
-  enddo
+  end do
 
 
   write(stdout, '(/,1x,a)') '=================================================='
@@ -405,16 +405,16 @@ subroutine scf_loop(is_restart, &
   if( print_hartree_ ) then
     call print_hartee_expectation(basis, p_matrix, c_matrix, occupation, hamiltonian_hartree, hamiltonian_exx)
     call print_expectations(basis, c_matrix, hamiltonian_kinetic)
-  endif
+  end if
 
   if( print_density_matrix_ .AND. is_iomaster ) then
     write(stdout, '(1x,a)') 'Write DENSITY_MATRIX_GKS file'
     open(newunit=file_density_matrix, file='DENSITY_MATRIX_GKS', form='unformatted', action='write')
     do ispin=1, nspin
       write(file_density_matrix) p_matrix(:, :, ispin)
-    enddo
+    end do
     close(file_density_matrix)
-  endif
+  end if
 
   !
   ! Form the final Fock matrix and store it only if needed
@@ -425,7 +425,7 @@ subroutine scf_loop(is_restart, &
           .OR. calc_type%selfenergy_approx > 0  )  ) then
     call get_fock_operator(basis, p_matrix, c_matrix, occupation, en_gks, &
                           hamiltonian, hamiltonian_xc, hamiltonian_exx, hamiltonian_fock)
-  endif
+  end if
 
   !
   ! Cleanly deallocate the arrays
@@ -443,7 +443,7 @@ subroutine scf_loop(is_restart, &
     deallocate(diag_tmp)
 
     call clean_deallocate('+alpha potential', hamiltonian_pbealpha)
-  endif
+  end if
 
 
   write(stdout, '(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):', en_gks%total
@@ -452,17 +452,17 @@ subroutine scf_loop(is_restart, &
     write(stdout, '(a25,1x,f19.10)')       '      EXX Energy (Ha):', en_gks%exx
     en_gks%totalexx = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx
     write(stdout, '(a25,1x,f19.10)')       'Total EXX Energy (Ha):', en_gks%totalexx
-  endif
+  end if
 
   if( print_yaml_ .AND. is_iomaster ) then
     if( scf_has_converged ) then
       write(unit_yaml, '(/,a)') 'scf is converged: True'
     else
       write(unit_yaml, '(/,a)') 'scf is converged: False'
-    endif
+    end if
     call print_energy_yaml('scf energy', en_gks)
     call dump_out_energy_yaml('gks energies', energy)
-  endif
+  end if
 
   call timer_scf%stop()
 
@@ -526,7 +526,7 @@ subroutine scf_loop_cmplx(is_restart, &
   ! Setup the grids for the quadrature of DFT potential/energy
   if( calc_type%is_dft ) then
     call init_dft_grid(basis, grid_level, dft_xc(1)%needs_gradient, .TRUE., BATCH_SIZE)
-  endif
+  end if
 
   !
   ! Setup the density matrix: p_matrix
@@ -559,7 +559,7 @@ subroutine scf_loop_cmplx(is_restart, &
     do ispin=1, nspin
       hamiltonian_cmplx(:, :, ispin) = hamiltonian_cmplx(:, :, ispin)     &
                       + hamiltonian_kinetic(:, :) + hamiltonian_nucleus(:, :)
-    enddo
+    end do
 
     !! Sum up to get the total energy
     en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc
@@ -575,12 +575,12 @@ subroutine scf_loop_cmplx(is_restart, &
     ! the oldest is 2
     if( iscf > 1) then
       ham_hist(:, :, :, 2)=ham_hist(:, :, :, 1)
-    endif
+    end if
     ham_hist(:, :, :, 1)=hamiltonian_cmplx(:, :, :)
     if( iscf > 1) then
       write(stdout, '(/,1x,a,f8.4)') 'Simple mixing with parameter:', alpha_mixing
       hamiltonian_cmplx(:, :, :) = alpha_mixing * ham_hist(:, :, :, 1) + (1.0_dp - alpha_mixing) * ham_hist(:, :, :, 2)
-    endif
+    end if
 
     !
     ! H \varphi = S \varphi E
@@ -599,7 +599,7 @@ subroutine scf_loop_cmplx(is_restart, &
       !
       ! C = X * C'
       c_matrix_cmplx(:, :, ispin) = MATMUL(x_matrix, csmall_cmplx)
-    enddo
+    end do
 
     call dump_out_energy('=== Energies ===', occupation, energy)
 
@@ -615,10 +615,10 @@ subroutine scf_loop_cmplx(is_restart, &
     write(stdout, '(a25,1x,f19.10)') 'Hartree Energy  (Ha):', en_gks%hartree
     if(calc_type%need_exchange .OR. calc_type%need_exchange_lr) then
       write(stdout, '(a25,1x,f19.10)') 'Exchange Energy (Ha):', en_gks%exx_hyb
-    endif
+    end if
     if( calc_type%is_dft ) then
       write(stdout, '(a25,1x,f19.10)') 'XC Energy       (Ha):', en_gks%xc
-    endif
+    end if
     write(stdout, '(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):', en_gks%total
 
 
@@ -636,7 +636,7 @@ subroutine scf_loop_cmplx(is_restart, &
       write(stdout, '(1x,a,es12.5)') 'Convergence criterium on the density matrix: ', rms
     else
       p_matrix_cmplx_old(:, :, :)=p_matrix_cmplx(:, :, :)
-    endif
+    end if
 
     if( rms < tolscf ) then
       scf_has_converged = .TRUE.
@@ -652,10 +652,10 @@ subroutine scf_loop_cmplx(is_restart, &
           call issue_warning('SCF convergence is very poor')
         else if( rms > 1.0e-4_dp ) then
           call issue_warning('SCF convergence is poor')
-        endif
-      endif
+        end if
+      end if
 
-    endif
+    end if
 
     inquire(file='STOP', exist=stopfile_found)
 
@@ -664,7 +664,7 @@ subroutine scf_loop_cmplx(is_restart, &
 
     !
     ! end of the big SCF loop
-  enddo
+  end do
 
 
   write(stdout, '(/,1x,a)') '=================================================='
@@ -680,7 +680,7 @@ subroutine scf_loop_cmplx(is_restart, &
    p_matrix_real(:, :) = REAL(p_matrix_cmplx(:, :, 1) + p_matrix_cmplx(:, :, 2))
   else
    p_matrix_real(:, :) = REAL(p_matrix_cmplx(:, :, 1))
-  endif
+  end if
 
   allocate(s_eigval(basis%nbf), matrix_tmp(basis%nbf, basis%nbf))
   matrix_tmp(:, :) = s_matrix(:, :)
@@ -700,8 +700,8 @@ subroutine scf_loop_cmplx(is_restart, &
     if( s_eigval(jbf) > min_overlap ) then
       istate = istate + 1
       inv_x_matrix(:, istate) = matrix_tmp(:, jbf) * SQRT( s_eigval(jbf) )
-    endif
-  enddo
+    end if
+  end do
   !  diag[ S^1/2 P S^1/2 ] -> V
   deallocate(matrix_tmp)
   allocate(matrix_tmp(nstate, nstate), matrix_tmp2(nstate, nstate))
@@ -714,7 +714,7 @@ subroutine scf_loop_cmplx(is_restart, &
   if(nspin == 2) then
    occupation(:, 2) = 0.0_dp
    c_matrix(:, :, 2) = 0.0_dp
-  endif
+  end if
 
   !
   ! Cleanly deallocate the integral grid information
@@ -741,10 +741,10 @@ subroutine scf_loop_cmplx(is_restart, &
       write(unit_yaml, '(/,a)') 'scf is converged: True'
     else
       write(unit_yaml, '(/,a)') 'scf is converged: False'
-    endif
+    end if
     call print_energy_yaml('scf energy', en_gks)
     call dump_out_energy_yaml('gks energies', energy)
-  endif
+  end if
 
   call timer_scf%stop()
 
@@ -806,7 +806,7 @@ subroutine scf_loop_x2c(basis, &
   occ_matrix_rel=COMPLEX_ZERO
   do istate=1, nelectrons
     occ_matrix_rel(istate, istate) = 1.0_dp
-  enddo
+  end do
 
   !
   ! Allocate the main arrays
@@ -814,7 +814,7 @@ subroutine scf_loop_x2c(basis, &
   call clean_allocate('Hxc operator VHxc', hamiltonian_Vhxc, basis%nbf, basis%nbf, nspin)
   if(calc_type%need_exchange .OR. calc_type%need_exchange_lr) then
     call clean_allocate('Hxc operator VHxc2', hamiltonian_Vhxc2, basis%nbf, basis%nbf, nspin)
-  endif
+  end if
   call clean_allocate('Coefs. La or Lb C', c_matrix_LaorLb, basis%nbf, basis%nbf, nspin)
   call clean_allocate('Density matrix P_LaLb', p_matrix_LaorLb, basis%nbf, basis%nbf, nspin)
   call clean_allocate('Density matrix P', p_matrix_rel, nstate, nstate)
@@ -827,7 +827,7 @@ subroutine scf_loop_x2c(basis, &
   ! Setup the grids for the quadrature of DFT potential/energy
   if( calc_type%is_dft ) then
     call init_dft_grid(basis, grid_level, dft_xc(1)%needs_gradient, .TRUE., BATCH_SIZE)
-  endif
+  end if
 
   !
   ! Setup the density matrices p_matrix_rel and p_matrix_LaorLb
@@ -836,8 +836,8 @@ subroutine scf_loop_x2c(basis, &
     do jstate=1, nelectrons
       c_matrix_LaorLb(istate, jstate, 1)=c_matrix_rel(2*istate-1, jstate) ! L alpha coef. in spin channel 1
       c_matrix_LaorLb(istate, jstate, 2)=c_matrix_rel(2*istate  , jstate) ! L beta  coef. in spin channel 2
-    enddo
-  enddo
+    end do
+  end do
   p_matrix_rel=matmul(c_matrix_rel, matmul(occ_matrix_rel, transpose(conjg(c_matrix_rel))))
   call setup_density_matrix_cmplx(c_matrix_LaorLb, occupation, p_matrix_LaorLb)
 
@@ -864,8 +864,8 @@ subroutine scf_loop_x2c(basis, &
       do jstate=1, nstate/2
          hamiltonian_x2c(2*istate-1, 2*jstate-1) = hamiltonian_Vhxc(istate, jstate, 1) ! La spin channel unbar
          hamiltonian_x2c(2*istate  , 2*jstate  ) = hamiltonian_Vhxc(istate, jstate, 2) ! Lb spin channel   bar
-      enddo
-    enddo
+      end do
+    end do
     hamiltonian_x2c = hamiltonian_x2c + hamiltonian_hcore
 
     !--Hamiltonian - Exchange Correlation DFT ---
@@ -879,9 +879,9 @@ subroutine scf_loop_x2c(basis, &
         do jstate=1, nstate/2
            hamiltonian_x2c(2*istate-1, 2*jstate-1)=hamiltonian_x2c(2*istate-1, 2*jstate-1) + hamiltonian_Vhxc(istate, jstate, 1) 
            hamiltonian_x2c(2*istate  , 2*jstate  )=hamiltonian_x2c(2*istate  , 2*jstate  ) + hamiltonian_Vhxc(istate, jstate, 1) 
-        enddo
-      enddo
-    endif
+        end do
+      end do
+    end if
 
     !
     ! LR Exchange + Time-rev. LR Exchange ---
@@ -896,12 +896,12 @@ subroutine scf_loop_x2c(basis, &
            ham_hist(2*istate  , 2*jstate  , 2)=hamiltonian_Vhxc(istate, jstate, 2) ! < Lb tensor_product ( Lb |erf(wr)| Lb ) tensor_product Lb >
            ham_hist(2*istate-1, 2*jstate  , 2)=hamiltonian_Vhxc2(istate, jstate, 1) ! < La tensor_product ( Lb |erf(wr)| La ) tensor_product Lb >
            ham_hist(2*istate  , 2*jstate-1, 2)=hamiltonian_Vhxc2(istate, jstate, 2) ! < Lb tensor_product ( La |erf(wr)| Lb ) tensor_product La >
-        enddo
-      enddo
+        end do
+      end do
       en_gks%exx_hyb = 0.5_dp * beta_hybrid * REAL( SUM(ham_hist(:, :, 2) * CONJG(p_matrix_rel(:, :))), dp )
       hamiltonian_x2c(:, :) = hamiltonian_x2c(:, :) + beta_hybrid * ham_hist(:, :, 2)
       ham_hist(:, :, 2) = COMPLEX_ZERO
-    endif
+    end if
 
     !--Hamiltonian - Exact Exchange + Time-rev. Exchange ---
     if(calc_type%need_exchange) then
@@ -915,11 +915,11 @@ subroutine scf_loop_x2c(basis, &
            ham_hist(2*istate  , 2*jstate  , 2)=hamiltonian_Vhxc(istate, jstate, 2) ! < Lb tensor_product ( Lb | Lb ) tensor_product Lb >
            ham_hist(2*istate-1, 2*jstate  , 2)=hamiltonian_Vhxc2(istate, jstate, 1) ! < La tensor_product ( Lb | La ) tensor_product Lb >
            ham_hist(2*istate  , 2*jstate-1, 2)=hamiltonian_Vhxc2(istate, jstate, 2) ! < Lb tensor_product ( La | Lb ) tensor_product La >
-        enddo
-      enddo
+        end do
+      end do
       en_gks%exx_hyb = en_gks%exx_hyb + 0.5_dp * alpha_hybrid * REAL(SUM(ham_hist(:, :, 2)*CONJG(p_matrix_rel(:, :))), dp)
       hamiltonian_x2c(:, :) = hamiltonian_x2c(:, :) + alpha_hybrid * ham_hist(:, :, 2)
-    endif
+    end if
 
     !! Sum up to get the total energy
     en_gks%total = en_gks%nuc_nuc + en_gks%kin_nuc + en_gks%hartree + en_gks%exx_hyb + en_gks%xc
@@ -935,12 +935,12 @@ subroutine scf_loop_x2c(basis, &
     ! the oldest is 2
     if( iscf > 1) then
       ham_hist(:, :, 2)=ham_hist(:, :, 1)
-    endif
+    end if
     ham_hist(:, :, 1)=hamiltonian_x2c(:, :)
     if( iscf > 1) then
       write(stdout, '(/,1x,a,f8.4)') 'Simple mixing with parameter:', alpha_mixing
       hamiltonian_x2c(:, :) = alpha_mixing * ham_hist(:, :, 1) + (1.0_dp - alpha_mixing) * ham_hist(:, :, 2)
-    endif
+    end if
 
     !
     ! H' = X**T * H * X
@@ -953,7 +953,7 @@ subroutine scf_loop_x2c(basis, &
     do istate=1, nstate/2
       energy(istate, 1)=energy_vec(2*istate-1)
       energy(istate, 2)=energy_vec(2*istate)
-    enddo
+    end do
 
     !
     ! C = X * C'
@@ -977,10 +977,10 @@ subroutine scf_loop_x2c(basis, &
     write(stdout, '(a25,1x,f19.10)') 'Hartree Energy  (Ha):', en_gks%hartree
     if(calc_type%need_exchange .OR. calc_type%need_exchange_lr) then
       write(stdout, '(a25,1x,f19.10)') 'Exchange Energy (Ha):', en_gks%exx_hyb
-    endif
+    end if
     if(calc_type%is_dft) then
       write(stdout, '(a25,1x,f19.10)') 'XC Energy       (Ha):', en_gks%xc
-    endif
+    end if
     write(stdout, '(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):', en_gks%total
 
     !
@@ -991,8 +991,8 @@ subroutine scf_loop_x2c(basis, &
       do jstate=1, nelectrons
         c_matrix_LaorLb(istate, jstate, 1)=c_matrix_rel(2*istate-1, jstate) ! L alpha coef. in spin channel 1
         c_matrix_LaorLb(istate, jstate, 2)=c_matrix_rel(2*istate  , jstate) ! L beta  coef. in spin channel 2
-      enddo
-    enddo
+      end do
+    end do
     p_matrix_rel=matmul(c_matrix_rel, matmul(occ_matrix_rel, transpose(conjg(c_matrix_rel))))
     call setup_density_matrix_cmplx(c_matrix_LaorLb, occupation, p_matrix_LaorLb)
 
@@ -1005,7 +1005,7 @@ subroutine scf_loop_x2c(basis, &
       write(stdout, '(1x,a,es12.5)') 'Convergence criterium on the density matrix: ', rms
     else
       p_matrix_rel_old(:, :)=p_matrix_rel(:, :)
-    endif
+    end if
 
     if( rms < tolscf ) then
       scf_has_converged = .TRUE.
@@ -1021,10 +1021,10 @@ subroutine scf_loop_x2c(basis, &
           call issue_warning('SCF convergence is very poor')
         else if( rms > 1.0e-4_dp ) then
           call issue_warning('SCF convergence is poor')
-        endif
-      endif
+        end if
+      end if
 
-    endif
+    end if
 
     inquire(file='STOP', exist=stopfile_found)
 
@@ -1033,7 +1033,7 @@ subroutine scf_loop_x2c(basis, &
 
     !
     ! end of the big SCF loop
-  enddo
+  end do
 
   !
   ! Store the natural orbital basis representation of the density matrix in c_matrix
@@ -1045,8 +1045,8 @@ subroutine scf_loop_x2c(basis, &
   !do istate=1, nstate/2
   !  do jstate=1, nstate/2
   !     p_matrix_real(istate, jstate)=real(p_matrix_rel(2*istate-1, 2*jstate-1) + p_matrix_rel(2*istate, 2*jstate))
-  !  enddo
-  !enddo
+  !  end do
+  !end do
   !p_matrix_real=0.5_dp*(p_matrix_real + transpose(p_matrix_real))
   p_matrix_real(:, :)=real(p_matrix_LaorLb(:, :, 1) + p_matrix_LaorLb(:, :, 2))
   allocate(s_eigval(basis%nbf), matrix_tmp(basis%nbf, basis%nbf))     
@@ -1067,8 +1067,8 @@ subroutine scf_loop_x2c(basis, &
     if( s_eigval(jbf) > min_overlap ) then
       istate = istate + 1
       inv_x_matrix(:, istate) = matrix_tmp(:, jbf) * SQRT( s_eigval(jbf) )
-    endif
-  enddo
+    end if
+  end do
   !  diag[ S^1/2 P S^1/2 ] -> V
   deallocate(matrix_tmp)     
   allocate(matrix_tmp(nstate, nstate))     
@@ -1101,7 +1101,7 @@ subroutine scf_loop_x2c(basis, &
   call clean_deallocate('State energies', energy_vec)
   if(calc_type%need_exchange .OR. calc_type%need_exchange_lr) then
     call clean_deallocate('Hxc operator VHxc2', hamiltonian_Vhxc2)
-  endif
+  end if
 
   write(stdout, '(/,/,a25,1x,f19.10,/)') 'SCF Total Energy (Ha):', en_gks%total
 
@@ -1110,10 +1110,10 @@ subroutine scf_loop_x2c(basis, &
       write(unit_yaml, '(/,a)') 'scf is converged: True'
     else
       write(unit_yaml, '(/,a)') 'scf is converged: False'
-    endif
+    end if
     call print_energy_yaml('scf energy', en_gks)
     call dump_out_energy_yaml('gks energies', energy)
-  endif
+  end if
 
   call timer_scf%stop()
 
@@ -1215,7 +1215,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
   ! Setup the grids for the quadrature of DFT potential/energy
   if( calc_type%is_dft ) then
     call init_dft_grid(basis, grid_level, dft_xc(1)%needs_gradient, .TRUE., BATCH_SIZE)
-  endif
+  end if
 
   ! Calculate inital occupations using Fermi-Dirac distribution
   nelectrons = 0.0_dp
@@ -1224,15 +1224,15 @@ subroutine scf_loop_bogoliubov(is_restart, &
                         chem_pot=chem_pot)
     do ispin=1, nspin
       nelectrons = nelectrons + sum(occupation(:, ispin))
-    enddo
+    end do
     nelectrons = nint(nelectrons)
     do ispin=1, nspin
       do istate=1, nstate
         sqrt_occ_hole(istate, ispin) = SQRT( ABS((occupation(istate, ispin)/spin_fact) &
                                        * ( 1.0_dp - (occupation(istate, ispin)/spin_fact)) ) )
-      enddo
-    enddo
-  endif
+      end do
+    end do
+  end if
 
   !
   ! Setup the density matrix and the anomalous density matrix: p_matrix and p_anom_matrix
@@ -1254,12 +1254,12 @@ subroutine scf_loop_bogoliubov(is_restart, &
       p_anom_mo(1:nstate, 1:nstate)=p_anom_mo(1:nstate, 1:nstate)                                     &
         + matmul(matmul(x_inv_matrix(1:nstate, 1:basis%nbf), p_anom_matrix(1:basis%nbf, 1:basis%nbf, ispin)), &
             transpose(x_inv_matrix(1:nstate, 1:basis%nbf)))
-    enddo
+    end do
     p_anom_mo = spin_fact * p_anom_mo
     p_anom_mo = matmul(transpose(p_anom_mo), p_anom_mo)
     do istate=1, nstate
      norm_anom = norm_anom + ABS(p_anom_mo(istate, istate))
-    enddo    
+    end do    
 
     !  Kinetic energy and ext potenial contributions
     en_gks%kinetic  = SUM( hamiltonian_kinetic(:, :) * SUM(p_matrix(:, :, :), DIM=3) )
@@ -1272,7 +1272,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
     !
     do ispin=1, nspin
       hamiltonian_fock(:, :, ispin) = hamiltonian_kinetic(:, :) + hamiltonian_nucleus(:, :)
-    enddo
+    end do
 
     !
     ! Hartree contribution to the Hamiltonian
@@ -1283,10 +1283,10 @@ subroutine scf_loop_bogoliubov(is_restart, &
     if( calc_type%is_core ) then
       hamiltonian_hartree(:, :) = 0.0_dp
       en_gks%hartree = 0.0_dp
-    endif
+    end if
     do ispin=1, nspin
       hamiltonian_fock(:, :, ispin) = hamiltonian_fock(:, :, ispin) + hamiltonian_hartree(:, :)
-    enddo
+    end do
 
     !
     !  XC part of the Hamiltonian
@@ -1299,7 +1299,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
     ! hamiltonian_xc is used as a temporary matrix
     if( calc_type%is_dft ) then
       call dft_exc_vxc_batch(BATCH_SIZE, basis, occupation, c_matrix, hamiltonian_xc, en_gks%xc)
-    endif
+    end if
 
     !
     ! LR Exchange contribution to the Hamiltonian
@@ -1312,7 +1312,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
       en_gks%exx_hyb = en_gks%exx_hyb * beta_hybrid
       hamiltonian_xc(:, :, :) = hamiltonian_xc(:, :, :) + hamiltonian_exx(:, :, :) * beta_hybrid
 
-    endif
+    end if
 
     !
     ! Exchange contribution to the Hamiltonian
@@ -1324,13 +1324,13 @@ subroutine scf_loop_bogoliubov(is_restart, &
       en_gks%exx_hyb = en_gks%exx_hyb + alpha_hybrid * en_gks%exx
       hamiltonian_xc(:, :, :) = hamiltonian_xc(:, :, :) + hamiltonian_exx(:, :, :) * alpha_hybrid
 
-    endif
+    end if
 
     !
     ! Add the XC part of the hamiltonian to the total hamiltonian
     do ispin=1, nspin
       hamiltonian_fock(:, :, ispin) = hamiltonian_fock(:, :, ispin) + hamiltonian_xc(:, :, ispin)
-    enddo
+    end do
 
     !
     ! Anomalous density contribution to the Hamiltonian 
@@ -1344,7 +1344,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
                               occupation=sqrt_occ_hole, c_matrix=c_matrix)
       en_gks%anomalous = -pairing_ri_fact*spin_fact*spin_fact*bogoliubov_sigma*en_gks%anomalous
       hamiltonian_pairing(:, :, :) = -pairing_ri_fact*spin_fact*bogoliubov_sigma*hamiltonian_pairing(:, :, :)
-    endif
+    end if
 
     !
     ! Simple mixing on the hamiltonian
@@ -1355,7 +1355,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
         do ispin=1, nspin
           ham_hist(:, :, 1, ispin)=hamiltonian_fock(:, :, ispin)
           ham_anom_hist(:, :, 1, ispin)=hamiltonian_pairing(:, :, ispin)
-        enddo
+        end do
         first_history=.FALSE.
       else
         write(stdout, '(/,1x,a,f8.4)') 'Simple mixing with parameter:', alpha_mixing
@@ -1368,9 +1368,9 @@ subroutine scf_loop_bogoliubov(is_restart, &
                                            + ( 1.0_dp - alpha_mixing ) * ham_hist(:, :, 2, ispin)
           hamiltonian_pairing(:, :, ispin) = alpha_mixing*ham_anom_hist(:, :, 1, ispin) &
                                              + ( 1.0_dp - alpha_mixing ) * ham_anom_hist(:, :, 2, ispin)
-        enddo
-      endif
-    endif
+        end do
+      end if
+    end if
 
     !
     ! Make sure all the MPI tasks have the exact same Bogoliubov Hamiltonian parts
@@ -1400,12 +1400,12 @@ subroutine scf_loop_bogoliubov(is_restart, &
           matmul(hamiltonian_pairing(1:basis%nbf, 1:basis%nbf, ispin), c_matrix(1:basis%nbf, 1:nstate, ispin)))
         H_KSB(nstate + 1:nstate_twice, 1:nstate             , ispin) =  &    ! ee
           H_KSB(1:nstate             , nstate + 1:nstate_twice, ispin)
-      endif
-    enddo
+      end if
+    end do
     call compute_KSB_dm1_and_trace(nstate, chem_pot, trace_dm1, H_KSB, U_QP, energy_QP, DM1)
     if( abs(trace_dm1-nelectrons) > 1e-6 ) then
       call adjust_chem_pot_ksb(nstate, nelectrons, chem_pot, trace_dm1, H_KSB, U_QP, energy_QP, DM1) 
-    endif
+    end if
 
     ! 
     ! Compute the sqrt_occ_hole values from U_QP to show that for nspin=2 we have +- values
@@ -1417,15 +1417,15 @@ subroutine scf_loop_bogoliubov(is_restart, &
           p_anom_mo(1:nstate, 1:nstate) = p_anom_mo(1:nstate, 1:nstate) &
            + matmul(U_QP(1:nstate, istate:istate, ispin),              &
                transpose(U_QP(nstate + 1:nstate_twice, istate:istate, ispin)))
-        enddo
+        end do
         call diagonalize(' ', p_anom_mo, sqrt_occ_hole(:, ispin), p_anom_mo)
-      enddo
+      end do
       write(stdout, *) 
       write(stdout, *) '=== +- Sqrt( Occ (1 - Occ) ) ==='
       do istate = 1, nstate
         write(stdout, '(*(f10.5))') sqrt_occ_hole(nstate - (istate - 1), :)
-      enddo
-    endif
+      end do
+    end if
 
     ! All the components of the energy have been calculated at this stage
     ! Sum up to get the total energy
@@ -1440,9 +1440,9 @@ subroutine scf_loop_bogoliubov(is_restart, &
         do jstate = istate + 1, nstate
           if(abs(DM1(istate, jstate, ispin)) > 1e-8_dp) skip_diag = .FALSE.
           if(.NOT. skip_diag) exit 
-        enddo
+        end do
         if(.NOT. skip_diag) exit 
-      enddo
+      end do
       if(.NOT. skip_diag) then
         call diagonalize(' ', DM1(:, :, ispin), occ_tmp(:), DM1(:, :, ispin)) ! DM1 becomes the eigenvectors to build the NOs
         c_matrix_tmp(:, :) = matmul(c_matrix(:, :, ispin), DM1(:, :, ispin)) ! c_matrix contains the new NOs
@@ -1453,7 +1453,7 @@ subroutine scf_loop_bogoliubov(is_restart, &
                                      * (1.0_dp - (occupation(istate, ispin) / spin_fact))))
           occupation_QP(istate, ispin) = occupation(istate, ispin) / spin_fact
           occupation_QP(istate + nstate, ispin) = 1.0_dp - occupation(istate, ispin) / spin_fact
-        enddo
+        end do
       else
         do istate = 1, nstate
           occupation(istate, ispin) = spin_fact * ABS(DM1(istate, istate, ispin)) ! The DM1 already contains the occupation numbers in its diagonal
@@ -1461,9 +1461,9 @@ subroutine scf_loop_bogoliubov(is_restart, &
                                         * (1.0_dp - (occupation(istate, ispin) / spin_fact))) )
           occupation_QP(istate, ispin) = occupation(istate, ispin) / spin_fact
           occupation_QP(istate + nstate, ispin) = 1.0_dp - occupation(istate, ispin) / spin_fact
-        enddo
-      endif
-    enddo
+        end do
+      end if
+    end do
     occupation_QP(:, :) = spin_fact * occupation_QP(:, :)
     call dump_out_energy('=== Energies ===', occupation_QP, energy_QP, is_ksb=is_ksb)
 
@@ -1476,10 +1476,10 @@ subroutine scf_loop_bogoliubov(is_restart, &
     write(stdout, '(a25,1x,f19.10)') 'Hartree Energy  (Ha):', en_gks%hartree
     if(calc_type%need_exchange) then
       write(stdout, '(a25,1x,f19.10)') 'Exchange Energy (Ha):', en_gks%exx_hyb
-    endif
+    end if
     if( calc_type%is_dft ) then
       write(stdout, '(a25,1x,f19.10)') 'XC Energy       (Ha):', en_gks%xc
-    endif
+    end if
     write(stdout, '(a25,1x,f19.10)') 'Anomal   Energy (Ha):', en_gks%anomalous
     write(stdout, '(/,a25,1x,f19.10,/)') 'Total Energy    (Ha):', en_gks%total
     write(stdout, '(/,a25,1x,f19.10)') 'Norm Anomalous      :', norm_anom
@@ -1497,14 +1497,14 @@ subroutine scf_loop_bogoliubov(is_restart, &
       do ispin = 1, nspin
         rms = NORM2( p_matrix(:, :, ispin)  - p_matrix_old(:, :, ispin) )  * SQRT( REAL(nspin, dp) ) &
             + NORM2( p_anom_matrix(:, :, ispin) - p_anom_matrix_old(:, :, ispin) ) * SQRT( REAL(nspin, dp) )
-      enddo
+      end do
       p_matrix_old(:, :, :) = p_matrix(:, :, :)
       p_anom_matrix_old(:, :, :) = p_anom_matrix(:, :, :)
       write(stdout, '(1x,a,es12.5)') 'Convergence criterium on the density matrix: ', rms
     else
       p_matrix_old(:, :, :) = p_matrix(:, :, :)
       p_anom_matrix_old(:, :, :) = p_anom_matrix(:, :, :)
-    endif
+    end if
     if( rms < tolscf ) then
       scf_has_converged = .TRUE.
       write(stdout, *) ' ===> convergence has been reached'
@@ -1519,10 +1519,10 @@ subroutine scf_loop_bogoliubov(is_restart, &
           call issue_warning('SCF convergence is very poor')
         else if( rms > 1.0e-4_dp ) then
           call issue_warning('SCF convergence is poor')
-        endif
-      endif
+        end if
+      end if
 
-    endif
+    end if
     inquire(file='STOP', exist=stopfile_found)
 
     if( scf_has_converged .OR. stopfile_found ) exit
@@ -1531,12 +1531,12 @@ subroutine scf_loop_bogoliubov(is_restart, &
     ! Write down a "small" RESTART file at each step
     if( print_restart_ ) then
       call write_restart(SMALL_RESTART, 'RESTART', basis, occupation, c_matrix, energy)
-    endif
+    end if
 
 
     !
     ! end of the big SCF loop
-  enddo
+  end do
 
 
   write(stdout, '(/,1x,a)') '=================================================='
@@ -1580,10 +1580,10 @@ subroutine scf_loop_bogoliubov(is_restart, &
       write(unit_yaml, '(/,a)') 'scf is converged: True'
     else
       write(unit_yaml, '(/,a)') 'scf is converged: False'
-    endif
+    end if
     call print_energy_yaml('scf energy', en_gks)
     call dump_out_energy_yaml('gks energies', energy)
-  endif
+  end if
 
   call timer_scf%stop()
 
@@ -1610,7 +1610,7 @@ subroutine get_fock_operator(basis, p_matrix, c_matrix, occupation, en, &
   !
   if( .NOT. calc_type%need_exchange ) then
     call calculate_exchange(basis, p_matrix, hamiltonian_exx, ex=en%exx, occupation=occupation, c_matrix=c_matrix)
-  endif
+  end if
 
   hamiltonian_fock(:, :, :) = hamiltonian(:, :, :) - hamiltonian_xc(:, :, :) + hamiltonian_exx(:, :, :)
 
@@ -1642,7 +1642,7 @@ subroutine print_hartee_expectation(basis, p_matrix, c_matrix, occupation, hamil
   !
   if( ALL( ABS(hamiltonian_exx(:, :, :)) < 1.0e-6_dp ) ) then
     call calculate_exchange(basis, p_matrix, hamiltonian_exx, occupation=occupation, c_matrix=c_matrix)
-  endif
+  end if
 
   call clean_allocate('RESTART: C', c_matrix_restart, basis%nbf, nstate, nspin)
   allocate(energy_restart(nstate, nspin))
@@ -1655,7 +1655,7 @@ subroutine print_hartee_expectation(basis, p_matrix, c_matrix, occupation, hamil
     c_matrix_restart(:, :, :) = c_matrix(:, :, :)
   else
     write(stdout, '(1x,a,a)') 'RESTART file read: ', 'RESTART_TEST'
-  endif
+  end if
 
   call h_ao_to_mo_diag(c_matrix_restart, hamiltonian_hartree, h_ii)
   call dump_out_energy('=== Hartree expectation value ===', occupation, h_ii)
@@ -1708,13 +1708,13 @@ subroutine print_expectations(basis, c_matrix, hkin)
       do istate=1, nstate
         write(char6, '(i6)') istate
         write(unit_yaml, '(8x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', ekin(istate, ispin)
-      enddo
-    enddo
+      end do
+    end do
 
 
     write(unit_yaml, '(/,a)') 'hartree self-interaction:'
     write(unit_yaml, '(4x,a)') 'unit: Ha'
-  endif
+  end if
 
   do ispin=1, nspin
     if( print_yaml_ .AND. is_iomaster ) write(unit_yaml, '(4x,a,i2,a)') 'spin channel', ispin, ':'
@@ -1726,8 +1726,8 @@ subroutine print_expectations(basis, c_matrix, hkin)
       do jbf=1, nbf
         do ibf=jbf + 1, nbf
           p_matrix(jbf, ibf, ispin) = p_matrix(ibf, jbf, ispin)
-        enddo
-      enddo
+        end do
+      end do
 
       call calculate_hartree(basis, p_matrix, hh, eh=ehartree_i)
 
@@ -1735,10 +1735,10 @@ subroutine print_expectations(basis, c_matrix, hkin)
       if( print_yaml_ .AND. is_iomaster ) then
         write(char6, '(i6)') istate
         write(unit_yaml, '(8x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', ehartree_i
-      endif
+      end if
 
-    enddo
-  enddo
+    end do
+  end do
 
   deallocate(hh, p_matrix, ekin)
 

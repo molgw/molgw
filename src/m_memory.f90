@@ -105,7 +105,7 @@ subroutine clean_allocate_i1d(array_name, array, n1)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(4, dp) * REAL(n1, dp) / 1024._dp**2
 
@@ -116,7 +116,7 @@ subroutine clean_allocate_i1d(array_name, array, n1)
     write(stdout, '(a,a)')    ' Failure when allocating ', array_name
     write(stdout, '(a,f9.3)') ' with size (Gb) ', mem_mb / 1024.0_dp
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -140,7 +140,7 @@ subroutine clean_allocate_i2d(array_name, array, n1, n2)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(4, dp) * REAL(n1, dp) * REAL(n2, dp) / 1024._dp**2
 
@@ -151,7 +151,7 @@ subroutine clean_allocate_i2d(array_name, array, n1, n2)
     write(stdout, '(a,a)')    ' Failure when allocating ', array_name
     write(stdout, '(a,f9.3)') ' with size (Gb) ', mem_mb / 1024.0_dp
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -176,7 +176,7 @@ subroutine clean_allocate_1d(array_name, array, n1, verbose)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(dp, dp) * REAL(n1, dp) / 1024._dp**2
 
@@ -186,7 +186,7 @@ subroutine clean_allocate_1d(array_name, array, n1, verbose)
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -196,7 +196,7 @@ subroutine clean_allocate_1d(array_name, array, n1, verbose)
     if(verbose) call write_memory_allocate(array_name, mem_mb)
   else
     call write_memory_allocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_allocate_1d
 
@@ -214,7 +214,7 @@ subroutine clean_allocate_1d_int8(array_name, array, n1)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated ->'//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(dp, dp) * REAL(n1, dp) / 1024._dp**2
 
@@ -224,7 +224,7 @@ subroutine clean_allocate_1d_int8(array_name, array, n1)
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
   total_memory = total_memory + mem_mb
   peak_memory = MAX(peak_memory, total_memory)
@@ -248,7 +248,7 @@ subroutine clean_allocate_2d(array_name, array, n1, n2, verbose)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(dp, dp) * REAL(n1, dp) * REAL(n2, dp) / 1024._dp**2
 
@@ -258,7 +258,7 @@ subroutine clean_allocate_2d(array_name, array, n1, n2, verbose)
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -268,7 +268,7 @@ subroutine clean_allocate_2d(array_name, array, n1, n2, verbose)
     if(verbose) call write_memory_allocate(array_name, mem_mb)
   else
     call write_memory_allocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_allocate_2d
 
@@ -287,7 +287,7 @@ subroutine clean_allocate_2d_range(array_name, array, n1s, n1f, n2s, n2f, verbos
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(dp, dp) * REAL(n1f-n1s+1, dp) * REAL(n2f-n2s+1, dp) / 1024._dp**2
 
@@ -297,7 +297,7 @@ subroutine clean_allocate_2d_range(array_name, array, n1s, n1f, n2s, n2f, verbos
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -307,7 +307,7 @@ subroutine clean_allocate_2d_range(array_name, array, n1s, n1f, n2s, n2f, verbos
     if(verbose) call write_memory_allocate(array_name, mem_mb)
   else
     call write_memory_allocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_allocate_2d_range
 
@@ -326,7 +326,7 @@ subroutine clean_allocate_3d(array_name, array, n1, n2, n3, verbose)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(dp, dp) * REAL(n1, dp) * REAL(n2, dp) * REAL(n3, dp) / 1024._dp**2
 
@@ -336,7 +336,7 @@ subroutine clean_allocate_3d(array_name, array, n1, n2, n3, verbose)
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -346,7 +346,7 @@ subroutine clean_allocate_3d(array_name, array, n1, n2, n3, verbose)
     if(verbose) call write_memory_allocate(array_name, mem_mb)
   else
     call write_memory_allocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_allocate_3d
 
@@ -364,7 +364,7 @@ subroutine clean_allocate_3d_range(array_name, array, n1s, n1f, n2s, n2f, n3s, n
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(dp, dp) * REAL(n1f-n1s+1, dp) * REAL(n2f-n2s+1, dp) * REAL(n3f-n3s+1, dp) / 1024._dp**2
 
@@ -374,7 +374,7 @@ subroutine clean_allocate_3d_range(array_name, array, n1s, n1f, n2s, n2f, n3s, n
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -399,7 +399,7 @@ subroutine clean_allocate_4d(array_name, array, n1, n2, n3, n4, verbose)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(dp, dp) * REAL(n1, dp) * REAL(n2, dp) * REAL(n3, dp) * REAL(n4, dp) / 1024._dp**2
 
@@ -409,7 +409,7 @@ subroutine clean_allocate_4d(array_name, array, n1, n2, n3, n4, verbose)
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -419,7 +419,7 @@ subroutine clean_allocate_4d(array_name, array, n1, n2, n3, n4, verbose)
     if(verbose) call write_memory_allocate(array_name, mem_mb)
   else
     call write_memory_allocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_allocate_4d
 
@@ -438,7 +438,7 @@ subroutine clean_allocate_4d_range(array_name, array, n1s, n1f, n2s, n2f, n3s, n
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(dp, dp) * REAL(n1f-n1s+1, dp) * REAL(n2f-n2s+1, dp) * REAL(n3f-n3s+1, dp) * REAL(n4f-n4s+1, dp) / 1024._dp**2
 
@@ -448,7 +448,7 @@ subroutine clean_allocate_4d_range(array_name, array, n1s, n1f, n2s, n2f, n3s, n
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -458,7 +458,7 @@ subroutine clean_allocate_4d_range(array_name, array, n1s, n1f, n2s, n2f, n3s, n
     if(verbose) call write_memory_allocate(array_name, mem_mb)
   else
     call write_memory_allocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_allocate_4d_range
 
@@ -477,7 +477,7 @@ subroutine clean_allocate_c1d(array_name, array, n1, verbose)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = 2._dp*REAL(dp, dp) * REAL(n1, dp) / 1024._dp**2
 
@@ -487,7 +487,7 @@ subroutine clean_allocate_c1d(array_name, array, n1, verbose)
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -497,7 +497,7 @@ subroutine clean_allocate_c1d(array_name, array, n1, verbose)
     if(verbose) call write_memory_allocate(array_name, mem_mb)
   else
     call write_memory_allocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_allocate_c1d
 
@@ -516,7 +516,7 @@ subroutine clean_allocate_c2d(array_name, array, n1, n2, verbose)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = 2._dp*REAL(dp, dp) * REAL(n1, dp) * REAL(n2, dp) / 1024._dp**2
 
@@ -526,7 +526,7 @@ subroutine clean_allocate_c2d(array_name, array, n1, n2, verbose)
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -536,7 +536,7 @@ subroutine clean_allocate_c2d(array_name, array, n1, n2, verbose)
     if(verbose) call write_memory_allocate(array_name, mem_mb)
   else
     call write_memory_allocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_allocate_c2d
 
@@ -555,7 +555,7 @@ subroutine clean_allocate_c2d_range(array_name, array, n1s, n1f, n2s, n2f, verbo
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = 2._dp*REAL(dp, dp) * REAL(n1f-n1s+1, dp) * REAL(n2f-n2s+1, dp) / 1024._dp**2
 
@@ -565,7 +565,7 @@ subroutine clean_allocate_c2d_range(array_name, array, n1s, n1f, n2s, n2f, verbo
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -575,7 +575,7 @@ subroutine clean_allocate_c2d_range(array_name, array, n1s, n1f, n2s, n2f, verbo
     if(verbose) call write_memory_allocate(array_name, mem_mb)
   else
     call write_memory_allocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_allocate_c2d_range
 
@@ -594,7 +594,7 @@ subroutine clean_allocate_c3d(array_name, array, n1, n2, n3, verbose)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = 2._dp*REAL(dp, dp) * REAL(n1, dp) * REAL(n2, dp) * REAL(n3, dp) / 1024._dp**2
 
@@ -604,7 +604,7 @@ subroutine clean_allocate_c3d(array_name, array, n1, n2, n3, verbose)
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -614,7 +614,7 @@ subroutine clean_allocate_c3d(array_name, array, n1, n2, n3, verbose)
     if(verbose) call write_memory_allocate(array_name, mem_mb)
   else
     call write_memory_allocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_allocate_c3d
 
@@ -633,7 +633,7 @@ subroutine clean_allocate_c4d(array_name, array, n1, n2, n3, n4, verbose)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = 2._dp*REAL(dp, dp) * REAL(n1, dp) * REAL(n2, dp) * REAL(n3, dp) * REAL(n4, dp) / 1024._dp**2
 
@@ -643,7 +643,7 @@ subroutine clean_allocate_c4d(array_name, array, n1, n2, n3, n4, verbose)
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -653,7 +653,7 @@ subroutine clean_allocate_c4d(array_name, array, n1, n2, n3, n4, verbose)
     if(verbose) call write_memory_allocate(array_name, mem_mb)
   else
     call write_memory_allocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_allocate_c4d
 
@@ -672,7 +672,7 @@ subroutine clean_allocate_c4d_range(array_name, array, n1s, n1f, n2s, n2f, n3s, 
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb=2._dp*REAL(dp, dp)*REAL(n1f-n1s+1, dp)*REAL(n2f-n2s+1, dp)*REAL(n3f-n3s+1, dp)*REAL(n4f-n4s+1, dp)/1024._dp**2
 
@@ -682,7 +682,7 @@ subroutine clean_allocate_c4d_range(array_name, array, n1s, n1f, n2s, n2f, n3s, 
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -692,7 +692,7 @@ subroutine clean_allocate_c4d_range(array_name, array, n1s, n1f, n2s, n2f, n3s, 
     if(verbose) call write_memory_allocate(array_name, mem_mb)
   else
     call write_memory_allocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_allocate_c4d_range
 
@@ -776,7 +776,7 @@ subroutine clean_deallocate_1d(array_name, array, verbose)
     if(verbose) call write_memory_deallocate(array_name, mem_mb)
   else
     call write_memory_deallocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_deallocate_1d
 
@@ -808,7 +808,7 @@ subroutine clean_deallocate_2d(array_name, array, verbose)
     if(verbose) call write_memory_deallocate(array_name, mem_mb)
   else
     call write_memory_deallocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_deallocate_2d
 
@@ -841,7 +841,7 @@ subroutine clean_deallocate_3d(array_name, array, verbose)
     if(verbose) call write_memory_deallocate(array_name, mem_mb)
   else
     call write_memory_deallocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_deallocate_3d
 
@@ -875,7 +875,7 @@ subroutine clean_deallocate_4d(array_name, array, verbose)
     if(verbose) call write_memory_deallocate(array_name, mem_mb)
   else
     call write_memory_deallocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_deallocate_4d
 
@@ -906,7 +906,7 @@ subroutine clean_deallocate_c1d(array_name, array, verbose)
     if(verbose) call write_memory_deallocate(array_name, mem_mb)
   else
     call write_memory_deallocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_deallocate_c1d
 
@@ -938,7 +938,7 @@ subroutine clean_deallocate_c2d(array_name, array, verbose)
     if(verbose) call write_memory_deallocate(array_name, mem_mb)
   else
     call write_memory_deallocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_deallocate_c2d
 
@@ -971,7 +971,7 @@ subroutine clean_deallocate_c3d(array_name, array, verbose)
     if(verbose) call write_memory_deallocate(array_name, mem_mb)
   else
     call write_memory_deallocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_deallocate_c3d
 
@@ -1005,7 +1005,7 @@ subroutine clean_deallocate_c4d(array_name, array, verbose)
     if(verbose) call write_memory_deallocate(array_name, mem_mb)
   else
     call write_memory_deallocate(array_name, mem_mb)
-  endif
+  end if
 
 end subroutine clean_deallocate_c4d
 
@@ -1023,7 +1023,7 @@ subroutine clean_allocate_s1d(array_name, array, n1)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(sp, dp) * REAL(n1, dp) / 1024._dp**2
 
@@ -1033,7 +1033,7 @@ subroutine clean_allocate_s1d(array_name, array, n1)
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -1057,7 +1057,7 @@ subroutine clean_allocate_s2d(array_name, array, n1, n2)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(sp, dp) * REAL(n1, dp) * REAL(n2, dp) / 1024._dp**2
 
@@ -1067,7 +1067,7 @@ subroutine clean_allocate_s2d(array_name, array, n1, n2)
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -1091,7 +1091,7 @@ subroutine clean_allocate_s3d(array_name, array, n1, n2, n3)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(sp, dp) * REAL(n1, dp) * REAL(n2, dp) * REAL(n3, dp) / 1024._dp**2
 
@@ -1101,7 +1101,7 @@ subroutine clean_allocate_s3d(array_name, array, n1, n2, n3)
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb
@@ -1125,7 +1125,7 @@ subroutine clean_allocate_s4d(array_name, array, n1, n2, n3, n4)
 
   if( ALLOCATED(array) ) then
     call die('clean_allocate: Cannot allocate. This array is already allocated -> '//TRIM(array_name))
-  endif
+  end if
 
   mem_mb = REAL(sp, dp) * REAL(n1, dp) * REAL(n2, dp) * REAL(n3, dp) * REAL(n4, dp) / 1024._dp**2
 
@@ -1135,7 +1135,7 @@ subroutine clean_allocate_s4d(array_name, array, n1, n2, n3, n4)
   if(info/=0) then
     write(stdout, *) 'failure'
     call die('clean_allocate: Not enough memory. Buy a bigger computer')
-  endif
+  end if
 
 
   total_memory = total_memory + mem_mb

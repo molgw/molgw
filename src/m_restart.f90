@@ -62,7 +62,7 @@ subroutine write_restart(restart_type, restart_filename, basis, occupation, c_ma
   nstate = SIZE(occupation,DIM=1)
   if( nstate /= SIZE(energy,DIM=1) ) then
     call die('write_restart: inconsistency in size of occupation and energy') 
-  endif
+  end if
 
 
   select case(restart_type)
@@ -76,7 +76,7 @@ subroutine write_restart(restart_type, restart_filename, basis, occupation, c_ma
 
   if( restart_type == BIG_RESTART .AND. .NOT. PRESENT(hamiltonian_fock) ) then
     call die('write_restart: an input hamiltonian_fock is needed for a BIG restart')
-  endif
+  end if
 
 
   open(newunit=restartfile, file=TRIM(restart_filename), form='unformatted', action='write')
@@ -109,7 +109,7 @@ subroutine write_restart(restart_type, restart_filename, basis, occupation, c_ma
   else
     ! Or write down all the states in BIG_RESTART
     nstate_stored = nstate
-  endif
+  end if
 
   write(restartfile) nstate_stored
 
@@ -117,18 +117,18 @@ subroutine write_restart(restart_type, restart_filename, basis, occupation, c_ma
   do ispin=1, nspin
     do istate=1, nstate_stored
       write(restartfile) c_matrix(:, istate, ispin)
-    enddo
-  enddo
+    end do
+  end do
 
   if(restart_type == BIG_RESTART) then
 
     do ispin=1, nspin
       do ibf=1, basis%nbf
         write(restartfile) hamiltonian_fock(:, ibf, ispin)
-      enddo
-    enddo
+      end do
+    end do
 
-  endif
+  end if
 
   close(restartfile)
   call timer_restart_file%stop()
@@ -170,7 +170,7 @@ subroutine read_restart(restart_type, restart_filename, basis, &
     write(stdout, '(/,1x,a,1x,a)') TRIM(restart_filename), 'file not found'
     restart_type = NO_RESTART
     return
-  endif
+  end if
 
   nstate_expected = SIZE(occupation,DIM=1)
 
@@ -186,14 +186,14 @@ subroutine read_restart(restart_type, restart_filename, basis, &
     restart_type = NO_RESTART
     close(restartfile)
     return
-  endif
+  end if
 
   if( restart_version_read /= 201609 ) then
     call issue_warning('RESTART file: Version not readable. Skipping the reading')
     restart_type = NO_RESTART
     close(restartfile)
     return
-  endif
+  end if
 
 
   ! RESTART file type SMALL_RESTART=1 or BIG_RESTART=2
@@ -203,14 +203,14 @@ subroutine read_restart(restart_type, restart_filename, basis, &
     restart_type = NO_RESTART
     close(restartfile)
     return
-  endif
+  end if
   restart_type = restart_type_read
 
   !
   ! Input keyword ignore_bigrestart enforces a small_restart
   if( ignore_bigrestart_ ) then
     restart_type = SMALL_RESTART
-  endif
+  end if
 
 
   ! Atomic structure
@@ -225,7 +225,7 @@ subroutine read_restart(restart_type, restart_filename, basis, &
     call issue_warning('RESTART file: Geometry has changed')
   else
     same_geometry = .TRUE.
-  endif
+  end if
   deallocate(zatom_read, x_read)
 
 
@@ -235,7 +235,7 @@ subroutine read_restart(restart_type, restart_filename, basis, &
   if( .NOT. same_scf) then
     call issue_warning('RESTART file: SCF type has changed')
     restart_type = SMALL_RESTART
-  endif
+  end if
 
 
   ! Basis set
@@ -244,11 +244,11 @@ subroutine read_restart(restart_type, restart_filename, basis, &
   if( .NOT. same_basis) then
     call issue_warning('RESTART file: Basis set has changed')
     restart_type = SMALL_RESTART
-  endif
+  end if
   if( basis%gaussian_type /= basis_read%gaussian_type ) then
     write(stdout, *) 'The basis type (cartesian or pure) cannot be changed when restarting from a previous calculation'
     call die('Erase the RESTART file or change the keyword gaussian_type and start the calculation over')
-  endif
+  end if
 
 
   ! Spin channels
@@ -257,7 +257,7 @@ subroutine read_restart(restart_type, restart_filename, basis, &
   if( .NOT. same_spin ) then
     call issue_warning('RESTART file: Number of spin channels has changed')
     restart_type = SMALL_RESTART
-  endif
+  end if
 
 
   ! Nstate
@@ -278,10 +278,10 @@ subroutine read_restart(restart_type, restart_filename, basis, &
       call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate_read, nspin)
     else
       call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate_expected, nspin)
-    endif
+    end if
   else
     call clean_allocate('Wavefunctions C', c_matrix, basis%nbf, nstate_expected, nspin)
-  endif
+  end if
 
 
   ! Occupations
@@ -295,8 +295,8 @@ subroutine read_restart(restart_type, restart_filename, basis, &
       call dump_out_occupation('=== Occupations ===', occupation)
     else
       call issue_warning('RESTART file: Occupations are different. Keep those from the current MOLGW run.')
-    endif
-  endif
+    end if
+  end if
   deallocate(occupation_read)
 
 
@@ -318,8 +318,8 @@ subroutine read_restart(restart_type, restart_filename, basis, &
   do ispin=1, nspin_read
     do istate=1, nstate_stored
       read(restartfile) c_matrix_read(:, istate, ispin)
-    enddo
-  enddo
+    end do
+  end do
 
 
   if( same_basis ) then
@@ -327,18 +327,18 @@ subroutine read_restart(restart_type, restart_filename, basis, &
     do istate=1, MIN(nstate_stored, nstate_safe)
       c_matrix(1:MIN(basis_read%nbf, basis%nbf), istate, 1) &
           = c_matrix_read(1:MIN(basis_read%nbf, basis%nbf), istate, 1)
-    enddo
+    end do
     do istate=1, MIN(nstate_stored, nstate_safe)
       c_matrix(1:MIN(basis_read%nbf, basis%nbf), istate, nspin) &
           = c_matrix_read(1:MIN(basis_read%nbf, basis%nbf), istate, nspin_read)
-    enddo
+    end do
 
     ! Fill the rest of the array with identity
     if( nstate_stored < nstate_safe ) then
       do istate=nstate_stored+1, nstate_safe
         c_matrix(istate, istate, :) = 1.0_dp
-      enddo
-    endif
+      end do
+    end if
 
   else
 
@@ -364,11 +364,11 @@ subroutine read_restart(restart_type, restart_filename, basis, &
     if( nspin == 2 ) then
       c_matrix(:, 1:nstate_stored, nspin) = MATMUL(overlapm1(:, :), &
                                            MATMUL(overlap_mixedbasis(:, :) , c_matrix_read(:, 1:nstate_stored, nspin_read) ) )
-    endif
+    end if
     ! Fill the rest of the array with identity
     do istate=nstate_stored+1, nstate_expected
       c_matrix(istate, istate, :) = 1.0_dp
-    enddo
+    end do
 
     ! Orthogonalize new c_matrix so to have exactly C**T * S * C = I
     call orthogonalize_c_matrix(s_matrix, c_matrix)
@@ -380,7 +380,7 @@ subroutine read_restart(restart_type, restart_filename, basis, &
     close(restartfile)
     return
 
-  endif
+  end if
 
 
   if( ignore_bigrestart_ .OR. restart_type_read == SMALL_RESTART .OR. .NOT. PRESENT(hamiltonian_fock) &
@@ -396,19 +396,19 @@ subroutine read_restart(restart_type, restart_filename, basis, &
       do ispin=1, nspin_read
         do ibf=1, basis_read%nbf
           read(restartfile) hamiltonian_fock(:, ibf, ispin)
-        enddo
-      enddo
+        end do
+      end do
 
       if( same_geometry ) then
         restart_type = BIG_RESTART
-      endif
+      end if
       close(restartfile)
       return
 
-    endif
+    end if
 
 
-  endif
+  end if
 
   ! the code should never reach that point.
   call die('read_restart: internal error in the read_restart subroutine')

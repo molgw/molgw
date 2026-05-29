@@ -86,7 +86,7 @@ subroutine init_ecp(ecp_elements, ecp_path, ecp_name, ecp_level_in)
   if( ilen == 0 ) then
     nelement_ecp = 0
     return
-  endif
+  end if
 
   string = ecp_elements
   write(stdout, '(/,1x,a)') 'Reading ECP element list'
@@ -123,7 +123,7 @@ subroutine init_ecp(ecp_elements, ecp_path, ecp_name, ecp_level_in)
     string = string(inextblank+1:)
     ilen = LEN(TRIM(string))
 
-  enddo
+  end do
 
   nelement_ecp = SIZE(element_ecp)
   allocate(ecp(nelement_ecp))
@@ -149,7 +149,7 @@ subroutine init_ecp(ecp_elements, ecp_path, ecp_name, ecp_level_in)
       write(stdout, '(1x,a)')   '  2. the environment variable MOLGW_BASIS_PATH'
       write(stdout, '(1x,a)')   '  3. the location of the sources'
       call die('init_ecp: ECP file not found')
-    endif
+    end if
 
     select case(ecp(ielement_ecp)%ecp_format)
     case(ECP_NWCHEM)
@@ -172,9 +172,9 @@ subroutine init_ecp(ecp_elements, ecp_path, ecp_name, ecp_level_in)
           amc = 'local'
         else
           amc = orbital_momentum_name(ecp(ielement_ecp)%lk(iecp))
-        endif
+        end if
         write(stdout, '(6x,a,3x,f14.6)') amc, ecp(ielement_ecp)%ekb(iecp)
-      enddo
+      end do
     case(ECP_NWCHEM)
       write(stdout, '(6x,a)') 'l_k      n_k       zeta_k          d_k  '
 
@@ -183,16 +183,16 @@ subroutine init_ecp(ecp_elements, ecp_path, ecp_name, ecp_level_in)
           amc = 'local'
         else
           amc = orbital_momentum_name(ecp(ielement_ecp)%lk(iecp))
-        endif
+        end if
         write(stdout, '(6x,a,3x,i3,2(2x,f14.6))') &
                             amc, &
                             ecp(ielement_ecp)%nk(iecp), &
                             ecp(ielement_ecp)%zetak(iecp), &
                             ecp(ielement_ecp)%dk(iecp)
-      enddo
+      end do
     end select
 
-  enddo
+  end do
 
   select case(ecp(1)%ecp_format)
   case(ECP_PSP6, ECP_PSP8)
@@ -239,28 +239,28 @@ subroutine read_ecp_file(ecp_filename, element, ecpi)
       if( istat == IOSTAT_END ) then
         end_of_file = .TRUE.
         exit
-      endif
-    endif
+      end if
+    end if
     line = ADJUSTL(line)
 
     ! Remove comments if any
     if( line(1:1) == '#' ) then
       line='_____'
       cycle
-    endif
+    end if
 
     ! ECP and END should not be interpreted
     if( capitalize(line(1:3)) == 'ECP' .OR. capitalize(line(1:3)) == 'END' ) then
       line='_____'
       cycle
-    endif
+    end if
     i1 = INDEX(line, ' ')
 
     if( line(1:i1-1) /= TRIM(element) .AND. capitalize(line(1:i1-1)) /= TRIM(ADJUSTL(element)) ) then
       write(stdout, *) 'ECP file should only contain information about element '//TRIM(ADJUSTL(element))
       write(stdout, *) 'While '//line(1:i1-1)//' was found'
       call die('ECP file reading problem')
-    endif
+    end if
 
     line = ADJUSTL(line(i1+1:))
 
@@ -270,7 +270,7 @@ subroutine read_ecp_file(ecp_filename, element, ecpi)
       read(line(i2+1:), '(i10)') ecpi%ncore
       line='_____'
       cycle
-    endif
+    end if
     if(      amc == 'UL'  &
         .OR. amc == 'S'   &
         .OR. amc == 'P'   &
@@ -284,7 +284,7 @@ subroutine read_ecp_file(ecp_filename, element, ecpi)
         if( istat == IOSTAT_END ) then
           end_of_file = .TRUE.
           exit
-        endif
+        end if
         read(line, *, iostat=istat) read_n, read_zeta, read_d
 
         ! For the time being, only code ECP with no local potential
@@ -293,19 +293,19 @@ subroutine read_ecp_file(ecp_filename, element, ecpi)
             call append_to_list(-1, ecpi%lk)
           else
             call append_to_list(orbital_momentum_number(amc), ecpi%lk)
-          endif
+          end if
           call append_to_list(read_n, ecpi%nk)
           call append_to_list(read_zeta, ecpi%zetak)
           call append_to_list(read_d, ecpi%dk)
-        endif
-      enddo
+        end if
+      end do
     else
       write(stdout, *) capitalize(line(1:i2-1)), line(1:i2-1)
       call die('problem reading ECP file')
-    endif
+    end if
 
 
-  enddo
+  end do
 
 
   ecpi%necp = SIZE(ecpi%nk)
@@ -339,14 +339,14 @@ subroutine read_psp6_file(ecp_filename, element, ecpi)
   read(ecpunit, *) pspcod, pspxc, lmax, lloc, mmax, r2well
   do jdum=1, 15
     read(ecpunit, *) title
-  enddo
+  end do
 
   ecpi%ncore = NINT(zatom - zion)
   ecpi%necp  = lmax + 1
   allocate(ecpi%lk(lmax+1))
   do il=0, lmax
     ecpi%lk(il+1) = il
-  enddo
+  end do
   ecpi%lk(lloc+1) = -1
   ecpi%mmax       = mmax
 
@@ -360,13 +360,13 @@ subroutine read_psp6_file(ecp_filename, element, ecpi)
     do ir=1, mmax
       read(ecpunit, *) jdum, ecpi%rad(ir), ecpi%wfll(ir, il), ecpi%vpspll(ir, il)
     end do
-  enddo
+  end do
 
   ! Substract the local component from all the other components
   do il=1, lmax+1
     if( il == lloc + 1 ) cycle
     ecpi%vpspll(:, il) = ecpi%vpspll(:, il) - ecpi%vpspll(:, lloc+1)
-  enddo
+  end do
 
   !
   ! wfll is u_l(r)
@@ -384,7 +384,7 @@ subroutine read_psp6_file(ecp_filename, element, ecpi)
   !               + (ecpi%rad(ir+1) * ecpi%wfll(ir+1,il)**2 + ecpi%rad(ir) * ecpi%wfll(ir,il)**2) &
   !                                     * al / 2.0_dp
   !  end do
-  !enddo
+  !end do
 
   ! Calculate the KB "energy"
   ecpi%ekb(:) = 0.0_dp
@@ -400,7 +400,7 @@ subroutine read_psp6_file(ecp_filename, element, ecpi)
                         * al / 2.0_dp
     end do
     ecpi%ekb(il) = 1.0_dp / ecpi%ekb(il)
-  enddo
+  end do
 
 
   close(ecpunit)
@@ -463,8 +463,8 @@ subroutine read_psp8_file(ecp_filename, element, ecpi)
     do iproj=1, nproj(il+1)
       iecp = iecp + 1
       ecpi%lk(iecp) = il
-    enddo
-  enddo
+    end do
+  end do
   ! Last one is the local potential
   ecpi%lk(ecpi%necp) = -1
   ecpi%mmax     = mmax
@@ -484,7 +484,7 @@ subroutine read_psp8_file(ecp_filename, element, ecpi)
     do ir=1, mmax
       read(ecpunit, *) jdum, ecpi%rad(ir), ecpi%vpspll(ir, iecp:jecp)
     end do
-  enddo
+  end do
 
   ! Read local potential
   read(ecpunit, *) jdum
@@ -497,7 +497,7 @@ subroutine read_psp8_file(ecp_filename, element, ecpi)
     end do
     ! in psp8 files, 4*pi*rhoc(r) is written and nobody knows why
     ecpi%rhocore(:, :) = ecpi%rhocore(:, :) / ( 4.0_dp * pi )
-  endif
+  end if
 
   close(ecpunit)
 
@@ -507,12 +507,12 @@ subroutine read_psp8_file(ecp_filename, element, ecpi)
   if( ABS( (ecpi%rad(2)-ecpi%rad(1)) - (ecpi%rad(mmax) - ecpi%rad(mmax-1)) ) > 1.0e-5_dp ) then
     write(stdout, '(1x,a,a)') 'Non-regular grid found in ', TRIM(ecp_filename)
     call die('read_psp8_file: psp8 radial grid must be regular in this implementation')
-  endif
+  end if
   ! whether the first radial grid point is zero
   if( ecpi%rad(1) > 1.0e-5_dp ) then
     write(stdout, '(1x,a,a)') 'Non-zero first grid point found in ', TRIM(ecp_filename)
     call die('read_psp8_file: psp8 radial grid must with zero in this implementation')
-  endif
+  end if
 
 
 end subroutine read_psp8_file
@@ -556,10 +556,10 @@ subroutine read_gth_file(ecp_filename, element, ecpi)
         if( istat /= 0 ) then
           read(line, *, iostat=istat) i1
           if( istat /= 0 ) call die('read_gth_file: 2nd line is not compliant with CP2K format')
-        endif
-      endif
-    endif
-  endif
+        end if
+      end if
+    end if
+  end if
 
 
   ecpi%ncore = element_number(element) - i1 - i2 - i3 - i4
@@ -575,7 +575,7 @@ subroutine read_gth_file(ecp_filename, element, ecpi)
     read(ecpunit, *, iostat=istat) rtmp, ecpi%gth_npl(il)
     if( ecpi%gth_npl(il) > 1 ) read(ecpunit, *, iostat=istat)
     if( ecpi%gth_npl(il) > 2 ) read(ecpunit, *, iostat=istat)
-  enddo
+  end do
   close(ecpunit)
 
   open(newunit=ecpunit, file=TRIM(ecp_filename), status='old', action='read')
@@ -597,7 +597,7 @@ subroutine read_gth_file(ecp_filename, element, ecpi)
     case default
       call die('read_gth_file: i > 3 in non-local GTH projector is not possible')
     end select
-  enddo
+  end do
 
 
   close(ecpunit)

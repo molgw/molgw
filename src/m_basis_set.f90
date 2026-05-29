@@ -136,12 +136,12 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
         basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(zbasis(icenter)))) &
                        // '_' // TRIM(basis_name(icenter)))
         if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
-      endif
+      end if
     else
       basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(zbasis(icenter)))) &
                      // '_' // TRIM(basis_name(icenter)))
       if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
-    endif
+    end if
 
     if( INDEX(capitalize(basis_filename), 'EVEN_TEMPERED' ) ==  0 ) then
       inquire(file=TRIM(basis_filename), exist=file_exists)
@@ -152,7 +152,7 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
         write(stdout, '(1x,a)')   '  2. the environment variable MOLGW_BASIS_PATH'
         write(stdout, '(1x,a)')   '  3. the location of the sources'
         call die('init_basis_set: basis set file not found')
-      endif
+      end if
 
       !
       ! read first to get all the dimensions
@@ -168,8 +168,8 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
         basis%nshell   = basis%nshell   + 1
         do ig=1, ng
           read(basisfile, *)
-        enddo
-      enddo
+        end do
+      end do
       close(basisfile)
 
     else
@@ -181,11 +181,11 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
         basis%nbf_cart = basis%nbf_cart + number_basis_function_am('CART'             , il-1) * n_list(il)
         basis%nbf      = basis%nbf      + number_basis_function_am(basis%gaussian_type, il-1) * n_list(il)
         basis%nshell   = basis%nshell   + n_list(il)
-      enddo
+      end do
       deallocate(n_list)
-    endif
+    end if
 
-  enddo
+  end do
 
   allocate(basis%bfc(basis%nbf_cart))
   allocate(basis%bff(basis%nbf))
@@ -205,12 +205,12 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
         basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(zbasis(icenter)))) &
                        // '_' // TRIM(basis_name(icenter)))
         if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
-      endif
+      end if
     else
       basis_filename = ADJUSTL(TRIM(basis_path) // '/' // TRIM(ADJUSTL(element_name(zbasis(icenter)))) &
                       // '_' //TRIM(basis_name(icenter)))
       if( TRIM(capitalize(basis_name(icenter))) == 'NONE' ) cycle
-    endif
+    end if
 
 
     if( INDEX(capitalize(basis_filename), 'EVEN_TEMPERED' ) ==  0 ) then
@@ -234,9 +234,9 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
           even_tempered_exponent(ishell_file) = even_tempered_alpha * even_tempered_beta**( ((ils+2)/2-1)*(2*MODULO(ils, 2)-1) )
           write(stdout, '(5x,a,es16.6,1x,i2)') '* even-tempered basis function (exponent, angular momentum):', &
                                               even_tempered_exponent(ishell_file), even_tempered_am(ishell_file)
-        enddo
-      enddo
-    endif
+        end do
+      end do
+    end if
 
     do ishell_file=1, nshell_file
       ishell = ishell + 1
@@ -247,7 +247,7 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
 
         do ig=1, ng
           read(basisfile, *) alpha(ig), coeff(ig)
-        enddo
+        end do
       else
         ng      = 1
         am_read = even_tempered_am(ishell_file)
@@ -255,7 +255,7 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
         alpha(1) = even_tempered_exponent(ishell_file)
         coeff(1) = even_tempered_exponent(ishell_file)
 
-      endif
+      end if
 
       x0(:) = xbasis(:, icenter)
       v0(:) = vel_basis(:, icenter)
@@ -301,7 +301,7 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
           jbf = jbf + 1
           call init_basis_function(normalized, ng, nx, ny, nz, icenter, x0, v0, alpha, coeff, ishell, &
                                    index_in_shell, basis%bff(jbf))
-        endif
+        end if
 
         ! Break the loop when nz is equal to l
         if( nz == am_read ) exit
@@ -313,9 +313,9 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
           nx = nx - 1
           ny = am_read - nx
           nz = 0
-        endif
+        end if
 
-      enddo
+      end do
 
       index_in_shell = 0
       if(basis%gaussian_type == 'PURE') then
@@ -324,8 +324,8 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
           index_in_shell = index_in_shell + 1
           call init_basis_function_pure(normalized, ng, am_read, mm, icenter, x0, v0, alpha, coeff, ishell, &
                                         index_in_shell, basis%bff(jbf))
-        enddo
-      endif
+        end do
+      end if
 
       !
       ! Include here the normalization part that does not depend on (nx, ny, nz)
@@ -333,18 +333,18 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
                * ( 2.0_dp / pi )**0.75_dp * 2.0_dp**am_read * alpha(:)**( 0.25_dp * ( 2.0_dp*am_read + 3.0_dp ) )
 
       deallocate(alpha, coeff)
-    enddo
+    end do
 
     if( INDEX(capitalize(basis_filename), 'EVEN_TEMPERED' ) ==  0 ) then
       close(basisfile)
     else
       deallocate(even_tempered_am, even_tempered_exponent)
       deallocate(n_list)
-    endif
+    end if
 
     !
     ! END OF THE LOOP OVER BASIS CENTERS
-  enddo ! icenter
+  end do ! icenter
 
   ! Find the maximum angular momentum employed in the basis set
   basis%ammax = MAXVAL(basis%bfc(:)%am)
@@ -354,10 +354,10 @@ subroutine init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type,
   ! r = 1/√α with α from the slowest decaying primitive
   do jbf=1, basis%nbf
     basis%bff(jbf)%radius = 1.0_dp / SQRT( MINVAl(basis%bff(jbf)%g(:)%alpha) )
-  enddo
+  end do
   do jbf=1, basis%nbf_cart
     basis%bfc(jbf)%radius = 1.0_dp / SQRT( MINVAl(basis%bfc(jbf)%g(:)%alpha) )
-  enddo
+  end do
 
   call echo_basis_summary(basis)
 
@@ -520,7 +520,7 @@ subroutine moving_basis_set(new_basis)
         coeff(:)        = new_basis%bfc(jbf_cart)%coeff(:)
         do ig = 1, ng
           new_basis%bfc(jbf_cart)%g(ig)%x0(:) = xproj_basis(:)
-        enddo
+        end do
         call init_basis_function( normalized, ng, nx, ny, nz, proj_iatom, xproj_basis, vel_basis(:, proj_iatom), &
                         alpha, coeff, ishell, index_in_shell, new_basis%bfc(jbf_cart) )
         if( new_basis%gaussian_type == 'CART' ) then
@@ -528,10 +528,10 @@ subroutine moving_basis_set(new_basis)
           coeff(:)      = new_basis%bff(jbf)%coeff(:)
           do ig = 1, ng
             new_basis%bff(jbf)%g(ig)%x0(:) = xproj_basis(:)
-          enddo
+          end do
           call init_basis_function( normalized, ng, nx, ny, nz, proj_iatom, xproj_basis, &
               vel_basis(:, proj_iatom), alpha, coeff, ishell, index_in_shell, new_basis%bff(jbf) )
-        endif
+        end if
 
         ! Break the loop when nz is equal to l
         if( nz == am ) exit
@@ -543,9 +543,9 @@ subroutine moving_basis_set(new_basis)
           nx = nx - 1
           ny = am - nx
           nz = 0
-        endif
+        end if
 
-      enddo
+      end do
 
       index_in_shell = 0
       if( new_basis%gaussian_type == 'PURE' ) then
@@ -554,15 +554,15 @@ subroutine moving_basis_set(new_basis)
           index_in_shell = index_in_shell + 1
           do ig = 1, ng
             new_basis%bff(jbf)%g(ig)%x0(:) = xproj_basis(:)
-          enddo
+          end do
           call init_basis_function_pure( normalized, ng, am, mm, proj_iatom, xproj_basis, &
               vel_basis(:, proj_iatom), alpha, coeff, ishell, index_in_shell, new_basis%bff(jbf) )
-        enddo
-      endif
+        end do
+      end if
       deallocate(alpha, coeff)
 
-    endif
-  enddo
+    end if
+  end do
 
 
 end subroutine moving_basis_set
@@ -582,7 +582,7 @@ subroutine form_n_list(string_in, integers)
   ilen = LEN(TRIM(string_in))
   if( ilen == 0 ) then
     call die('init_basis_set_even_tempered: even-tempered basis requested but even_tempered_n_list is empty')
-  endif
+  end if
 
   string = string_in
   do while( ilen > 0 )
@@ -594,7 +594,7 @@ subroutine form_n_list(string_in, integers)
 
     string = string(inextblank+1:)
     ilen = LEN(TRIM(string))
-  enddo
+  end do
 
 end subroutine form_n_list
 
@@ -610,7 +610,7 @@ subroutine echo_basis_summary(basis)
   write(stdout, '(/,a50,i8)') 'Total number of basis functions:', basis%nbf
   if( basis%gaussian_type == 'PURE' ) then
     write(stdout, '(a50,i8)') 'Total number of cart. functions:', basis%nbf_cart
-  endif
+  end if
   write(stdout, '(a50,i8)') 'Number of shells:', basis%nshell
 
   if( basis%nshell > 0 ) then
@@ -622,7 +622,7 @@ subroutine echo_basis_summary(basis)
     write(stdout, *) 'Maximum angular momentum: ', basis%ammax
     write(stdout, *) 'while this compilation of LIBINT only supports: ', MOLGW_LMAX
     call die('echo_basis_summary: Angular momentum is too high')
-  endif
+  end if
 
   !
   ! Output all the basis functions for debugging
@@ -630,8 +630,8 @@ subroutine echo_basis_summary(basis)
     do ibf=1, basis%nbf_cart
       write(stdout, *) ' Cartesian function number', ibf
       call print_basis_function(basis%bfc(ibf))
-    enddo
-  endif
+    end do
+  end if
 
   write(stdout, '(a,/)') ' Basis set is fit and ready'
 
@@ -677,7 +677,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
     write(stdout, '(1x,a)')      '  Method: PAuto'
   else
     write(stdout, '(1x,a)')      '  Method: Auto'
-  endif
+  end if
   write(stdout, '(1x,a)')        '  recipe in Yang, Rendell, Frisch, J. Chem. Phys. 127, 074102 (2007)'
   write(stdout, '(1x,a25,f8.3)') 'Parameter    f_sam: ', auto_auxil_fsam
   write(stdout, '(1x,a25,i3)')   'Parameter l_MAXINC: ', auto_auxil_lmaxinc
@@ -694,14 +694,14 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
       if( basis%shell(ishell)%icenter == icenter ) then
         nprim = nprim + basis%shell(ishell)%ng
         lmax_obs = MAX( lmax_obs , basis%shell(ishell)%am )
-      endif
-    enddo
+      end if
+    end do
     if( pauto ) then
       nshell_max = nshell_max + nprim**2 * ( get_lmax_abs(lmax_obs, zbasis(icenter)) + 1 )
     else
       nshell_max = nshell_max + nprim * ( get_lmax_abs(lmax_obs, zbasis(icenter)) + 1 )
-    endif
-  enddo
+    end if
+  end do
 
 
   ! Allocate a temporary storage for the shells
@@ -744,9 +744,9 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
               index_exp = index_exp + 1
               exponent_candidate(index_exp) = basis%shell(ishell)%alpha(iprim) + basis%shell(jshell)%alpha(jprim)
               am_candidate(index_exp)       = basis%shell(ishell)%am + basis%shell(jshell)%am
-            enddo
-          enddo
-        enddo
+            end do
+          end do
+        end do
       else
         ! Auto recipe:
         ! All the exponents are doubled
@@ -755,9 +755,9 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
         exponent_candidate(index_exp+1:index_exp+nprim) = basis%shell(ishell)%alpha(:) * 2.0_dp
         am_candidate(index_exp+1:index_exp+nprim)       = basis%shell(ishell)%am * 2
         index_exp = index_exp + nprim
-      endif
+      end if
 
-    enddo
+    end do
 
     lmax_abs = get_lmax_abs(lmax_obs, zcenter)
 
@@ -781,8 +781,8 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
           exponent_trial(ntrial) = exponent_candidate(icandidate)
           am_trial(ntrial)       = am_candidate(icandidate)
           remaining_candidate(icandidate) = .FALSE.
-        endif
-      enddo
+        end if
+      end do
 
       !
       ! Find the unique primitives in the trial set
@@ -794,12 +794,12 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
         do jtrial=1, itrial-1
           if( am_trial(itrial) == am_trial(jtrial) &
             .AND. ABS( exponent_trial(itrial) - exponent_trial(jtrial) ) < 1.0e-6_dp ) new_primitive = .FALSE.
-        enddo
+        end do
         if( new_primitive ) then
           nprim = nprim + 1
           exponent_selected = exponent_selected * exponent_trial(itrial)
-        endif
-      enddo
+        end if
+      end do
       exponent_selected = (exponent_selected)**( 1.0_dp / REAL(nprim, kind=dp) )
 
       am_selected = MAX( MAXVAL(am_trial(1:ntrial)) , am_current )
@@ -821,15 +821,15 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
         shell_tmp(auxil_basis%nshell)%icenter = icenter
         shell_tmp(auxil_basis%nshell)%x0(:) = xbasis(:, icenter)
         shell_tmp(auxil_basis%nshell)%v0(:) = vel_basis(:, icenter)
-      enddo
+      end do
 
-    enddo
+    end do
 
 
     deallocate(am_candidate, am_trial)
     deallocate(remaining_candidate)
     deallocate(exponent_candidate, exponent_trial)
-  enddo
+  end do
 
   write(stdout, '(1x,a,/)')       '========================================'
 
@@ -846,7 +846,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
     am_current = shell_tmp(ishell)%am
     auxil_basis%nbf      = auxil_basis%nbf      + number_basis_function_am(gaussian_type, am_current)
     auxil_basis%nbf_cart = auxil_basis%nbf_cart + number_basis_function_am('CART'       , am_current)
-  enddo
+  end do
   allocate(auxil_basis%bfc(auxil_basis%nbf_cart))
   allocate(auxil_basis%bff(auxil_basis%nbf))
 
@@ -889,7 +889,7 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
         jbf = jbf + 1
         call init_basis_function(normalized, 1, nx, ny, nz, shell_tmp(ishell)%icenter, shell_tmp(ishell)%x0, shell_tmp(ishell)%v0, &
                shell_tmp(ishell)%alpha, shell_tmp(ishell)%coeff, ishell, index_in_shell, auxil_basis%bff(jbf))
-      endif
+      end if
 
       ! Break the loop when nz is equal to l
       if( nz == am_current ) exit
@@ -901,9 +901,9 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
         nx = nx - 1
         ny = am_current - nx
         nz = 0
-      endif
+      end if
 
-    enddo
+    end do
 
     index_in_shell = 0
     if(auxil_basis%gaussian_type == 'PURE') then
@@ -912,13 +912,13 @@ subroutine init_auxil_basis_set_auto(auxil_basis_name, basis, gaussian_type, aut
         index_in_shell = index_in_shell + 1
         call init_basis_function_pure(normalized, 1, am_current, mm, shell_tmp(ishell)%icenter, shell_tmp(ishell)%x0, &
            shell_tmp(ishell)%v0, shell_tmp(ishell)%alpha, shell_tmp(ishell)%coeff, ishell, index_in_shell, auxil_basis%bff(jbf))
-      enddo
-    endif
+      end do
+    end if
 
     auxil_basis%shell(ishell)%coeff(1) = ( 2.0_dp / pi )**0.75_dp * 2.0_dp**am_current &
                                                    * shell_tmp(ishell)%alpha(1)**( 0.25_dp * ( 2.0_dp*am_current + 3.0_dp ) )
 
-  enddo
+  end do
 
 
   call echo_basis_summary(auxil_basis)
@@ -944,7 +944,7 @@ function get_lmax_abs(lmax_obs, zcenter) result(lmax_abs)
     lval = 2
   else
     lval = 3
-  endif
+  end if
   lmax_abs = MAX( lmax_obs + auto_auxil_lmaxinc , 2 * lval )
 
 end function get_lmax_abs
@@ -962,16 +962,16 @@ subroutine destroy_basis_set(basis)
 
   ! do ibf=1,basis%nbf_cart
   !   call destroy_basis_function(basis%bfc(ibf))
-  ! enddo
+  ! end do
   ! do ibf=1,basis%nbf
   !   call destroy_basis_function(basis%bff(ibf))
-  ! enddo
+  ! end do
   deallocate(basis%bfc)
   deallocate(basis%bff)
   do ishell=1, basis%nshell
     if(ALLOCATED(basis%shell(ishell)%alpha)) deallocate( basis%shell(ishell)%alpha )
     if(ALLOCATED(basis%shell(ishell)%coeff)) deallocate( basis%shell(ishell)%coeff )
-  enddo
+  end do
   deallocate(basis%shell)
 
 end subroutine destroy_basis_set
@@ -999,7 +999,7 @@ function compare_basis_set(basis1, basis2) result(same_basis_set)
 
   do ibf=1, basis1%nbf
     same_basis_set = same_basis_set .AND. compare_basis_function(basis1%bfc(ibf), basis2%bfc(ibf))
-  enddo
+  end do
 
 
 end function compare_basis_set
@@ -1033,7 +1033,7 @@ function compare_basis_function(bf1, bf2) result(same_basis_function)
 
   do ig=1, bf1%ngaussian
     same_basis_function = same_basis_function .AND. compare_gaussian(bf1%g(ig), bf2%g(ig))
-  enddo
+  end do
   if( ANY(ABS(bf1%coeff(:) - bf2%coeff(:)) > 1.0e-5_dp ) ) same_basis_function = .FALSE.
 
 
@@ -1056,10 +1056,10 @@ subroutine write_basis_set(unitfile, basis)
   write(unitfile)  basis%gaussian_type
   do ibf=1, basis%nbf_cart
     call write_basis_function(unitfile, basis%bfc(ibf))
-  enddo
+  end do
   do ishell=1, basis%nshell
     call write_basis_shell(unitfile, basis%shell(ishell))
-  enddo
+  end do
 
 
 end subroutine write_basis_set
@@ -1082,11 +1082,11 @@ subroutine read_basis_set(unitfile, basis)
   allocate(basis%bfc(basis%nbf_cart))
   do ibf=1, basis%nbf_cart
     call read_basis_function(unitfile, basis%bfc(ibf))
-  enddo
+  end do
   allocate(basis%shell(basis%nshell))
   do ishell=1, basis%nshell
     call read_basis_shell(unitfile, basis%shell(ishell))
-  enddo
+  end do
 
 
 end subroutine read_basis_set
@@ -1218,7 +1218,7 @@ subroutine init_basis_function(normalized, ng, nx, ny, nz, icenter, x0, v0, alph
   do ig=1, bf%ngaussian
     call init_gaussian_cart(nx, ny, nz, alpha(ig), x0, bf%g(ig))
     bf%coeff(ig) = coeff(ig)
-  enddo
+  end do
 
   !
   ! check the normalization if requested
@@ -1231,8 +1231,8 @@ subroutine init_basis_function(normalized, ng, nx, ny, nz, icenter, x0, v0, alph
     !
     if( ABS( overlap - 1.0_dp ) > 1.0e-14_dp ) then
       bf%coeff(:) = coeff(:) / SQRT( overlap )
-    endif
-  endif
+    end if
+  end if
 
 
 end subroutine init_basis_function
@@ -1272,7 +1272,7 @@ subroutine init_basis_function_pure(normalized, ng, am, mm, icenter, x0, v0, alp
   !  do ig=1,bf%ngaussian
   !    call init_gaussian_cart(nx,ny,nz,alpha(ig),x0,bf%g(ig))
   !    bf%coeff(ig) = coeff(ig)
-  !  enddo
+  !  end do
   !
   !  !
   !  ! check the normalization if requested
@@ -1283,8 +1283,8 @@ subroutine init_basis_function_pure(normalized, ng, am, mm, icenter, x0, v0, alp
   ! !     write(stdout,*) bf%nx,bf%ny,bf%nz
   ! !     write(stdout,*) 'assuming this is a generalized contraction and rescaling coefficients'
   !      bf%coeff(:) = coeff(:) / SQRT( overlap )
-  !    endif
-  !  endif
+  !    end if
+  !  end if
 
 
 end subroutine init_basis_function_pure
@@ -1315,11 +1315,11 @@ subroutine print_basis_function(bf)
   write(stdout, '(a30,1x,3(f12.6,2x))')        'center velocity', bf%v0(:)
   do ig=1, bf%ngaussian
     write(stdout, '(a30,2x,1x,i3,2x,f12.6)')   'coefficient', ig, bf%coeff(ig)
-  enddo
+  end do
   write(stdout, *)
   do ig=1, bf%ngaussian
     call print_gaussian(bf%g(ig))
-  enddo
+  end do
   write(stdout, *) '====== end of basis function ======'
   write(stdout, *)
 
@@ -1348,14 +1348,14 @@ pure function eval_basis_function_pure_shell(shell, rr) RESULT(shellr)
 
   do concurrent(ir=1:nr)
     dr(:, ir) = rr(:, ir) - shell%x0(:)
-  enddo
+  end do
   dr2(:) = SUM( dr(:, :)**2, DIM=1 )
 
   
   gaussian_part(:) = 0.0_dp
   do ig=1, shell%ng
     gaussian_part(:) = gaussian_part(:) + EXP( - shell%alpha(ig) * dr2(ir) ) * shell%coeff(ig)
-  enddo
+  end do
 
   select case(shell%am)
   case(0)
@@ -1403,7 +1403,7 @@ pure function eval_basis_function2(bf, x) result(eval_basis_function)
     eval_basis_function = eval_basis_function &
                   + bf%coeff(ig) * bf%g(ig)%norm_factor * EXP( - bf%g(ig)%alpha * dx2 ) &
                     * polynomial
-  enddo
+  end do
 
 
 end function eval_basis_function2
@@ -1421,7 +1421,7 @@ pure function eval_basis_function(bf, x)
   eval_basis_function = 0.0_dp
   do ig=1, bf%ngaussian
     eval_basis_function = eval_basis_function + eval_gaussian(bf%g(ig), x) * bf%coeff(ig)
-  enddo
+  end do
 
 end function eval_basis_function
 
@@ -1438,7 +1438,7 @@ function eval_basis_function_grad(bf, x)
   eval_basis_function_grad(:) = 0.0_dp
   do ig=1, bf%ngaussian
     eval_basis_function_grad(:) = eval_basis_function_grad(:) + eval_gaussian_grad(bf%g(ig), x) * bf%coeff(ig)
-  enddo
+  end do
 
 end function eval_basis_function_grad
 
@@ -1455,7 +1455,7 @@ function eval_basis_function_lapl(bf, x)
   eval_basis_function_lapl(:) = 0.0_dp
   do ig=1, bf%ngaussian
     eval_basis_function_lapl(:) = eval_basis_function_lapl(:) + eval_gaussian_lapl(bf%g(ig), x) * bf%coeff(ig)
-  enddo
+  end do
 
 end function eval_basis_function_lapl
 
@@ -1474,8 +1474,8 @@ subroutine overlap_basis_function(bf1, bf2, overlap)
     do jg=1, bf2%ngaussian
       call overlap_recurrence(bf1%g(ig), bf2%g(jg), overlap_one_gaussian)
       overlap = overlap + overlap_one_gaussian * bf1%coeff(ig) * bf2%coeff(jg)
-    enddo
-  enddo
+    end do
+  end do
 
 
 end subroutine overlap_basis_function
@@ -1495,8 +1495,8 @@ subroutine kinetic_basis_function(bf1, bf2, kinetic)
     do jg=1, bf2%ngaussian
       call kinetic_recurrence(bf1%g(ig), bf2%g(jg), kinetic_one_gaussian)
       kinetic = kinetic + kinetic_one_gaussian * bf1%coeff(ig) * bf2%coeff(jg)
-    enddo
-  enddo
+    end do
+  end do
 
 
 end subroutine kinetic_basis_function
@@ -1517,8 +1517,8 @@ subroutine nucleus_basis_function(bf1, bf2, zatom, x, nucleus_pot)
     do jg=1, bf2%ngaussian
       call nucleus_recurrence(zatom, x, bf1%g(ig), bf2%g(jg), nucleus_pot_one_gaussian)
       nucleus_pot = nucleus_pot + nucleus_pot_one_gaussian * bf1%coeff(ig) * bf2%coeff(jg)
-    enddo
-  enddo
+    end do
+  end do
 
 
 end subroutine nucleus_basis_function
@@ -1573,12 +1573,12 @@ subroutine basis_function_prod(bf1, bf2, bfprod)
             ! consistently with the ERI basis
             bfprod(ibf)%g(1)%norm_factor = 1.0_dp
 
-          enddo
-        enddo
-      enddo
+          end do
+        end do
+      end do
 
-    enddo
-  enddo
+    end do
+  end do
 
 
 contains
@@ -1595,8 +1595,8 @@ function c_1d(ix, nx1, nx2, xi, xj, xk)
   do ii=0, nx1
     do jj=MAX(ix-ii, 0), nx2
       c_1d = c_1d + cnk(nx1, ii) * cnk(nx2, jj) * ( xk - xi )**(nx1-ii) * ( xk - xj )**(nx2-jj)
-    enddo
-  enddo
+    end do
+  end do
 
 end function c_1d
 
@@ -1933,8 +1933,8 @@ subroutine basis_function_gos(bf1, bf2, qvec, gos_bf1bf2)
     do jg=1, bf2%ngaussian
       call evaluate_gos(bf1%g(ig), bf2%g(jg), qvec, gos_one_gaussian)
       gos_bf1bf2 = gos_bf1bf2 + gos_one_gaussian * bf1%coeff(ig) * bf2%coeff(jg)
-    enddo
-  enddo
+    end do
+  end do
 
 end subroutine basis_function_gos
 
@@ -1951,7 +1951,7 @@ function basis_function_fourier(bf, qvec) RESULT(fourier_bf)
   fourier_bf = 0.0_dp
   do ig=1, bf%ngaussian
     fourier_bf = fourier_bf + eval_gaussian_fourier(bf%g(ig), qvec) * bf%coeff(ig)
-  enddo
+  end do
 
 end function basis_function_fourier
 

@@ -13,7 +13,7 @@ module m_mpi
   use m_mpi_tools
 #if defined(HAVE_MPI)
   use mpi
-#endif
+#end if
 
 
   implicit none
@@ -74,7 +74,7 @@ subroutine init_mpi_world()
   call world%init(MPI_COMM_WORLD)
 #else
   call world%init(dummy)
-#endif
+#end if
 
   if( world%rank /= rank_iomaster ) then
     is_iomaster = .FALSE.
@@ -83,8 +83,8 @@ subroutine init_mpi_world()
 #else
     close(stdout)
     open(unit=stdout, file='/dev/null')
-#endif
-  endif
+#end if
+  end if
 
 end subroutine init_mpi_world
 
@@ -104,7 +104,7 @@ subroutine init_mpi_other_communicators(mpi_poorman_)
     poorman%nproc = world%nproc
   else
     poorman%nproc = 1
-  endif
+  end if
 
   !
   ! Set up grid communicator
@@ -124,7 +124,7 @@ subroutine init_mpi_other_communicators(mpi_poorman_)
   if( auxil%nproc /= world%nproc / poorman%nproc ) then
     write(stdout, *) world%rank, color, auxil%nproc, world%nproc, poorman%nproc
     call die('Problem in init_mpi')
-  endif
+  end if
 
   !
   ! Set up poorman communicator
@@ -144,7 +144,7 @@ subroutine init_mpi_other_communicators(mpi_poorman_)
   auxil%rank  = 0
   grid%nproc  = 1
   grid%rank   = 0
-#endif
+#end if
 
 
 #if defined(HAVE_MPI)
@@ -160,9 +160,9 @@ subroutine init_mpi_other_communicators(mpi_poorman_)
   write(stdout, '(a50,6x,l1)')               'Use SCALAPACK:', .TRUE.
 #else
   write(stdout, '(a50,6x,l1)')               'Use SCALAPACK:', .FALSE.
-#endif
+#end if
   write(stdout, '(/)')
-#endif
+#end if
 
 end subroutine init_mpi_other_communicators
 
@@ -182,7 +182,7 @@ subroutine finish_mpi()
 
 #if defined(HAVE_MPI)
   call MPI_FINALIZE(ier)
-#endif
+#end if
 
 end subroutine finish_mpi
 
@@ -196,7 +196,7 @@ subroutine init_dft_grid_distribution(ngrid)
 
   if( grid%nproc > 1 .AND. parallel_grid ) then
     write(stdout, '(/,a)') ' Initializing the distribution of the quadrature grid points'
-  endif
+  end if
 
   call distribute_grid_workload()
 
@@ -257,12 +257,12 @@ subroutine distribute_grid_workload()
       ! A simple check to avoid unexpected surprises
       if( iproc_local < 0 .OR. iproc_local >= grid%nproc ) then
         call die('error in the distribution')
-      endif
+      end if
 
       task_grid_proc(igrid)        = iproc_local
       ntask_grid_proc(iproc_local) = ntask_grid_proc(iproc_local) + 1
 
-    enddo
+    end do
 
     task_grid_number(:)=0
     igrid_current=0
@@ -270,8 +270,8 @@ subroutine distribute_grid_workload()
       if( grid%rank == task_grid_proc(igrid) ) then
         igrid_current = igrid_current + 1
         task_grid_number(igrid) = igrid_current
-      endif
-    enddo
+      end if
+    end do
 
   else
     !
@@ -281,9 +281,9 @@ subroutine distribute_grid_workload()
     task_grid_proc(:)  = grid%rank
     do igrid=1, ngrid_mpi
       task_grid_number(igrid) = igrid
-    enddo
+    end do
 
-  endif
+  end if
 
 
 end subroutine distribute_grid_workload

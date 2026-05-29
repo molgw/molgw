@@ -27,8 +27,8 @@ subroutine boys_function_c(fnt, nn, tt)  BIND(C)
     df(1:3) = 1.0_C_DOUBLE
     do ii=4, 2*maxfac
       df(ii) = (ii-2) * df(ii-2)
-    enddo
-  endif
+    end do
+  end if
 
   et = EXP(-tt)
   t2 = 2.0_C_DOUBLE * tt
@@ -39,7 +39,7 @@ subroutine boys_function_c(fnt, nn, tt)  BIND(C)
     fnt(0) = kk * ERF(t_sqrt) / t_sqrt
     do mm=0, nn-1
       fnt(mm+1) = ( (2*mm+1) * fnt(mm) - et ) / t2
-    enddo
+    end do
 
   else
     !   For smaller tt's compute F with highest nn using
@@ -55,15 +55,15 @@ subroutine boys_function_c(fnt, nn, tt)  BIND(C)
       term1 = num / df(m2 + 2*ii + 3)
       sum = sum + term1
       if( ABS(term1) < eps ) exit
-    enddo
+    end do
     fnt(nn) = sum * et
     !
     ! And then do downward recursion
     do mm=nn-1, 0, -1
       fnt(mm)= ( t2 * fnt(mm+1) + et ) / ( 2 * mm + 1 )
-    enddo
+    end do
 
-  endif
+  end if
 
 
 end subroutine boys_function_c

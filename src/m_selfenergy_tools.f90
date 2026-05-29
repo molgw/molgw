@@ -74,7 +74,7 @@ subroutine selfenergy_set_state_range(nstate_in, occupation, range)
 
   if( nstate_in > SIZE( occupation(:, :) , DIM=1 ) ) then
     call die('selfenergy_set_state_range: nstate is too large')
-  endif
+  end if
 
   ncore_G      = ncoreg
   nvirtual_G   = MIN(nvirtualg, nstate_in+1)
@@ -88,26 +88,26 @@ subroutine selfenergy_set_state_range(nstate_in, occupation, range)
 
   if( ncore_G > 0 ) then
     write(stdout, '(1x,a,i4,2x,i4)') 'frozen core approximation in G switched on up to state = ', ncore_G
-  endif
+  end if
 
   if( nvirtual_G <= nstate_in ) then
     write(stdout, '(1x,a,i4,2x,i4)') 'frozen virtual approximation in G switched on starting with state = ', nvirtual_G
-  endif
+  end if
 
   ! Find the HOMO index
   nhomo_G = 1
   do pstate=1, nstate_in
     if( .NOT. ANY( occupation(pstate, :) < completely_empty ) ) then
       nhomo_G = MAX(nhomo_G, pstate)
-    endif
-  enddo
+    end if
+  end do
   ! Find the LUMO index
   nlumo_G = 100000
   do pstate=1, nstate_in
     if( .NOT. ANY( occupation(pstate, :) > completely_empty ) ) then
       nlumo_G = MIN(nlumo_G, pstate)
-    endif
-  enddo
+    end if
+  end do
 
   if( .NOT. PRESENT(range) ) then
     nsemin = MAX(ncore_G+1, selfenergy_state_min, 1, nhomo_G-selfenergy_state_range)
@@ -115,7 +115,7 @@ subroutine selfenergy_set_state_range(nstate_in, occupation, range)
   else
     nsemin = MAX(ncore_G+1, 1)
     nsemax = MIN(nvirtual_G-1, nstate_in)
-  endif
+  end if
 
   write(stdout, '(a,i4,a,i4)') ' Calculate state range from ', nsemin, ' to ', nsemax
 
@@ -161,7 +161,7 @@ subroutine write_selfenergy_omega(filename_root, exchange_m_vxc, occupation, ene
 
     do pspin=1, nspin
       sign_occ(:) = SIGN( 1.0_dp , occupation(pstate, pspin) - spin_fact * 0.50_dp )
-    enddo
+    end do
 
     do iomega=-se%nomega, se%nomega
       spectral_function_w(:) = AIMAG( 1.0_dp   &
@@ -174,7 +174,7 @@ subroutine write_selfenergy_omega(filename_root, exchange_m_vxc, occupation, ene
                                             ( REAL(se%omega(iomega), dp) + se%energy0(pstate, :)           &
                                              - energy0(pstate, :) - exchange_m_vxc(pstate, :) ) * Ha_eV,   &
                                             spectral_function_w(:) / Ha_eV
-    enddo
+    end do
     write(selfenergyfile, *)
     close(selfenergyfile)
 
@@ -188,11 +188,11 @@ subroutine write_selfenergy_omega(filename_root, exchange_m_vxc, occupation, ene
         write(selfenergyfile_cmplx, '(20(f16.8,2x))') ( se%omega_calc(iomega) + se%energy0(pstate, :) )*Ha_eV,   &
                                                     se%sigma_calc(iomega, pstate, :) * Ha_eV,                   &
                                                     0.0_dp, 0.0_dp
-      enddo
+      end do
       close(selfenergyfile_cmplx)
-    endif
+    end if
 
-  enddo
+  end do
 
 
 end subroutine write_selfenergy_omega
@@ -229,7 +229,7 @@ subroutine find_qp_energy_linearization(se, exchange_m_vxc, energy0, energy_qp_z
       ! Z out of [0:1] is an indicator for whether it happened or not.
       do pspin=1, nspin
         zz_p(pspin) = MIN( MAX(zz_p(pspin), 0.0_dp) , 1.0_dp )
-      enddo
+      end do
 
       zz(pstate, :)          = zz_p(:)
       energy_qp_z(pstate, :) = se%energy0(pstate, :)  &
@@ -240,9 +240,9 @@ subroutine find_qp_energy_linearization(se, exchange_m_vxc, energy0, energy_qp_z
 
       energy_qp_z(pstate, :) = energy0(pstate, :) + REAL(se%sigma(0, pstate, :), dp) + exchange_m_vxc(pstate, :)
 
-    endif
+    end if
 
-  enddo
+  end do
   !$OMP END DO
   !$OMP END PARALLEL
 
@@ -293,9 +293,9 @@ subroutine find_qp_energy_graphical(se, exchange_m_vxc, energy0, energy_qp_g, zz
         equation_rhs(:) = se%sigma(:, pstate, pspin)%re + exchange_m_vxc(pstate, pspin) + energy0(pstate, pspin)
         call find_fixed_point(equation_lhs, equation_rhs, energy_fixed_point(:, pstate, pspin), z_weight(:, pstate, pspin))
 
-      enddo
+      end do
 
-    enddo
+    end do
 
     call world%sum(z_weight)
     call world%sum(energy_fixed_point)
@@ -310,16 +310,16 @@ subroutine find_qp_energy_graphical(se, exchange_m_vxc, energy0, energy_qp_g, zz
           energy_qp_g(pstate, pspin) = energy_fixed_point(iqp, pstate, pspin)
           if( PRESENT(zz) ) then
             zz(pstate, pspin) = z_weight(iqp, pstate, pspin)
-          endif
+          end if
         else
           ! If no solution has a finite weight, then for safety set QP energy to GKS energy
           energy_qp_g(pstate, pspin) = energy0(pstate, pspin)
           if( PRESENT(zz) ) then
             zz(pstate, pspin) = 1.0_dp
-          endif
-        endif
-      enddo
-    enddo
+          end if
+        end if
+      end do
+    end do
 
     ! Master IO node outputs the solution details
     write(stdout, '(/,1x,a)') 'state spin    QP energy (eV)  QP spectral weight'
@@ -334,25 +334,25 @@ subroutine find_qp_energy_graphical(se, exchange_m_vxc, energy0, energy_qp_g, zz
           !
           ! If no solution, approximate GW self-energy with \Sigma_c(e^GKS)
           energy_qp_g(pstate, pspin) = energy0(pstate, pspin) + se%sigma(0, pstate, pspin)%re + exchange_m_vxc(pstate, pspin)
-        endif
-      enddo
-    enddo
+        end if
+      end do
+    end do
 
     if( ANY(z_weight(1, :, :) < 0.0_dp) ) then
       call issue_warning('At least one state had no graphical solution in the calculated range.'  &
                      // ' Increase nomega_sigma or step_sigma.')
-    endif
+    end if
 
   else
 
     do pstate=nsemin, nsemax
       energy_qp_g(pstate, :) = energy0(pstate, :) + se%sigma(0, pstate, :)%re + exchange_m_vxc(pstate, :)
-    enddo
+    end do
     if( PRESENT(zz) ) then
       zz(:, :) = 1.0_dp
-    endif
+    end if
 
-  endif
+  end if
 
   ! Unchanged energies for the states that were not calculated (outside range [nsemin:nsemax])
   energy_qp_g(:nsemin-1, :) = energy0(:nsemin-1, :)
@@ -381,7 +381,7 @@ subroutine find_fixed_point(xx, fx, energy_fixed_point, z_weight)
   nfpmx = SIZE(energy_fixed_point)
   do ifixed=1, nfpmx
     enumerate(ifixed) = ifixed
-  enddo
+  end do
 
   ! Negative value to indicate something bad happened
   z_weight(:)           = -1.0_dp
@@ -412,10 +412,10 @@ subroutine find_fixed_point(xx, fx, energy_fixed_point, z_weight)
         gpxi = ( gx(ix+1) - gx(ix) ) / ( xx(ix+1) - xx(ix) )
         energy_fixed_point(jfixed) = xx(ix) - gx(ix) / gpxi
 
-      endif
+      end if
 
-    endif
-  enddo
+    end if
+  end do
 
 end subroutine find_fixed_point
 
@@ -445,8 +445,8 @@ subroutine output_qp_energy(calcname, energy0, exchange_m_vxc, ncomponent, se, e
       sigc_label = 'SigC_1      SigC_2'
     else
       sigc_label = 'SigC_1                  SigC_2'
-    endif
-  endif
+    end if
+  end if
 
 
   write(stdout, '(/,1x,a,1x,a)') TRIM(calcname), 'eigenvalues (eV)'
@@ -459,7 +459,7 @@ subroutine output_qp_energy(calcname, energy0, exchange_m_vxc, ncomponent, se, e
       write(stdout, '(3x,a,15x,a,22x,a,19x,a,24x,a,21x,a,17x,a)') '#', 'E0', 'SigX-Vxc', TRIM(sigc_label), &
                                                                   'Z', 'E_qp^lin', 'E_qp^graph'
       write(stdout, '(12x,14(a4,9x))') (' up ', 'down', ii=1, 5+ncomponent)
-    endif
+    end if
 
     do pstate=nsemin, nsemax
 
@@ -471,7 +471,7 @@ subroutine output_qp_energy(calcname, energy0, exchange_m_vxc, ncomponent, se, e
                                            zz(pstate, :),                    &
                                            energy1(pstate, :)*Ha_eV,         &
                                            energy2(pstate, :)*Ha_eV
-    enddo
+    end do
 
   else
 
@@ -480,7 +480,7 @@ subroutine output_qp_energy(calcname, energy0, exchange_m_vxc, ncomponent, se, e
     else
       write(stdout, '(3x,a,15x,a,22x,a,20x,a,22x,a)') '#', 'E0', 'SigX-Vxc', TRIM(sigc_label), 'E_qp'
       write(stdout, '(12x,10(a4,9x))') (' up ', 'down', ii=1, 3+ncomponent)
-    endif
+    end if
 
     do pstate=nsemin, nsemax
 
@@ -488,11 +488,11 @@ subroutine output_qp_energy(calcname, energy0, exchange_m_vxc, ncomponent, se, e
                                           exchange_m_vxc(pstate, :)*Ha_eV,       &
                                           se%sigma(0, pstate, :)%re*Ha_eV,  &
                                           energy1(pstate, :)*Ha_eV
-    enddo
+    end do
 
 
 
-  endif
+  end if
 
 end subroutine output_qp_energy
 
@@ -522,11 +522,11 @@ subroutine output_qp_energy_yaml(calcname, energy0, exchange_m_vxc, se, energy2,
         sigc_qp = energy2(pstate, pspin) - energy0(pstate, pspin) - exchange_m_vxc(pstate, pspin)
       else
         sigc_qp = se%sigma(0, pstate, pspin)%re
-      endif
+      end if
       write(char6, '(i6)') pstate
       write(unit_yaml, '(12x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', sigc_qp * Ha_eV
-    enddo
-  enddo
+    end do
+  end do
 
   write(unit_yaml, '(4x,a)') 'exchange minus vxc:'
   write(unit_yaml, '(8x,a)') 'unit: eV'
@@ -535,8 +535,8 @@ subroutine output_qp_energy_yaml(calcname, energy0, exchange_m_vxc, se, energy2,
     do pstate=nsemin, nsemax
       write(char6, '(i6)') pstate
       write(unit_yaml, '(12x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', REAL(exchange_m_vxc(pstate, pspin), dp) * Ha_eV
-    enddo
-  enddo
+    end do
+  end do
 
   if( PRESENT(zz) ) then
     write(unit_yaml, '(4x,a)') 'renormalization factor:'
@@ -545,9 +545,9 @@ subroutine output_qp_energy_yaml(calcname, energy0, exchange_m_vxc, se, energy2,
       do pstate=nsemin, nsemax
         write(char6, '(i6)') pstate
         write(unit_yaml, '(12x,a6,a,1x,es18.8)') ADJUSTL(char6), ':', zz(pstate, pspin)
-      enddo
-    enddo
-  endif
+      end do
+    end do
+  end if
 
 
 end subroutine output_qp_energy_yaml
@@ -580,14 +580,14 @@ subroutine se_init(se, selfenergy_technique, energy0)
       write(stdout, *) 'efermi is out of the HOMO-LUMO gap:', efermi, &
                      MAXVAL(energy0(nhomo_G, :)), MINVAL(energy0(nhomo_G+1, :))
       call die('se_init: efermi needs to be in the HOMO-LUMO gap')
-    endif
+    end if
   else
     if( LBOUND(energy0(:, :), DIM=1) <= nhomo_G .AND. UBOUND(energy0(:, :), DIM=1) >= nhomo_G+1 ) then
       efermi = 0.5_dp * ( MAXVAL(energy0(nhomo_G, :)) + MINVAL(energy0(nhomo_G+1, :)) )
     else
       call die('se_init: not enough states to find the fermi energy')
-    endif
-  endif
+    end if
+  end if
 
   select case(selfenergy_technique)
 
@@ -603,7 +603,7 @@ subroutine se_init(se, selfenergy_technique, energy0)
     allocate(se%omega(-se%nomega:se%nomega))
     do iomega=-se%nomega, se%nomega
       se%omega(iomega) = efermi + step_sigma * iomega
-    enddo
+    end do
 
     !
     ! Set the calculated sampling points for Sigma on the imaginary axis
@@ -611,7 +611,7 @@ subroutine se_init(se, selfenergy_technique, energy0)
     allocate(se%omega_calc(se%nomega_calc))
     do iomega=1, se%nomega_calc
       se%omega_calc(iomega) = efermi + step_sigma_calc * (iomega-1) * im
-    enddo
+    end do
 
   case(imaginary_axis_homolumo)
     !
@@ -620,7 +620,7 @@ subroutine se_init(se, selfenergy_technique, energy0)
     allocate(se%omega(-se%nomega:se%nomega))
     do iomega=-se%nomega, se%nomega
       se%omega(iomega) = efermi + step_sigma * iomega
-    enddo
+    end do
 
     !
     ! Set the initial sampling points for Sigma on the real axis inside the HOMO-LUMO gap
@@ -630,7 +630,7 @@ subroutine se_init(se, selfenergy_technique, energy0)
       se%omega_calc(iomega) = MAXVAL(energy0(nhomo_G, :)) + 0.01_dp &
                              + (iomega-1) / (se%nomega_calc-1.0_dp) &
                                  * ( MINVAL(energy0(nhomo_G+1, :)) - MAXVAL(energy0(nhomo_G, :)) - 0.02_dp)
-    enddo
+    end do
 
   case(imaginary_axis_integral)
     !
@@ -652,7 +652,7 @@ subroutine se_init(se, selfenergy_technique, energy0)
                                  * alpha * (1.0_dp -  omega_gaussleg(iomega))**(-alpha-1.0_dp) * beta
       se%omega_calc(iomega)  = im / ( 2.0_dp**alpha - 1.0_dp ) &
                                * ( 1.0_dp / (1.0_dp - omega_gaussleg(iomega))**alpha - 1.0_dp ) * beta
-    enddo
+    end do
     deallocate(omega_gaussleg)
 
   case(one_shot, contour_deformation, exact_dyson)
@@ -662,7 +662,7 @@ subroutine se_init(se, selfenergy_technique, energy0)
     allocate(se%omega(-se%nomega:se%nomega))
     do iomega=-se%nomega, se%nomega
       se%omega(iomega) = step_sigma * iomega
-    enddo
+    end do
 
   end select
 
@@ -691,10 +691,10 @@ subroutine se_init(se, selfenergy_technique, energy0)
 
   if( ALLOCATED(se%sigma_calc) ) then
     se%sigma_calc(:, :, :) = (0.0_dp, 0.0_dp)
-  endif
+  end if
   if( ALLOCATED(se%sigma) ) then
     se%sigma(:, :, :) = (0.0_dp, 0.0_dp)
-  endif
+  end if
 
 end subroutine se_init
 
@@ -745,7 +745,7 @@ subroutine setup_exchange_m_vxc(basis, occupation, energy, c_matrix, hamiltonian
   if(dft_core > 0) then
     if( beta_hybrid > 0.001 ) then
       call die('setup_exchange_m_vxc: RSH not implemented for DFT core-valence splitting')
-    endif
+    end if
     write(msg, '(a,i4,2x,i4)') 'DFT core-valence interaction switched on up to state = ', dft_core
     call issue_warning(msg)
 
@@ -763,7 +763,7 @@ subroutine setup_exchange_m_vxc(basis, occupation, energy, c_matrix, hamiltonian
       call init_dft_grid(basis, grid_level, dft_xc(1)%needs_gradient, .FALSE., BATCH_SIZE)
       call dft_exc_vxc_batch(BATCH_SIZE, basis, occupation_tmp, c_matrix, hxc_val, exc)
       call destroy_dft_grid()
-    endif
+    end if
 
     call setup_density_matrix(c_matrix, occupation_tmp, p_matrix_tmp)
     call calculate_exchange(basis, p_matrix_tmp, hexx_val, occupation=occupation_tmp, c_matrix=c_matrix)
@@ -792,10 +792,10 @@ subroutine setup_exchange_m_vxc(basis, occupation, energy, c_matrix, hamiltonian
     do ispin=1, nspin
       do pstate=1, nstate
         exchange_m_vxc(pstate, pstate, ispin) = exchange_m_vxc(pstate, pstate, ispin) - energy(pstate, ispin)
-      enddo
-    enddo
+      end do
+    end do
 
-  endif
+  end if
 
   call timer_x_m_vxc%stop()
 
@@ -820,7 +820,7 @@ subroutine apply_qs_approximation(s_matrix, c_matrix, selfenergy_mo, selfenergy_
   !
   do ispin=1, nspin
     selfenergy_mo(:, :, ispin) = 0.5_dp * ( selfenergy_mo(:, :, ispin) + TRANSPOSE(selfenergy_mo(:, :, ispin)) )
-  enddo
+  end do
 
   ! Transform the matrix elements back to the AO basis
   call h_mo_to_ao(c_matrix, s_matrix, selfenergy_mo, selfenergy_ao)
@@ -859,7 +859,7 @@ subroutine self_energy_fit(se)
         coeff(4+(ipp-1)*nparam) = 0.01_dp * ipp
         coeff(5+(ipp-1)*nparam) = 0.3_dp  / ipp
         coeff(6+(ipp-1)*nparam) = 0.3_dp  / ipp
-      enddo
+      end do
       chi2 = eval_chi2(coeff)
 
       call lbfgs_init(lbfgs_plan, nparam*npp, 5, diag_guess=1.0_dp)
@@ -870,12 +870,12 @@ subroutine self_energy_fit(se)
             coeffdq(:) = coeff(:)
             coeffdq(ii+(ipp-1)*nparam) = coeffdq(ii+(ipp-1)*nparam) + dq
             dchi2(ii+(ipp-1)*nparam) = ( eval_chi2(coeffdq) - eval_chi2(coeff) ) / dq
-          enddo
-        enddo
+          end do
+        end do
         info = lbfgs_execute(lbfgs_plan, coeff, chi2, dchi2)
         chi2 = eval_chi2(coeff)
         if( chi2 < 5.0e-8_dp ) exit
-      enddo
+      end do
       call lbfgs_destroy(lbfgs_plan)
       write(stdout, '(/,1x,a)') '=========================='
       write(stdout, '(1x,a)') '   #           Coeff              Re Pole            Im Pole'
@@ -888,7 +888,7 @@ subroutine self_energy_fit(se)
                                            coeff(6+(ipp-1)*nparam)**2, &
                                           -coeff(2+(ipp-1)*nparam)**2, &
                                            coeff(4+(ipp-1)*nparam)**2
-      enddo
+      end do
       write(stdout, '(1x,a)') '=========================='
 
 
@@ -896,16 +896,16 @@ subroutine self_energy_fit(se)
         write(500+pstate, '(6(1x,f18.8))') (se%omega_calc(iomega) + se%energy0(pstate, pspin))*Ha_eV, &
                                          se%sigma_calc(iomega, pstate, pspin)*Ha_eV, &
                                          eval_func(coeff, se%omega_calc(iomega) + se%energy0(pstate, pspin) )*Ha_eV
-      enddo
+      end do
 
 
       ! Extrapolate to the final desired omega's
       do iomega=-se%nomega, se%nomega
         se%sigma(iomega, pstate, pspin) = eval_func(coeff, se%omega(iomega) + se%energy0(pstate, pspin) )
-      enddo
+      end do
 
-    enddo
-  enddo
+    end do
+  end do
 
 
 
@@ -927,7 +927,7 @@ function eval_func(coeff_in, zz)
                              / ( zz - ( coeff_in(1+(ip-1)*nparam)**2 - im * coeff_in(3+(ip-1)*nparam)**2 ) ) &
                          + coeff_in(6+(ip-1)*nparam)**2  &
                              / ( zz + ( coeff_in(2+(ip-1)*nparam)**2 - im * coeff_in(4+(ip-1)*nparam)**2 ) )
-  enddo
+  end do
 
 end function eval_func
 
@@ -951,7 +951,7 @@ function eval_chi2(coeff_in)
                       * weight
     norm = norm + weight
 
-  enddo
+  end do
   eval_chi2 = eval_chi2 / norm
 
 
@@ -985,15 +985,15 @@ subroutine se_pade_fit(se)
         sigma_sym(se%nomega_calc+iomega_calc-1) = se%sigma_calc(iomega_calc, pstate, pspin)
         omega_sym(se%nomega_calc-iomega_calc+1) = CONJG(se%omega_calc(iomega_calc))
         sigma_sym(se%nomega_calc-iomega_calc+1) = CONJG(se%sigma_calc(iomega_calc, pstate, pspin))
-      enddo
+      end do
 
 
       do iomega=-se%nomega, se%nomega
         sign_eta = -SIGN( 1.0_dp , se%omega(iomega)%re - se%omega_calc(1)%re )
         se%sigma(iomega, pstate, pspin) = pade(omega_sym, sigma_sym, se%omega(iomega) + ieta * sign_eta )
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
 
 end subroutine se_pade_fit
@@ -1024,10 +1024,10 @@ subroutine self_energy_polynomial(se)
       do iomega=-se%nomega, se%nomega
         se%sigma(iomega, pstate, pspin) = a0 + a1 * (se%omega(iomega)-se%omega_calc(se%nomega_calc/2+1)) &
                                           + a2 * (se%omega(iomega)-se%omega_calc(se%nomega_calc/2+1))**2
-      enddo
+      end do
 
-    enddo
-  enddo
+    end do
+  end do
 
 
 end subroutine self_energy_polynomial
@@ -1067,7 +1067,7 @@ subroutine selfenergy_convergence_prediction(basis, c_matrix, eqp)
   basis_recognized = .TRUE.
   do iatom=2, SIZE(basis_name(:))
     if( TRIM(basis_name(iatom)) /= TRIM(basis_name(1)) ) basis_recognized = .FALSE.
-  enddo
+  end do
 
   select case(TRIM(basis_name(1)))
   case('cc-pVDZ')
@@ -1113,15 +1113,15 @@ subroutine selfenergy_convergence_prediction(basis, c_matrix, eqp)
     write(stdout, '(/,1x,a)') 'Estimate the Complete Basis Set limit for free'
     write(stdout, *)          '  see Bruneval, Maliyov, Lapointe, Marinica, JCTC 16, 4399 (2020)'
     write(stdout, *)          '      https://doi.org/10.1021/acs.jctc.0c00433'
-  endif
+  end if
 
   call setup_kinetic(basis, hkin)
 
   do pspin=1, nspin
     do pstate=nsemin, nsemax
       t_i(pstate, pspin) = DOT_PRODUCT( c_matrix(:, pstate, pspin) ,  MATMUL( hkin(:, :) ,  c_matrix(:, pstate, pspin) ) ) * Ha_eV
-    enddo
-  enddo
+    end do
+  end do
 
 
   write(stdout, '(/,1x,a,a)')           'For basis: ', basis_name(1)
@@ -1143,8 +1143,8 @@ subroutine selfenergy_convergence_prediction(basis, c_matrix, eqp)
                                             deltae, &
                                             eqp(pstate, pspin)*Ha_eV, &
                                             eqp_extrap(pstate, pspin)*Ha_eV
-    enddo
-  enddo
+    end do
+  end do
 
   call dump_out_energy_yaml('gw_extrap energies', eqp_extrap, nsemin, nsemax)
 
@@ -1169,8 +1169,8 @@ subroutine se_add(se, se2)
     ! assumme se2 is just a static correction stored in index = 0
     do iomega=-se%nomega, se%nomega
       se%sigma(iomega, :, :) = se%sigma(iomega, :, :) + se2%sigma(0, :, :)
-    enddo
-  endif
+    end do
+  end if
 
 end subroutine se_add
 
@@ -1226,7 +1226,7 @@ subroutine greensfunction_supermatrix_to_density_matrix(occupation, energy, c_ma
   p_matrix_mo(:, :, :) = 0.0_dp
   do pstate=1, ncore_G
     p_matrix_mo(pstate, pstate, :) = occupation(pstate, :)
-  enddo
+  end do
   p_matrix_mo(ncore_G+1:nvirtual_G-1, ncore_G+1:nvirtual_G-1, 1) = p_matrix_mo_active(:, :)
  
   deallocate(p_matrix_mo_active)
@@ -1266,7 +1266,7 @@ subroutine selfenergy_lehmann_to_density_matrix(occupation, energy, c_matrix, w_
   p_matrix_mo(:, :, :) = 0.0_dp
   do istate=1, nhomo_G
     p_matrix_mo(istate, istate, :) = occupation(istate, :)
-  enddo
+  end do
 
   !
   ! occ - occ block
@@ -1277,9 +1277,9 @@ subroutine selfenergy_lehmann_to_density_matrix(occupation, energy, c_matrix, w_
                 - spin_fact * SUM( w_s(:, astate, istate) * w_s(:, astate, jstate) &
                        / ( energy(istate, qspin) - energy(astate, qspin) - w_pole(:) ) &
                        / ( energy(jstate, qspin) - energy(astate, qspin) - w_pole(:) ) )
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
   !
   ! virt - virt block
   do bstate=nhomo_G+1, nvirtual_G-1
@@ -1289,9 +1289,9 @@ subroutine selfenergy_lehmann_to_density_matrix(occupation, energy, c_matrix, w_
                 + spin_fact * SUM( w_s(:, istate, astate) * w_s(:, istate, bstate) &
                        / ( energy(istate, qspin) - energy(astate, qspin) - w_pole(:) ) &
                        / ( energy(istate, qspin) - energy(bstate, qspin) - w_pole(:) ) )
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
   !
   ! virt - occ  block
   do bstate=nhomo_G+1, nvirtual_G-1
@@ -1301,21 +1301,21 @@ subroutine selfenergy_lehmann_to_density_matrix(occupation, energy, c_matrix, w_
                 + spin_fact * SUM( w_s(:, astate, istate) * w_s(:, astate, bstate) &
                        / ( energy(istate, qspin) - energy(astate, qspin) - w_pole(:) ) ) &
                   / ( energy(istate, qspin) - energy(bstate, qspin) )
-      enddo
+      end do
       do jstate=ncore_G+1, nhomo_G
         p_matrix_mo(istate, bstate, qspin) = p_matrix_mo(istate, bstate, qspin) &
                 - spin_fact * SUM( w_s(:, jstate, istate) * w_s(:, jstate, bstate) &
                        / ( energy(jstate, qspin) - energy(bstate, qspin) - w_pole(:) ) ) &
                   / ( energy(istate, qspin) - energy(bstate, qspin) )
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
   ! occ - virt  block
   do bstate=nhomo_G+1, nvirtual_G-1
     do istate=ncore_G+1, nhomo_G
       p_matrix_mo(bstate, istate, qspin) = p_matrix_mo(istate, bstate, qspin)
-    enddo
-  enddo
+    end do
+  end do
 
 
   write(stdout, '(1x,a,f12.6)') 'Trace of the density matrix: ', matrix_trace(p_matrix_mo(:, :, 1))

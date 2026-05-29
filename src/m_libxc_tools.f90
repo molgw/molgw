@@ -16,7 +16,7 @@ module m_libxc_tools
 #if !defined(NO_LIBXC)
 #include <xc_funcs.h>
 #include <xc_version.h>
-#endif
+#end if
 
   implicit none
 
@@ -233,7 +233,7 @@ subroutine init_libxc_info(dft_xc)
 
   if( .NOT. ALLOCATED(dft_xc) ) then
     call die('init_libxc_info: dft_xc_info type should have been allocated already at this stage')
-  endif
+  end if
 
   dft_xc(:)%nxc = COUNT( dft_xc(:)%id /= 0 )
 
@@ -252,32 +252,32 @@ subroutine init_libxc_info(dft_xc)
     if( xc_func_init(dft_xc(ixc)%func, dft_xc(ixc)%id, dft_xc(ixc)%nspin) /= 0 ) then
       write(stdout, '(1x,a,i6)') 'Libxc failure when initializing functional: ', dft_xc(ixc)%id
       call die('init_libxc_info: error in LIBXC xc_func_init')
-    endif
+    end if
 
     !
     ! Tune the range for range separated hybrids
     if( dft_xc(ixc)%id == XC_GGA_X_HJS_PBE .or. dft_xc(ixc)%id == XC_GGA_X_HJS_B88 ) then
       call xc_func_set_ext_params_name(dft_xc(ixc)%func, C_CHAR_'_omega'//C_NULL_CHAR, dft_xc(ixc)%gamma)
       write(stdout, '(1x,a,f12.4)') 'Tuning range-separation in LIBXC with value: ', dft_xc(ixc)%gamma
-    endif
+    end if
     if( dft_xc(ixc)%id == XC_GGA_X_WPBEH ) then
       call xc_func_set_ext_params_name(dft_xc(ixc)%func, C_CHAR_'_omega'//C_NULL_CHAR, dft_xc(ixc)%gamma)
       write(stdout, '(1x,a,f12.4)') 'Tuning range-separation in LIBXC with value: ', dft_xc(ixc)%gamma
-    endif
+    end if
     if( dft_xc(ixc)%id == XC_GGA_X_ITYH_PBE ) then
       call xc_func_set_ext_params_name(dft_xc(ixc)%func, C_CHAR_'_omega'//C_NULL_CHAR, dft_xc(ixc)%gamma)
       write(stdout, '(1x,a,f12.4)') 'Tuning range-separation in LIBXC with value: ', dft_xc(ixc)%gamma
-    endif
+    end if
     if( dft_xc(ixc)%id == XC_GGA_X_ITYH ) then
       call xc_func_set_ext_params_name(dft_xc(ixc)%func, C_CHAR_'_omega'//C_NULL_CHAR, dft_xc(ixc)%gamma)
       write(stdout, '(1x,a,f12.4)') 'Tuning range-separation in LIBXC with value: ', dft_xc(ixc)%gamma
-    endif
+    end if
     if( dft_xc(ixc)%id == XC_LDA_C_PMGB06 ) then
       call xc_func_set_ext_params_name(dft_xc(ixc)%func, C_CHAR_'_omega'//C_NULL_CHAR, dft_xc(ixc)%gamma)
       write(stdout, '(1x,a,f12.4)') 'Tuning range-separation in LIBXC with value: ', dft_xc(ixc)%gamma
-    endif
+    end if
 
-  enddo
+  end do
 
 
   dft_xc(:)%needs_gradient = .FALSE.
@@ -285,13 +285,13 @@ subroutine init_libxc_info(dft_xc)
     dft_xc(ixc)%family = xc_family_from_id(dft_xc(ixc)%id, C_NULL_PTR, C_NULL_PTR)
     dft_xc(:)%needs_gradient = dft_xc(:)%needs_gradient .OR. dft_xc(ixc)%family == XC_FAMILY_GGA &
                                                        .OR. dft_xc(ixc)%family == XC_FAMILY_HYB_GGA
-  enddo
+  end do
 
 
   ! dft_xc(:)%needs_gradient = ANY( ( dft_xc(:)%family == XC_FAMILY_GGA     ) .AND. ( ABS(dft_xc(:)%coeff) > 1.0e-6_dp ) ) &
   !                    .OR. ANY( ( dft_xc(:)%family == XC_FAMILY_HYB_GGA ) .AND. ( ABS(dft_xc(:)%coeff) > 1.0e-6_dp ) )
 
-#endif
+#end if
 
 
 end subroutine init_libxc_info
@@ -318,7 +318,7 @@ subroutine copy_libxc_info(dft_xc_in, dft_xc_out)
     dft_xc_out(ixc)%nspin          =  dft_xc_in(ixc)%nspin
     dft_xc_out(ixc)%family         =  dft_xc_in(ixc)%family
     dft_xc_out(ixc)%func           => dft_xc_in(ixc)%func
-  enddo
+  end do
 
 end subroutine copy_libxc_info
 
@@ -335,8 +335,8 @@ subroutine destroy_libxc_info(dft_xc)
 #if !defined(NO_LIBXC)
     call xc_func_end(dft_xc(ixc)%func)
     call xc_func_free(dft_xc(ixc)%func)
-#endif
-  enddo
+#end if
+  end do
   deallocate(dft_xc)
 
 end subroutine destroy_libxc_info
