@@ -67,7 +67,7 @@ program molgw
   use m_force
 #if defined(HAVE_ELPA)
   use elpa
-#end if
+#endif
   implicit none
 
   !=====
@@ -147,11 +147,11 @@ program molgw
   ! Initialize the HDF5 environment
 #if defined(HAVE_HDF5)
   call hdf_init() 
-#end if
+#endif
 
 #if defined(HAVE_ELPA)
   if(elpa_init(ELPA_MIN_VERSION) /= ELPA_OK) call die("molgw: error when initialising ELPA")
-#end if
+#endif
 
  
   !
@@ -234,7 +234,7 @@ program molgw
     else
       call init_libcint(basis)
     end if
-#end if
+#endif
 
     ! Do some experimental analysis
     if( print_rho_grid_ ) call dm_dump(basis)
@@ -579,7 +579,7 @@ program molgw
     ! Reinitialize LIBCINT if atoms move
     call destroy_libcint(basis)
     if(has_auxil_basis) call destroy_libcint(auxil_basis)
-#end if
+#endif
 
   end do ! istep
 
@@ -613,7 +613,7 @@ program molgw
   else
     call init_libcint(basis)
   end if
-#end if
+#endif
 
   if ( (.NOT. x2c_) .AND. (.NOT. complex_scf_) ) then
     !
@@ -952,7 +952,7 @@ program molgw
 #if defined(HAVE_LIBCINT)
   call destroy_libcint(basis)
   if(has_auxil_basis) call destroy_libcint(auxil_basis)
-#end if
+#endif
 
   call destroy_cart_to_pure_transforms()
 
@@ -963,11 +963,11 @@ program molgw
 
 #if defined(HAVE_ELPA)
   call elpa_uninit()
-#end if
+#endif
 
 #if defined(HAVE_HDF5)
   call hdf_finalize() 
-#end if
+#endif
 
 end program molgw
 

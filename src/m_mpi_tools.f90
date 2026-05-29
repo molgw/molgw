@@ -12,7 +12,7 @@ module m_mpi_tools
   use m_warning, only: die
 #if defined(HAVE_MPI)
   use mpi
-#end if
+#endif
 
 
   implicit none
@@ -54,7 +54,7 @@ module m_mpi_tools
 
 #if !defined(HAVE_MPI)
   integer, parameter :: MPI_SUCCESS = 0
-#end if
+#endif
 
 
 contains
@@ -77,7 +77,7 @@ subroutine mpic_init(mpic, comm_in)
   mpic%comm  = 1
   mpic%nproc = 1
   mpic%rank  = 0
-#end if
+#endif
   if( ierror /= MPI_SUCCESS ) then
     write(stdout, *) 'error in MPI_COMM_SIZE'
   end if
@@ -95,7 +95,7 @@ subroutine mpic_barrier(mpic)
 
 #if defined(HAVE_MPI)
   call MPI_BARRIER(mpic%comm, ierror)
-#end if
+#endif
   if( ierror /= MPI_SUCCESS ) then
     write(stdout, *) 'error in MPI_BARRIER'
   end if
@@ -118,7 +118,7 @@ subroutine mpic_sum_dp(mpic, array)
 
 #if defined(HAVE_MPI)
   call MPI_ALLREDUCE( MPI_IN_PLACE, array, nsize, MPI_DOUBLE_PRECISION, MPI_SUM, mpic%comm, ierror)
-#end if
+#endif
   if( ierror /= MPI_SUCCESS ) then
     write(stdout, *) 'error in MPI_ALLREDUCE'
   end if
@@ -141,7 +141,7 @@ subroutine mpic_sum_cdp(mpic, array)
 
 #if defined(HAVE_MPI)
   call MPI_ALLREDUCE( MPI_IN_PLACE, array, nsize, MPI_DOUBLE_COMPLEX, MPI_SUM, mpic%comm, ierror)
-#end if
+#endif
   if( ierror /= MPI_SUCCESS ) then
     write(stdout, *) 'error in MPI_ALLREDUCE'
   end if
@@ -164,7 +164,7 @@ subroutine mpic_sum_i8(mpic, array)
 
 #if defined(HAVE_MPI)
   call MPI_ALLREDUCE( MPI_IN_PLACE, array, nsize, MPI_INTEGER8, MPI_SUM, mpic%comm, ierror)
-#end if
+#endif
   if( ierror /= MPI_SUCCESS ) then
     write(stdout, *) 'error in MPI_ALLREDUCE'
   end if
@@ -187,7 +187,7 @@ subroutine mpic_max_dp(mpic, array)
 
 #if defined(HAVE_MPI)
   call MPI_ALLREDUCE( MPI_IN_PLACE, array, nsize, MPI_DOUBLE_PRECISION, MPI_MAX, mpic%comm, ierror)
-#end if
+#endif
   if( ierror /= MPI_SUCCESS ) then
     write(stdout, *) 'error in MPI_ALLREDUCE'
   end if
@@ -210,7 +210,7 @@ subroutine mpic_max_i(mpic, array)
 
 #if defined(HAVE_MPI)
   call MPI_ALLREDUCE( MPI_IN_PLACE, array, nsize, MPI_INTEGER, MPI_MAX, mpic%comm, ierror)
-#end if
+#endif
   if( ierror /= MPI_SUCCESS ) then
     write(stdout, *) 'error in MPI_ALLREDUCE'
   end if
@@ -233,7 +233,7 @@ subroutine mpic_min_dp(mpic, array)
 
 #if defined(HAVE_MPI)
   call MPI_ALLREDUCE( MPI_IN_PLACE, array, nsize, MPI_DOUBLE_PRECISION, MPI_MIN, mpic%comm, ierror)
-#end if
+#endif
   if( ierror /= MPI_SUCCESS ) then
     write(stdout, *) 'error in MPI_ALLREDUCE'
   end if
@@ -256,7 +256,7 @@ subroutine mpic_min_i(mpic, array)
 
 #if defined(HAVE_MPI)
   call MPI_ALLREDUCE( MPI_IN_PLACE, array, nsize, MPI_INTEGER, MPI_MIN, mpic%comm, ierror)
-#end if
+#endif
   if( ierror /= MPI_SUCCESS ) then
     write(stdout, *) 'error in MPI_ALLREDUCE'
   end if
@@ -279,7 +279,7 @@ subroutine mpic_and_l(mpic, array)
 
 #if defined(HAVE_MPI)
   call MPI_ALLREDUCE( MPI_IN_PLACE, array, nsize, MPI_LOGICAL, MPI_LAND, mpic%comm, ierror)
-#end if
+#endif
   if( ierror /= MPI_SUCCESS ) then
     write(stdout, *) 'error in MPI_ALLREDUCE'
   end if
@@ -303,7 +303,7 @@ subroutine mpic_bcast_i(mpic, rank, array)
 
 #if defined(HAVE_MPI)
   call MPI_BCAST(array, nsize, MPI_INTEGER, rank, mpic%comm, ierror)
-#end if
+#endif
   if( ierror /= MPI_SUCCESS ) then
     write(stdout, *) 'error in MPI_BCAST'
   end if
@@ -327,7 +327,7 @@ subroutine mpic_bcast_dp(mpic, rank, array)
 
 #if defined(HAVE_MPI)
   call MPI_BCAST(array, nsize, MPI_DOUBLE_PRECISION, rank, mpic%comm, ierror)
-#end if
+#endif
   if( ierror /= MPI_SUCCESS ) then
     write(stdout, *) 'error in MPI_BCAST'
   end if
@@ -351,7 +351,7 @@ subroutine mpic_bcast_cdp(mpic, rank, array)
 
 #if defined(HAVE_MPI)
   call MPI_BCAST(array, nsize, MPI_DOUBLE_COMPLEX, rank, mpic%comm, ierror)
-#end if
+#endif
   if( ierror /= MPI_SUCCESS ) then
     write(stdout, *) 'error in MPI_BCAST'
   end if

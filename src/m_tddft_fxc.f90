@@ -229,7 +229,7 @@ subroutine prepare_tddft(is_triplet_in, nstate, basis, c_matrix, occupation)
   deallocate(tddft_xc)
 #else
   call die('prepare_tddft: not available without LIBXC')
-#end if
+#endif
 
 end subroutine prepare_tddft
 

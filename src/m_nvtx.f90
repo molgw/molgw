@@ -118,7 +118,7 @@ contains
     call nvtxRangePop
   end subroutine nvtxEndRange
 
-#end if
+#endif
 
 end module m_nvtx
 !!***

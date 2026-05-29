@@ -15,7 +15,7 @@ module m_elpa
 
 #if defined(HAVE_ELPA)
   use elpa
-#end if
+#endif
 
   implicit none
 
@@ -48,7 +48,7 @@ module m_elpa
     integer :: gpu = 0
   end type elpa_hdl_t
 
-#end if
+#endif
 
 contains  !==============================================================================
 !!***
@@ -474,7 +474,7 @@ end subroutine elpa_func_solve_evp_complex
 
 !----------------------------------------------------------------------
 
-#end if
+#endif
 
 end module m_elpa
 !!***

@@ -223,7 +223,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
   integer              :: desc_matrix(NDEL)
   real(dp)             :: work(1), nelect, rtmp
   integer              :: nlocal, jlocal, iglobal, jglobal
-#end if
+#endif
   !=====
 
   call timer_gw_self%start()
@@ -320,7 +320,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
         matrix_wing(irecord+1:irecord+wpol%npole_reso, :) = &
              MATMUL( TRANSPOSE(wpol%w_s(:, :)) , eri_3center_mo(:, nsemin:nsemax, istate, ispin) )
         call auxil%sum(matrix_wing(irecord+1:irecord+wpol%npole_reso, :))
-#end if
+#endif
       end if
 
 
@@ -452,7 +452,7 @@ subroutine gw_selfenergy_upfolding(selfenergy_approx, occupation, energy, c_matr
              spin_fact * SUM( SUM(super_matrix(1:mstate, :)**2, DIM=1), MASK=(eigval(:) < mu) )
     write(stdout, *) '==================================================='
 
-#end if
+#endif
     call clean_deallocate('Super matrix', super_matrix)
     deallocate(eigval)
 
@@ -494,7 +494,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
   real(dp), allocatable    :: w_s_tmp(:, :)
   real(dp), allocatable    :: w_s(:, :)
   complex(dp), allocatable :: sigmagw(:, :, :)
-#end if
+#endif
   !=====
 
   if(.NOT. has_auxil_basis) return
@@ -644,7 +644,7 @@ subroutine gw_selfenergy_scalapack(selfenergy_approx, occupation, energy, c_matr
 
   call timer_gw_self%stop()
 
-#end if
+#endif
 
 end subroutine gw_selfenergy_scalapack
 

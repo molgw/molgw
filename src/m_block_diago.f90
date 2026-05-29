@@ -98,7 +98,7 @@ subroutine diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, bigomega, xpy_ma
     call PDGEADD('N', nmat, nmat, 1.0_dp, apb_matrix, 1, 1, desc_apb, -1.0_dp, xmy_matrix, 1, 1,desc_x)
 
   else
-#end if
+#endif
 
     ! Cholevski decomposition of (A+B) = L * L^T
     call DPOTRF('L', nmat, apb_matrix, nmat,info)
@@ -130,7 +130,7 @@ subroutine diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, bigomega, xpy_ma
 
 #if defined(HAVE_SCALAPACK)
   end if
-#end if
+#endif
 
   call timer_tmp2%stop()
   call timer_diago_h2p%stop()
@@ -365,7 +365,7 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
 
 
   deallocate(bb_local, ab_local)
-#end if
+#endif
 
 
   ! Calculate and store   b (A+B) b = b^T [ (A+B) b ]
@@ -549,7 +549,7 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
 
 
     deallocate(bb_local, ab_local)
-#end if
+#endif
 
     ! Add the missing b ( A+B) b
     bb_apb_bb(nbbc+1:nbbc+nbba,     1:nbbc+nbba) = MATMUL( TRANSPOSE(bb(:, nbbc+1:nbbc+nbba)) , apb_bb(:,     1:nbbc+nbba) )
@@ -643,7 +643,7 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
   deallocate(bb_local, ev_local)
 
 
-#end if
+#endif
 
 
   deallocate(bb_apb_bb, bb_amb_bb)

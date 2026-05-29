@@ -29,7 +29,7 @@ module m_acfd
 
 #if !defined(NO_LIBXC)
 #include <xc_funcs.h>
-#end if
+#endif
 
   implicit none
 
@@ -394,7 +394,7 @@ subroutine calculate_ec_acft(desc_x, a_matrix, b_matrix, x_matrix, y_matrix, erp
   real(dp), allocatable :: m_matrix(:, :), tmp_matrix(:, :)
 #if defined(HAVE_SCALAPACK)
   integer :: nprow, npcol, myprow, mypcol
-#end if
+#endif
   !=====
 
   ! Beware that a_matrix and b_matrix are symmetric and in the SCALAPACK case, only the lower part is filled.
@@ -447,7 +447,7 @@ subroutine calculate_ec_acft(desc_x, a_matrix, b_matrix, x_matrix, y_matrix, erp
     erpa = erpa + 0.5_dp * PDLATRA(nmat, m_matrix, 1, 1, desc_x)
   else
 
-#end if
+#endif
     nmat=SIZE(a_matrix, DIM=1)
 
     erpa = -0.5_dp * matrix_trace(a_matrix)
@@ -478,7 +478,7 @@ subroutine calculate_ec_acft(desc_x, a_matrix, b_matrix, x_matrix, y_matrix, erp
     erpa = erpa + 0.5_dp * matrix_trace(m_matrix)
 #if defined(HAVE_SCALAPACK)
   end if
-#end if
+#endif
 
   !m_matrix(:,:) = -a_matrix(:,:)
   !m_matrix(:,:) = m_matrix(:,:) + MATMUL( TRANSPOSE(x_matrix) , MATMUL(a_matrix, x_matrix) )

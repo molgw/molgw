@@ -9,7 +9,7 @@
 #include "molgw.h"
 #if !defined(NO_LIBINT)
 #include<libint2/libint2_params.h>
-#end if
+#endif
 
 module m_hamiltonian_periodic
   use m_definitions
@@ -33,7 +33,7 @@ module m_hamiltonian_periodic
   use m_hamiltonian_onebody
 #if defined(HAVE_FFTW3)
   use m_fftw3
-#end if
+#endif
   implicit none
 
   integer, private :: nx                ! local copy of input variable fft_neighbors
@@ -305,7 +305,7 @@ subroutine setup_overlap_onecell(basis, shift, s_matrix)
                            array_cart)
 
       call transform_libcint_to_molgw(basis%gaussian_type, li, lj, array_cart, matrix)
-#end if
+#endif
 
       deallocate(alphaA, cA)
 
@@ -421,7 +421,7 @@ subroutine setup_kinetic_onecell(basis, shift, kin_ao)
                            array_cart)
 
       call transform_libint_to_molgw(basis%gaussian_type, li, lj, array_cart, matrix)
-#end if
+#endif
 
       deallocate(alphaA, cA)
 
@@ -458,7 +458,7 @@ subroutine setup_nucleus_periodic(basis, h_ao, enucnuc)
 
 #if !defined(HAVE_FFTW3)
   call die('setup_nucleus_periodic: requires FFTW at compilation time')
-#end if
+#endif
 
 
   if( TIMING_current_stage == TIMING_POSTSCF ) then
@@ -559,7 +559,7 @@ subroutine setup_hartree_periodic(basis, p_matrix, vloc, ehartree, h_ao)
 
 #if !defined(HAVE_FFTW3)
   call die('setup_hartree_periodic: requires FFTW at compilation time')
-#end if
+#endif
 
   select type(p_matrix)
   type is(real(dp))
@@ -887,7 +887,7 @@ subroutine evaluate_gradrho_periodic(rhor, gradrhor)
 #else
   gradrhor(:, :, :) = 0.0_dp ! Fake operation to cheat on the unused dummy variable check of the compiler
   call die('evaluate_gradrho_periodic: requires to be compiled with FFTs (-DHAVE_FFTW3)')
-#end if
+#endif
 
 end subroutine evaluate_gradrho_periodic
 
@@ -991,7 +991,7 @@ subroutine evaluate_divergence_periodic(gradrhor, sigmar, divergence)
 #else
   divergence(:, :) = 0.0_dp ! Fake operation to cheat on the unused dummy variable check of the compiler
   call die('evaluate_divergence_periodic: requires to be compiled with FFTs (-DHAVE_FFTW3)')
-#end if
+#endif
 
 end subroutine evaluate_divergence_periodic
 
@@ -1190,11 +1190,11 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
         call DESCINIT(desc2, ng_global, basis%nbf, 1, 1, first_row, first_col, cntxt_rd, MAX(1, ng_local), info)
         call PDGEMR2D(ng_global, basis%nbf, phiphig1, 1, 1, desc1, phiphig, 1, 1, desc2, cntxt_cd)
       else
-#end if
+#endif
         phiphig(:, :) = phiphig1(:, :)
 #if defined(HAVE_SCALAPACK)
       end if
-#end if
+#endif
       call timer_tmp8%stop()
 
       call timer_tmp9%start()
@@ -1230,7 +1230,7 @@ subroutine setup_exchange_periodic(basis, p_matrix, c_matrix, occupation, ex, h_
   ex = 0.0_dp
   h_ao(:, :, :) = 0.0_dp
   call die('setup_exchange_periodic: requires FFTW3 activation')
-#end if
+#endif
 
 end subroutine setup_exchange_periodic
 
@@ -1264,11 +1264,11 @@ subroutine transpose_bfr(bfrt, desct)
     call PDTRAN(nfft_global, nbf, 1.0d0, bfr, 1, 1, desc_bfr, &
                 0.0d0, bfrt, 1, 1, desct)
   else
-#end if
+#endif
     bfrt(:, :) = TRANSPOSE(bfr(:, :))
 #if defined(HAVE_SCALAPACK)
   end if
-#end if
+#endif
 
 end subroutine transpose_bfr
 
@@ -1442,7 +1442,7 @@ subroutine calculate_coulombvertex_periodic(c_matrix)
 
 #else
   call die('calculate_coulombvertex_periodic: requires FFTW3 activation')
-#end if
+#endif
 
 end subroutine calculate_coulombvertex_periodic
 
@@ -2276,7 +2276,7 @@ subroutine poisson_solver_fft(rhor, vcoulr)
 #else
   vcoulr(:) = rhor(:) ! Fake operation to cheat on the unused dummy variable check of the compiler
   call die('poisson_solver_fft: requires to be compiled with FFTs (-DHAVE_FFTW3)')
-#end if
+#endif
 
 
 end subroutine poisson_solver_fft
@@ -2504,7 +2504,7 @@ subroutine setup_nucleus_gth_nonlocal_periodic(basis, h_ecp)
                                            ipl, array_cart_C)
 
                 array_cart(:) = array_cart_C(:)
-#end if
+#endif
                 call transform_libint_to_molgw_gth_projector(basis%gaussian_type, li, lj, array_cart, matrix)
 
                 proj_i(jbf1:jbf2, :, ipl) = proj_i(jbf1:jbf2, :, ipl) + TRANSPOSE(matrix(:, :))

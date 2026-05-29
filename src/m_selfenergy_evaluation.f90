@@ -254,7 +254,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
              .OR. calc_type%selfenergy_approx == GnWn) ) then
           call gw_selfenergy_scalapack(calc_type%selfenergy_approx, occupation, energy_g, c_matrix, wpol, se)
         else
-#end if
+#endif
           if( has_auxil_basis .AND. calc_type%selfenergy_approx == DUMP_GW ) then
             call dump_gw_ingredients(energy_g, c_matrix, wpol)
           else
@@ -262,7 +262,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
           end if
 #if defined(HAVE_SCALAPACK)
         end if
-#end if
+#endif
       end select
 
       if( ABS(en_mbpt%gw) > 1.0e-5_dp ) then

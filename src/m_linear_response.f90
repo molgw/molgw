@@ -255,7 +255,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     call build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
 #else
     call build_apb_hartree_auxil(is_triplet_currently, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
-#end if
+#endif
 
 
     !
@@ -581,7 +581,7 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
     ! it seems that MKL scalapack/blacs does not have PDLAWRITE
 #if !defined(HAVE_MKL)
     call PDLAWRITE('inv_apb_mat', nmat, nmat, inv_apb_matrix, 1, 1, desc_x, 0, 0, work)
-#end if
+#endif
     deallocate(work)
     open(unit=iunit, file='inv_apb_mat', status='old', position="append")
     write(iunit, *) SIZE(occupation, DIM=1)
@@ -589,7 +589,7 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
 
   else
 
-#end if
+#endif
 
     !
     ! Print (A+B)^-1 matrix 
@@ -607,7 +607,7 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
 
 #if defined(HAVE_SCALAPACK)
   end if
-#end if
+#endif
 
   call destroy_eri_3center_mo(long_range=(beta_hybrid>1.0e-6_dp)) ! Was built in polarizability subroutine or before  
   call clean_deallocate('Tmp_Mat', tmp_matrix)
@@ -913,7 +913,7 @@ subroutine chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol, ener
   call auxil%sum(energy_gm)
 
 
-#end if
+#endif
 
 
 

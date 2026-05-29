@@ -2726,13 +2726,13 @@ subroutine psd_gw2sosex_selfenergy(occupation, energy, c_matrix, wpol, ecorr, se
                   blas_dp_one, wpol%w_s, 1, 1, desc_w_s_P, eri_3center_mo, 1, 1, desc_eri3_mo, &
                   blas_dp_zero, w_s, 1, 1, desc_w_s)
     else
-#end if
+#endif
       call DGEMM('T', 'N', wpol%npole_reso, nstate2, nauxil_local, &
                  blas_dp_one, wpol%w_s(1, 1), nauxil_local, eri_3center_mo(1, ncore_G+1, ncore_G+1, 1), nauxil_local, &
                  blas_dp_zero, w_s(1, ncore_G+1, ncore_G+1), wpol%npole_reso)
 #if defined(HAVE_SCALAPACK)
     end if
-#end if
+#endif
 
   end do
 

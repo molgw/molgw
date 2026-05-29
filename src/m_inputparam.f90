@@ -9,7 +9,7 @@
 #include "molgw.h"
 #if !defined(NO_LIBINT)
 #include<libint2/libint2_params.h>
-#end if
+#endif
 module m_inputparam
   use m_definitions
   use m_mpi
@@ -23,7 +23,7 @@ module m_inputparam
 
 #if !defined(NO_LIBXC)
 #include <xc_funcs.h>
-#end if
+#endif
 
   implicit none
 
@@ -683,7 +683,7 @@ subroutine init_dft_type(key)
     dft_xc(1)%coeff = beta_hybrid
     dft_xc(2)%coeff = 1.00_dp - kappa_hybrid
     dft_xc(1)%gamma = gamma_hybrid
-#end if
+#endif
   case default
 
     !
@@ -730,7 +730,7 @@ subroutine init_dft_type(key)
     alpha_hybrid = globalx_libxc + srx_libxc
     beta_hybrid  = -srx_libxc
   end if
-#end if
+#endif
 
   if( gamma_hybrid > 1.0e-12 ) then
     rcut = 1.0_dp / gamma_hybrid
@@ -971,8 +971,8 @@ subroutine read_inputfile_namelist()
   if( move_nuclei /= 'no' ) then
     call die('LIBINT does not contain the gradients of the integrals that are needed when move_nuclei is different from no')
   end if
-#end if
-#end if
+#endif
+#endif
 
 #if !defined(HAVE_HDF5)
 
@@ -982,7 +982,7 @@ subroutine read_inputfile_namelist()
                 'and the -DHAVE_HDF5 compilation option must be activated')
   end if
 
-#end if
+#endif
 
   call init_excitation_type()
   nprojectile = MERGE(1, 0, excit_type%form==EXCIT_PROJECTILE .OR. excit_type%form == EXCIT_PROJECTILE_W_BASIS)

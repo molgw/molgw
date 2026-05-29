@@ -31,7 +31,7 @@
 #include "molgw.h"
 #if !defined(NO_LIBINT)
 #include<libint2/libint2_params.h>
-#end if
+#endif
 
 
 

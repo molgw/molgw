@@ -164,7 +164,7 @@ subroutine calculate_eri_4center(basis, rcut)
   else
     write(stdout, '(/,a)') ' Calculate and store the LR 4-center Coulomb integrals (LIBINT)'
   end if
-#end if
+#endif
 
 
   ! ymbyun 2018/05/21
@@ -249,7 +249,7 @@ subroutine calculate_eri_4center(basis, rcut)
                          am3, ng3, x03, alpha3, coeff3, &
                          am4, ng4, x04, alpha4, coeff4, &
                          rcut_libint, int_shell)
-#end if
+#endif
 
       call transform_libint_to_molgw(basis%gaussian_type, ami, amj, amk, aml, int_shell, integrals)
 
@@ -338,7 +338,7 @@ subroutine calculate_eri_4center_shell(basis, rcut, ijshellpair, klshellpair, &
   call set_erf_screening_length_libcint(basis, rcut)
 #else
   rcut_libint = rcut
-#end if
+#endif
 
 
   kshell = index_shellpair(1, klshellpair)
@@ -414,7 +414,7 @@ subroutine calculate_eri_4center_shell(basis, rcut, ijshellpair, klshellpair, &
                      am4, ng4, x04, alpha4, coeff4, &
                      rcut_libint, &
                      shell_libint)
-#end if
+#endif
 
   call transform_libint_to_molgw(basis%gaussian_type, ami, amj, amk, aml, shell_libint, shellABCD)
 
@@ -553,7 +553,7 @@ subroutine calculate_eri_4center_shell_grad(basis, rcut, ijshellpair, klshellpai
                           gradBx, gradBy, gradBz, &
                           gradCx, gradCy, gradCz, &
                           gradDx, gradDy, gradDz)
-#end if
+#endif
 
   call transform_libint_to_molgw(basis%gaussian_type, ami, amj, amk, aml, gradAx, grad_tmp)
   shell_gradA(:, :, :, :, 1) = grad_tmp(:, :, :, :)
@@ -751,15 +751,15 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
 #else
     write(stdout, '(a,i4,a,i4)') ' 2-center integrals distributed using a SCALAPACK grid (LIBINT): ', &
                                nprow_3center, ' x ', npcol_3center
-#end if
+#endif
 #else
 #if defined(HAVE_LIBCINT)
     write(stdout, '(a)') ' 2-center integrals (LIBCINT)'
     call set_erf_screening_length_libcint(auxil_basis, 0.0_dp)
 #else
     write(stdout, '(a)') ' 2-center integrals (LIBINT)'
-#end if
-#end if
+#endif
+#endif
   else
 #if defined(HAVE_SCALAPACK)
 #if defined(HAVE_LIBCINT)
@@ -769,15 +769,15 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
 #else
     write(stdout, '(a,i4,a,i4)') ' 2-center LR integrals distributed using a SCALAPACK grid (LIBINT): ', &
                                nprow_3center, ' x ', npcol_3center
-#end if
+#endif
 #else
 #if defined(HAVE_LIBCINT)
     write(stdout, '(a)') ' 2-center integrals (LIBCINT)'
     call set_erf_screening_length_libcint(auxil_basis, rcut)
 #else
     write(stdout, '(a)') ' 2-center LR integrals (LIBINT)'
-#end if
-#end if
+#endif
+#endif
   end if
 
 
@@ -895,7 +895,7 @@ subroutine calculate_integrals_eri_2center_scalapack(auxil_basis, rcut, mask_aux
         deallocate(coeff1, coeff3)
 
         call transform_libint_to_molgw(auxil_basis%gaussian_type, ami, amk, int_shell, integrals)
-#end if
+#endif
 
         deallocate(int_shell)
 
@@ -973,14 +973,14 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
                                nprow_3center, ' x ', npcol_3center
 #else
     write(stdout, '(a)') ' 2-center integrals inversion (LIBINT)'
-#end if
+#endif
   else
 #if defined(HAVE_SCALAPACK)
     write(stdout, '(a,i4,a,i4)') ' 2-center LR integrals inversion using a SCALAPACK grid (LIBINT): ', &
                                nprow_3center, ' x ', npcol_3center
 #else
     write(stdout, '(a)') ' 2-center LR integrals inversion (LIBINT)'
-#end if
+#endif
   end if
 
 
@@ -1029,7 +1029,7 @@ subroutine calculate_inverse_eri_2center_scalapack(auxil_basis, rcut)
     call invert_symmetric(eri_2center_inv)
     call matrix_lower_to_full_dp(eri_2center_inv)
 
-#end if
+#endif
 
   end if
 
@@ -1075,14 +1075,14 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
                                nprow_3center, ' x ', npcol_3center
 #else
     write(stdout, '(a)') ' 2-center integrals inverse square-root'
-#end if
+#endif
   else
 #if defined(HAVE_SCALAPACK)
     write(stdout, '(a,i4,a,i4)') ' 2-center LR integrals inverse square-root using a SCALAPACK grid: ', &
                                nprow_3center, ' x ', npcol_3center
 #else
     write(stdout, '(a)') ' 2-center LR integrals inverse square-root'
-#end if
+#endif
   end if
 
 
@@ -1109,7 +1109,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
     call diagonalize_scalapack(' ', scalapack_block_min, eri_2center,eigval)
     call move_alloc(eri_2center, eri_2center_eigvec)
 
-#end if
+#endif
 
     !
     ! Skip the too small eigenvalues if not genuine
@@ -1217,7 +1217,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
     end do
   end if
 
-#end if
+#endif
 
   !
   ! Experimental part that stores eri_2center_sqrt only if file manual_eri2sqrt exists
@@ -1244,7 +1244,7 @@ subroutine calculate_inverse_sqrt_eri_2center_scalapack(auxil_basis, rcut)
       sqrt_j = SQRT( eigval(jglobal+nauxil_neglect) )
       eri_2center_sqrt(:, jglobal) = eri_2center_eigvec(:, jglobal+nauxil_neglect) * sqrt_j
     end do
-#end if
+#endif
   end if
 
 
@@ -1323,13 +1323,13 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
     call set_erf_screening_length_libcint(basis, 0.0_dp)
 #else
     write(stdout, '(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBINT 3center)'
-#end if
+#endif
   else
     call die('calculate_integrals_eri_3center_scalapack: eri3_genuine is not compatible with range-separated hybrid')
   end if
 #if defined(HAVE_SCALAPACK)
   write(stdout, '(a,i4,a,i4)') ' 3-center integrals distributed using a SCALAPACK grid: ', nprow_3center, ' x ', npcol_3center
-#end if
+#endif
 
 
   !
@@ -1507,7 +1507,7 @@ subroutine calculate_integrals_eri_3center_scalapack(basis, auxil_basis, rcut, m
         deallocate(alpha3, alpha4)
         deallocate(coeff3, coeff4)
         call transform_libint_to_molgw(auxil_basis%gaussian_type, ami, basis%gaussian_type, amk, aml, int_shell, integrals)
-#end if
+#endif
 
 
         do lbf=1, nl
@@ -1638,19 +1638,19 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
     call set_erf_screening_length_libcint(basis, 0.0_dp)
 #else
     write(stdout, '(/,a)')    ' Calculate and store all the 3-center Electron Repulsion Integrals (LIBINT 3center)'
-#end if
+#endif
   else
 #if defined(HAVE_LIBCINT)
     write(stdout, '(/,a)')    ' Calculate and store all the LR 3-center Electron Repulsion Integrals (LIBCINT 3center)'
     call set_erf_screening_length_libcint(basis, rcut)
 #else
     write(stdout, '(/,a)')    ' Calculate and store all the LR 3-center Electron Repulsion Integrals (LIBINT 3center)'
-#end if
+#endif
   end if
 
 #if defined(HAVE_SCALAPACK)
   write(stdout, '(a,i4,a,i4)') ' 3-center integrals distributed using a SCALAPACK grid: ', nprow_3center, ' x ', npcol_3center
-#end if
+#endif
 
   !
   !  Set batch here
@@ -1828,7 +1828,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
           deallocate(alpha3, alpha4)
           deallocate(coeff3, coeff4)
           call transform_libint_to_molgw(auxil_basis%gaussian_type, ami, basis%gaussian_type, amk, aml, int_shell, integrals)
-#end if
+#endif
 
 
           do lbf=1, nl
@@ -1890,7 +1890,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
                   1.0_dp, eri_3center_tmp, mpair,   &
                          eri_2center_sqrtinv, auxil_basis%nbf,       &
                   0.0_dp, eri_3center(ipair_first, 1), npair)
-#end if
+#endif
       else
 #if defined(HAVE_SCALAPACK)
         call PDGEMM('N', 'N', mpair, nauxil_kept,auxil_basis%nbf, &
@@ -1902,7 +1902,7 @@ subroutine calculate_eri_3center_scalapack(basis, auxil_basis, rcut)
                   1.0_dp, eri_3center_tmp, mpair,              &
                          eri_2center_sqrtinv_lr, auxil_basis%nbf,     &
                   0.0_dp, eri_3center_lr(ipair_first, 1), npair)
-#end if
+#endif
       end if
     end if
 
@@ -2020,7 +2020,7 @@ subroutine calculate_eri_approximate_hartree(basis, x0_rho, coeff_rho, alpha_rho
                        am3, ng3, x03, alpha3, coeff3, &
                        am4, ng4, x04, alpha4, coeff4, &
                        0.0_C_DOUBLE, int_shell)
-#end if
+#endif
     call transform_libint_to_molgw(basis%gaussian_type, 0, basis%gaussian_type, amk, aml, int_shell, integrals)
 
 

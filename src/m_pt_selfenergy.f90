@@ -252,7 +252,7 @@ subroutine onering_selfenergy(basis, occupation, energy, c_matrix, se, emp2)
   call gw_selfenergy_scalapack(ONE_RING, occupation, energy, c_matrix, vchi0v, se)
 #else
   call gw_selfenergy(ONE_RING, occupation, energy, c_matrix, vchi0v, se)
-#end if
+#endif
 
   call vchi0v%destroy()
 
