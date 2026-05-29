@@ -14,9 +14,12 @@ module m_mp2_energy
   use m_basis_set
   use m_eri_ao_mo
   use m_inputparam, only: nspin, spin_fact, ncoreg, nvirtualg, frozencore, kappa_hybrid
+  use m_hamiltonian_tools, only: h_ao_to_mo
+  use m_selfenergy_tools, only: nhomo_G, ncore_G, nvirtual_G
 
 
   implicit none
+
 
 contains
 
@@ -657,6 +660,52 @@ subroutine mp2_energy(occupation, c_matrix, energy, emp2)
   call timer_mp2_energy%stop()
 
 end subroutine mp2_energy
+
+
+!=========================================================================
+subroutine correlation_energy_singles(basis, occupation, energy, c_matrix, hfock, ec_singles)
+
+  type(basis_set), intent(in)         :: basis
+  real(dp), intent(in)                :: occupation(:, :), energy(:, :)
+  real(dp), intent(in)                :: c_matrix(:, :, :)
+  real(dp), intent(in)                :: hfock(:, :, :)
+  real(dp), intent(out)               :: ec_singles
+  !=====
+  integer  :: nstate
+  integer  :: istate
+  integer  :: astate
+  integer  :: pqspin
+  real(dp), allocatable :: hfock_mo(:, :, :)
+  !=====
+
+  call timer_ec_singles%start()
+  write(stdout, '(/,1x,a)') 'Calculate correlation energy contribution from singles (non-Brillouin term)'
+
+  nstate = SIZE(occupation, DIM=1)
+
+  call clean_allocate('Fock matrix F_MO', hfock_mo, nstate, nstate, nspin)
+
+  call h_ao_to_mo(c_matrix, hfock, hfock_mo)
+
+  !
+  ! Expression can be found in Equation 1 of Ren et. al. PRL 106, 153003 (2011)
+  !
+  ec_singles = 0.0_dp
+  do pqspin=1, nspin
+    do istate=ncore_G+1, nhomo_G
+      do astate=nhomo_G+1, nvirtual_G-1
+        ec_singles = ec_singles + hfock_mo(istate, astate, pqspin)**2  &
+                                       / ( energy(istate, pqspin) - energy(astate, pqspin) ) * spin_fact
+      enddo
+    enddo
+  enddo
+
+
+  call clean_deallocate('Fock matrix F_MO', hfock_mo)
+
+  call timer_ec_singles%stop()
+
+end subroutine correlation_energy_singles
 
 
 end module m_mp2_energy

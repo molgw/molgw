@@ -444,7 +444,7 @@ m_noft_driver.o: m_definitions.o ./noft/m_noft_driver.F90
 	$(FC_W_OPTS) -c ./noft/m_noft_driver.F90
 	
 m_mp2_energy.o: m_definitions.o m_mpi.o m_cart_to_pure.o \
-       m_basis_set.o m_inputparam.o m_eri_ao_mo.o \
+       m_basis_set.o m_inputparam.o m_eri_ao_mo.o m_hamiltonian_tools.o m_selfenergy_tools.o \
        m_mp2_energy.f90
 	$(FC_W_OPTS) -c m_mp2_energy.f90 $(LIBXC_INCS)
 

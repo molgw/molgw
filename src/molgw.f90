@@ -392,7 +392,7 @@ program molgw
    
     !
     ! External electric field
-    call setup_electric_field(basis, hamiltonian_nucleus, eext)
+    call setup_electric_field(basis, eext, hamiltonian_nucleus)
     !
     ! Add the Nuclei-Electric Field interaction energy to nuc_nuc
     en_gks%nuc_nuc = en_gks%nuc_nuc + eext

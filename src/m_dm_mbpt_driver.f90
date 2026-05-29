@@ -50,16 +50,17 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   logical                    :: density_matrix_found
   integer                    :: file_density_matrix, reading_status
   integer                    :: ispin, pstate
+  real(dp)                   :: eext
   type(spectral_function)    :: wpol
   type(energy_contributions) :: en_dm_corr
-  real(dp), allocatable       :: h_ii(:, :)
-  real(dp), allocatable       :: p_matrix_corr_ao(:, :, :), p_matrix_corr_mo(:, :, :)
-  real(dp), allocatable       :: hamiltonian_hartree_corr(:, :)
-  real(dp), allocatable       :: hamiltonian_exx_corr(:, :, :)
-  real(dp), allocatable       :: c_matrix_natorb(:, :, :), p_matrix_mo(:, :, :), c_matrix_mo_no(:, :, :)
-  real(dp), allocatable       :: c_matrix_tmp(:, :, :)
-  real(dp), allocatable       :: occupation_tmp(:, :), natural_occupation(:, :)
-  real(dp), allocatable       :: energy_qp(:, :)
+  real(dp), allocatable      :: h_ii(:, :)
+  real(dp), allocatable      :: p_matrix_corr_ao(:, :, :), p_matrix_corr_mo(:, :, :)
+  real(dp), allocatable      :: hamiltonian_hartree_corr(:, :)
+  real(dp), allocatable      :: hamiltonian_exx_corr(:, :, :)
+  real(dp), allocatable      :: c_matrix_natorb(:, :, :), p_matrix_mo(:, :, :), c_matrix_mo_no(:, :, :)
+  real(dp), allocatable      :: c_matrix_tmp(:, :, :)
+  real(dp), allocatable      :: occupation_tmp(:, :), natural_occupation(:, :)
+  real(dp), allocatable      :: energy_qp(:, :)
   !=====
 
   nstate = SIZE(c_matrix, DIM=2)
@@ -229,7 +230,14 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
 
     !
     ! Nucleus-nucleus repulsion contribution to the energy
+    !  including the electric field if any
     call nucleus_nucleus_energy(en_dm_corr%nuc_nuc)
+
+    call setup_electric_field(basis, eext)
+    !
+    ! Add the Nuclei-Electric Field interaction energy to nuc_nuc
+    en_dm_corr%nuc_nuc = en_dm_corr%nuc_nuc + eext
+
     en_dm_corr%kinetic = SUM( hamiltonian_kinetic(:, :) * SUM(p_matrix_corr_ao(:, :, :), DIM=3) )
     en_dm_corr%nucleus = SUM( hamiltonian_nucleus(:, :) * SUM(p_matrix_corr_ao(:, :, :), DIM=3) )
 

@@ -899,6 +899,9 @@ end subroutine update_density_matrix
 
 
 !=========================================================================
+! on input/output: p_matrix_mo contains the correction above the mean-field density-matrix on MO basis
+!                  (trace of p_matrix_mo should be close to zero)
+!
 subroutine cederbaum_blas(energy, c_matrix, hfock_ao, p_matrix_mo)
 
   real(dp), intent(in)    :: energy(:, :)
@@ -932,6 +935,7 @@ subroutine cederbaum_blas(energy, c_matrix, hfock_ao, p_matrix_mo)
   allocate(b1(nt))
   allocate(sigma_inf1(nt))
 
+
   ! First create the Fock hamiltonian in MO basis
   call clean_allocate('Fock matrix F_MO', hfock_mo, nstate, nstate, nspin)
   call h_ao_to_mo(c_matrix, hfock_ao, hfock_mo)
@@ -951,6 +955,7 @@ subroutine cederbaum_blas(energy, c_matrix, hfock_ao, p_matrix_mo)
       b1(it) = hfock_mo(istate, astate, pqspin)
     enddo
   enddo
+
 
   call clean_deallocate('Fock matrix F_MO', hfock_mo)
 

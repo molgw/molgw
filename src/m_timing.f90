@@ -130,6 +130,7 @@ module m_timing
   type(timer), target :: timer_vertex_selfenergy
   type(timer), target :: timer_mp2_energy
   type(timer), target :: timer_mbpt_dm
+  type(timer), target :: timer_ec_singles
 
   ! CI
   type(timer), target :: timer_full_ci
@@ -286,6 +287,7 @@ subroutine init_timers()
   call timer_vertex_selfenergy%init('Vertex corrected self-energy')
   call timer_mp2_energy%init('MP2 energy')
   call timer_mbpt_dm%init('MBPT density matrix')
+  call timer_ec_singles%init('Singles correlation energy')
 
   ! CI
   call timer_full_ci%init('Full CI for few electrons')
@@ -530,6 +532,7 @@ subroutine output_timers()
   call timer_pt_self%print(1)
   call timer_vertex_selfenergy%print(1)
   call timer_mp2_energy%print(1)
+  call timer_ec_singles%print(1)
 
   ! CI
   call timer_full_ci%print(1)

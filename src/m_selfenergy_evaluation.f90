@@ -665,7 +665,7 @@ subroutine evaluate_energy_terms(basis, occupation, c_matrix, p_matrix, en)
 
 
   en%totalexx = en%nuc_nuc + en%kinetic + en%nucleus &
-                       + en%hartree + en%exx
+                           + en%hartree + en%exx
   en%total = en%totalexx + en%gw
   write(stdout, '(/,1x,a)') 'Energies from correlated density matrix'
   write(stdout, '(a35,1x,f19.10)')     'Kinetic Energy (Ha):', en%kinetic
