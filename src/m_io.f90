@@ -1213,7 +1213,7 @@ subroutine plot_rho_list(nstate, basis, occupation, c_matrix)
   real(dp)                   :: basis_function_r(basis%nbf)
   integer                    :: rhorfile
   integer                    :: ix, iy, iz
-  real(dp), parameter         :: dx = 0.174913 ! 0.204034
+  real(dp), parameter         :: dx = 0.174913_dp ! 0.204034_dp
   real(dp)                   :: rr0(3)
   integer                    :: unitfile
   !=====

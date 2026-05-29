@@ -1,8 +1,9 @@
 CXX=clang++
-FC=flang-new
+FC=flang
 
-# For the time being, flang version 19.1.7 needs option "-mmlir -allow-assumed-rank"
-FCFLAGS=-cpp  -O2 -mmlir -allow-assumed-rank
+# For flang version 19, option "-mmlir -allow-assumed-rank" is needed
+# For flang version 22, it's not requested anymore
+FCFLAGS=-cpp  -O2
 CPPFLAGS= -DHAVE_MKL
 
 

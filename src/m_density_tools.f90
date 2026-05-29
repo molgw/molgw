@@ -797,22 +797,22 @@ subroutine my_lda_exc_vxc(nspin, ixc, rhor, exc, vxc)
   case(1005)
     !
     ! Long-range only RPA parameters with rc=0.5
-    a0p=-5.8032401E-05
-    a1p= 8.9607602E-03
-    a2p= 0.1718570
-    a3p= 1.3439300E-02
+    a0p=-5.8032401e-05_dp
+    a1p= 8.9607602e-03_dp
+    a2p= 0.1718570_dp
+    a3p= 1.3439300e-02_dp
     b1p=1.0_dp
-    b2p= 1.849290
-    b3p= 0.7096860
-    b4p= 1.1346900E-02
-    da0= 1.3963599E-05
-    da1= -2.1155602E-03
-    da2= -7.3816001E-02
-    da3= -7.0218993E-03
+    b2p= 1.849290_dp
+    b3p= 0.7096860_dp
+    b4p= 1.1346900e-02_dp
+    da0= 1.3963599e-05_dp
+    da1= -2.1155602e-03_dp
+    da2= -7.3816001e-02_dp
+    da3= -7.0218993e-03_dp
     db1=0.0_dp
-    db2=-7.2860003E-02
-    db3=-0.2463360
-    db4=-5.8700801E-03
+    db2=-7.2860003e-02_dp
+    db3=-0.2463360_dp
+    db4=-5.8700801e-03_dp
   end select
 
   !Although fact is parameter value, some compilers are not able to evaluate
@@ -914,8 +914,8 @@ subroutine my_lda_exc_vxc_mu(mu, rhor, exc, vxc)
   !=====
 
 
-  efac=0.75_dp*(1.5_dp/pi)**(2.0_dp/3.0_dp)
-  vfac=4.0/3.0 * efac
+  efac = 0.75_dp * (1.5_dp / pi)**(2.0_dp / 3.0_dp)
+  vfac = 4.0 / 3.0 * efac
 
   omega = mu
   rs= (3.0_dp/(4.0_dp*pi*rhor(1)))**(1.0_dp/3.0_dp)
