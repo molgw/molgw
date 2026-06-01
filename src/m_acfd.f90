@@ -63,7 +63,6 @@ subroutine acfd_total_energy(basis, occupation, energy, c_matrix, hfock, en_mbpt
 
   if( correlation_singles_ ) then
     call correlation_energy_singles(basis, occupation, energy, c_matrix, hfock, en_mbpt%singles)
-    write(stdout, '(1x,a22,2x,f19.10)') 'Singles (Ha):', en_mbpt%singles
   endif
 
   !
