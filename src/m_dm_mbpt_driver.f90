@@ -49,7 +49,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   integer                    :: nstate, nocc
   logical                    :: density_matrix_found
   integer                    :: file_density_matrix, reading_status
-  integer                    :: ispin, pstate
+  integer                    :: ispin
   real(dp)                   :: eext
   type(spectral_function)    :: wpol
   type(energy_contributions) :: en_dm_corr
@@ -60,7 +60,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   real(dp), allocatable      :: c_matrix_natorb(:, :, :), p_matrix_mo(:, :, :), c_matrix_mo_no(:, :, :)
   real(dp), allocatable      :: c_matrix_tmp(:, :, :)
   real(dp), allocatable      :: occupation_tmp(:, :), natural_occupation(:, :)
-  real(dp), allocatable      :: energy_qp(:, :)
+  real(dp), allocatable      :: energy_qp(:, :), energy_dummy(:, :)
   !=====
 
   nstate = SIZE(c_matrix, DIM=2)
@@ -72,15 +72,30 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   p_matrix_corr_ao(:, :, :) = 0.0_dp
   p_matrix_corr_mo(:, :, :) = 0.0_dp
 
+
   !
-  ! Three possibilities: read_fchk , pt_density_matrix, DENSITY_MATRIX
+  ! Three possibilities: read_fchk or read_molden, pt_density_matrix, DENSITY_MATRIX
   !
 
-
-  ! Option 1:
+  ! Option 1a:
   ! Is there a Gaussian formatted checkpoint file to be read?
   if( read_fchk /= 'NO') call read_gaussian_fchk(read_fchk, 'gaussian.fchk', basis, p_matrix_corr_ao)
 
+  ! Option 1b:
+  ! Is there a MOLDEN file to be read?
+  if( LEN_TRIM(read_molden) > 0 ) then
+    call clean_allocate('Natural orbital C matrix', c_matrix_natorb, basis%nbf, nstate, nspin)
+    allocate(natural_occupation(nstate, nspin))
+
+    allocate(energy_dummy(nstate, nspin))
+    call read_molden_file(read_molden, basis, natural_occupation, energy_dummy, c_matrix_natorb)
+
+    call setup_density_matrix(c_matrix_natorb, natural_occupation, p_matrix_corr_ao)
+
+    call clean_deallocate('Natural orbital C matrix', c_matrix_natorb)
+    deallocate(natural_occupation)
+    deallocate(energy_dummy)
+  end if
 
   ! Option 2:
   ! Calculate a MBPT density matrix if requested

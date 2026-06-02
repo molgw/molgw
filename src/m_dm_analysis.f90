@@ -49,7 +49,7 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
   integer               :: nstate
   integer               :: file_density_matrix, file_rho_grid
   integer               :: ispin, jbf
-  integer               :: igrid, igrid_start, igrid_end, nr, ir
+  integer               :: igrid_start, igrid_end, nr, ir
   logical               :: density_matrix_found
   real(dp), allocatable :: s_matrix(:, :), s_matrix_sqrt(:, :), s_eigval(:), p_matrix_ortho(:, :)
   real(dp), allocatable :: p_matrix_test(:, :, :)
