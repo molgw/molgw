@@ -89,7 +89,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
       call die('polarizability: wrong enforce_spin_multiplicity. Should be 1 or 3')
     end select
   else
-    is_triplet_currently = triplet_
+    is_triplet_currently = wpol_out%is_triplet
   end if
   if( is_triplet_currently ) then
     write(stdout, '(a)') ' Triplet final state'
@@ -99,16 +99,16 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
   beta_local = 0.0_dp
   if( has_auxil_basis ) then
-    if( calc_type%is_lr_mbpt ) then
+    if( wpol_out%is_lr_mbpt ) then
       call calculate_eri_3center_mo_lr(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola)
     else
-      if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' ) ) then
+      if( wpol_out%need_lr_exchange ) then
         eri_3center_mo_available = ( ALLOCATED(eri_3center_mo) .AND. ALLOCATED(eri_3center_mo_lr) )
         if( .NOT. eri_3center_mo_available ) then
           call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola, &
                   long_range=.TRUE.)
         end if
-        beta_local = beta_hybrid
+        beta_local = wpol_out%beta_hybrid
       else
         eri_3center_mo_available = ALLOCATED(eri_3center_mo)
         if( .NOT. eri_3center_mo_available ) then
@@ -123,9 +123,9 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
   !
   ! Set up flag is_tddft and is_bse
-  is_tddft = calc_type%include_tddft_kernel .AND. calc_type%is_dft .AND. .NOT. enforce_rpa
-  is_bse   = calc_type%is_bse .AND. .NOT. enforce_rpa
-  is_tdhf  = (calc_type%include_tddft_kernel .OR. calc_type%include_tdhf_kernel) .AND. .NOT. enforce_rpa
+  is_tddft = wpol_out%include_tddft_kernel .AND. wpol_out%is_dft .AND. .NOT. enforce_rpa
+  is_bse   = wpol_out%is_bse .AND. .NOT. enforce_rpa
+  is_tdhf  = (wpol_out%include_tddft_kernel .OR. wpol_out%include_tdhf_kernel) .AND. .NOT. enforce_rpa
 
   ! Override choices here
   if( calculate_w ) then
@@ -166,9 +166,9 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     write(msg, '(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ', alpha_local
     call issue_warning(msg)
   else
-    if( is_tddft .OR. calc_type%include_tddft_kernel ) then        ! TDDFT or TDHF
-      alpha_local = alpha_hybrid
-    else if( (is_bse .OR. is_tdhf) .AND. .NOT. calc_type%no_bse_kernel) then  ! BSE
+    if( is_tddft .OR. wpol_out%include_tddft_kernel ) then        ! TDDFT or TDHF
+      alpha_local = wpol_out%alpha_hybrid
+    else if( (is_bse .OR. is_tdhf) .AND. .NOT. wpol_out%no_bse_kernel) then  ! BSE
       alpha_local = 1.0_dp
     else                  ! RPA or no_bse_kernel
       alpha_local = 0.0_dp
@@ -309,7 +309,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
 
   ! Warning if Tamm-Dancoff flag is on
-  if( tda_ ) then
+  if( wpol_out%tda ) then
     msg='Tamm-Dancoff approximation is switched on'
     call issue_warning(msg)
     ! Tamm-Dancoff approximation consists in setting B matrix to zero
@@ -345,7 +345,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     return
   end if
 
-  if( is_rpa .AND. .NOT. tda_ ) call clean_deallocate('A-B', amb_matrix)
+  if( is_rpa .AND. .NOT. wpol_out%tda ) call clean_deallocate('A-B', amb_matrix)
 
   !
   ! Prepare the second dimension of xpy_matrix and xmy_matrix
@@ -362,14 +362,14 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   call DESCINIT(desc_x, nmat, nexc, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, m_x), info)
 
   call clean_allocate('X+Y', xpy_matrix, m_x, n_x)
-  if( .NOT. is_rpa .OR. tda_ .OR. PRESENT(x_matrix) .OR. PRESENT(y_matrix) ) &
+  if( .NOT. is_rpa .OR. wpol_out%tda .OR. PRESENT(x_matrix) .OR. PRESENT(y_matrix) ) &
     call clean_allocate('X-Y', xmy_matrix, m_x, n_x)
 
   !
   ! Diago using the 4 block structure and the symmetry of each block
   ! With or Without SCALAPACK
   !
-  if( .NOT. is_rpa .OR. tda_ ) then
+  if( .NOT. is_rpa .OR. wpol_out%tda ) then
     if( nexcitation == 0 ) then
       ! The following call works with AND without SCALAPACK
       call diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, eigenvalue, xpy_matrix, xmy_matrix, desc_x)

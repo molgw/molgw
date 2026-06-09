@@ -74,6 +74,19 @@ module m_spectral_function
 
     type(chi_type), allocatable :: vchiv_sqrt(:)
 
+    ! Calculation type settings
+    logical  :: is_triplet
+    logical  :: is_bse
+    logical  :: include_tddft_kernel
+    logical  :: include_tdhf_kernel
+    logical  :: is_dft
+    logical  :: no_bse_kernel
+    logical  :: is_lr_mbpt
+    real(dp) :: alpha_hybrid
+    real(dp) :: beta_hybrid
+    logical  :: need_lr_exchange
+    logical  :: tda
+
   contains
 
     generic :: evaluate => sf_evaluate_several_omegas
@@ -327,6 +340,18 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
     call die("sf_init: grid choice not valid")
   end select
 
+
+  sf%is_triplet           = triplet_
+  sf%is_bse               = calc_type%is_bse
+  sf%include_tddft_kernel = calc_type%include_tddft_kernel
+  sf%include_tdhf_kernel  = calc_type%include_tdhf_kernel
+  sf%is_dft               = calc_type%is_dft
+  sf%no_bse_kernel        = calc_type%no_bse_kernel
+  sf%is_lr_mbpt           = calc_type%is_lr_mbpt
+  sf%alpha_hybrid         = alpha_hybrid
+  sf%beta_hybrid          = beta_hybrid
+  sf%need_lr_exchange     = (beta_hybrid > 1.0e-6_dp) .AND. (TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS')
+  sf%tda                  = tda_
 
   if( PRESENT(verbose) ) then
     if( .NOT. verbose ) then
