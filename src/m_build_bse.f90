@@ -436,13 +436,8 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda, desc_
   ! in case of triplet final state, no contribution is to be calculated
   if( is_triplet_currently) return
 
-  if( wpol%is_lr_mbpt ) then
-    nauxil_global_ = nauxil_global_lr
-    nauxil_local_  = nauxil_local_lr
-  else
-    nauxil_global_ = nauxil_global
-    nauxil_local_  = nauxil_local
-  end if
+  nauxil_global_ = nauxil_global
+  nauxil_local_  = nauxil_local
 
 #if defined(HAVE_SCALAPACK)
 

@@ -83,7 +83,6 @@ module m_spectral_function
     logical  :: include_tdhf_kernel
     logical  :: is_dft
     logical  :: no_bse_kernel
-    logical  :: is_lr_mbpt
     real(dp) :: alpha_hybrid
     real(dp) :: beta_hybrid
     logical  :: need_lr_exchange
@@ -371,7 +370,7 @@ subroutine sf_set_approximation(sf)
   sf%include_tdhf_kernel  = calc_type%include_tdhf_kernel
   sf%is_dft               = calc_type%is_dft
   sf%no_bse_kernel        = calc_type%no_bse_kernel
-  sf%is_lr_mbpt           = calc_type%is_lr_mbpt
+
   sf%beta_hybrid          = beta_hybrid
   sf%need_lr_exchange     = (beta_hybrid > 1.0e-6_dp) .AND. &
                             (TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' .OR. TRIM(w_screening) == 'TDDFT')

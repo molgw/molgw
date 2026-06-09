@@ -65,7 +65,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   integer                   :: desc_apb(NDEL), desc_x(NDEL)
   integer                   :: info
   logical                   :: is_triplet_currently
-  logical                   :: need_exchange, need_lr_exchange, need_bse, need_tddft_kernel
+  logical                   :: need_exchange, need_lr_exchange, need_bse_kernel, need_tddft_kernel
   !=====
 
   call timer_pola%start()
@@ -75,9 +75,9 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   en_gw  = 0.0_dp
 
   need_tddft_kernel = wpol_out%include_tddft_kernel
-  need_bse          = wpol_out%is_bse
-  need_lr_exchange  = wpol_out%need_lr_exchange
+  need_bse_kernel   = wpol_out%is_bse
   need_exchange     = wpol_out%include_tdhf_kernel
+  need_lr_exchange  = wpol_out%need_lr_exchange
 
   write(stdout, '(/,a)') ' Calculating the polarizability'
   if( PRESENT(lambda) ) then
@@ -105,21 +105,17 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
   beta_local = 0.0_dp
   if( has_auxil_basis ) then
-    if( wpol_out%is_lr_mbpt ) then
-      call calculate_eri_3center_mo_lr(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola)
+    if( need_lr_exchange ) then
+      eri_3center_mo_available = ( ALLOCATED(eri_3center_mo) .AND. ALLOCATED(eri_3center_mo_lr) )
+      if( .NOT. eri_3center_mo_available ) then
+        call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola, &
+                long_range=.TRUE.)
+      end if
+      beta_local = wpol_out%beta_hybrid
     else
-      if( need_lr_exchange ) then
-        eri_3center_mo_available = ( ALLOCATED(eri_3center_mo) .AND. ALLOCATED(eri_3center_mo_lr) )
-        if( .NOT. eri_3center_mo_available ) then
-          call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola, &
-                  long_range=.TRUE.)
-        end if
-        beta_local = wpol_out%beta_hybrid
-      else
-        eri_3center_mo_available = ALLOCATED(eri_3center_mo)
-        if( .NOT. eri_3center_mo_available ) then
-          call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola)
-        end if
+      eri_3center_mo_available = ALLOCATED(eri_3center_mo)
+      if( .NOT. eri_3center_mo_available ) then
+        call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola)
       end if
     end if
   end if
@@ -130,7 +126,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   !
   ! Set up flag is_tddft and is_bse
   is_tddft = need_tddft_kernel .AND. wpol_out%is_dft .AND. .NOT. enforce_rpa
-  is_bse   = need_bse .AND. .NOT. enforce_rpa
+  is_bse   = need_bse_kernel .AND. .NOT. enforce_rpa
   is_tdhf  = (need_tddft_kernel .OR. need_exchange) .AND. .NOT. enforce_rpa
 
   ! Override choices here

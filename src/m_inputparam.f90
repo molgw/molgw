@@ -85,7 +85,6 @@ module m_inputparam
     logical            :: need_exchange_lr
     logical            :: need_exchange_pairing
     logical            :: need_rpa
-    logical            :: is_lr_mbpt
     logical            :: is_gw
     logical            :: is_mp2
     logical            :: is_mp3
@@ -155,7 +154,6 @@ subroutine init_calculation_type(scf, postscf)
   ! default values
   calc_type%is_dft               = .FALSE.
   calc_type%need_rpa             = .FALSE.
-  calc_type%is_lr_mbpt           = .FALSE.
   calc_type%is_gw                = .FALSE.
   calc_type%is_mp2               = .FALSE.
   calc_type%is_mp3               = .FALSE.
@@ -289,10 +287,6 @@ subroutine init_calculation_type(scf, postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       calc_type%selfenergy_technique = EVSC
-    case('LRGW')
-      calc_type%is_gw      =.TRUE.
-      calc_type%selfenergy_approx = GW
-      calc_type%is_lr_mbpt = .TRUE.
     case('MP2')
       calc_type%is_mp2   =.TRUE.
     case('MP3')
@@ -337,8 +331,6 @@ subroutine init_calculation_type(scf, postscf)
     case('BSE-I')
       calc_type%is_bse        = .TRUE.
       ! nothing to declare
-    case('RPALR')
-      calc_type%is_lr_mbpt = .TRUE.
     case('RPAX', 'RPAX-I','RPAX-II')
       calc_type%include_tdhf_kernel =.TRUE.
     case default
