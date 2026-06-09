@@ -33,7 +33,8 @@ contains
 
 !=========================================================================
 subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c_matrix, en_rpa, en_gw, wpol_out, &
-                          enforce_spin_multiplicity, lambda, x_matrix, y_matrix, a_matrix, b_matrix)
+                          enforce_spin_multiplicity, lambda, x_matrix, y_matrix, a_matrix, b_matrix, &
+                          print_optical_spectrum)
 
   logical, intent(in)                    :: enforce_rpa, calculate_w
   type(basis_set), intent(in)            :: basis
@@ -45,10 +46,11 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   real(dp), intent(in), optional         :: lambda
   real(dp), intent(out), optional        :: x_matrix(:, :), y_matrix(:, :)
   real(dp), intent(out), optional        :: a_matrix(:, :), b_matrix(:, :)
+  logical, intent(in), optional          :: print_optical_spectrum
   !=====
   integer                   :: nstate
   type(spectral_function)   :: wpol_static
-  logical                   :: is_bse, is_tdhf, eri_3center_mo_available
+  logical                   :: is_tdhf, eri_3center_mo_available
   integer                   :: nmat, nexc
   real(dp)                  :: alpha_local, beta_local, lambda_
   real(dp), allocatable     :: amb_diag_rpa(:)
@@ -124,9 +126,8 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)
 
   !
-  ! Set up flag is_tddft and is_bse
+  ! Set up flag is_tddft is_tdhf
   is_tddft = need_tddft_kernel .AND. wpol_out%is_dft .AND. .NOT. enforce_rpa
-  is_bse   = need_bse_kernel .AND. .NOT. enforce_rpa
   is_tdhf  = (need_tddft_kernel .OR. need_exchange) .AND. .NOT. enforce_rpa
 
   ! Override choices here
@@ -136,7 +137,8 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
       ! do nothing
     case('BSE')
       ! enforce BSE
-      is_bse   = .TRUE.
+      need_exchange     = .TRUE.
+      need_bse_kernel   = .TRUE.
     case('TDHF')
       is_tdhf = .TRUE.
     case('TDDFT')
@@ -153,8 +155,8 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   !
   if( enforce_rpa ) then
     is_tdhf  = .FALSE.
-    is_bse   = .FALSE.
     is_tddft = .FALSE.
+     need_bse_kernel = .FALSE.
   end if
 
   !
@@ -162,12 +164,12 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   alpha_local = wpol_out%alpha_hybrid
   if( enforce_rpa ) alpha_local = 0.0_dp
 
-  is_rpa = .NOT.(is_tddft) .AND. .NOT.(is_bse) .AND. (ABS(alpha_local)<1.0e-5_dp)
+  is_rpa = .NOT.(is_tddft) .AND. .NOT.(need_bse_kernel) .AND. (ABS(alpha_local)<1.0e-5_dp)
 
   call timer_build_h2p%start()
   write(stdout, '(/,1x,a)') 'Summarize the linear response calculation:'
   write(stdout, '(1x,a16,l1)')       'RPA:          ', is_rpa
-  write(stdout, '(1x,a16,l1)')       'BSE:          ', is_bse
+  write(stdout, '(1x,a16,l1)')         'BSE kernel: ', need_bse_kernel
   write(stdout, '(1x,a16,l1)')       'TDHF:         ', is_tdhf
   write(stdout, '(1x,a16,l1)')       'TDDFT:        ', is_tddft
   write(stdout, '(1x,a16,f6.4)')     'hybrid alpha: ', alpha_local
@@ -177,7 +179,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   !
   ! Prepare the QP energies
   !
-  if( is_bse ) then
+  if( need_bse_kernel ) then
     ! Get energy_qp
     call get_energy_qp(energy, occupation, energy_qp)
   else
@@ -189,7 +191,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   ! BSE needs the static screening from a previous calculation
   ! It is stored in object wpol_static
   !
-  if( is_bse ) then
+  if( need_bse_kernel ) then
     call wpol_static%init(nstate, occupation, 1, grid_type=STATIC)
     call read_spectral_function(wpol_static, reading_status)
 
@@ -261,7 +263,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
       write(stdout, '(a,f8.3)') ' Content of Exchange: ', alpha_local
     end if
 
-    if( is_bse ) then
+    if( need_bse_kernel ) then
       call wpol_static%destroy()
     end if
 
@@ -269,6 +271,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
 
   else
+    ! No auxiliary basis
 
     !
     ! Step 1
@@ -286,7 +289,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
     !
     ! Step 3
-    if( is_bse ) then
+    if( need_bse_kernel ) then
       call build_amb_apb_bse(wpol_out, wpol_static, m_apb, n_apb, amb_matrix, apb_matrix)
       call wpol_static%destroy()
     end if
@@ -416,19 +419,26 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
 
   !
-  ! Calculate the optical spectrum
-  ! and the dynamic dipole tensor
+  ! Calculate the optical spectrum if requested
   !
-  if( is_tdhf .OR. is_tddft .OR. is_bse ) then
-    call optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, wpol_out, xpy_matrix, xmy_matrix, eigenvalue, &
-                          bare_eigenvalue=bare_eigenval)
-    select case(TRIM(lower(stopping)))
-    case('spherical')
-      call stopping_power(basis, c_matrix, wpol_out, xpy_matrix, eigenvalue)
-    case('3d')
-      call stopping_power_3d(basis, c_matrix, wpol_out, xpy_matrix, desc_x, eigenvalue)
-    end select
+  if( PRESENT(print_optical_spectrum) ) then
+    if( print_optical_spectrum ) then
+      call optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, wpol_out, xpy_matrix, xmy_matrix, eigenvalue, &
+                            bare_eigenvalue=bare_eigenval)
+    end if
   end if
+
+  !
+  ! Calculate the linear-response stopping power
+  !
+  select case(TRIM(lower(stopping)))
+  case('spherical')
+    call stopping_power(basis, c_matrix, wpol_out, xpy_matrix, eigenvalue)
+  case('3d')
+    call stopping_power_3d(basis, c_matrix, wpol_out, xpy_matrix, desc_x, eigenvalue)
+  case default
+    ! Do not calculate stopping
+  end select
 
   deallocate(bare_eigenval)
 
