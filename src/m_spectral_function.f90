@@ -75,6 +75,7 @@ module m_spectral_function
     type(chi_type), allocatable :: vchiv_sqrt(:)
 
     ! Calculation type settings
+    character(len=32) :: approximation
     logical  :: tda
     logical  :: is_triplet
     logical  :: is_bse
@@ -101,6 +102,7 @@ module m_spectral_function
     procedure :: interpolate_vsqrt_chi_vsqrt => sf_interpolate_vsqrt_chi_vsqrt
     procedure :: init    => sf_init
     procedure :: destroy => sf_destroy
+    procedure :: set_approximation => sf_set_approximation
 
   end type spectral_function
 
@@ -341,20 +343,7 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
     call die("sf_init: grid choice not valid")
   end select
 
-
-  sf%is_triplet           = triplet_
-  sf%is_bse               = calc_type%is_bse
-  sf%include_tddft_kernel = calc_type%include_tddft_kernel
-  sf%include_tdhf_kernel  = calc_type%include_tdhf_kernel
-  sf%is_dft               = calc_type%is_dft
-  sf%no_bse_kernel        = calc_type%no_bse_kernel
-  sf%is_lr_mbpt           = calc_type%is_lr_mbpt
-  sf%alpha_hybrid         = alpha_hybrid
-  sf%beta_hybrid          = beta_hybrid
-  sf%need_lr_exchange     = (beta_hybrid > 1.0e-6_dp) .AND. &
-                            (TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' .OR. TRIM(w_screening) == 'TDDFT')
-  sf%w_screening          = w_screening
-  sf%tda                  = tda_
+  call sf%set_approximation()
 
   if( PRESENT(verbose) ) then
     if( .NOT. verbose ) then
@@ -363,6 +352,51 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
   end if
 
 end subroutine sf_init
+
+
+!=========================================================================
+subroutine sf_set_approximation(sf)
+  class(spectral_function), intent(inout) :: sf
+  !=====
+  logical :: has_manual_tdhf
+  integer :: tdhffile
+  !=====
+
+  sf%approximation = 'RPA'
+  sf%tda                  = tda_
+  sf%is_triplet           = triplet_
+
+  sf%is_bse               = calc_type%is_bse
+  sf%include_tddft_kernel = calc_type%include_tddft_kernel
+  sf%include_tdhf_kernel  = calc_type%include_tdhf_kernel
+  sf%is_dft               = calc_type%is_dft
+  sf%no_bse_kernel        = calc_type%no_bse_kernel
+  sf%is_lr_mbpt           = calc_type%is_lr_mbpt
+  sf%beta_hybrid          = beta_hybrid
+  sf%need_lr_exchange     = (beta_hybrid > 1.0e-6_dp) .AND. &
+                            (TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' .OR. TRIM(w_screening) == 'TDDFT')
+  sf%w_screening          = w_screening
+
+  ! Set alpha_hybrid: the exchange fraction for this response calculation
+  ! manual_tdhf file can override anything
+  inquire(file='manual_tdhf', exist=has_manual_tdhf)
+  if( has_manual_tdhf ) then
+    open(newunit=tdhffile, file='manual_tdhf', status='old')
+    read(tdhffile, *) sf%alpha_hybrid
+    close(tdhffile)
+    write(msg, '(a,f12.6)') 'TDHF polarizability with alpha from manual_tdhf: ', sf%alpha_hybrid
+    call issue_warning(msg)
+  else if( calc_type%include_tddft_kernel .OR. TRIM(w_screening) == 'TDDFT' ) then
+    sf%alpha_hybrid = alpha_hybrid
+  else if( (calc_type%is_bse .OR. calc_type%include_tdhf_kernel &
+            .OR. TRIM(w_screening) == 'TDHF' .OR. TRIM(w_screening) == 'BSE') &
+           .AND. .NOT. calc_type%no_bse_kernel ) then
+    sf%alpha_hybrid = 1.0_dp
+  else
+    sf%alpha_hybrid = 0.0_dp
+  end if
+
+end subroutine sf_set_approximation
 
 
 !=========================================================================

@@ -58,15 +58,14 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   real(dp), allocatable     :: bare_eigenval(:)
   real(dp), allocatable     :: energy_qp(:, :)
   logical                   :: is_tddft, is_rpa
-  logical                   :: has_manual_tdhf
   integer                   :: reading_status
-  integer                   :: tdhffile
   integer                   :: m_apb, n_apb, m_x, n_x
   integer                   :: t_ia, t_jb, t_ia_global, t_jb_global
   ! SCALAPACK variables
   integer                   :: desc_apb(NDEL), desc_x(NDEL)
   integer                   :: info
   logical                   :: is_triplet_currently
+  logical                   :: need_exchange, need_lr_exchange, need_bse, need_tddft_kernel
   !=====
 
   call timer_pola%start()
@@ -74,6 +73,11 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   allocate(energy_qp(nstate, nspin))
   en_rpa = 0.0_dp
   en_gw  = 0.0_dp
+
+  need_tddft_kernel = wpol_out%include_tddft_kernel
+  need_bse          = wpol_out%is_bse
+  need_lr_exchange  = wpol_out%need_lr_exchange
+  need_exchange     = wpol_out%include_tdhf_kernel
 
   write(stdout, '(/,a)') ' Calculating the polarizability'
   if( PRESENT(lambda) ) then
@@ -104,7 +108,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     if( wpol_out%is_lr_mbpt ) then
       call calculate_eri_3center_mo_lr(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola)
     else
-      if( wpol_out%need_lr_exchange ) then
+      if( need_lr_exchange ) then
         eri_3center_mo_available = ( ALLOCATED(eri_3center_mo) .AND. ALLOCATED(eri_3center_mo_lr) )
         if( .NOT. eri_3center_mo_available ) then
           call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola, &
@@ -125,9 +129,9 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
   !
   ! Set up flag is_tddft and is_bse
-  is_tddft = wpol_out%include_tddft_kernel .AND. wpol_out%is_dft .AND. .NOT. enforce_rpa
-  is_bse   = wpol_out%is_bse .AND. .NOT. enforce_rpa
-  is_tdhf  = (wpol_out%include_tddft_kernel .OR. wpol_out%include_tdhf_kernel) .AND. .NOT. enforce_rpa
+  is_tddft = need_tddft_kernel .AND. wpol_out%is_dft .AND. .NOT. enforce_rpa
+  is_bse   = need_bse .AND. .NOT. enforce_rpa
+  is_tdhf  = (need_tddft_kernel .OR. need_exchange) .AND. .NOT. enforce_rpa
 
   ! Override choices here
   if( calculate_w ) then
@@ -140,9 +144,10 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     case('TDHF')
       is_tdhf = .TRUE.
     case('TDDFT')
-      is_tdhf  = .TRUE.
+      is_tdhf  = .TRUE.  ! for hybrid functionals
       is_tddft = .TRUE.
     case default
+      write(stdout, *) 'wpol_out%w_screening:', wpol_out%w_screening
       call die('polarizability: invalid choice for w_screening')
     end select
   end if
@@ -157,25 +162,9 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   end if
 
   !
-  ! Set up exchange content alpha_local
-  ! manual_tdhf can override anything
-  alpha_local = 0.0_dp
-  inquire(file='manual_tdhf', exist=has_manual_tdhf)
-  if( has_manual_tdhf ) then
-    open(newunit=tdhffile, file='manual_tdhf', status='old')
-    read(tdhffile, *) alpha_local
-    close(tdhffile)
-    write(msg, '(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ', alpha_local
-    call issue_warning(msg)
-  else
-    if( is_tddft .OR. wpol_out%include_tddft_kernel ) then        ! TDDFT or TDHF
-      alpha_local = wpol_out%alpha_hybrid
-    else if( (is_bse .OR. is_tdhf) .AND. .NOT. wpol_out%no_bse_kernel) then  ! BSE
-      alpha_local = 1.0_dp
-    else                  ! RPA or no_bse_kernel
-      alpha_local = 0.0_dp
-    end if
-  end if
+  ! Set up exchange content alpha_local (precomputed in wpol_out%alpha_hybrid)
+  alpha_local = wpol_out%alpha_hybrid
+  if( enforce_rpa ) alpha_local = 0.0_dp
 
   is_rpa = .NOT.(is_tddft) .AND. .NOT.(is_bse) .AND. (ABS(alpha_local)<1.0e-5_dp)
 

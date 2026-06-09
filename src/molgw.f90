@@ -755,6 +755,7 @@ program molgw
     call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol)
     call wpol%destroy()
   end if
+
   if( ( TRIM(postscf) == 'CPHF' .OR. TRIM(postscf) == 'CPKS' ) .AND. scf_has_converged ) then
     call wpol%init(nstate, occupation, 0)
     call coupled_perturbed(basis, occupation, energy, c_matrix, wpol) ! Internally, it will call polarizability
