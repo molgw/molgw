@@ -50,7 +50,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   !=====
   integer                   :: nstate
   type(spectral_function)   :: wpol_static
-  logical                   :: is_tdhf, eri_3center_mo_available
+  logical                   :: eri_3center_mo_available
   integer                   :: nmat, nexc
   real(dp)                  :: alpha_local, beta_local, lambda_
   real(dp), allocatable     :: amb_diag_rpa(:)
@@ -59,7 +59,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   real(dp), allocatable     :: eigenvalue(:)
   real(dp), allocatable     :: bare_eigenval(:)
   real(dp), allocatable     :: energy_qp(:, :)
-  logical                   :: is_tddft, is_rpa
+  logical                   :: is_rpa
   integer                   :: reading_status
   integer                   :: m_apb, n_apb, m_x, n_x
   integer                   :: t_ia, t_jb, t_ia_global, t_jb_global
@@ -78,7 +78,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
   need_tddft_kernel = wpol_out%include_tddft_kernel
   need_bse_kernel   = wpol_out%is_bse
-  need_exchange     = wpol_out%include_tdhf_kernel
+  need_exchange     = wpol_out%alpha_hybrid > 1.0e-6_dp
   need_lr_exchange  = wpol_out%need_lr_exchange
 
   write(stdout, '(/,a)') ' Calculating the polarizability'
@@ -125,11 +125,6 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   ! Set up all the switches to be able to treat
   ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)
 
-  !
-  ! Set up flag is_tddft is_tdhf
-  is_tddft = need_tddft_kernel .AND. wpol_out%is_dft .AND. .NOT. enforce_rpa
-  is_tdhf  = (need_tddft_kernel .OR. need_exchange) .AND. .NOT. enforce_rpa
-
   ! Override choices here
   if( calculate_w ) then
     select case(wpol_out%w_screening)
@@ -140,10 +135,10 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
       need_exchange     = .TRUE.
       need_bse_kernel   = .TRUE.
     case('TDHF')
-      is_tdhf = .TRUE.
+      need_exchange     = .TRUE.
     case('TDDFT')
-      is_tdhf  = .TRUE.  ! for hybrid functionals
-      is_tddft = .TRUE.
+      need_exchange = .TRUE.  ! for hybrid functionals
+      need_tddft_kernel = .TRUE.
     case default
       write(stdout, *) 'wpol_out%w_screening:', wpol_out%w_screening
       call die('polarizability: invalid choice for w_screening')
@@ -154,9 +149,9 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   ! enforce_rpa prevails over the rest
   !
   if( enforce_rpa ) then
-    is_tdhf  = .FALSE.
-    is_tddft = .FALSE.
-     need_bse_kernel = .FALSE.
+    need_exchange     = .FALSE.
+    need_tddft_kernel = .FALSE.
+    need_bse_kernel   = .FALSE.
   end if
 
   !
@@ -164,16 +159,17 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   alpha_local = wpol_out%alpha_hybrid
   if( enforce_rpa ) alpha_local = 0.0_dp
 
-  is_rpa = .NOT.(is_tddft) .AND. .NOT.(need_bse_kernel) .AND. (ABS(alpha_local)<1.0e-5_dp)
+  is_rpa = .NOT.(need_tddft_kernel) .AND. .NOT.(need_bse_kernel) .AND. .NOT.(need_exchange)
 
   call timer_build_h2p%start()
   write(stdout, '(/,1x,a)') 'Summarize the linear response calculation:'
   write(stdout, '(1x,a16,l1)')       'RPA:          ', is_rpa
   write(stdout, '(1x,a16,l1)')         'BSE kernel: ', need_bse_kernel
-  write(stdout, '(1x,a16,l1)')       'TDHF:         ', is_tdhf
-  write(stdout, '(1x,a16,l1)')       'TDDFT:        ', is_tddft
+  write(stdout, '(1x,a16,l1)')    'Exchange kernel: ', need_exchange
   write(stdout, '(1x,a16,f6.4)')     'hybrid alpha: ', alpha_local
+  write(stdout, '(1x,a16,l1)') 'Exchange LR kernel: ', need_lr_exchange
   write(stdout, '(1x,a16,f6.4)')     'hybrid beta:  ', beta_local
+  write(stdout, '(1x,a16,l1)')       'TDDFT kernel: ', need_tddft_kernel
   write(stdout, *)
 
   !
@@ -249,14 +245,14 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
     !
     ! Step 2
-    if( is_tddft ) then
+    if( need_tddft_kernel ) then
        call build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, &
                             wpol_out, m_apb, n_apb, apb_matrix)
     end if
 
     !
     ! Step 3
-    if( alpha_local > 1.0e-6_dp .OR. beta_local > 1.0e-6_dp ) then
+    if( need_exchange .OR. need_lr_exchange ) then
       call build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda_, desc_apb, wpol_out, wpol_static, &
                                                  m_apb, n_apb, amb_matrix, apb_matrix)
     else
@@ -281,7 +277,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
     !
     ! Step 2
-    if( is_tddft ) then
+    if( need_tddft_kernel ) then
       call build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, &
                            wpol_out, m_apb, n_apb, apb_matrix)
     end if
@@ -327,7 +323,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     call clean_deallocate('A+B', apb_matrix)
     call clean_deallocate('A-B', amb_matrix)
     if( has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
-      call destroy_eri_3center_mo(long_range=(beta_local>1.0e-6_dp))
+      call destroy_eri_3center_mo(long_range=need_lr_exchange)
     end if
     deallocate(amb_diag_rpa, energy_qp)
     write(stdout, *) ' Skipping diagonalization after building A and B matrices'
@@ -483,7 +479,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   call clean_deallocate('X+Y', xpy_matrix)
 
   if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
-    call destroy_eri_3center_mo(long_range=(beta_local>1.0e-6_dp))
+    call destroy_eri_3center_mo(long_range=need_lr_exchange)
   end if
 
   if( ALLOCATED(eigenvalue) ) deallocate(eigenvalue)
