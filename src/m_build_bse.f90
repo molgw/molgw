@@ -15,7 +15,7 @@ module m_build_bse
   use m_memory
   use m_mpi
   use m_scalapack
-  use m_inputparam
+  use m_inputparam, only: nspin, has_auxil_basis, spin_fact
   use m_spectral_function
   use m_basis_set
   use m_eri_ao_mo
@@ -65,9 +65,8 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
     
   write(stdout, '(a)') ' Build Common part: Energies + Hartree + possibly Exchange'
   write(stdout, '(a,f8.3)') ' Content of Exchange: ', alpha_local
-  if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
-     .OR. TRIM(w_screening)=='TDDFT' ) ) then
-    write(stdout, '(a,f8.3)') ' Content of LR-Exchange(missing): ', beta_hybrid
+  if( wpol%need_lr_exchange ) then
+    write(stdout, '(a,f8.3)') ' Content of LR-Exchange(missing): ', wpol%beta_hybrid
     call die('build_amb_apb_common: Long-range exchange not available in TD-DFT without RI.' &
              // ' (Hint: try to use an auxiliary basis)')
   end if
@@ -437,7 +436,7 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda, desc_
   ! in case of triplet final state, no contribution is to be calculated
   if( is_triplet_currently) return
 
-  if( calc_type%is_lr_mbpt ) then
+  if( wpol%is_lr_mbpt ) then
     nauxil_global_ = nauxil_global_lr
     nauxil_local_  = nauxil_local_lr
   else
@@ -714,8 +713,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
   write(stdout, '(a)')      ' Build W part Auxil'
   write(stdout, '(a,f8.3)') ' Content of Exchange: ', alpha_local
   if( beta_local > 1.0e-6_dp ) write(stdout, '(a,f8.3)') ' Content of LR-Exchange: ', beta_local
-  include_long_range_exchange = ( beta_local > 1.0e-6_dp ) &
-                          .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' .OR. TRIM(w_screening)=='TDDFT' )
+  include_long_range_exchange = wpol%need_lr_exchange
 
   nmat = desc_apb(M_)
   ! Is it an exchange or a screened exchange calculation

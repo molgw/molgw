@@ -12,7 +12,9 @@ module m_linear_response
   use m_timing
   use m_warning
   use m_memory
-  use m_inputparam
+  use m_inputparam, only: nspin, has_auxil_basis, spin_fact, nexcitation, &
+                          print_bare_energy_, stopping, print_w_, toldav, nstep_dav, &
+                          scissor, cphf_cpks_0_
   use m_mpi
   use m_scalapack
   use m_cart_to_pure
@@ -129,7 +131,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
   ! Override choices here
   if( calculate_w ) then
-    select case(w_screening)
+    select case(wpol_out%w_screening)
     case('RPA')
       ! do nothing
     case('BSE')
@@ -609,7 +611,7 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
   end if
 #endif
 
-  call destroy_eri_3center_mo(long_range=(beta_hybrid>1.0e-6_dp)) ! Was built in polarizability subroutine or before  
+  call destroy_eri_3center_mo(long_range=wpol_out%need_lr_exchange)
   call clean_deallocate('Tmp_Mat', tmp_matrix)
   call clean_deallocate('(A+B)^-1', inv_apb_matrix)
 

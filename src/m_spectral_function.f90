@@ -75,6 +75,7 @@ module m_spectral_function
     type(chi_type), allocatable :: vchiv_sqrt(:)
 
     ! Calculation type settings
+    logical  :: tda
     logical  :: is_triplet
     logical  :: is_bse
     logical  :: include_tddft_kernel
@@ -85,7 +86,7 @@ module m_spectral_function
     real(dp) :: alpha_hybrid
     real(dp) :: beta_hybrid
     logical  :: need_lr_exchange
-    logical  :: tda
+    character(len=256) :: w_screening
 
   contains
 
@@ -350,7 +351,9 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
   sf%is_lr_mbpt           = calc_type%is_lr_mbpt
   sf%alpha_hybrid         = alpha_hybrid
   sf%beta_hybrid          = beta_hybrid
-  sf%need_lr_exchange     = (beta_hybrid > 1.0e-6_dp) .AND. (TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS')
+  sf%need_lr_exchange     = (beta_hybrid > 1.0e-6_dp) .AND. &
+                            (TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' .OR. TRIM(w_screening) == 'TDDFT')
+  sf%w_screening          = w_screening
   sf%tda                  = tda_
 
   if( PRESENT(verbose) ) then
