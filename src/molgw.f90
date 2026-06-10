@@ -752,7 +752,8 @@ program molgw
   ! (only if the SCF cycles were converged)
   if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. (scf_has_converged .AND. .NOT. TRIM(postscf) == 'BSE-I') ) then
     call wpol%init(nstate, occupation, 0)
-    call polarizability(.FALSE., basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol, print_optical_spectrum=.TRUE.)
+    call polarizability(basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol, print_optical_spectrum=.TRUE., &
+                        calculate_w=.FALSE.)
     call wpol%destroy()
   end if
 

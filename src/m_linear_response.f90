@@ -32,11 +32,10 @@ contains
 
 
 !=========================================================================
-subroutine polarizability(calculate_w, basis, occupation, energy, c_matrix, en_rpa, en_gw, wpol_out, &
+subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wpol_out, &
                           enforce_spin_multiplicity, lambda, x_matrix, y_matrix, a_matrix, b_matrix, &
-                          print_optical_spectrum)
+                          print_optical_spectrum, calculate_w)
 
-  logical, intent(in)                    :: calculate_w
   type(basis_set), intent(in)            :: basis
   real(dp), intent(in)                   :: occupation(:, :)
   real(dp), intent(in)                   :: energy(:, :), c_matrix(:, :, :)
@@ -47,6 +46,7 @@ subroutine polarizability(calculate_w, basis, occupation, energy, c_matrix, en_r
   real(dp), intent(out), optional        :: x_matrix(:, :), y_matrix(:, :)
   real(dp), intent(out), optional        :: a_matrix(:, :), b_matrix(:, :)
   logical, intent(in), optional          :: print_optical_spectrum
+  logical, intent(in), optional          :: calculate_w
   !=====
   integer                   :: nstate
   type(spectral_function)   :: wpol_static
@@ -68,6 +68,7 @@ subroutine polarizability(calculate_w, basis, occupation, energy, c_matrix, en_r
   integer                   :: info
   logical                   :: is_triplet_currently
   logical                   :: need_exchange, need_lr_exchange, need_bse_kernel, need_tddft_kernel
+  logical                   :: calculate_w_
   !=====
 
   call timer_pola%start()
@@ -82,11 +83,20 @@ subroutine polarizability(calculate_w, basis, occupation, energy, c_matrix, en_r
   need_lr_exchange  = wpol_out%need_lr_exchange
 
   write(stdout, '(/,a)') ' Calculating the polarizability'
+
+  ! Default is to calculate W
+  if( PRESENT(calculate_w) ) then
+    calculate_w_ = calculate_w
+  else
+    calculate_w_ = .TRUE.
+  end if
+
   if( PRESENT(lambda) ) then
     lambda_ = lambda
   else
     lambda_ = 1.0_dp
   end if
+
   if( PRESENT(enforce_spin_multiplicity) ) then
     select case(enforce_spin_multiplicity)
     case(1)
@@ -125,8 +135,8 @@ subroutine polarizability(calculate_w, basis, occupation, energy, c_matrix, en_r
   ! Set up all the switches to be able to treat
   ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)
 
-  ! Override choices here
-  if( calculate_w ) then
+  ! Override choices here in case you ask for calculate_w
+  if( calculate_w_ ) then
     select case(wpol_out%w_screening)
     case('RPA')
       ! do nothing
@@ -445,7 +455,7 @@ subroutine polarizability(calculate_w, basis, occupation, energy, c_matrix, en_r
   ! Calculate Wp = v * chi * v    if necessary
   ! and then write it down on file
   !
-  if( print_w_ .OR. calculate_w ) then
+  if( print_w_ .OR. calculate_w_ ) then
     if( has_auxil_basis) then
       call chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol_out, en_gw)
       ! This following coding of the Galitskii-Migdal correlation energy is only working with
@@ -535,8 +545,8 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
     end do
   else
     ! Get A and B (tmp_matrix will contain A and inv_apb_matrix will contain B)
-    call polarizability(.FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol_out, &
-                      enforce_spin_multiplicity=1, lambda=1.0_dp, a_matrix=tmp_matrix, b_matrix=inv_apb_matrix)
+    call polarizability(basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol_out, &
+                      enforce_spin_multiplicity=1, lambda=1.0_dp, a_matrix=tmp_matrix, b_matrix=inv_apb_matrix, calculate_w=.FALSE.)
   end if
   
   inv_apb_matrix(:, :) = tmp_matrix(:, :) + inv_apb_matrix(:, :)
