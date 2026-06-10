@@ -33,7 +33,7 @@ contains
 
 !=========================================================================
 subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wpol_out, &
-                          enforce_spin_multiplicity, lambda, x_matrix, y_matrix, a_matrix, b_matrix, &
+                          lambda, x_matrix, y_matrix, a_matrix, b_matrix, &
                           print_optical_spectrum, calculate_w)
 
   type(basis_set), intent(in)            :: basis
@@ -41,7 +41,6 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
   real(dp), intent(in)                   :: energy(:, :), c_matrix(:, :, :)
   real(dp), intent(out)                  :: en_rpa, en_gw
   type(spectral_function), intent(inout) :: wpol_out
-  integer, intent(in), optional          :: enforce_spin_multiplicity
   real(dp), intent(in), optional         :: lambda
   real(dp), intent(out), optional        :: x_matrix(:, :), y_matrix(:, :)
   real(dp), intent(out), optional        :: a_matrix(:, :), b_matrix(:, :)
@@ -66,7 +65,6 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
   ! SCALAPACK variables
   integer                   :: desc_apb(NDEL), desc_x(NDEL)
   integer                   :: info
-  logical                   :: is_triplet_currently
   logical                   :: need_exchange, need_lr_exchange, need_bse_kernel, need_tddft_kernel
   logical                   :: calculate_w_
   !=====
@@ -97,19 +95,7 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
     lambda_ = 1.0_dp
   end if
 
-  if( PRESENT(enforce_spin_multiplicity) ) then
-    select case(enforce_spin_multiplicity)
-    case(1)
-      is_triplet_currently = .FALSE.
-    case(3)
-      is_triplet_currently = .TRUE.
-    case default
-      call die('polarizability: wrong enforce_spin_multiplicity. Should be 1 or 3')
-    end select
-  else
-    is_triplet_currently = wpol_out%is_triplet
-  end if
-  if( is_triplet_currently ) then
+  if( wpol_out%is_triplet ) then
     write(stdout, '(a)') ' Triplet final state'
   else
     write(stdout, '(a)') ' Singlet final state'
@@ -238,16 +224,16 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
     call build_amb_apb_diag_auxil(nmat, nstate, energy_qp, wpol_out, m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa)
 
 #if defined(HAVE_SCALAPACK)
-    call build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
+    call build_apb_hartree_auxil_scalapack(wpol_out%is_triplet, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
 #else
-    call build_apb_hartree_auxil(is_triplet_currently, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
+    call build_apb_hartree_auxil(wpol_out%is_triplet, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
 #endif
 
 
     !
     ! Step 2
     if( need_tddft_kernel ) then
-       call build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, &
+       call build_apb_tddft(wpol_out%is_triplet, nmat, nstate, basis, c_matrix, occupation, &
                             wpol_out, m_apb, n_apb, apb_matrix)
     end if
 
@@ -272,14 +258,14 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
 
     !
     ! Step 1
-    call build_amb_apb_common(is_triplet_currently, lambda_, nmat, basis%nbf, nstate, c_matrix, energy_qp, &
+    call build_amb_apb_common(wpol_out%is_triplet, lambda_, nmat, basis%nbf, nstate, c_matrix, energy_qp, &
                               wpol_out, alpha_local, &
                               m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa, en_rpa)
 
     !
     ! Step 2
     if( need_tddft_kernel ) then
-      call build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, &
+      call build_apb_tddft(wpol_out%is_triplet, nmat, nstate, basis, c_matrix, occupation, &
                            wpol_out, m_apb, n_apb, apb_matrix)
     end if
 
@@ -420,7 +406,7 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
   !
   if( PRESENT(print_optical_spectrum) ) then
     if( print_optical_spectrum ) then
-      call optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, wpol_out, xpy_matrix, xmy_matrix, eigenvalue, &
+      call optical_spectrum(wpol_out%is_triplet, basis, occupation, c_matrix, wpol_out, xpy_matrix, xmy_matrix, eigenvalue, &
                             bare_eigenvalue=bare_eigenval)
     end if
   end if
@@ -545,8 +531,9 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
     end do
   else
     ! Get A and B (tmp_matrix will contain A and inv_apb_matrix will contain B)
+    call wpol_out%enforce_spin_multiplicity(1)
     call polarizability(basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol_out, &
-                      enforce_spin_multiplicity=1, lambda=1.0_dp, a_matrix=tmp_matrix, b_matrix=inv_apb_matrix, calculate_w=.FALSE.)
+                      lambda=1.0_dp, a_matrix=tmp_matrix, b_matrix=inv_apb_matrix, calculate_w=.FALSE.)
   end if
   
   inv_apb_matrix(:, :) = tmp_matrix(:, :) + inv_apb_matrix(:, :)

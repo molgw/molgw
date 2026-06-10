@@ -102,6 +102,7 @@ module m_spectral_function
     procedure :: destroy          => sf_destroy
     procedure :: set_approximation => sf_set_approximation
     procedure :: enforce_approximation => sf_enforce_approximation
+    procedure :: enforce_spin_multiplicity => sf_enforce_spin_multiplicity
 
   end type spectral_function
 
@@ -396,6 +397,7 @@ subroutine sf_set_approximation(sf)
     sf%alpha_hybrid = 0.0_dp
   end if
 
+
 end subroutine sf_set_approximation
 
 
@@ -408,6 +410,7 @@ subroutine sf_enforce_approximation(sf, approximation)
   select case(TRIM(capitalize(approximation)))
   case('RPA')
     sf%approximation = 'RPA'
+    sf%w_screening   = 'RPA'
     sf%is_bse               = .FALSE.
     sf%include_tddft_kernel = .FALSE.
     sf%include_tdhf_kernel  = .FALSE.
@@ -416,12 +419,60 @@ subroutine sf_enforce_approximation(sf, approximation)
     sf%alpha_hybrid         = 0.0_dp
     sf%beta_hybrid          = 0.0_dp
     sf%need_lr_exchange     = .FALSE.
-    sf%w_screening          = 'RPA'
+  case('BSE')
+    sf%approximation = 'BSE'
+    sf%w_screening   = 'BSE'
+    sf%is_bse               = .TRUE.
+    sf%include_tddft_kernel = .FALSE.
+    sf%include_tdhf_kernel  = .TRUE.
+    sf%no_bse_kernel        = .FALSE.
+    sf%alpha_hybrid         = 1.0_dp
+    sf%beta_hybrid          = 0.0_dp
+    sf%need_lr_exchange     = .FALSE.
+  case('TDHF')
+    sf%approximation = 'TDHF'
+    sf%w_screening   = 'TDHF'
+    sf%is_bse               = .FALSE.
+    sf%include_tddft_kernel = .FALSE.
+    sf%include_tdhf_kernel  = .TRUE.
+    sf%no_bse_kernel        = .TRUE.
+    sf%alpha_hybrid         = 1.0_dp
+    sf%beta_hybrid          = 0.0_dp
+    sf%need_lr_exchange     = .FALSE.
+  case('TDDFT')
+    sf%approximation = 'TDDFT'
+    sf%w_screening   = 'TDDFT'
+    sf%is_bse               = .FALSE.
+    sf%include_tddft_kernel = .TRUE.
+    sf%include_tdhf_kernel  = .TRUE.
+    sf%no_bse_kernel        = .TRUE.
+    !Don't touch this
+    !sf%alpha_hybrid         = 1.0_dp
+    !sf%beta_hybrid          = 0.0_dp
+    !sf%need_lr_exchange     = .FALSE.
   case default
     call die("sf_enforce_approximation: choice not implemented or not existing")
   end select
 
 end subroutine sf_enforce_approximation
+
+
+!=========================================================================
+subroutine sf_enforce_spin_multiplicity(sf, spin_multiplicity)
+  class(spectral_function), intent(inout) :: sf
+  integer, intent(in) :: spin_multiplicity
+  !=====
+
+  select case(spin_multiplicity)
+  case(1)
+    sf%is_triplet = .FALSE.
+  case(3)
+    sf%is_triplet = .TRUE.
+  case default
+    call die('sf_enforce_spin_multiplicity: wrong value for spin multiplicity. Should be 1 or 3')
+  end select
+
+end subroutine sf_enforce_spin_multiplicity
 
 
 !=========================================================================
