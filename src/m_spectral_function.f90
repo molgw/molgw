@@ -81,7 +81,6 @@ module m_spectral_function
     logical  :: is_bse
     logical  :: include_tddft_kernel
     logical  :: include_tdhf_kernel
-    logical  :: is_dft
     logical  :: no_bse_kernel
     real(dp) :: alpha_hybrid
     real(dp) :: beta_hybrid
@@ -99,9 +98,10 @@ module m_spectral_function
 
     procedure :: vsqrt_chi_vsqrt_rpa => sf_vsqrt_chi_vsqrt_rpa
     procedure :: interpolate_vsqrt_chi_vsqrt => sf_interpolate_vsqrt_chi_vsqrt
-    procedure :: init    => sf_init
-    procedure :: destroy => sf_destroy
+    procedure :: init             => sf_init
+    procedure :: destroy          => sf_destroy
     procedure :: set_approximation => sf_set_approximation
+    procedure :: enforce_approximation => sf_enforce_approximation
 
   end type spectral_function
 
@@ -361,14 +361,15 @@ subroutine sf_set_approximation(sf)
   integer :: tdhffile
   !=====
 
+  ! not used yet: set to RPA for the time being
   sf%approximation = 'RPA'
+
   sf%tda                  = tda_
   sf%is_triplet           = triplet_
 
   sf%is_bse               = calc_type%is_bse
-  sf%include_tddft_kernel = calc_type%include_tddft_kernel
+  sf%include_tddft_kernel = calc_type%include_tddft_kernel .AND. calc_type%is_dft
   sf%include_tdhf_kernel  = calc_type%include_tdhf_kernel
-  sf%is_dft               = calc_type%is_dft
   sf%no_bse_kernel        = calc_type%no_bse_kernel
 
   sf%beta_hybrid          = beta_hybrid
@@ -396,6 +397,31 @@ subroutine sf_set_approximation(sf)
   end if
 
 end subroutine sf_set_approximation
+
+
+!=========================================================================
+subroutine sf_enforce_approximation(sf, approximation)
+  class(spectral_function), intent(inout) :: sf
+  character(len=*), intent(in) :: approximation
+  !=====
+
+  select case(TRIM(capitalize(approximation)))
+  case('RPA')
+    sf%approximation = 'RPA'
+    sf%is_bse               = .FALSE.
+    sf%include_tddft_kernel = .FALSE.
+    sf%include_tdhf_kernel  = .FALSE.
+    sf%no_bse_kernel        = .TRUE.
+
+    sf%alpha_hybrid         = 0.0_dp
+    sf%beta_hybrid          = 0.0_dp
+    sf%need_lr_exchange     = .FALSE.
+    sf%w_screening          = 'RPA'
+  case default
+    call die("sf_enforce_approximation: choice not implemented or not existing")
+  end select
+
+end subroutine sf_enforce_approximation
 
 
 !=========================================================================

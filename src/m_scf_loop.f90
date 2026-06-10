@@ -231,7 +231,8 @@ subroutine scf_loop(is_restart, &
 
 
       call wpol%init(nstate, occupation, 0)
-      call polarizability(.TRUE., .TRUE., basis, occupation, energy, c_matrix, en_gks%rpa, en_gks%gw, wpol)
+      call wpol%enforce_approximation('RPA')
+      call polarizability(.TRUE., basis, occupation, energy, c_matrix, en_gks%rpa, en_gks%gw, wpol)
 
       if( ABS(en_gks%rpa) > 1.e-6_dp) then
         en_gks%total = en_gks%total + en_gks%rpa

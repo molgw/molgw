@@ -32,11 +32,11 @@ contains
 
 
 !=========================================================================
-subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c_matrix, en_rpa, en_gw, wpol_out, &
+subroutine polarizability(calculate_w, basis, occupation, energy, c_matrix, en_rpa, en_gw, wpol_out, &
                           enforce_spin_multiplicity, lambda, x_matrix, y_matrix, a_matrix, b_matrix, &
                           print_optical_spectrum)
 
-  logical, intent(in)                    :: enforce_rpa, calculate_w
+  logical, intent(in)                    :: calculate_w
   type(basis_set), intent(in)            :: basis
   real(dp), intent(in)                   :: occupation(:, :)
   real(dp), intent(in)                   :: energy(:, :), c_matrix(:, :, :)
@@ -132,12 +132,12 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
       ! do nothing
     case('BSE')
       ! enforce BSE
-      need_exchange     = .TRUE.
-      need_bse_kernel   = .TRUE.
+      need_exchange   = .TRUE.
+      need_bse_kernel = .TRUE.
     case('TDHF')
-      need_exchange     = .TRUE.
+      need_exchange   = .TRUE.
     case('TDDFT')
-      need_exchange = .TRUE.  ! for hybrid functionals
+      need_exchange   = .TRUE.  ! for hybrid functionals
       need_tddft_kernel = .TRUE.
     case default
       write(stdout, *) 'wpol_out%w_screening:', wpol_out%w_screening
@@ -145,33 +145,24 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     end select
   end if
 
-  !
-  ! enforce_rpa prevails over the rest
-  !
-  if( enforce_rpa ) then
-    need_exchange     = .FALSE.
-    need_tddft_kernel = .FALSE.
-    need_bse_kernel   = .FALSE.
-  end if
 
   !
   ! Set up exchange content alpha_local (precomputed in wpol_out%alpha_hybrid)
   alpha_local = wpol_out%alpha_hybrid
-  if( enforce_rpa ) alpha_local = 0.0_dp
 
   is_rpa = .NOT.(need_tddft_kernel) .AND. .NOT.(need_bse_kernel) .AND. .NOT.(need_exchange)
 
-  call timer_build_h2p%start()
   write(stdout, '(/,1x,a)') 'Summarize the linear response calculation:'
-  write(stdout, '(1x,a16,l1)')       'RPA:          ', is_rpa
-  write(stdout, '(1x,a16,l1)')         'BSE kernel: ', need_bse_kernel
-  write(stdout, '(1x,a16,l1)')    'Exchange kernel: ', need_exchange
-  write(stdout, '(1x,a16,f6.4)')     'hybrid alpha: ', alpha_local
-  write(stdout, '(1x,a16,l1)') 'Exchange LR kernel: ', need_lr_exchange
-  write(stdout, '(1x,a16,f6.4)')     'hybrid beta:  ', beta_local
-  write(stdout, '(1x,a16,l1)')       'TDDFT kernel: ', need_tddft_kernel
+  write(stdout, '(1x,a24,l1)')                'RPA: ', is_rpa
+  write(stdout, '(1x,a24,l1)')         'BSE kernel: ', need_bse_kernel
+  write(stdout, '(1x,a24,l1)')    'Exchange kernel: ', need_exchange
+  write(stdout, '(1x,a24,f6.4)')     'hybrid alpha: ', alpha_local
+  write(stdout, '(1x,a24,l1)') 'Exchange LR kernel: ', need_lr_exchange
+  write(stdout, '(1x,a24,f6.4)')      'hybrid beta: ', beta_local
+  write(stdout, '(1x,a24,l1)')       'TDDFT kernel: ', need_tddft_kernel
   write(stdout, *)
 
+  call timer_build_h2p%start()
   !
   ! Prepare the QP energies
   !
@@ -544,7 +535,7 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
     end do
   else
     ! Get A and B (tmp_matrix will contain A and inv_apb_matrix will contain B)
-    call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol_out, &
+    call polarizability(.FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol_out, &
                       enforce_spin_multiplicity=1, lambda=1.0_dp, a_matrix=tmp_matrix, b_matrix=inv_apb_matrix)
   end if
   

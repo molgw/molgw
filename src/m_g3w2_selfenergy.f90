@@ -1927,7 +1927,8 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
 
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate, occupation, 0, grid_type=NO_GRID)
-    call polarizability(.TRUE., .TRUE., basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
+    call wpol_analytic%enforce_approximation('RPA')
+    call polarizability(.TRUE., basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
   else
     call die('g3w2_selfenergy_real_grid: analytic_chi is compulsory')
   end if
@@ -2061,7 +2062,8 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   call wpol_imag%init(nstate, occupation, nomega_chi_imag, grid_type=IMAGINARY_QUAD)
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate, occupation, 0, grid_type=NO_GRID)
-    call polarizability(.TRUE., .TRUE., basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
+    call wpol_analytic%enforce_approximation('RPA')
+    call polarizability(.TRUE., basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
     call clean_allocate('Chi', wpol_imag%chi, nauxil_global, nauxil_global, wpol_imag%nomega, verbose=.FALSE.)
     call wpol_analytic%evaluate(wpol_imag%omega, wpol_imag%chi)
   else
@@ -2255,7 +2257,8 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   call wpol_imag%init(nstate, occupation, nomega_chi_imag, grid_type=IMAGINARY_QUAD)
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate, occupation, 0, grid_type=NO_GRID)
-    call polarizability(.TRUE., .TRUE., basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
+    call wpol_analytic%enforce_approximation('RPA')
+    call polarizability(.TRUE., basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
   else
     call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.FALSE.)
   end if

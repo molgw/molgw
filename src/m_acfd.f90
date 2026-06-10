@@ -87,7 +87,7 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
   select case(TRIM(postscf))
   case('RPA', 'RPAP', 'RPA+')
     call wpol%init(nstate, occupation, 0)
-    call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, &
+    call polarizability(.FALSE., basis, occupation, energy, c_matrix, &
                         erpa_singlet, egw_tmp, wpol, enforce_spin_multiplicity=1)
     call wpol%destroy()
     en_mbpt%rpa = erpa_singlet
@@ -139,7 +139,7 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
 
   case('RPAX', 'RPAX-II')
     call wpol%init(nstate, occupation, 0)
-    call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, &
+    call polarizability(.FALSE., basis, occupation, energy, c_matrix, &
                         erpa_singlet, egw_tmp, wpol, enforce_spin_multiplicity=1)
     call wpol%destroy()
     en_mbpt%rpa = 0.50_dp * erpa_singlet
@@ -151,7 +151,7 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
     write(stdout, '(a,2x,f19.10)') ' Singlet RPAx Energy contribution      (Ha):', en_mbpt%rpa
 
     call wpol%init(nstate, occupation, 0)
-    call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, erpa_triplet, &
+    call polarizability(.FALSE., basis, occupation, energy, c_matrix, erpa_triplet, &
                         egw_tmp, wpol, enforce_spin_multiplicity=3)
     call wpol%destroy()
     if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using RPA (and RPA versions)
@@ -188,7 +188,7 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
     call clean_allocate('A matrix', a_matrix, m_x, n_x)
     call clean_allocate('B matrix', b_matrix, m_x, n_x)
     ! Get A and B
-    call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol, &
+    call polarizability(.FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol, &
                         enforce_spin_multiplicity=1, lambda=1.0_dp, a_matrix=a_matrix, b_matrix=b_matrix)
     call remove_a_energy_diag(energy, wpol, a_matrix)
     call wpol%destroy()
@@ -198,7 +198,7 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
       write(stdout, '(/,1x,a,i4,a,i4)') '=== Lambda', ilambda, ' / ', acfd_nlambda
       write(stdout, '(1x,a,f12.8)')   'lambda: ', lambda(ilambda)
       call wpol%init(nstate, occupation, 0)
-      call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol, &
+      call polarizability(.FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol, &
                           enforce_spin_multiplicity=1, lambda=lambda(ilambda), x_matrix=x_matrix, y_matrix=y_matrix)
       call wpol%destroy()
    
@@ -249,7 +249,8 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
     ! Only singlet needed for RPAx-I
     !
     ! Get A and B
-    call polarizability(.TRUE., .FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol, &
+    call wpol%enforce_approximation('RPA')
+    call polarizability(.FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol, &
                         enforce_spin_multiplicity=1, lambda=1.0_dp, a_matrix=a_matrix, b_matrix=b_matrix)
     call remove_a_energy_diag(energy, wpol, a_matrix)
     call wpol%destroy()
@@ -259,7 +260,7 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
       write(stdout, '(/,1x,a,i4,a,i4)') '=== Lambda', ilambda, ' / ', acfd_nlambda
       write(stdout, '(1x,a,f12.8)')   'lambda: ', lambda(ilambda)
       call wpol%init(nstate, occupation, 0)
-      call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol, &
+      call polarizability(.FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol, &
                           enforce_spin_multiplicity=1, lambda=lambda(ilambda), x_matrix=x_matrix, y_matrix=y_matrix)
       call wpol%destroy()
 
@@ -310,7 +311,8 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
     call clean_allocate('A matrix', a_matrix, m_x, n_x)
     call clean_allocate('B matrix', b_matrix, m_x, n_x)
     ! Get A and B
-    call polarizability(.TRUE., .FALSE., basis, occupation, energy, c_matrix, ebse_singlet, egw_tmp, wpol, &
+    call wpol%enforce_approximation('RPA')
+    call polarizability(.FALSE., basis, occupation, energy, c_matrix, ebse_singlet, egw_tmp, wpol, &
                         enforce_spin_multiplicity=1, lambda=1.0_dp, a_matrix=a_matrix, b_matrix=b_matrix)
     call remove_a_energy_diag(energy, wpol, a_matrix)
     call wpol%destroy()
@@ -320,7 +322,7 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
       write(stdout, '(/,1x,a,i4,a,i4)') '=== Lambda', ilambda, ' / ', acfd_nlambda
       write(stdout, '(1x,a,f12.8)')   'lambda: ', lambda(ilambda)
       call wpol%init(nstate, occupation, 0, grid_type=0)
-      call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, ebse_singlet, egw_tmp, wpol, &
+      call polarizability(.FALSE., basis, occupation, energy, c_matrix, ebse_singlet, egw_tmp, wpol, &
                           enforce_spin_multiplicity=1, lambda=lambda(ilambda), x_matrix=x_matrix, y_matrix=y_matrix)
       call wpol%destroy()
 
