@@ -65,7 +65,7 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
   ! SCALAPACK variables
   integer                   :: desc_apb(NDEL), desc_x(NDEL)
   integer                   :: info
-  logical                   :: need_exchange, need_lr_exchange, need_bse_kernel, need_tddft_kernel
+  logical                   :: need_exchange, need_lr_exchange, need_bse_kernel, need_tddft_kernel, need_qp_energy
   logical                   :: calculate_w_
   !=====
 
@@ -76,7 +76,8 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
   en_gw  = 0.0_dp
 
   need_tddft_kernel = wpol_out%include_tddft_kernel
-  need_bse_kernel   = wpol_out%is_bse
+  need_bse_kernel   = wpol_out%need_bse_kernel
+  need_qp_energy    = wpol_out%need_qp_energy
   need_exchange     = wpol_out%alpha_hybrid > 1.0e-6_dp
   need_lr_exchange  = wpol_out%need_lr_exchange
 
@@ -159,10 +160,11 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
   write(stdout, *)
 
   call timer_build_h2p%start()
+
   !
-  ! Prepare the QP energies
+  ! Prepare the QP energies for BSE
   !
-  if( need_bse_kernel ) then
+  if( need_qp_energy ) then
     ! Get energy_qp
     call get_energy_qp(energy, occupation, energy_qp)
   else
@@ -335,7 +337,9 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
   call DESCINIT(desc_x, nmat, nexc, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, m_x), info)
 
   call clean_allocate('X+Y', xpy_matrix, m_x, n_x)
-  if( .NOT. is_rpa .OR. wpol_out%tda .OR. PRESENT(x_matrix) .OR. PRESENT(y_matrix) ) &
+  if( (.NOT. is_rpa) .OR. wpol_out%tda &
+     .OR. PRESENT(print_optical_spectrum) &
+     .OR. PRESENT(x_matrix) .OR. PRESENT(y_matrix) ) &
     call clean_allocate('X-Y', xmy_matrix, m_x, n_x)
 
   !
@@ -631,8 +635,11 @@ end subroutine polarizability_onering
 
 
 !=========================================================================
+! for BSE calculations, use GW energies from a previous calculation (ENERGY_QP file)
+! or a scissor operator
+! scissor input variable has the priority
+! if scissor in between 1e-6 and 1e-12, no scissor, no ENERGY_QP (for test mostly)
 subroutine get_energy_qp(energy, occupation, energy_qp)
-
   real(dp), intent(in)                 :: energy(:, :)
   real(dp), intent(in)                 :: occupation(:, :)
   real(dp), intent(out)                :: energy_qp(:, :)

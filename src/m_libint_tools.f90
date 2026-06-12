@@ -475,9 +475,9 @@ subroutine transform_libint_to_molgw_gth_projector(gaussian_type, am1, am2, arra
   !=====
 
   gt_tag = get_gaussian_type_tag(gaussian_type)
-  n1c = number_basis_function_am('CART',am1)
-  n2c = number_basis_function_am('CART',am2)
-  n1  = number_basis_function_am('PURE',am1)
+  n1c = number_basis_function_am('CART', am1)
+  n2c = number_basis_function_am('CART', am2)
+  n1  = number_basis_function_am('PURE', am1)
   n2  = number_basis_function_am(gaussian_type, am2)
 
   if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1, n2))

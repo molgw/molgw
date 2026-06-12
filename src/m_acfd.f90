@@ -332,6 +332,7 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
       write(stdout, '(/,1x,a,i4,a,i4)') '=== Lambda', ilambda, ' / ', acfd_nlambda
       write(stdout, '(1x,a,f12.8)')   'lambda: ', lambda(ilambda)
       call wpol%init(nstate, occupation, 0, grid_type=0)
+    call wpol%enforce_approximation('BSE')
       call wpol%enforce_spin_multiplicity(1)
       call polarizability(basis, occupation, energy, c_matrix, ebse_singlet, egw_tmp, wpol, &
                           lambda=lambda(ilambda), x_matrix=x_matrix, y_matrix=y_matrix, &
@@ -352,7 +353,7 @@ subroutine acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbp
 
     if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using BSE energy
       write(stdout, '(/,a,f16.10)') ' BSE-I Energy scaled by :', kappa_hybrid
-      en_mbpt%bse=kappa_hybrid*en_mbpt%bse
+      en_mbpt%bse = kappa_hybrid * en_mbpt%bse
     end if
     write(stdout, '(a,2x,f19.10)') ' BSE-I Energy      (Ha):', en_mbpt%bse
 

@@ -78,10 +78,10 @@ module m_spectral_function
     character(len=32) :: approximation
     logical  :: tda
     logical  :: is_triplet
-    logical  :: is_bse
+    logical  :: need_bse_kernel
+    logical  :: need_qp_energy
     logical  :: include_tddft_kernel
     logical  :: include_tdhf_kernel
-    logical  :: no_bse_kernel
     real(dp) :: alpha_hybrid
     real(dp) :: beta_hybrid
     logical  :: need_lr_exchange
@@ -368,10 +368,10 @@ subroutine sf_set_approximation(sf)
   sf%tda                  = tda_
   sf%is_triplet           = triplet_
 
-  sf%is_bse               = calc_type%is_bse
+  sf%need_bse_kernel      = calc_type%is_bse
+  sf%need_qp_energy       = calc_type%need_qp_energy
   sf%include_tddft_kernel = calc_type%include_tddft_kernel .AND. calc_type%is_dft
   sf%include_tdhf_kernel  = calc_type%include_tdhf_kernel
-  sf%no_bse_kernel        = calc_type%no_bse_kernel
 
   sf%beta_hybrid          = beta_hybrid
   sf%need_lr_exchange     = (beta_hybrid > 1.0e-6_dp) .AND. &
@@ -389,9 +389,8 @@ subroutine sf_set_approximation(sf)
     call issue_warning(msg)
   else if( calc_type%include_tddft_kernel .OR. TRIM(w_screening) == 'TDDFT' ) then
     sf%alpha_hybrid = alpha_hybrid
-  else if( (calc_type%is_bse .OR. calc_type%include_tdhf_kernel &
-            .OR. TRIM(w_screening) == 'TDHF' .OR. TRIM(w_screening) == 'BSE') &
-           .AND. .NOT. calc_type%no_bse_kernel ) then
+  else if( ( calc_type%is_bse .OR. calc_type%include_tdhf_kernel &
+            .OR. TRIM(w_screening) == 'TDHF' .OR. TRIM(w_screening) == 'BSE') ) then
     sf%alpha_hybrid = 1.0_dp
   else
     sf%alpha_hybrid = 0.0_dp
@@ -411,10 +410,10 @@ subroutine sf_enforce_approximation(sf, approximation)
   case('RPA')
     sf%approximation = 'RPA'
     sf%w_screening   = 'RPA'
-    sf%is_bse               = .FALSE.
+    sf%need_bse_kernel      = .FALSE.
+    sf%need_qp_energy       = .FALSE.
     sf%include_tddft_kernel = .FALSE.
     sf%include_tdhf_kernel  = .FALSE.
-    sf%no_bse_kernel        = .TRUE.
 
     sf%alpha_hybrid         = 0.0_dp
     sf%beta_hybrid          = 0.0_dp
@@ -422,30 +421,30 @@ subroutine sf_enforce_approximation(sf, approximation)
   case('BSE')
     sf%approximation = 'BSE'
     sf%w_screening   = 'BSE'
-    sf%is_bse               = .TRUE.
+    sf%need_bse_kernel      = .TRUE.
+    sf%need_qp_energy       = .TRUE.
     sf%include_tddft_kernel = .FALSE.
     sf%include_tdhf_kernel  = .TRUE.
-    sf%no_bse_kernel        = .FALSE.
     sf%alpha_hybrid         = 1.0_dp
     sf%beta_hybrid          = 0.0_dp
     sf%need_lr_exchange     = .FALSE.
   case('TDHF')
     sf%approximation = 'TDHF'
     sf%w_screening   = 'TDHF'
-    sf%is_bse               = .FALSE.
+    sf%need_bse_kernel      = .FALSE.
+    sf%need_qp_energy       = .FALSE.
     sf%include_tddft_kernel = .FALSE.
     sf%include_tdhf_kernel  = .TRUE.
-    sf%no_bse_kernel        = .TRUE.
     sf%alpha_hybrid         = 1.0_dp
     sf%beta_hybrid          = 0.0_dp
     sf%need_lr_exchange     = .FALSE.
   case('TDDFT')
     sf%approximation = 'TDDFT'
     sf%w_screening   = 'TDDFT'
-    sf%is_bse               = .FALSE.
+    sf%need_bse_kernel      = .FALSE.
+    sf%need_qp_energy       = .FALSE.
     sf%include_tddft_kernel = .TRUE.
     sf%include_tdhf_kernel  = .TRUE.
-    sf%no_bse_kernel        = .TRUE.
     !Don't touch this
     !sf%alpha_hybrid         = 1.0_dp
     !sf%beta_hybrid          = 0.0_dp

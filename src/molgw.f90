@@ -750,7 +750,8 @@ program molgw
   ! Linear-response time dependent calculations work for BSE and TDDFT
   ! or coupled-pertubed HF/KS
   ! (only if the SCF cycles were converged)
-  if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. (scf_has_converged .AND. .NOT. TRIM(postscf) == 'BSE-I') ) then
+  if( ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'BSE' .OR. TRIM(postscf) == 'BSE-RPA' ) &
+         .AND. scf_has_converged ) then
     call wpol%init(nstate, occupation, 0)
     call polarizability(basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol, print_optical_spectrum=.TRUE., &
                         calculate_w=.FALSE.)
