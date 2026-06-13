@@ -83,7 +83,8 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
 
   write(stdout, '(/,a)') ' Calculating the polarizability'
 
-  ! Default is to calculate W
+  ! Default is TRUE:
+  ! Calculate W
   if( PRESENT(calculate_w) ) then
     calculate_w_ = calculate_w
   else
@@ -118,30 +119,6 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
       end if
     end if
   end if
-
-  ! Set up all the switches to be able to treat
-  ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)
-
-  ! Override choices here in case you ask for calculate_w
-  if( calculate_w_ ) then
-    select case(wpol_out%w_screening)
-    case('RPA')
-      ! do nothing
-    case('BSE')
-      ! enforce BSE
-      need_exchange   = .TRUE.
-      need_bse_kernel = .TRUE.
-    case('TDHF')
-      need_exchange   = .TRUE.
-    case('TDDFT')
-      need_exchange   = .TRUE.  ! for hybrid functionals
-      need_tddft_kernel = .TRUE.
-    case default
-      write(stdout, *) 'wpol_out%w_screening:', wpol_out%w_screening
-      call die('polarizability: invalid choice for w_screening')
-    end select
-  end if
-
 
   !
   ! Set up exchange content alpha_local (precomputed in wpol_out%alpha_hybrid)

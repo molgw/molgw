@@ -130,6 +130,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
   call clean_allocate('Y local matrix', y_matrix_local, m_x, n_x)
 
   ! Get X and Y
+  call wpol%enforce_approximation(w_screening)
   call wpol%enforce_spin_multiplicity(1)
   call polarizability(basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol, &
                        x_matrix=x_matrix_local, y_matrix=y_matrix_local)
@@ -583,6 +584,7 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
   call clean_allocate('Y local matrix', y_matrix_local, m_x, n_x)
 
   ! Get X and Y singlet
+  call wpol_singlet%enforce_approximation(w_screening)
   call wpol_singlet%enforce_spin_multiplicity(1)
   call polarizability(basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol_singlet, &
                        x_matrix=x_matrix_local, y_matrix=y_matrix_local)
@@ -596,6 +598,7 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
   call gather_distributed_copy(desc_x, y_matrix_local, y_matrix_singlet)
 
   ! Get X and Y triplet
+  call wpol_triplet%enforce_approximation(w_screening)
   call wpol_triplet%enforce_spin_multiplicity(3)
   call polarizability(basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol_triplet, &
                        x_matrix=x_matrix_local, y_matrix=y_matrix_local)
