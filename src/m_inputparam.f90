@@ -85,14 +85,13 @@ module m_inputparam
     logical            :: need_exchange_lr
     logical            :: need_exchange_pairing
     logical            :: need_rpa
-    logical            :: is_lr_mbpt
     logical            :: is_gw
     logical            :: is_mp2
     logical            :: is_mp3
     logical            :: is_noft
     logical            :: is_selfenergy
     logical            :: is_ci
-    logical            :: is_bse, no_bse_kernel, include_tddft_kernel, include_tdhf_kernel
+    logical            :: is_bse, include_tddft_kernel, include_tdhf_kernel, need_qp_energy
     integer            :: selfenergy_technique      ! perturbative or quasiparticle self-consistent or eigenvalue-sc
     integer            :: selfenergy_approx         ! GW, COHSEX, PT2
   end type calculation_type
@@ -155,14 +154,12 @@ subroutine init_calculation_type(scf, postscf)
   ! default values
   calc_type%is_dft               = .FALSE.
   calc_type%need_rpa             = .FALSE.
-  calc_type%is_lr_mbpt           = .FALSE.
   calc_type%is_gw                = .FALSE.
   calc_type%is_mp2               = .FALSE.
   calc_type%is_mp3               = .FALSE.
   calc_type%is_noft              = .FALSE.
   calc_type%is_ci                = .FALSE.
   calc_type%is_bse               = .FALSE.
-  calc_type%no_bse_kernel        = .FALSE.
   calc_type%include_tddft_kernel = .FALSE.
   calc_type%include_tdhf_kernel  = .FALSE.
   calc_type%is_real_time         = .FALSE.
@@ -289,10 +286,6 @@ subroutine init_calculation_type(scf, postscf)
       calc_type%is_gw    =.TRUE.
       calc_type%selfenergy_approx = GWSOSEX
       calc_type%selfenergy_technique = EVSC
-    case('LRGW')
-      calc_type%is_gw      =.TRUE.
-      calc_type%selfenergy_approx = GW
-      calc_type%is_lr_mbpt = .TRUE.
     case('MP2')
       calc_type%is_mp2   =.TRUE.
     case('MP3')
@@ -322,10 +315,11 @@ subroutine init_calculation_type(scf, postscf)
       calc_type%is_ci = .TRUE.
       calc_type%selfenergy_approx = CI
     case('BSE')
-      calc_type%is_bse = .TRUE.
+      calc_type%is_bse         = .TRUE.
+      calc_type%need_qp_energy = .TRUE.
     case('BSE_RPA', 'BSE-RPA') ! debug only
-      calc_type%is_bse        = .TRUE.
-      calc_type%no_bse_kernel = .TRUE.
+      calc_type%is_bse        = .FALSE.
+      calc_type%need_qp_energy = .TRUE.
     case('TD')
       calc_type%include_tddft_kernel = .TRUE.
     case('CPHF', 'CPKS')
@@ -337,8 +331,6 @@ subroutine init_calculation_type(scf, postscf)
     case('BSE-I')
       calc_type%is_bse        = .TRUE.
       ! nothing to declare
-    case('RPALR')
-      calc_type%is_lr_mbpt = .TRUE.
     case('RPAX', 'RPAX-I','RPAX-II')
       calc_type%include_tdhf_kernel =.TRUE.
     case default

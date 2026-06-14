@@ -12,7 +12,9 @@ module m_linear_response
   use m_timing
   use m_warning
   use m_memory
-  use m_inputparam
+  use m_inputparam, only: nspin, has_auxil_basis, spin_fact, nexcitation, &
+                          print_bare_energy_, stopping, print_w_, toldav, nstep_dav, &
+                          scissor, cphf_cpks_0_
   use m_mpi
   use m_scalapack
   use m_cart_to_pure
@@ -30,23 +32,24 @@ contains
 
 
 !=========================================================================
-subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c_matrix, en_rpa, en_gw, wpol_out, &
-                          enforce_spin_multiplicity, lambda, x_matrix, y_matrix, a_matrix, b_matrix)
+subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wpol_out, &
+                          lambda, x_matrix, y_matrix, a_matrix, b_matrix, &
+                          print_optical_spectrum, calculate_w)
 
-  logical, intent(in)                    :: enforce_rpa, calculate_w
   type(basis_set), intent(in)            :: basis
   real(dp), intent(in)                   :: occupation(:, :)
   real(dp), intent(in)                   :: energy(:, :), c_matrix(:, :, :)
   real(dp), intent(out)                  :: en_rpa, en_gw
   type(spectral_function), intent(inout) :: wpol_out
-  integer, intent(in), optional          :: enforce_spin_multiplicity
   real(dp), intent(in), optional         :: lambda
   real(dp), intent(out), optional        :: x_matrix(:, :), y_matrix(:, :)
   real(dp), intent(out), optional        :: a_matrix(:, :), b_matrix(:, :)
+  logical, intent(in), optional          :: print_optical_spectrum
+  logical, intent(in), optional          :: calculate_w
   !=====
   integer                   :: nstate
   type(spectral_function)   :: wpol_static
-  logical                   :: is_bse, is_tdhf, eri_3center_mo_available
+  logical                   :: eri_3center_mo_available
   integer                   :: nmat, nexc
   real(dp)                  :: alpha_local, beta_local, lambda_
   real(dp), allocatable     :: amb_diag_rpa(:)
@@ -55,16 +58,15 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   real(dp), allocatable     :: eigenvalue(:)
   real(dp), allocatable     :: bare_eigenval(:)
   real(dp), allocatable     :: energy_qp(:, :)
-  logical                   :: is_tddft, is_rpa
-  logical                   :: has_manual_tdhf
+  logical                   :: is_rpa
   integer                   :: reading_status
-  integer                   :: tdhffile
   integer                   :: m_apb, n_apb, m_x, n_x
   integer                   :: t_ia, t_jb, t_ia_global, t_jb_global
   ! SCALAPACK variables
   integer                   :: desc_apb(NDEL), desc_x(NDEL)
   integer                   :: info
-  logical                   :: is_triplet_currently
+  logical                   :: need_exchange, need_lr_exchange, need_bse_kernel, need_tddft_kernel, need_qp_energy
+  logical                   :: calculate_w_
   !=====
 
   call timer_pola%start()
@@ -73,25 +75,29 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   en_rpa = 0.0_dp
   en_gw  = 0.0_dp
 
+  need_tddft_kernel = wpol_out%include_tddft_kernel
+  need_bse_kernel   = wpol_out%need_bse_kernel
+  need_qp_energy    = wpol_out%need_qp_energy
+  need_exchange     = wpol_out%alpha_hybrid > 1.0e-6_dp
+  need_lr_exchange  = wpol_out%need_lr_exchange
+
   write(stdout, '(/,a)') ' Calculating the polarizability'
+
+  ! Default is TRUE:
+  ! Calculate W
+  if( PRESENT(calculate_w) ) then
+    calculate_w_ = calculate_w
+  else
+    calculate_w_ = .TRUE.
+  end if
+
   if( PRESENT(lambda) ) then
     lambda_ = lambda
   else
     lambda_ = 1.0_dp
   end if
-  if( PRESENT(enforce_spin_multiplicity) ) then
-    select case(enforce_spin_multiplicity)
-    case(1)
-      is_triplet_currently = .FALSE.
-    case(3)
-      is_triplet_currently = .TRUE.
-    case default
-      call die('polarizability: wrong enforce_spin_multiplicity. Should be 1 or 3')
-    end select
-  else
-    is_triplet_currently = triplet_
-  end if
-  if( is_triplet_currently ) then
+
+  if( wpol_out%is_triplet ) then
     write(stdout, '(a)') ' Triplet final state'
   else
     write(stdout, '(a)') ' Singlet final state'
@@ -99,98 +105,43 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
   beta_local = 0.0_dp
   if( has_auxil_basis ) then
-    if( calc_type%is_lr_mbpt ) then
-      call calculate_eri_3center_mo_lr(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola)
+    if( need_lr_exchange ) then
+      eri_3center_mo_available = ( ALLOCATED(eri_3center_mo) .AND. ALLOCATED(eri_3center_mo_lr) )
+      if( .NOT. eri_3center_mo_available ) then
+        call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola, &
+                long_range=.TRUE.)
+      end if
+      beta_local = wpol_out%beta_hybrid
     else
-      if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' ) ) then
-        eri_3center_mo_available = ( ALLOCATED(eri_3center_mo) .AND. ALLOCATED(eri_3center_mo_lr) )
-        if( .NOT. eri_3center_mo_available ) then
-          call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola, &
-                  long_range=.TRUE.)
-        end if
-        beta_local = beta_hybrid
-      else
-        eri_3center_mo_available = ALLOCATED(eri_3center_mo)
-        if( .NOT. eri_3center_mo_available ) then
-          call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola)
-        end if
+      eri_3center_mo_available = ALLOCATED(eri_3center_mo)
+      if( .NOT. eri_3center_mo_available ) then
+        call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola)
       end if
     end if
   end if
 
-  ! Set up all the switches to be able to treat
-  ! GW, BSE, TDHF, TDDFT (semilocal or hybrid)
-
   !
-  ! Set up flag is_tddft and is_bse
-  is_tddft = calc_type%include_tddft_kernel .AND. calc_type%is_dft .AND. .NOT. enforce_rpa
-  is_bse   = calc_type%is_bse .AND. .NOT. enforce_rpa
-  is_tdhf  = (calc_type%include_tddft_kernel .OR. calc_type%include_tdhf_kernel) .AND. .NOT. enforce_rpa
+  ! Set up exchange content alpha_local (precomputed in wpol_out%alpha_hybrid)
+  alpha_local = wpol_out%alpha_hybrid
 
-  ! Override choices here
-  if( calculate_w ) then
-    select case(w_screening)
-    case('RPA')
-      ! do nothing
-    case('BSE')
-      ! enforce BSE
-      is_bse   = .TRUE.
-    case('TDHF')
-      is_tdhf = .TRUE.
-    case('TDDFT')
-      is_tdhf  = .TRUE.
-      is_tddft = .TRUE.
-    case default
-      call die('polarizability: invalid choice for w_screening')
-    end select
-  end if
+  is_rpa = .NOT.(need_tddft_kernel) .AND. .NOT.(need_bse_kernel) .AND. .NOT.(need_exchange)
 
-  !
-  ! enforce_rpa prevails over the rest
-  !
-  if( enforce_rpa ) then
-    is_tdhf  = .FALSE.
-    is_bse   = .FALSE.
-    is_tddft = .FALSE.
-  end if
-
-  !
-  ! Set up exchange content alpha_local
-  ! manual_tdhf can override anything
-  alpha_local = 0.0_dp
-  inquire(file='manual_tdhf', exist=has_manual_tdhf)
-  if( has_manual_tdhf ) then
-    open(newunit=tdhffile, file='manual_tdhf', status='old')
-    read(tdhffile, *) alpha_local
-    close(tdhffile)
-    write(msg, '(a,f12.6,3x,f12.6)') 'calculating the TDHF polarizability with alpha ', alpha_local
-    call issue_warning(msg)
-  else
-    if( is_tddft .OR. calc_type%include_tddft_kernel ) then        ! TDDFT or TDHF
-      alpha_local = alpha_hybrid
-    else if( (is_bse .OR. is_tdhf) .AND. .NOT. calc_type%no_bse_kernel) then  ! BSE
-      alpha_local = 1.0_dp
-    else                  ! RPA or no_bse_kernel
-      alpha_local = 0.0_dp
-    end if
-  end if
-
-  is_rpa = .NOT.(is_tddft) .AND. .NOT.(is_bse) .AND. (ABS(alpha_local)<1.0e-5_dp)
-
-  call timer_build_h2p%start()
   write(stdout, '(/,1x,a)') 'Summarize the linear response calculation:'
-  write(stdout, '(1x,a16,l1)')       'RPA:          ', is_rpa
-  write(stdout, '(1x,a16,l1)')       'BSE:          ', is_bse
-  write(stdout, '(1x,a16,l1)')       'TDHF:         ', is_tdhf
-  write(stdout, '(1x,a16,l1)')       'TDDFT:        ', is_tddft
-  write(stdout, '(1x,a16,f6.4)')     'hybrid alpha: ', alpha_local
-  write(stdout, '(1x,a16,f6.4)')     'hybrid beta:  ', beta_local
+  write(stdout, '(1x,a24,l1)')                'RPA: ', is_rpa
+  write(stdout, '(1x,a24,l1)')         'BSE kernel: ', need_bse_kernel
+  write(stdout, '(1x,a24,l1)')    'Exchange kernel: ', need_exchange
+  write(stdout, '(1x,a24,f6.4)')     'hybrid alpha: ', alpha_local
+  write(stdout, '(1x,a24,l1)') 'Exchange LR kernel: ', need_lr_exchange
+  write(stdout, '(1x,a24,f6.4)')      'hybrid beta: ', beta_local
+  write(stdout, '(1x,a24,l1)')       'TDDFT kernel: ', need_tddft_kernel
   write(stdout, *)
 
+  call timer_build_h2p%start()
+
   !
-  ! Prepare the QP energies
+  ! Prepare the QP energies for BSE
   !
-  if( is_bse ) then
+  if( need_qp_energy ) then
     ! Get energy_qp
     call get_energy_qp(energy, occupation, energy_qp)
   else
@@ -202,7 +153,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   ! BSE needs the static screening from a previous calculation
   ! It is stored in object wpol_static
   !
-  if( is_bse ) then
+  if( need_bse_kernel ) then
     call wpol_static%init(nstate, occupation, 1, grid_type=STATIC)
     call read_spectral_function(wpol_static, reading_status)
 
@@ -252,29 +203,29 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     call build_amb_apb_diag_auxil(nmat, nstate, energy_qp, wpol_out, m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa)
 
 #if defined(HAVE_SCALAPACK)
-    call build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
+    call build_apb_hartree_auxil_scalapack(wpol_out%is_triplet, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
 #else
-    call build_apb_hartree_auxil(is_triplet_currently, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
+    call build_apb_hartree_auxil(wpol_out%is_triplet, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
 #endif
 
 
     !
     ! Step 2
-    if( is_tddft ) then
-       call build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, &
+    if( need_tddft_kernel ) then
+       call build_apb_tddft(wpol_out%is_triplet, nmat, nstate, basis, c_matrix, occupation, &
                             wpol_out, m_apb, n_apb, apb_matrix)
     end if
 
     !
     ! Step 3
-    if( alpha_local > 1.0e-6_dp .OR. beta_local > 1.0e-6_dp ) then
+    if( need_exchange .OR. need_lr_exchange ) then
       call build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda_, desc_apb, wpol_out, wpol_static, &
                                                  m_apb, n_apb, amb_matrix, apb_matrix)
     else
       write(stdout, '(a,f8.3)') ' Content of Exchange: ', alpha_local
     end if
 
-    if( is_bse ) then
+    if( need_bse_kernel ) then
       call wpol_static%destroy()
     end if
 
@@ -282,24 +233,25 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
 
   else
+    ! No auxiliary basis
 
     !
     ! Step 1
-    call build_amb_apb_common(is_triplet_currently, lambda_, nmat, basis%nbf, nstate, c_matrix, energy_qp, &
+    call build_amb_apb_common(wpol_out%is_triplet, lambda_, nmat, basis%nbf, nstate, c_matrix, energy_qp, &
                               wpol_out, alpha_local, &
                               m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa, en_rpa)
 
     !
     ! Step 2
-    if( is_tddft ) then
-      call build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, &
+    if( need_tddft_kernel ) then
+      call build_apb_tddft(wpol_out%is_triplet, nmat, nstate, basis, c_matrix, occupation, &
                            wpol_out, m_apb, n_apb, apb_matrix)
     end if
 
 
     !
     ! Step 3
-    if( is_bse ) then
+    if( need_bse_kernel ) then
       call build_amb_apb_bse(wpol_out, wpol_static, m_apb, n_apb, amb_matrix, apb_matrix)
       call wpol_static%destroy()
     end if
@@ -309,7 +261,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
 
   ! Warning if Tamm-Dancoff flag is on
-  if( tda_ ) then
+  if( wpol_out%tda ) then
     msg='Tamm-Dancoff approximation is switched on'
     call issue_warning(msg)
     ! Tamm-Dancoff approximation consists in setting B matrix to zero
@@ -337,7 +289,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     call clean_deallocate('A+B', apb_matrix)
     call clean_deallocate('A-B', amb_matrix)
     if( has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
-      call destroy_eri_3center_mo(long_range=(beta_local>1.0e-6_dp))
+      call destroy_eri_3center_mo(long_range=need_lr_exchange)
     end if
     deallocate(amb_diag_rpa, energy_qp)
     write(stdout, *) ' Skipping diagonalization after building A and B matrices'
@@ -345,7 +297,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
     return
   end if
 
-  if( is_rpa .AND. .NOT. tda_ ) call clean_deallocate('A-B', amb_matrix)
+  if( is_rpa .AND. .NOT. wpol_out%tda ) call clean_deallocate('A-B', amb_matrix)
 
   !
   ! Prepare the second dimension of xpy_matrix and xmy_matrix
@@ -362,14 +314,16 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   call DESCINIT(desc_x, nmat, nexc, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, m_x), info)
 
   call clean_allocate('X+Y', xpy_matrix, m_x, n_x)
-  if( .NOT. is_rpa .OR. tda_ .OR. PRESENT(x_matrix) .OR. PRESENT(y_matrix) ) &
+  if( (.NOT. is_rpa) .OR. wpol_out%tda &
+     .OR. PRESENT(print_optical_spectrum) &
+     .OR. PRESENT(x_matrix) .OR. PRESENT(y_matrix) ) &
     call clean_allocate('X-Y', xmy_matrix, m_x, n_x)
 
   !
   ! Diago using the 4 block structure and the symmetry of each block
   ! With or Without SCALAPACK
   !
-  if( .NOT. is_rpa .OR. tda_ ) then
+  if( .NOT. is_rpa .OR. wpol_out%tda ) then
     if( nexcitation == 0 ) then
       ! The following call works with AND without SCALAPACK
       call diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, eigenvalue, xpy_matrix, xmy_matrix, desc_x)
@@ -429,19 +383,26 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
 
 
   !
-  ! Calculate the optical spectrum
-  ! and the dynamic dipole tensor
+  ! Calculate the optical spectrum if requested
   !
-  if( is_tdhf .OR. is_tddft .OR. is_bse ) then
-    call optical_spectrum(is_triplet_currently, basis, occupation, c_matrix, wpol_out, xpy_matrix, xmy_matrix, eigenvalue, &
-                          bare_eigenvalue=bare_eigenval)
-    select case(TRIM(lower(stopping)))
-    case('spherical')
-      call stopping_power(basis, c_matrix, wpol_out, xpy_matrix, eigenvalue)
-    case('3d')
-      call stopping_power_3d(basis, c_matrix, wpol_out, xpy_matrix, desc_x, eigenvalue)
-    end select
+  if( PRESENT(print_optical_spectrum) ) then
+    if( print_optical_spectrum ) then
+      call optical_spectrum(wpol_out%is_triplet, basis, occupation, c_matrix, wpol_out, xpy_matrix, xmy_matrix, eigenvalue, &
+                            bare_eigenvalue=bare_eigenval)
+    end if
   end if
+
+  !
+  ! Calculate the linear-response stopping power
+  !
+  select case(TRIM(lower(stopping)))
+  case('spherical')
+    call stopping_power(basis, c_matrix, wpol_out, xpy_matrix, eigenvalue)
+  case('3d')
+    call stopping_power_3d(basis, c_matrix, wpol_out, xpy_matrix, desc_x, eigenvalue)
+  case default
+    ! Do not calculate stopping
+  end select
 
   deallocate(bare_eigenval)
 
@@ -461,7 +422,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   ! Calculate Wp = v * chi * v    if necessary
   ! and then write it down on file
   !
-  if( print_w_ .OR. calculate_w ) then
+  if( print_w_ .OR. calculate_w_ ) then
     if( has_auxil_basis) then
       call chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol_out, en_gw)
       ! This following coding of the Galitskii-Migdal correlation energy is only working with
@@ -486,7 +447,7 @@ subroutine polarizability(enforce_rpa, calculate_w, basis, occupation, energy, c
   call clean_deallocate('X+Y', xpy_matrix)
 
   if(has_auxil_basis .AND. .NOT. PRESENT(lambda) .AND. .NOT. eri_3center_mo_available ) then
-    call destroy_eri_3center_mo(long_range=(beta_local>1.0e-6_dp))
+    call destroy_eri_3center_mo(long_range=need_lr_exchange)
   end if
 
   if( ALLOCATED(eigenvalue) ) deallocate(eigenvalue)
@@ -551,8 +512,9 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
     end do
   else
     ! Get A and B (tmp_matrix will contain A and inv_apb_matrix will contain B)
-    call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol_out, &
-                      enforce_spin_multiplicity=1, lambda=1.0_dp, a_matrix=tmp_matrix, b_matrix=inv_apb_matrix)
+    call wpol_out%enforce_spin_multiplicity(1)
+    call polarizability(basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol_out, &
+                      lambda=1.0_dp, a_matrix=tmp_matrix, b_matrix=inv_apb_matrix, calculate_w=.FALSE.)
   end if
   
   inv_apb_matrix(:, :) = tmp_matrix(:, :) + inv_apb_matrix(:, :)
@@ -609,7 +571,7 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
   end if
 #endif
 
-  call destroy_eri_3center_mo(long_range=(beta_hybrid>1.0e-6_dp)) ! Was built in polarizability subroutine or before  
+  call destroy_eri_3center_mo(long_range=wpol_out%need_lr_exchange)
   call clean_deallocate('Tmp_Mat', tmp_matrix)
   call clean_deallocate('(A+B)^-1', inv_apb_matrix)
 
@@ -650,8 +612,11 @@ end subroutine polarizability_onering
 
 
 !=========================================================================
+! for BSE calculations, use GW energies from a previous calculation (ENERGY_QP file)
+! or a scissor operator
+! scissor input variable has the priority
+! if scissor in between 1e-6 and 1e-12, no scissor, no ENERGY_QP (for test mostly)
 subroutine get_energy_qp(energy, occupation, energy_qp)
-
   real(dp), intent(in)                 :: energy(:, :)
   real(dp), intent(in)                 :: occupation(:, :)
   real(dp), intent(out)                :: energy_qp(:, :)

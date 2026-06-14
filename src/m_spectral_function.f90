@@ -74,6 +74,19 @@ module m_spectral_function
 
     type(chi_type), allocatable :: vchiv_sqrt(:)
 
+    ! Calculation type settings
+    character(len=32) :: approximation
+    logical  :: tda
+    logical  :: is_triplet
+    logical  :: need_bse_kernel
+    logical  :: need_qp_energy
+    logical  :: include_tddft_kernel
+    logical  :: include_tdhf_kernel
+    real(dp) :: alpha_hybrid
+    real(dp) :: beta_hybrid
+    logical  :: need_lr_exchange
+    character(len=256) :: w_screening
+
   contains
 
     generic :: evaluate => sf_evaluate_several_omegas
@@ -85,8 +98,11 @@ module m_spectral_function
 
     procedure :: vsqrt_chi_vsqrt_rpa => sf_vsqrt_chi_vsqrt_rpa
     procedure :: interpolate_vsqrt_chi_vsqrt => sf_interpolate_vsqrt_chi_vsqrt
-    procedure :: init    => sf_init
-    procedure :: destroy => sf_destroy
+    procedure :: init             => sf_init
+    procedure :: destroy          => sf_destroy
+    procedure :: set_approximation => sf_set_approximation
+    procedure :: enforce_approximation => sf_enforce_approximation
+    procedure :: enforce_spin_multiplicity => sf_enforce_spin_multiplicity
 
   end type spectral_function
 
@@ -327,6 +343,7 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
     call die("sf_init: grid choice not valid")
   end select
 
+  call sf%set_approximation()
 
   if( PRESENT(verbose) ) then
     if( .NOT. verbose ) then
@@ -335,6 +352,126 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
   end if
 
 end subroutine sf_init
+
+
+!=========================================================================
+subroutine sf_set_approximation(sf)
+  class(spectral_function), intent(inout) :: sf
+  !=====
+  logical :: has_manual_tdhf
+  integer :: tdhffile
+  !=====
+
+  ! not used yet: set to RPA for the time being
+  sf%approximation = 'RPA'
+
+  sf%tda                  = tda_
+  sf%is_triplet           = triplet_
+
+  sf%need_bse_kernel      = calc_type%is_bse
+  sf%need_qp_energy       = calc_type%need_qp_energy
+  sf%include_tddft_kernel = calc_type%include_tddft_kernel .AND. calc_type%is_dft
+  sf%include_tdhf_kernel  = calc_type%include_tdhf_kernel
+
+  sf%beta_hybrid          = beta_hybrid
+  sf%need_lr_exchange     = (beta_hybrid > 1.0e-6_dp) .AND. &
+                            (TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' .OR. TRIM(w_screening) == 'TDDFT')
+  sf%w_screening          = w_screening
+
+  ! Set alpha_hybrid: the exchange fraction for this response calculation
+  ! manual_tdhf file can override anything
+  inquire(file='manual_tdhf', exist=has_manual_tdhf)
+  if( has_manual_tdhf ) then
+    open(newunit=tdhffile, file='manual_tdhf', status='old')
+    read(tdhffile, *) sf%alpha_hybrid
+    close(tdhffile)
+    write(msg, '(a,f12.6)') 'TDHF polarizability with alpha from manual_tdhf: ', sf%alpha_hybrid
+    call issue_warning(msg)
+  else if( calc_type%include_tddft_kernel .OR. TRIM(w_screening) == 'TDDFT' ) then
+    sf%alpha_hybrid = alpha_hybrid
+  else if( ( calc_type%is_bse .OR. calc_type%include_tdhf_kernel &
+            .OR. TRIM(w_screening) == 'TDHF' .OR. TRIM(w_screening) == 'BSE') ) then
+    sf%alpha_hybrid = 1.0_dp
+  else
+    sf%alpha_hybrid = 0.0_dp
+  end if
+
+
+end subroutine sf_set_approximation
+
+
+!=========================================================================
+subroutine sf_enforce_approximation(sf, approximation)
+  class(spectral_function), intent(inout) :: sf
+  character(len=*), intent(in) :: approximation
+  !=====
+
+  select case(TRIM(capitalize(approximation)))
+  case('RPA')
+    sf%approximation = 'RPA'
+    sf%w_screening   = 'RPA'
+    sf%need_bse_kernel      = .FALSE.
+    sf%need_qp_energy       = .FALSE.
+    sf%include_tddft_kernel = .FALSE.
+    sf%include_tdhf_kernel  = .FALSE.
+
+    sf%alpha_hybrid         = 0.0_dp
+    sf%beta_hybrid          = 0.0_dp
+    sf%need_lr_exchange     = .FALSE.
+  case('BSE')
+    sf%approximation = 'BSE'
+    sf%w_screening   = 'BSE'
+    sf%need_bse_kernel      = .TRUE.
+    sf%need_qp_energy       = .TRUE.
+    sf%include_tddft_kernel = .FALSE.
+    sf%include_tdhf_kernel  = .TRUE.
+    sf%alpha_hybrid         = 1.0_dp
+    sf%beta_hybrid          = 0.0_dp
+    sf%need_lr_exchange     = .FALSE.
+  case('TDHF')
+    sf%approximation = 'TDHF'
+    sf%w_screening   = 'TDHF'
+    sf%need_bse_kernel      = .FALSE.
+    sf%need_qp_energy       = .FALSE.
+    sf%include_tddft_kernel = .FALSE.
+    sf%include_tdhf_kernel  = .TRUE.
+    sf%alpha_hybrid         = 1.0_dp
+    sf%beta_hybrid          = 0.0_dp
+    sf%need_lr_exchange     = .FALSE.
+  case('TDDFT')
+    sf%approximation = 'TDDFT'
+    sf%w_screening   = 'TDDFT'
+    sf%need_bse_kernel      = .FALSE.
+    sf%need_qp_energy       = .FALSE.
+    sf%include_tddft_kernel = .TRUE.
+    sf%include_tdhf_kernel  = .TRUE.
+    !Don't touch this
+    !sf%alpha_hybrid         = 1.0_dp
+    !sf%beta_hybrid          = 0.0_dp
+    !sf%need_lr_exchange     = .FALSE.
+  case default
+    call die("sf_enforce_approximation: choice not implemented or not existing")
+  end select
+
+end subroutine sf_enforce_approximation
+
+
+!=========================================================================
+subroutine sf_enforce_spin_multiplicity(sf, spin_multiplicity)
+  class(spectral_function), intent(inout) :: sf
+  integer, intent(in) :: spin_multiplicity
+  !=====
+
+  select case(spin_multiplicity)
+  case(1)
+    sf%is_triplet = .FALSE.
+  case(3)
+    sf%is_triplet = .TRUE.
+  case default
+    call die('sf_enforce_spin_multiplicity: wrong value for spin multiplicity. Should be 1 or 3')
+  end select
+
+end subroutine sf_enforce_spin_multiplicity
 
 
 !=========================================================================

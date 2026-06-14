@@ -750,11 +750,14 @@ program molgw
   ! Linear-response time dependent calculations work for BSE and TDDFT
   ! or coupled-pertubed HF/KS
   ! (only if the SCF cycles were converged)
-  if( ( TRIM(postscf) == 'TD' .OR. calc_type%is_bse ) .AND. (scf_has_converged .AND. .NOT. TRIM(postscf) == 'BSE-I') ) then
+  if( ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'BSE' .OR. TRIM(postscf) == 'BSE-RPA' ) &
+         .AND. scf_has_converged ) then
     call wpol%init(nstate, occupation, 0)
-    call polarizability(.FALSE., .FALSE., basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol)
+    call polarizability(basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol, print_optical_spectrum=.TRUE., &
+                        calculate_w=.FALSE.)
     call wpol%destroy()
   end if
+
   if( ( TRIM(postscf) == 'CPHF' .OR. TRIM(postscf) == 'CPKS' ) .AND. scf_has_converged ) then
     call wpol%init(nstate, occupation, 0)
     call coupled_perturbed(basis, occupation, energy, c_matrix, wpol) ! Internally, it will call polarizability
@@ -817,10 +820,6 @@ program molgw
 
   end if
 
-  if( has_auxil_basis .AND. calc_type%is_lr_mbpt .AND. (rcut_mbpt > 1.0e-6_dp) ) then
-    ! 2-center and 3-center integrals
-    call calculate_eri_ri(basis, auxil_basis, rcut_mbpt)
-  end if
   !
   ! final evaluation for RPAx total energy
   ! (can also use imaginary freqs. to speed-up dRPA (RPA) and dRPA (RPA+)
@@ -943,7 +942,6 @@ program molgw
 
   call deallocate_eri()
   if(has_auxil_basis) call destroy_eri_3center()
-  if( has_auxil_basis .AND. calc_type%is_lr_mbpt ) call destroy_eri_3center_lr()
 
   call destroy_basis_set(basis)
   if( has_auxil_basis .AND. .NOT. pbc_ ) call destroy_basis_set(auxil_basis)
