@@ -40,7 +40,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
   integer                 :: istate, astate, jstate, bstate, ustate, iaspin, spole
   integer                 :: pstate, qstate, iomega_sigma, nmov, nmoo
   real(dp), allocatable   :: x_matrix(:, :), y_matrix(:, :)
-  real(dp)                :: erpa_tmp, egw_tmp, energy_gm1, energy_gm2
+  real(dp)                :: energy_gm1, energy_gm2
   type(spectral_function) :: wpol
   complex(dp), allocatable :: sigma_tdhf(:, :, :), sigma_tmp(:)
   real(dp), allocatable    :: eri_i_a(:, :), eri_a_i(:, :), eri_P_ia(:, :)
@@ -132,7 +132,7 @@ subroutine tdhf_selfenergy(basis, occupation, energy, c_matrix, se)
   ! Get X and Y
   call wpol%enforce_approximation(w_screening)
   call wpol%enforce_spin_multiplicity(1)
-  call polarizability(basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol, &
+  call polarizability(basis, occupation, energy, c_matrix, wpol, &
                        x_matrix=x_matrix_local, y_matrix=y_matrix_local)
 
   !
@@ -490,7 +490,7 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
   integer                 :: pstate, qstate, iomega_sigma, nmov, nmoo
   real(dp), allocatable   :: x_matrix_singlet(:, :), y_matrix_singlet(:, :)
   real(dp), allocatable   :: x_matrix_triplet(:, :), y_matrix_triplet(:, :)
-  real(dp)                :: erpa_tmp, egw_tmp, energy_gm1, energy_gm2
+  real(dp)                :: energy_gm1, energy_gm2
   type(spectral_function) :: wpol_singlet, wpol_triplet
   complex(dp), allocatable :: sigma_tdhf(:, :, :), sigma_tmp(:)
   real(dp), allocatable    :: eri_i_a(:, :), eri_a_i(:, :), eri_P_ia(:, :)
@@ -586,7 +586,7 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
   ! Get X and Y singlet
   call wpol_singlet%enforce_approximation(w_screening)
   call wpol_singlet%enforce_spin_multiplicity(1)
-  call polarizability(basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol_singlet, &
+  call polarizability(basis, occupation, energy, c_matrix, wpol_singlet, &
                        x_matrix=x_matrix_local, y_matrix=y_matrix_local)
 
   !
@@ -600,7 +600,7 @@ subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
   ! Get X and Y triplet
   call wpol_triplet%enforce_approximation(w_screening)
   call wpol_triplet%enforce_spin_multiplicity(3)
-  call polarizability(basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol_triplet, &
+  call polarizability(basis, occupation, energy, c_matrix, wpol_triplet, &
                        x_matrix=x_matrix_local, y_matrix=y_matrix_local)
   !
   ! Copy X and Y matrices to all procs

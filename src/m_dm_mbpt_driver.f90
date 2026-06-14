@@ -98,7 +98,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
       ! This keyword calculates the GW density matrix as it is derived in the new GW theory
       call wpol%init(nstate, occupation, 0)
       call wpol%enforce_approximation('RPA')
-      call polarizability(basis, occupation, energy, c_matrix, en_dm_corr%rpa, en_dm_corr%gw, wpol)
+      call polarizability(basis, occupation, energy, c_matrix, wpol, en_rpa=en_dm_corr%rpa, en_gw=en_dm_corr%gw)
       call gw_density_matrix(occupation, energy, c_matrix, wpol, p_matrix_corr_mo)
       call wpol%destroy()
     case('EVGW', 'GNWN')
@@ -111,7 +111,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
       end if
       call wpol%init(nstate, occupation, 0)
       call wpol%enforce_approximation('RPA')
-      call polarizability(basis, occupation, energy_qp, c_matrix, en_dm_corr%rpa, en_dm_corr%gw, wpol)
+      call polarizability(basis, occupation, energy_qp, c_matrix, wpol, en_rpa=en_dm_corr%rpa, en_gw=en_dm_corr%gw)
       call gw_density_matrix(occupation, energy_qp, c_matrix, wpol, p_matrix_corr_mo)
       call wpol%destroy()
       deallocate(energy_qp)
