@@ -32,15 +32,16 @@ contains
 
 
 !=========================================================================
-subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wpol_out, &
+subroutine polarizability(basis, occupation, energy, c_matrix, wpol_out, &
+                          en_rpa, en_gw, &
                           lambda, x_matrix, y_matrix, a_matrix, b_matrix, &
                           print_optical_spectrum, calculate_w)
 
   type(basis_set), intent(in)            :: basis
   real(dp), intent(in)                   :: occupation(:, :)
   real(dp), intent(in)                   :: energy(:, :), c_matrix(:, :, :)
-  real(dp), intent(out)                  :: en_rpa, en_gw
   type(spectral_function), intent(inout) :: wpol_out
+  real(dp), intent(out), optional        :: en_rpa, en_gw
   real(dp), intent(in), optional         :: lambda
   real(dp), intent(out), optional        :: x_matrix(:, :), y_matrix(:, :)
   real(dp), intent(out), optional        :: a_matrix(:, :), b_matrix(:, :)
@@ -67,13 +68,14 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
   integer                   :: info
   logical                   :: need_exchange, need_lr_exchange, need_bse_kernel, need_tddft_kernel, need_qp_energy
   logical                   :: calculate_w_
+  real(dp)                  :: en_rpa_, en_gw_
   !=====
 
   call timer_pola%start()
   nstate = SIZE(occupation, DIM=1)
   allocate(energy_qp(nstate, nspin))
-  en_rpa = 0.0_dp
-  en_gw  = 0.0_dp
+  en_rpa_ = 0.0_dp
+  en_gw_  = 0.0_dp
 
   need_tddft_kernel = wpol_out%include_tddft_kernel
   need_bse_kernel   = wpol_out%need_bse_kernel
@@ -229,7 +231,7 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
       call wpol_static%destroy()
     end if
 
-    call get_rpa_correlation(nmat, m_apb, n_apb, amb_matrix, apb_matrix, en_rpa)
+    call get_rpa_correlation(nmat, m_apb, n_apb, amb_matrix, apb_matrix, en_rpa_)
 
 
   else
@@ -239,7 +241,7 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
     ! Step 1
     call build_amb_apb_common(wpol_out%is_triplet, lambda_, nmat, basis%nbf, nstate, c_matrix, energy_qp, &
                               wpol_out, alpha_local, &
-                              m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa, en_rpa)
+                              m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa, en_rpa_)
 
     !
     ! Step 2
@@ -369,11 +371,11 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
 
   !
   ! Second part of the RPA correlation energy: sum over positive eigenvalues
-  en_rpa = en_rpa + 0.50_dp * SUM( ABS(eigenvalue(:)) )
+  en_rpa_ = en_rpa_ + 0.50_dp * SUM( ABS(eigenvalue(:)) )
   if( is_rpa ) then
     write(stdout, '(/,a)') ' Calculate the RPA energy using the Tamm-Dancoff decomposition'
     write(stdout, '(a)')   ' Eq. (9) from J. Chem. Phys. 132, 234114 (2010)'
-    write(stdout, '(/,a,f16.10)') ' RPA correlation energy (Ha): ', en_rpa
+    write(stdout, '(/,a,f16.10)') ' RPA correlation energy (Ha): ', en_rpa_
   end if
 
   write(stdout, '(/,1x,a,f12.6)') 'Lowest neutral excitation energy (eV):', MINVAL(ABS(eigenvalue(1:nexc)))*Ha_eV
@@ -424,12 +426,12 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
   !
   if( print_w_ .OR. calculate_w_ ) then
     if( has_auxil_basis) then
-      call chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol_out, en_gw)
+      call chi_to_sqrtvchisqrtv_auxil(desc_x, xpy_matrix, eigenvalue, wpol_out, en_gw_)
       ! This following coding of the Galitskii-Migdal correlation energy is only working with
       ! an auxiliary basis
       if( is_rpa ) then
         write(stdout, '(/,1x,a)')        'Correlation energy in the Galitskii-Migdal formula'
-        write(stdout, '(1x,a,f19.10,/)') '                        1/2 Tr[ Sig_c * G ] (Ha): ', en_gw
+        write(stdout, '(1x,a,f19.10,/)') '                        1/2 Tr[ Sig_c * G ] (Ha): ', en_gw_
       end if
 
     else
@@ -453,6 +455,9 @@ subroutine polarizability(basis, occupation, energy, c_matrix, en_rpa, en_gw, wp
   if( ALLOCATED(eigenvalue) ) deallocate(eigenvalue)
   deallocate(energy_qp)
 
+  if( PRESENT(en_rpa) ) en_rpa = en_rpa_
+  if( PRESENT(en_gw) )  en_gw  = en_gw_
+
   call timer_pola%stop()
 
 
@@ -471,7 +476,7 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
   integer                   :: nprow, npcol, myprow, mypcol
   integer                   :: t_ia, t_jb, jstate, bstate, jbspin, t_jb_global
   integer                   :: nmat, desc_x(NDEL)
-  real(dp)                  :: egw_tmp, erpa_singlet, energy_jb
+  real(dp)                  :: energy_jb
   real(dp), allocatable      :: tmp_matrix(:, :), inv_apb_matrix(:, :), work(:)
   !=====
 
@@ -513,7 +518,7 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
   else
     ! Get A and B (tmp_matrix will contain A and inv_apb_matrix will contain B)
     call wpol_out%enforce_spin_multiplicity(1)
-    call polarizability(basis, occupation, energy, c_matrix, erpa_singlet, egw_tmp, wpol_out, &
+    call polarizability(basis, occupation, energy, c_matrix, wpol_out, &
                       lambda=1.0_dp, a_matrix=tmp_matrix, b_matrix=inv_apb_matrix, calculate_w=.FALSE.)
   end if
   

@@ -82,7 +82,7 @@ program molgw
   logical                 :: is_restart, is_big_restart, is_basis_restart
   logical                 :: restart_tddft_is_correct = .TRUE.
   logical                 :: scf_has_converged
-  real(dp)                :: erpa_tmp, egw_tmp, eext
+  real(dp)                :: eext
   real(dp), allocatable    :: hamiltonian_kinetic(:, :)
   real(dp), allocatable    :: hamiltonian_nucleus(:, :)
   real(dp), allocatable    :: hamiltonian_fock(:, :, :)
@@ -753,7 +753,7 @@ program molgw
   if( ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'BSE' .OR. TRIM(postscf) == 'BSE-RPA' ) &
          .AND. scf_has_converged ) then
     call wpol%init(nstate, occupation, 0)
-    call polarizability(basis, occupation, energy, c_matrix, erpa_tmp, egw_tmp, wpol, print_optical_spectrum=.TRUE., &
+    call polarizability(basis, occupation, energy, c_matrix, wpol, print_optical_spectrum=.TRUE., &
                         calculate_w=.FALSE.)
     call wpol%destroy()
   end if

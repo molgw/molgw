@@ -1891,7 +1891,7 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
   complex(dp)          :: num1, num2
   type(spectral_function) :: wpol_analytic
   real(dp) :: vw(nauxil_global), up(nauxil_global), uv(nauxil_global), qw(nauxil_global)
-  real(dp) :: erpa, egw, omegap, omegapp
+  real(dp) :: omegap, omegapp
   complex(dp) :: ieta_u, ieta_v, ieta_w, g_u, g_v, g_w
   complex(dp), allocatable :: chi_omegap(:, :), chi_omegapp(:, :)
   !=====
@@ -1928,7 +1928,7 @@ subroutine g3w2_selfenergy_real_grid(basis, occupation, energy, c_matrix, se)
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate, occupation, 0, grid_type=NO_GRID)
     call wpol_analytic%enforce_approximation('RPA')
-    call polarizability(basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
+    call polarizability(basis, occupation, energy, c_matrix, wpol_analytic)
   else
     call die('g3w2_selfenergy_real_grid: analytic_chi is compulsory')
   end if
@@ -2034,7 +2034,6 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   type(spectral_function) :: wpol_imag, wpol_analytic
   !type(spectral_function) :: wpol_one
   real(dp) :: vw(nauxil_global), uv(nauxil_global)
-  real(dp) :: erpa, egw
   real(dp), allocatable :: chi_omegap_up(:, :), chi_omegapp_wq(:, :)
   !=====
 
@@ -2063,7 +2062,7 @@ subroutine g3w2_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate, occupation, 0, grid_type=NO_GRID)
     call wpol_analytic%enforce_approximation('RPA')
-    call polarizability(basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
+    call polarizability(basis, occupation, energy, c_matrix, wpol_analytic)
     call clean_allocate('Chi', wpol_imag%chi, nauxil_global, nauxil_global, wpol_imag%nomega, verbose=.FALSE.)
     call wpol_analytic%evaluate(wpol_imag%omega, wpol_imag%chi)
   else
@@ -2216,7 +2215,6 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   complex(dp), allocatable :: sigma_sosex(:, :, :)
   complex(dp)          :: denom1, denom2, omega_cmplx
   type(spectral_function) :: wpol_imag, wpol_one, wpol_analytic
-  real(dp) :: erpa, egw
   ! DGEMM
   integer :: astate, istate
   real(dp), allocatable :: eri3_i_m(:, :), eri3_i_a(:, :), eri3_r_m(:, :), eri3_r_a(:, :)
@@ -2258,7 +2256,7 @@ subroutine sosex_selfenergy_imag_grid(basis, occupation, energy, c_matrix, se)
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate, occupation, 0, grid_type=NO_GRID)
     call wpol_analytic%enforce_approximation('RPA')
-    call polarizability(basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
+    call polarizability(basis, occupation, energy, c_matrix, wpol_analytic)
   else
     call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.FALSE.)
   end if
