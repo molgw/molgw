@@ -562,7 +562,7 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
   integer              :: nstate
   integer              :: iomegap, iomega_sigma
   real(dp), allocatable :: eri3_p_m(:, :)
-  real(dp)             :: v_chi_v_p, erpa, egw
+  real(dp)             :: v_chi_v_p
   integer              :: mstate, pstate, mpspin
   integer              :: prange
   integer              :: first_omega, last_omega
@@ -597,7 +597,8 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
   call wpol_imag%init(nstate, occupation, nomega_chi_imag, grid_type=IMAGINARY_QUAD, verbose=.TRUE.)
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate, occupation, 0, grid_type=NO_GRID)
-    call polarizability(.TRUE., .TRUE., basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
+    call wpol_analytic%enforce_approximation('RPA')
+    call polarizability(basis, occupation, energy, c_matrix, wpol_analytic)
     call clean_allocate('Chi', wpol_imag%chi, nauxil_global, nauxil_global, wpol_imag%nomega, verbose=.FALSE.)
     call wpol_analytic%evaluate(wpol_imag%omega, wpol_imag%chi)
   else
@@ -690,7 +691,6 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
   complex(dp), allocatable :: sigmagw(:, :, :)
   complex(dp)          :: denom1, denom2, omega_cmplx
   type(spectral_function) :: wpol_imag, wpol_one, wpol_analytic
-  real(dp) :: erpa, egw
   ! DGEMM
   integer :: astate, istate
   real(dp), allocatable :: eri3_i_m(:, :), eri3_i_a(:, :), eri3_r_m(:, :), eri3_r_a(:, :)
@@ -725,7 +725,8 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
   call wpol_imag%init(nstate, occupation, nomega_chi_imag, grid_type=IMAGINARY_QUAD)
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate, occupation, 0, grid_type=NO_GRID)
-    call polarizability(.TRUE., .TRUE., basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
+    call wpol_analytic%enforce_approximation('RPA')
+    call polarizability(basis, occupation, energy, c_matrix, wpol_analytic)
   else
     call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.FALSE.)
   end if

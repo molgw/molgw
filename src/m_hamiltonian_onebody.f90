@@ -2709,9 +2709,9 @@ subroutine setup_nucleus_gth_nonlocal(basis, h_ecp, atom_list)
     call set_rinv_origin_libcint(xatom(:, icenter), env_local)
 
     do il=1, ecp(ie)%gth_nl
-      li      = il -1
-      ni      = number_basis_function_am('PURE',li)
-      ni_cart = number_basis_function_am('CART',li)
+      li      = il - 1
+      ni      = number_basis_function_am('PURE', li)
+      ni_cart = number_basis_function_am('CART', li)
       allocate(proj_i(basis%nbf, ni, ecp(ie)%gth_npl(il)))
 
       do ipl=1, ecp(ie)%gth_npl(il)
@@ -2721,7 +2721,8 @@ subroutine setup_nucleus_gth_nonlocal(basis, h_ecp, atom_list)
         allocate(cC(contrdepthC), alphaC(contrdepthC))
         alphaC(1) = 1.0_dp / ( 2.0_dp * ecp(ie)%gth_rl(il)**2 )
         ! Normalization factor from HGH PRB 58, 3641 (1998)
-        cC(1) = SQRT( 2.0_dp / GAMMA(li+(4.0_dp*ipl-1.0_dp)/2.0_dp) ) / ecp(ie)%gth_rl(il)**(li+(4.0_dp*ipl-1.0_dp)/2.0_dp)
+        cC(1) = SQRT( 2.0_dp / GAMMA(li + (4.0_dp * ipl - 1.0_dp) / 2.0_dp) ) &
+                  / ecp(ie)%gth_rl(il)**( li + (4.0_dp * ipl - 1.0_dp) /2.0_dp )
 
         do jshell=1, basis%nshell
           lj      = basis%shell(jshell)%am
