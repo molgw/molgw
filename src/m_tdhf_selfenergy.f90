@@ -480,7 +480,7 @@ end subroutine tdhf_selfenergy
 !
 subroutine tdhf_selfenergy_psd(basis, occupation, energy, c_matrix, se)
 
-  type(basis_set)                      :: basis
+  type(basis_set), intent(in)          :: basis
   real(dp), intent(in)                 :: occupation(:, :), energy(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :)
   type(selfenergy_grid), intent(inout) :: se
