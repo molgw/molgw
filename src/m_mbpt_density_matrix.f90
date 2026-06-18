@@ -1414,7 +1414,9 @@ subroutine cederbaum_naive3(energy, c_matrix, hfock_ao, p_matrix_mo)
   !=====
   integer :: kstate, cstate, bstate, astate, istate, jstate, pstate, qstate, pqspin, nstate
   integer :: it, jt, nocc, nvirt, nt
-  real(dp), allocatable :: a11(:, :), b1(:), sigma_inf1(:)
+  integer :: info, lwork
+  integer, allocatable :: ipiv(:)
+  real(dp), allocatable :: a11(:, :), b1(:), z_vector(:), work(:)
   real(dp), allocatable :: hfock_mo(:, :, :)
   real(dp) :: eri_pqkl, eri_plkq, eri_pklq, deltae
   real(dp) :: eri_iajb, eri_ibja, eri_ijab, delta, eri_ijkb, eri_ikjb, eri_ikpq, eri_iqpk
@@ -1441,6 +1443,7 @@ subroutine cederbaum_naive3(energy, c_matrix, hfock_ao, p_matrix_mo)
     do astate=nhomo_G+1, nvirtual_G-1
       it = it + 1
       deltae = energy(istate, pqspin) - energy(astate, pqspin)
+      ! epsilon^HF and gamma_ia-gamma_ai in Furche-Eshuit (Equations 33 and 36)
       b1(it) = hfock_mo(istate, astate, pqspin) + p_matrix_mo(istate, astate, pqspin) / spin_fact * deltae
     end do
   end do
@@ -1449,7 +1452,6 @@ subroutine cederbaum_naive3(energy, c_matrix, hfock_ao, p_matrix_mo)
   call clean_deallocate('Fock matrix F_MO', hfock_mo)
 
   allocate(a11(nt, nt))
-  allocate(sigma_inf1(nt))
 
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
@@ -1462,12 +1464,11 @@ subroutine cederbaum_naive3(energy, c_matrix, hfock_ao, p_matrix_mo)
   !                   B₂)
   !
   ! Block 1: occ-virt block
-  ! Block 2: occ-occ and then virt-virt block
   ! Equation B2.b
   !
   call timer_tmp2%start
   it = 0
-  ! blocks H^+ T of Furche
+  ! blocks (H^+ T) of Furche-Eshuit
   do istate=ncore_G+1, nhomo_G
     do astate=nhomo_G+1, nvirtual_G-1
       it = it + 1
@@ -1491,6 +1492,10 @@ subroutine cederbaum_naive3(energy, c_matrix, hfock_ao, p_matrix_mo)
   end do
   call timer_tmp2%stop()
 
+  !
+  ! Opposite definition in Z-vector equations as compared to Cederbaum
+  !
+  b1(:) = -b1(:)
 
   !
   ! Step 2: Build A = ( A₁₁  0 )
@@ -1510,48 +1515,51 @@ subroutine cederbaum_naive3(energy, c_matrix, hfock_ao, p_matrix_mo)
       do jstate=ncore_G+1, nhomo_G
         do bstate=nhomo_G+1, nvirtual_G-1
           jt = jt + 1
-          delta = MERGE(1.0_dp, 0.0_dp, it == jt)
-          deltae = energy(jstate, pqspin) - energy(bstate, pqspin)
+          ! this deltae is positive eb - ej
+          ! opposite definition as compared to other codings in this file
+          deltae = energy(bstate, pqspin) - energy(jstate, pqspin)
+          delta = MERGE(deltae, 0.0_dp, it == jt)
           eri_iajb = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, jstate, bstate, pqspin) )
           eri_ibja = DOT_PRODUCT(eri_3center_mo(:, istate, bstate, pqspin), eri_3center_mo(:, jstate, astate, pqspin) )
           eri_ijab = DOT_PRODUCT(eri_3center_mo(:, istate, jstate, pqspin), eri_3center_mo(:, astate, bstate, pqspin) )
-          a11(it, jt) = delta - ( 4.0_dp * eri_iajb - eri_ibja - eri_ijab ) / deltae
+          a11(it, jt) = delta + 4.0_dp * eri_iajb - eri_ibja - eri_ijab
         end do
       end do
     end do
   end do
 
   !
-  ! a11 now contains (1-A₁₁)⁻¹
+  ! a11 now contains (A+B)
+  ! it is symmetric, we use DSYSV
   !
-  write(stdout, '(1x,a)') 'invert (1-A11) block'
-  ! TODO: solve instead of inverting
-  ! sigma_inf1(:) = b1(:)
-  ! call DGESV(nt, 1, a11, nt, ipiv, sigma_inf1, nt, info)
-  !
-  call invert(a11)
+  ! (A+B) * z_vector(:) = -b1(:)
+  write(stdout, '(1x,a)') 'Solve (A+B) · Z = -B₁'
+  call move_alloc(b1, z_vector)
+  allocate(ipiv(nt))
+  allocate(work(1))
+  lwork = -1
+  call DSYSV('L', nt, 1, a11, nt, ipiv, z_vector, nt, work, lwork, info)
+  lwork = NINT(work(1))
+  deallocate(work)
+  allocate(work(lwork))
+  call DSYSV('L', nt, 1, a11, nt, ipiv, z_vector, nt, work, lwork, info)
+  deallocate(work)
+  deallocate(ipiv)
+
 
   !
-  ! Σ₁(∞) = (1-A₁₁)⁻¹ · B₁
-  !
-  sigma_inf1(:) = MATMUL(a11, b1)
-
-  !
-  ! Step 3: Add the density-matrix correction to the GW density-matrix
-  ! Note: only the occ-virt block is involved
+  ! Step 3: Z is the full occ-virtual density-matrix
+  ! Note: only the occ-virt block is involved, the rest is unchanged
   it = 0
   do istate=ncore_G+1, nhomo_G
     do astate=nhomo_G+1, nvirtual_G-1
       it = it + 1
-      deltae = energy(istate, pqspin) - energy(astate, pqspin)
-      !p_matrix_mo(istate, astate, pqspin) = p_matrix_mo(istate, astate, pqspin) + sigma_inf1(it) * spin_fact / deltae
-      p_matrix_mo(istate, astate, pqspin) = sigma_inf1(it) * spin_fact / deltae
+      p_matrix_mo(istate, astate, pqspin) = z_vector(it) * spin_fact
       p_matrix_mo(astate, istate, pqspin) = p_matrix_mo(istate, astate, pqspin)
     end do
   end do
   deallocate(a11)
-  deallocate(b1)
-  deallocate(sigma_inf1)
+  deallocate(z_vector)
 
   call destroy_eri_3center_mo()
 
