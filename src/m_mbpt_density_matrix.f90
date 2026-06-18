@@ -1129,7 +1129,7 @@ end subroutine cederbaum_blas
 
 
 !=========================================================================
-subroutine cederbaum_naive(energy, c_matrix, hfock_ao, p_matrix_mo)
+subroutine cederbaum_naive1(energy, c_matrix, hfock_ao, p_matrix_mo)
   real(dp), intent(in)    :: energy(:, :)
   real(dp), intent(in)    :: c_matrix(:, :, :)
   real(dp), intent(in)    :: hfock_ao(:, :, :)
@@ -1143,7 +1143,7 @@ subroutine cederbaum_naive(energy, c_matrix, hfock_ao, p_matrix_mo)
   real(dp) :: eri_iapq, eri_iqpa, eri_cajb, eri_capq, eri_cqpa, eri_cbja, eri_cjab, eri_ibjk
   !=====
 
-  if( nspin > 1 ) call die('cederbaum_naive: only spin restricted here')
+  if( nspin > 1 ) call die('cederbaum_naive1: only spin restricted here')
   pqspin=1
 
   nvirt = nvirtual_G-1 - nhomo_G
@@ -1156,7 +1156,7 @@ subroutine cederbaum_naive(energy, c_matrix, hfock_ao, p_matrix_mo)
   if(has_auxil_basis) then
     call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
   else
-    call die("cederbaum_naive: not coded without RI")
+    call die("cederbaum_naive1: not coded without RI")
   end if
 
   !
@@ -1178,10 +1178,10 @@ subroutine cederbaum_naive(energy, c_matrix, hfock_ao, p_matrix_mo)
           eri_iapq = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, pstate, qstate, pqspin) )
           eri_iqpa = DOT_PRODUCT(eri_3center_mo(:, istate, qstate, pqspin), eri_3center_mo(:, pstate, astate, pqspin) )
           b1(it) = b1(it) + (2.0_dp * eri_iapq - eri_iqpa) * p_matrix_mo(pstate, qstate, pqspin) / spin_fact
-        enddo
-      enddo
-    enddo
-  enddo
+        end do
+      end do
+    end do
+  end do
   call timer_tmp2%stop()
 
 
@@ -1209,10 +1209,10 @@ subroutine cederbaum_naive(energy, c_matrix, hfock_ao, p_matrix_mo)
           eri_ibja = DOT_PRODUCT(eri_3center_mo(:, istate, bstate, pqspin), eri_3center_mo(:, jstate, astate, pqspin) )
           eri_ijab = DOT_PRODUCT(eri_3center_mo(:, istate, jstate, pqspin), eri_3center_mo(:, astate, bstate, pqspin) )
           a11(it, jt) = delta - ( 4.0_dp * eri_iajb - eri_ibja - eri_ijab ) / deltae
-        enddo
-      enddo
-    enddo
-  enddo
+        end do
+      end do
+    end do
+  end do
 
   !
   ! a11 now contains (1-A₁₁)⁻¹
@@ -1239,8 +1239,8 @@ subroutine cederbaum_naive(energy, c_matrix, hfock_ao, p_matrix_mo)
       deltae = energy(istate, pqspin) - energy(astate, pqspin)
       p_matrix_mo(istate, astate, pqspin) = p_matrix_mo(istate, astate, pqspin) + sigma_inf1(it) * spin_fact / deltae
       p_matrix_mo(astate, istate, pqspin) = p_matrix_mo(istate, astate, pqspin)
-    enddo
-  enddo
+    end do
+  end do
   deallocate(a11)
   deallocate(b1)
   deallocate(sigma_inf1)
@@ -1248,7 +1248,471 @@ subroutine cederbaum_naive(energy, c_matrix, hfock_ao, p_matrix_mo)
   call destroy_eri_3center_mo()
 
 
-end subroutine cederbaum_naive
+end subroutine cederbaum_naive1
+
+
+!=========================================================================
+! Like naive but also works for non-HF starting point
+! implements the old formula that is equivalent to the new one
+subroutine cederbaum_naive2(energy, c_matrix, hfock_ao, p_matrix_mo)
+  real(dp), intent(in)    :: energy(:, :)
+  real(dp), intent(in)    :: c_matrix(:, :, :)
+  real(dp), intent(in)    :: hfock_ao(:, :, :)
+  real(dp), intent(inout) :: p_matrix_mo(:, :, :)
+  !=====
+  integer :: kstate, cstate, bstate, astate, istate, jstate, pstate, qstate, pqspin, nstate
+  integer :: it, jt, nocc, nvirt, nt
+  real(dp), allocatable :: a11(:, :), b1(:), sigma_inf1(:)
+  real(dp), allocatable :: hfock_mo(:, :, :), pfock_mo(:, :, :)
+  real(dp) :: eri_pqkl, eri_plkq, eri_pklq, deltae
+  real(dp) :: eri_iajb, eri_ibja, eri_ijab, delta, eri_ijkb, eri_ikjb, eri_ikpq, eri_iqpk
+  real(dp) :: eri_iapq, eri_iqpa, eri_cajb, eri_capq, eri_cqpa, eri_cbja, eri_cjab, eri_ibjk
+  !=====
+
+  if( nspin > 1 ) call die('cederbaum_naive2: only spin restricted here')
+
+  nvirt = nvirtual_G-1 - nhomo_G
+  nocc  = nhomo_G - ncore_G
+  nt = nvirt * nocc
+  nstate = SIZE(energy, DIM=1)
+
+  ! First create the Fock hamiltonian in MO basis
+  call clean_allocate('Fock matrix F_MO', hfock_mo, nstate, nstate, nspin)
+  call h_ao_to_mo(c_matrix, hfock_ao, hfock_mo)
+
+  allocate(pfock_mo(nstate, nstate, nspin))
+  pfock_mo(:, :, :) = 0.0_dp
+  do pqspin=1, nspin
+    do istate=ncore_G+1, nhomo_G
+      do astate=nhomo_G+1, nvirtual_G-1
+        pfock_mo(istate, astate, pqspin) = hfock_mo(istate, astate, pqspin)  &
+                                               / ( energy(istate, pqspin) - energy(astate, pqspin) ) * spin_fact
+        pfock_mo(astate, istate, pqspin) = pfock_mo(istate, astate, pqspin)
+      end do
+    end do
+  end do
+  pqspin=1
+
+  ! In the old formula, we add the Fock density-matrix directly to Delta gamma
+  p_matrix_mo(:, :, :) = p_matrix_mo(:, :, :) + pfock_mo(:, :, :)
+
+
+  call clean_deallocate('Fock matrix F_MO', hfock_mo)
+
+  allocate(a11(nt, nt))
+  allocate(b1(nt))
+  allocate(sigma_inf1(nt))
+
+  if(has_auxil_basis) then
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  else
+    call die("cederbaum_naive2: not coded without RI")
+  end if
+
+  !
+  ! Step 1: Build B= (B₁
+  !                   B₂)
+  !
+  ! Block 1: occ-virt block
+  ! Block 2: occ-occ and then virt-virt block
+  ! Equation B2.b
+  !
+  call timer_tmp2%start
+  b1(:) = 0.0_dp
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      do pstate=ncore_G+1, nvirtual_G-1
+        do qstate=ncore_G+1, nvirtual_G-1
+          eri_iapq = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, pstate, qstate, pqspin) )
+          eri_iqpa = DOT_PRODUCT(eri_3center_mo(:, istate, qstate, pqspin), eri_3center_mo(:, pstate, astate, pqspin) )
+          b1(it) = b1(it) + (2.0_dp * eri_iapq - eri_iqpa) * p_matrix_mo(pstate, qstate, pqspin) / spin_fact
+        end do
+      end do
+    end do
+  end do
+  call timer_tmp2%stop()
+
+
+  !
+  ! Step 2: Build A = ( A₁₁  0 )
+  !                   ( A₂₁  0 )
+  !
+  ! to obtain
+  ! A⁻¹ = ( (1-A₁₁)⁻¹       0 )
+  !       ( A₂₁·(1-A₁₁)⁻¹   1 )
+
+  ! Step 2.1: do (1 - A₁₁)
+  ! Block 11: indices  (ia, jb)
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      jt = 0
+      do jstate=ncore_G+1, nhomo_G
+        do bstate=nhomo_G+1, nvirtual_G-1
+          jt = jt + 1
+          delta = MERGE(1.0_dp, 0.0_dp, it == jt)
+          deltae = energy(jstate, pqspin) - energy(bstate, pqspin)
+          eri_iajb = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, jstate, bstate, pqspin) )
+          eri_ibja = DOT_PRODUCT(eri_3center_mo(:, istate, bstate, pqspin), eri_3center_mo(:, jstate, astate, pqspin) )
+          eri_ijab = DOT_PRODUCT(eri_3center_mo(:, istate, jstate, pqspin), eri_3center_mo(:, astate, bstate, pqspin) )
+          a11(it, jt) = delta - ( 4.0_dp * eri_iajb - eri_ibja - eri_ijab ) / deltae
+        end do
+      end do
+    end do
+  end do
+
+  !
+  ! a11 now contains (1-A₁₁)⁻¹
+  !
+  write(stdout, '(1x,a)') 'invert (1-A11) block'
+  ! TODO: solve instead of inverting
+  ! sigma_inf1(:) = b1(:)
+  ! call DGESV(nt, 1, a11, nt, ipiv, sigma_inf1, nt, info)
+  !
+  call invert(a11)
+
+  !
+  ! Σ₁(∞) = (1-A₁₁)⁻¹ · B₁
+  !
+  sigma_inf1(:) = MATMUL(a11, b1)
+
+  !
+  ! Step 3: Add the density-matrix correction to the GW density-matrix
+  ! Note: only the occ-virt block is involved
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      deltae = energy(istate, pqspin) - energy(astate, pqspin)
+      p_matrix_mo(istate, astate, pqspin) = p_matrix_mo(istate, astate, pqspin) + sigma_inf1(it) * spin_fact / deltae
+      p_matrix_mo(astate, istate, pqspin) = p_matrix_mo(istate, astate, pqspin)
+    end do
+  end do
+  deallocate(a11)
+  deallocate(b1)
+  deallocate(sigma_inf1)
+
+  call destroy_eri_3center_mo()
+
+
+end subroutine cederbaum_naive2
+
+
+!=========================================================================
+! Like naive2 but use the new formula and try to approach the formula from
+! Furche-Eshuit
+! "Analytical First-Order Molecular Properties and Forces within the Adiabatic Connection Random Phase Approximation"
+! JCTC 2013
+subroutine cederbaum_naive3(energy, c_matrix, hfock_ao, p_matrix_mo)
+  real(dp), intent(in)    :: energy(:, :)
+  real(dp), intent(in)    :: c_matrix(:, :, :)
+  real(dp), intent(in)    :: hfock_ao(:, :, :)
+  real(dp), intent(inout) :: p_matrix_mo(:, :, :)
+  !=====
+  integer :: kstate, cstate, bstate, astate, istate, jstate, pstate, qstate, pqspin, nstate
+  integer :: it, jt, nocc, nvirt, nt
+  real(dp), allocatable :: a11(:, :), b1(:), sigma_inf1(:)
+  real(dp), allocatable :: hfock_mo(:, :, :)
+  real(dp) :: eri_pqkl, eri_plkq, eri_pklq, deltae
+  real(dp) :: eri_iajb, eri_ibja, eri_ijab, delta, eri_ijkb, eri_ikjb, eri_ikpq, eri_iqpk
+  real(dp) :: eri_iapq, eri_iqpa, eri_cajb, eri_capq, eri_cqpa, eri_cbja, eri_cjab, eri_ibjk
+  !=====
+
+  if( nspin > 1 ) call die('cederbaum_naive3: only spin restricted here')
+
+  pqspin = 1
+  nvirt = nvirtual_G-1 - nhomo_G
+  nocc  = nhomo_G - ncore_G
+  nt = nvirt * nocc
+  nstate = SIZE(energy, DIM=1)
+
+  ! First create the Fock hamiltonian in MO basis
+  call clean_allocate('Fock matrix F_MO', hfock_mo, nstate, nstate, nspin)
+  call h_ao_to_mo(c_matrix, hfock_ao, hfock_mo)
+
+  allocate(b1(nt))
+
+  b1(:) = 0.0_dp
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      deltae = energy(istate, pqspin) - energy(astate, pqspin)
+      b1(it) = hfock_mo(istate, astate, pqspin) + p_matrix_mo(istate, astate, pqspin) / spin_fact * deltae
+    end do
+  end do
+
+
+  call clean_deallocate('Fock matrix F_MO', hfock_mo)
+
+  allocate(a11(nt, nt))
+  allocate(sigma_inf1(nt))
+
+  if(has_auxil_basis) then
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  else
+    call die("cederbaum_naive3: not coded without RI")
+  end if
+
+  !
+  ! Step 1: Build B= (B₁
+  !                   B₂)
+  !
+  ! Block 1: occ-virt block
+  ! Block 2: occ-occ and then virt-virt block
+  ! Equation B2.b
+  !
+  call timer_tmp2%start
+  it = 0
+  ! blocks H^+ T of Furche
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      ! here limit to occupied-occupied block
+      do jstate=ncore_G+1, nhomo_G
+        do kstate=ncore_G+1, nhomo_G
+          eri_iapq = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, jstate, kstate, pqspin) )
+          eri_iqpa = DOT_PRODUCT(eri_3center_mo(:, istate, kstate, pqspin), eri_3center_mo(:, jstate, astate, pqspin) )
+          b1(it) = b1(it) + (2.0_dp * eri_iapq - eri_iqpa) * p_matrix_mo(jstate, kstate, pqspin) / spin_fact
+        end do
+      end do
+      ! here limit to virtual-virtual block
+      do bstate=nhomo_G+1, nvirtual_G-1
+        do cstate=nhomo_G+1, nvirtual_G-1
+          eri_iapq = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, bstate, cstate, pqspin) )
+          eri_iqpa = DOT_PRODUCT(eri_3center_mo(:, istate, cstate, pqspin), eri_3center_mo(:, bstate, astate, pqspin) )
+          b1(it) = b1(it) + (2.0_dp * eri_iapq - eri_iqpa) * p_matrix_mo(bstate, cstate, pqspin) / spin_fact
+        end do
+      end do
+    end do
+  end do
+  call timer_tmp2%stop()
+
+
+  !
+  ! Step 2: Build A = ( A₁₁  0 )
+  !                   ( A₂₁  0 )
+  !
+  ! to obtain
+  ! A⁻¹ = ( (1-A₁₁)⁻¹       0 )
+  !       ( A₂₁·(1-A₁₁)⁻¹   1 )
+
+  ! Step 2.1: do (1 - A₁₁)
+  ! Block 11: indices  (ia, jb)
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      jt = 0
+      do jstate=ncore_G+1, nhomo_G
+        do bstate=nhomo_G+1, nvirtual_G-1
+          jt = jt + 1
+          delta = MERGE(1.0_dp, 0.0_dp, it == jt)
+          deltae = energy(jstate, pqspin) - energy(bstate, pqspin)
+          eri_iajb = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, jstate, bstate, pqspin) )
+          eri_ibja = DOT_PRODUCT(eri_3center_mo(:, istate, bstate, pqspin), eri_3center_mo(:, jstate, astate, pqspin) )
+          eri_ijab = DOT_PRODUCT(eri_3center_mo(:, istate, jstate, pqspin), eri_3center_mo(:, astate, bstate, pqspin) )
+          a11(it, jt) = delta - ( 4.0_dp * eri_iajb - eri_ibja - eri_ijab ) / deltae
+        end do
+      end do
+    end do
+  end do
+
+  !
+  ! a11 now contains (1-A₁₁)⁻¹
+  !
+  write(stdout, '(1x,a)') 'invert (1-A11) block'
+  ! TODO: solve instead of inverting
+  ! sigma_inf1(:) = b1(:)
+  ! call DGESV(nt, 1, a11, nt, ipiv, sigma_inf1, nt, info)
+  !
+  call invert(a11)
+
+  !
+  ! Σ₁(∞) = (1-A₁₁)⁻¹ · B₁
+  !
+  sigma_inf1(:) = MATMUL(a11, b1)
+
+  !
+  ! Step 3: Add the density-matrix correction to the GW density-matrix
+  ! Note: only the occ-virt block is involved
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      deltae = energy(istate, pqspin) - energy(astate, pqspin)
+      !p_matrix_mo(istate, astate, pqspin) = p_matrix_mo(istate, astate, pqspin) + sigma_inf1(it) * spin_fact / deltae
+      p_matrix_mo(istate, astate, pqspin) = sigma_inf1(it) * spin_fact / deltae
+      p_matrix_mo(astate, istate, pqspin) = p_matrix_mo(istate, astate, pqspin)
+    end do
+  end do
+  deallocate(a11)
+  deallocate(b1)
+  deallocate(sigma_inf1)
+
+  call destroy_eri_3center_mo()
+
+
+end subroutine cederbaum_naive3
+
+
+!=========================================================================
+subroutine fock_density_matrix(basis, occupation, energy, c_matrix, hfock, p_matrix)
+
+  type(basis_set), intent(in)         :: basis
+  real(dp), intent(in)                :: occupation(:, :), energy(:, :)
+  real(dp), intent(in)                :: c_matrix(:, :, :)
+  real(dp), intent(in)                :: hfock(:, :, :)
+  real(dp), intent(out)               :: p_matrix(:, :, :)
+  !=====
+  integer  :: nstate
+  integer  :: pstate, istate, astate, pqspin
+  real(dp), allocatable :: p_matrix_mo(:, :, :)
+  real(dp), allocatable :: hfock_mo(:, :, :)
+  !=====
+
+  call timer_mbpt_dm%start()
+  write(stdout, '(/,1x,a)') 'Calculate the perturbative Fock density matrix'
+
+  nstate = SIZE(occupation, DIM=1)
+
+  call clean_allocate('Density matrix P_MO', p_matrix_mo, nstate, nstate, nspin)
+  call clean_allocate('Fock matrix F_MO', hfock_mo, nstate, nstate, nspin)
+
+  call h_ao_to_mo(c_matrix, hfock, hfock_mo)
+
+  p_matrix_mo(:, :, :) = 0.0_dp
+  do pqspin=1, nspin
+    ! Fill the diagonal
+    do pstate=1, nstate
+      p_matrix_mo(pstate, pstate, pqspin) = occupation(pstate, pqspin)
+    end do
+
+    do istate=ncore_G+1, nhomo_G
+      do astate=nhomo_G+1, nvirtual_G-1
+        p_matrix_mo(istate, astate, pqspin) = hfock_mo(istate, astate, pqspin)  &
+                                               / ( energy(istate, pqspin) - energy(astate, pqspin) ) * spin_fact
+        p_matrix_mo(astate, istate, pqspin) = p_matrix_mo(istate, astate, pqspin)
+      end do
+    end do
+  end do
+
+  call p_mo_to_ao(c_matrix, p_matrix_mo, p_matrix)
+
+  call clean_deallocate('Density matrix P_MO', p_matrix_mo)
+  call clean_deallocate('Fock matrix F_MO', hfock_mo)
+
+  call timer_mbpt_dm%stop()
+
+end subroutine fock_density_matrix
+
+
+!=========================================================================
+subroutine fock_density_matrix_second_order(basis, occupation, energy, c_matrix, hfock, p_matrix)
+
+  type(basis_set), intent(in)         :: basis
+  real(dp), intent(in)                :: occupation(:, :), energy(:, :)
+  real(dp), intent(in)                :: c_matrix(:, :, :)
+  real(dp), intent(in)                :: hfock(:, :, :)
+  real(dp), intent(inout)             :: p_matrix(:, :, :)
+  !=====
+  integer  :: nstate
+  integer  :: pstate
+  integer  :: istate, jstate
+  integer  :: astate, bstate
+  integer  :: pqspin
+  real(dp), allocatable :: p_matrix_mo(:, :, :), p_matrix_ao(:, :, :)
+  real(dp), allocatable :: delta_sigma_mo(:, :, :)
+  !=====
+
+  call timer_mbpt_dm%start()
+  write(stdout, '(/,1x,a)') 'Calculate the perturbative Fock density matrix'
+
+  nstate = SIZE(occupation, DIM=1)
+
+  call clean_allocate('Density matrix P_MO', p_matrix_mo, nstate, nstate, nspin)
+  call clean_allocate('Density matrix P_AO', p_matrix_ao, basis%nbf, basis%nbf, nspin)
+  call clean_allocate('Delta Sigma_MO', delta_sigma_mo, nstate, nstate, nspin)
+
+  ! < p | Sigma_x - v_xc | q > = < p | H_fock - H_gKS | q >
+  !                            = < p | H_fock | q >   - energy_p \delta_pq
+  call h_ao_to_mo(c_matrix, hfock, delta_sigma_mo)
+  do pstate=1, nstate
+    delta_sigma_mo(pstate, pstate, :) = delta_sigma_mo(pstate, pstate, :) - energy(pstate, :)
+  end do
+
+
+  p_matrix_mo(:, :, :) = 0.0_dp
+  !
+  ! occupied - occupied block
+  do pqspin=1, nspin
+    do istate=ncore_G+1, nhomo_G
+      do jstate=ncore_G+1, nhomo_G
+        do astate=nhomo_G+1, nvirtual_G-1
+          p_matrix_mo(istate, jstate, pqspin) = p_matrix_mo(istate, jstate, pqspin) &
+             - spin_fact * delta_sigma_mo(istate, astate, pqspin)  * delta_sigma_mo(astate, jstate, pqspin) &
+                     / ( ( energy(astate, pqspin) - energy(istate, pqspin) ) * ( energy(astate, pqspin) - energy(jstate, pqspin) ) )
+        end do
+      end do
+    end do
+  end do
+  !
+  ! virtual - virtual block
+  do pqspin=1, nspin
+    do astate=nhomo_G+1, nvirtual_G-1
+      do bstate=nhomo_G+1, nvirtual_G-1
+        do istate=ncore_G+1, nhomo_G
+          p_matrix_mo(astate, bstate, pqspin) = p_matrix_mo(astate, bstate, pqspin) &
+             + spin_fact * delta_sigma_mo(astate, istate, pqspin)  * delta_sigma_mo(istate, bstate, pqspin) &
+                     / ( ( energy(istate, pqspin) - energy(astate, pqspin) ) * ( energy(istate, pqspin) - energy(bstate, pqspin) ) )
+        end do
+      end do
+    end do
+  end do
+  !
+  ! occupied - virtual block
+  do pqspin=1, nspin
+    do istate=ncore_G+1, nhomo_G
+      do astate=nhomo_G+1, nvirtual_G-1
+
+        do bstate=nhomo_G+1, nvirtual_G-1
+          p_matrix_mo(istate, astate, pqspin) = p_matrix_mo(istate, astate, pqspin) &
+             + spin_fact * delta_sigma_mo(istate, bstate, pqspin)  * delta_sigma_mo(bstate, astate, pqspin) &
+                     / ( ( energy(istate, pqspin) - energy(astate, pqspin) ) * ( energy(istate, pqspin) - energy(bstate, pqspin) ) )
+        end do
+        do jstate=ncore_G+1, nhomo_G
+          p_matrix_mo(istate, astate, pqspin) = p_matrix_mo(istate, astate, pqspin) &
+             - spin_fact * delta_sigma_mo(istate, bstate, pqspin)  * delta_sigma_mo(bstate, astate, pqspin) &
+                     / ( ( energy(astate, pqspin) - energy(istate, pqspin) ) * ( energy(astate, pqspin) - energy(jstate, pqspin) ) )
+        end do
+
+      end do
+    end do
+  end do
+  !
+  ! virtual - occupied block (by symmetry)
+  do pqspin=1, nspin
+    do astate=nhomo_G+1, nvirtual_G-1
+      do istate=ncore_G+1, nhomo_G
+        p_matrix_mo(astate, istate, pqspin) = p_matrix_mo(istate, astate, pqspin)
+      end do
+    end do
+  end do
+
+  call p_mo_to_ao(c_matrix, p_matrix_mo, p_matrix_ao)
+
+  p_matrix(:, :, :) = p_matrix(:, :, :) + p_matrix_ao(:, :, :)
+
+  call clean_deallocate('Density matrix P_MO', p_matrix_mo)
+  call clean_deallocate('Density matrix P_AO', p_matrix_ao)
+  call clean_deallocate('Delta Sigma F_MO', delta_sigma_mo)
+
+  call timer_mbpt_dm%stop()
+
+end subroutine fock_density_matrix_second_order
 
 
 !=========================================================================

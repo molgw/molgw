@@ -49,7 +49,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   integer                    :: nstate, nocc
   logical                    :: density_matrix_found
   integer                    :: file_density_matrix, reading_status
-  integer                    :: ispin
+  integer                    :: ispin, istate
   real(dp)                   :: eext
   type(spectral_function)    :: wpol
   type(energy_contributions) :: en_dm_corr
@@ -159,8 +159,12 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
         .OR. TRIM(pt_density_matrix) == 'MP2' ) then
 
       call timer_tmp1%start()
-      !call cederbaum_naive(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
+
+      !call cederbaum_naive1(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
+      !call cederbaum_naive2(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
+      !call cederbaum_naive3(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
       call cederbaum_blas(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
+
       p_matrix_corr_ao(:, :, :) = 0.0_dp
       call timer_tmp1%stop()
 
@@ -327,165 +331,6 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
 
 
 end subroutine get_dm_mbpt
-
-
-!=========================================================================
-subroutine fock_density_matrix(basis, occupation, energy, c_matrix, hfock, p_matrix)
-
-  type(basis_set), intent(in)         :: basis
-  real(dp), intent(in)                :: occupation(:, :), energy(:, :)
-  real(dp), intent(in)                :: c_matrix(:, :, :)
-  real(dp), intent(in)                :: hfock(:, :, :)
-  real(dp), intent(out)               :: p_matrix(:, :, :)
-  !=====
-  integer  :: nstate
-  integer  :: pstate
-  integer  :: istate
-  integer  :: astate
-  integer  :: pqspin
-  real(dp), allocatable :: p_matrix_mo(:, :, :)
-  real(dp), allocatable :: hfock_mo(:, :, :)
-  !=====
-
-  call timer_mbpt_dm%start()
-  write(stdout, '(/,1x,a)') 'Calculate the perturbative Fock density matrix'
-
-  nstate = SIZE(occupation, DIM=1)
-
-  call clean_allocate('Density matrix P_MO', p_matrix_mo, nstate, nstate, nspin)
-  call clean_allocate('Fock matrix F_MO', hfock_mo, nstate, nstate, nspin)
-
-  call h_ao_to_mo(c_matrix, hfock, hfock_mo)
-
-  p_matrix_mo(:, :, :) = 0.0_dp
-  do pqspin=1, nspin
-    ! Fill the diagonal
-    do pstate=1, nstate
-      p_matrix_mo(pstate, pstate, pqspin) = occupation(pstate, pqspin)
-    end do
-
-    do istate=ncore_G+1, nhomo_G
-      do astate=nhomo_G+1, nvirtual_G-1
-        p_matrix_mo(istate, astate, pqspin) = hfock_mo(istate, astate, pqspin)  &
-                                               / ( energy(istate, pqspin) - energy(astate, pqspin) ) * spin_fact
-        p_matrix_mo(astate, istate, pqspin) = p_matrix_mo(istate, astate, pqspin)
-      end do
-    end do
-  end do
-
-  call p_mo_to_ao(c_matrix, p_matrix_mo, p_matrix)
-
-  call clean_deallocate('Density matrix P_MO', p_matrix_mo)
-  call clean_deallocate('Fock matrix F_MO', hfock_mo)
-
-  call timer_mbpt_dm%stop()
-
-end subroutine fock_density_matrix
-
-
-!=========================================================================
-subroutine fock_density_matrix_second_order(basis, occupation, energy, c_matrix, hfock, p_matrix)
-
-  type(basis_set), intent(in)         :: basis
-  real(dp), intent(in)                :: occupation(:, :), energy(:, :)
-  real(dp), intent(in)                :: c_matrix(:, :, :)
-  real(dp), intent(in)                :: hfock(:, :, :)
-  real(dp), intent(inout)             :: p_matrix(:, :, :)
-  !=====
-  integer  :: nstate
-  integer  :: pstate
-  integer  :: istate, jstate
-  integer  :: astate, bstate
-  integer  :: pqspin
-  real(dp), allocatable :: p_matrix_mo(:, :, :), p_matrix_ao(:, :, :)
-  real(dp), allocatable :: delta_sigma_mo(:, :, :)
-  !=====
-
-  call timer_mbpt_dm%start()
-  write(stdout, '(/,1x,a)') 'Calculate the perturbative Fock density matrix'
-
-  nstate = SIZE(occupation, DIM=1)
-
-  call clean_allocate('Density matrix P_MO', p_matrix_mo, nstate, nstate, nspin)
-  call clean_allocate('Density matrix P_AO', p_matrix_ao, basis%nbf, basis%nbf, nspin)
-  call clean_allocate('Delta Sigma_MO', delta_sigma_mo, nstate, nstate, nspin)
-
-  ! < p | Sigma_x - v_xc | q > = < p | H_fock - H_gKS | q >
-  !                            = < p | H_fock | q >   - energy_p \delta_pq
-  call h_ao_to_mo(c_matrix, hfock, delta_sigma_mo)
-  do pstate=1, nstate
-    delta_sigma_mo(pstate, pstate, :) = delta_sigma_mo(pstate, pstate, :) - energy(pstate, :)
-  end do
-
-
-  p_matrix_mo(:, :, :) = 0.0_dp
-  !
-  ! occupied - occupied block
-  do pqspin=1, nspin
-    do istate=ncore_G+1, nhomo_G
-      do jstate=ncore_G+1, nhomo_G
-        do astate=nhomo_G+1, nvirtual_G-1
-          p_matrix_mo(istate, jstate, pqspin) = p_matrix_mo(istate, jstate, pqspin) &
-             - spin_fact * delta_sigma_mo(istate, astate, pqspin)  * delta_sigma_mo(astate, jstate, pqspin) &
-                     / ( ( energy(astate, pqspin) - energy(istate, pqspin) ) * ( energy(astate, pqspin) - energy(jstate, pqspin) ) )
-        end do
-      end do
-    end do
-  end do
-  !
-  ! virtual - virtual block
-  do pqspin=1, nspin
-    do astate=nhomo_G+1, nvirtual_G-1
-      do bstate=nhomo_G+1, nvirtual_G-1
-        do istate=ncore_G+1, nhomo_G
-          p_matrix_mo(astate, bstate, pqspin) = p_matrix_mo(astate, bstate, pqspin) &
-             + spin_fact * delta_sigma_mo(astate, istate, pqspin)  * delta_sigma_mo(istate, bstate, pqspin) &
-                     / ( ( energy(istate, pqspin) - energy(astate, pqspin) ) * ( energy(istate, pqspin) - energy(bstate, pqspin) ) )
-        end do
-      end do
-    end do
-  end do
-  !
-  ! occupied - virtual block
-  do pqspin=1, nspin
-    do istate=ncore_G+1, nhomo_G
-      do astate=nhomo_G+1, nvirtual_G-1
-
-        do bstate=nhomo_G+1, nvirtual_G-1
-          p_matrix_mo(istate, astate, pqspin) = p_matrix_mo(istate, astate, pqspin) &
-             + spin_fact * delta_sigma_mo(istate, bstate, pqspin)  * delta_sigma_mo(bstate, astate, pqspin) &
-                     / ( ( energy(istate, pqspin) - energy(astate, pqspin) ) * ( energy(istate, pqspin) - energy(bstate, pqspin) ) )
-        end do
-        do jstate=ncore_G+1, nhomo_G
-          p_matrix_mo(istate, astate, pqspin) = p_matrix_mo(istate, astate, pqspin) &
-             - spin_fact * delta_sigma_mo(istate, bstate, pqspin)  * delta_sigma_mo(bstate, astate, pqspin) &
-                     / ( ( energy(astate, pqspin) - energy(istate, pqspin) ) * ( energy(astate, pqspin) - energy(jstate, pqspin) ) )
-        end do
-
-      end do
-    end do
-  end do
-  !
-  ! virtual - occupied block (by symmetry)
-  do pqspin=1, nspin
-    do astate=nhomo_G+1, nvirtual_G-1
-      do istate=ncore_G+1, nhomo_G
-        p_matrix_mo(astate, istate, pqspin) = p_matrix_mo(istate, astate, pqspin)
-      end do
-    end do
-  end do
-
-  call p_mo_to_ao(c_matrix, p_matrix_mo, p_matrix_ao)
-
-  p_matrix(:, :, :) = p_matrix(:, :, :) + p_matrix_ao(:, :, :)
-
-  call clean_deallocate('Density matrix P_MO', p_matrix_mo)
-  call clean_deallocate('Density matrix P_AO', p_matrix_ao)
-  call clean_deallocate('Delta Sigma F_MO', delta_sigma_mo)
-
-  call timer_mbpt_dm%stop()
-
-end subroutine fock_density_matrix_second_order
 
 
 !=========================================================================
