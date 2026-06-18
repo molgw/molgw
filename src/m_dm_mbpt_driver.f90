@@ -159,6 +159,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
         .OR. TRIM(pt_density_matrix) == 'MP2' ) then
 
       call timer_tmp1%start()
+      !call cederbaum_naive(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
       call cederbaum_blas(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
       p_matrix_corr_ao(:, :, :) = 0.0_dp
       call timer_tmp1%stop()

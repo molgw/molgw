@@ -903,7 +903,6 @@ end subroutine update_density_matrix
 !                  (trace of p_matrix_mo should be close to zero)
 !
 subroutine cederbaum_blas(energy, c_matrix, hfock_ao, p_matrix_mo)
-
   real(dp), intent(in)    :: energy(:, :)
   real(dp), intent(in)    :: c_matrix(:, :, :)
   real(dp), intent(in)    :: hfock_ao(:, :, :)
@@ -1097,7 +1096,7 @@ subroutine cederbaum_blas(energy, c_matrix, hfock_ao, p_matrix_mo)
   ! a11 now contains (1-A₁₁)
   !
   ! Solve linear system:
-  ! (1-A₁₁) · Σ₁(∞) = (1-A₁₁)⁻¹ · B₁
+  ! (1-A₁₁) · Σ₁(∞) = B₁
   write(stdout, '(1x,a)') 'Solve (1-A₁₁) · Σ₁(∞) = B₁'
   !sigma_inf1(:) = b1(:)
   call move_alloc(b1, sigma_inf1)
@@ -1127,6 +1126,129 @@ subroutine cederbaum_blas(energy, c_matrix, hfock_ao, p_matrix_mo)
   call destroy_eri_3center_mo()
 
 end subroutine cederbaum_blas
+
+
+!=========================================================================
+subroutine cederbaum_naive(energy, c_matrix, hfock_ao, p_matrix_mo)
+  real(dp), intent(in)    :: energy(:, :)
+  real(dp), intent(in)    :: c_matrix(:, :, :)
+  real(dp), intent(in)    :: hfock_ao(:, :, :)
+  real(dp), intent(inout) :: p_matrix_mo(:, :, :)
+  !=====
+  integer :: kstate, cstate, bstate, astate, istate, jstate, pstate, qstate, pqspin
+  integer :: it, jt, nocc, nvirt, nt
+  real(dp), allocatable :: a11(:, :), b1(:), sigma_inf1(:)
+  real(dp) :: eri_pqkl, eri_plkq, eri_pklq, deltae
+  real(dp) :: eri_iajb, eri_ibja, eri_ijab, delta, eri_ijkb, eri_ikjb, eri_ikpq, eri_iqpk
+  real(dp) :: eri_iapq, eri_iqpa, eri_cajb, eri_capq, eri_cqpa, eri_cbja, eri_cjab, eri_ibjk
+  !=====
+
+  if( nspin > 1 ) call die('cederbaum_naive: only spin restricted here')
+  pqspin=1
+
+  nvirt = nvirtual_G-1 - nhomo_G
+  nocc  = nhomo_G - ncore_G
+  nt = nvirt * nocc
+  allocate(a11(nt, nt))
+  allocate(b1(nt))
+  allocate(sigma_inf1(nt))
+
+  if(has_auxil_basis) then
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  else
+    call die("cederbaum_naive: not coded without RI")
+  end if
+
+  !
+  ! Step 1: Build B= (B₁
+  !                   B₂)
+  !
+  ! Block 1: occ-virt block
+  ! Block 2: occ-occ and then virt-virt block
+  ! Equation B2.b
+  !
+  call timer_tmp2%start
+  b1(:) = 0.0_dp
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      do pstate=ncore_G+1, nvirtual_G-1
+        do qstate=ncore_G+1, nvirtual_G-1
+          eri_iapq = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, pstate, qstate, pqspin) )
+          eri_iqpa = DOT_PRODUCT(eri_3center_mo(:, istate, qstate, pqspin), eri_3center_mo(:, pstate, astate, pqspin) )
+          b1(it) = b1(it) + (2.0_dp * eri_iapq - eri_iqpa) * p_matrix_mo(pstate, qstate, pqspin) / spin_fact
+        enddo
+      enddo
+    enddo
+  enddo
+  call timer_tmp2%stop()
+
+
+  !
+  ! Step 2: Build A = ( A₁₁  0 )
+  !                   ( A₂₁  0 )
+  !
+  ! to obtain
+  ! A⁻¹ = ( (1-A₁₁)⁻¹       0 )
+  !       ( A₂₁·(1-A₁₁)⁻¹   1 )
+
+  ! Step 2.1: do (1 - A₁₁)
+  ! Block 11: indices  (ia, jb)
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      jt = 0
+      do jstate=ncore_G+1, nhomo_G
+        do bstate=nhomo_G+1, nvirtual_G-1
+          jt = jt + 1
+          delta = MERGE(1.0_dp, 0.0_dp, it == jt)
+          deltae = energy(jstate, pqspin) - energy(bstate, pqspin)
+          eri_iajb = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, jstate, bstate, pqspin) )
+          eri_ibja = DOT_PRODUCT(eri_3center_mo(:, istate, bstate, pqspin), eri_3center_mo(:, jstate, astate, pqspin) )
+          eri_ijab = DOT_PRODUCT(eri_3center_mo(:, istate, jstate, pqspin), eri_3center_mo(:, astate, bstate, pqspin) )
+          a11(it, jt) = delta - ( 4.0_dp * eri_iajb - eri_ibja - eri_ijab ) / deltae
+        enddo
+      enddo
+    enddo
+  enddo
+
+  !
+  ! a11 now contains (1-A₁₁)⁻¹
+  !
+  write(stdout, '(1x,a)') 'invert (1-A11) block'
+  ! TODO: solve instead of inverting
+  ! sigma_inf1(:) = b1(:)
+  ! call DGESV(nt, 1, a11, nt, ipiv, sigma_inf1, nt, info)
+  !
+  call invert(a11)
+
+  !
+  ! Σ₁(∞) = (1-A₁₁)⁻¹ · B₁
+  !
+  sigma_inf1(:) = MATMUL(a11, b1)
+
+  !
+  ! Step 3: Add the density-matrix correction to the GW density-matrix
+  ! Note: only the occ-virt block is involved
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      deltae = energy(istate, pqspin) - energy(astate, pqspin)
+      p_matrix_mo(istate, astate, pqspin) = p_matrix_mo(istate, astate, pqspin) + sigma_inf1(it) * spin_fact / deltae
+      p_matrix_mo(astate, istate, pqspin) = p_matrix_mo(istate, astate, pqspin)
+    enddo
+  enddo
+  deallocate(a11)
+  deallocate(b1)
+  deallocate(sigma_inf1)
+
+  call destroy_eri_3center_mo()
+
+
+end subroutine cederbaum_naive
 
 
 !=========================================================================
