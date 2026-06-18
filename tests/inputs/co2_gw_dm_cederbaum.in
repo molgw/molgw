@@ -7,6 +7,7 @@
  pt_density_matrix='gw_cederbaum'
  use_correlated_density_matrix='yes'
  print_hartree='yes'
+ print_multipole='yes'
 
  postscf='gw'
  selfenergy_state_range=1

@@ -1364,6 +1364,7 @@ Exchange Energy (Ha):     ,  -21.1384503978    , 0 , 1.0e-7
 Hartree  HOMO expectation ,  291.642779        , 0 , 1.0e-4
 Exchange HOMO expectation ,  -24.839183        , 0 , 1.0e-4
 GW HOMO energy            ,  -12.015375        , 0 , 1.0e-4
+Dipole (a.u.)             ,    0.525444        , 1 , 1.0e-3
 
 co2_mp2_dm.in             , CO2 MP2 density-matrix
 SCF Total Energy          , -187.4495378734    , 0 , 1.0e-7
@@ -1373,6 +1374,7 @@ Hartree Energy (Ha):      ,  142.9727941016    , 0 , 1.0e-7
 Exchange Energy (Ha):     ,  -21.0552706236    , 0 , 1.0e-7
 Hartree  HOMO expectation ,  291.425633        , 0 , 1.0e-4
 Exchange HOMO expectation ,  -24.426481        , 0 , 1.0e-4
+Dipole (a.u.)             ,    0.371064        , 1 , 1.0e-3
 
 co2_gw@pbeh_dm_cederbaum.in, CO2 GW density-matrix a la Cederbaum
 SCF Total Energy          , -188.2181587541    , 0 , 1.0e-7
@@ -1382,6 +1384,7 @@ Hartree Energy (Ha):      ,  142.7575597891    , 0 , 1.0e-7
 Exchange Energy (Ha):     ,  -21.0972552041    , 0 , 1.0e-7
 Hartree  HOMO expectation ,  293.645469        , 0 , 1.0e-4
 Exchange HOMO expectation ,  -23.873869        , 0 , 1.0e-4
+Dipole (a.u.)             ,    0.259992        , 1 , 1.0e-3
 
 co_mp2_singles.in         , CO dimer MP2 + singles
  SCF Total Energy         ,  -113.2002154540   , 0 , 1.0e-7

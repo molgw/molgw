@@ -8,6 +8,7 @@
  pt_density_matrix='gw_cederbaum'
  use_correlated_density_matrix='yes'
  print_hartree='yes'
+ print_multipole='yes'
 
  basis='cc-pVDZ'
  auxil_basis='auto'
