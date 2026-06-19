@@ -1,0 +1,3905 @@
+# testsuite.yaml — MOLGW test suite database
+#
+# Each entry defines one test:
+#
+#   <input_file>.in:
+#       description: Human-readable description of the test
+#       keywords: [KW1, KW2, ...]    # used by --keyword filter in run_testsuite.py
+#       requirements: [HAVE_X, ...]  # omitted when empty; test is skipped if library absent
+#       dependence: [other.in, ...]  # omitted when empty; listed tests must run first
+#       no_parallel: true            # optional; disables OpenMP/MPI parallelism for this test
+#       command: "extra args"        # optional; extra arguments appended to the molgw call
+#       checks:
+#       -   "Output line key":
+#               reference: <float>   # expected numerical value
+#               tolerance: <float>   # absolute tolerance
+#               column: <int>        # word index on matched output line (default: 0)
+#
+# Available keywords:
+#   HF               Hartree-Fock (no exchange-correlation)
+#   DFT              DFT with local or semi-local functional (LDA, GGA)
+#   hybrid           Hybrid DFT (fixed fraction of HF exchange)
+#   range-separated  Range-separated hybrid functional
+#   double-hybrid    Double-hybrid (MP2 correlation mixed with DFT)
+#   GW               GW, QSGW, or COHSEX self-energy
+#   vertex           Vertex corrections beyond GW (SOSEX, SOX, G3W2, sigma_TDHF)
+#   MP2              MP2, MP3, or PT2/PT3 energy or self-energy
+#   RPA              Random phase approximation correlation energy
+#   BSE              Bethe-Salpeter equation excitation energies
+#   LR-TDDFT         Linear-response TDDFT or TDHF
+#   RT-TDDFT         Real-time TDDFT propagation
+#   CI               Configuration interaction (Full-CI, CI-SD, Davidson)
+#   NOFT             Natural orbital functional theory
+#   noRI             No resolution-of-identity (no auxiliary basis)
+#   spin-unrestricted Open-shell spin-unrestricted calculation (nspin=2)
+#   ECP              Effective core potential (PP, GTH, or numerical pseudopotential)
+#   periodic         Periodic boundary conditions (PBC)
+#   stopping         Stopping cross section calculation
+#   density-matrix   Correlated density matrix (pt_density_matrix input variable)
+#
+# Available requirements:
+#   HAVE_SCALAPACK   ScaLAPACK distributed linear algebra
+#   HAVE_GRADIENTS   Analytical gradients
+#   HAVE_FORCES      Atomic forces
+#   HAVE_LIBCINT     LIBCINT integral library
+#   HAVE_FFTW3       FFTW3 fast Fourier transform library
+#
+
+he.in:
+    description: HF helium atom cc-pVTZ without RI
+    keywords: [HF, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8611533447
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -24.969849
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 17.323932
+            tolerance: 0.0001
+he_auxil.in:
+    description: HF helium atom cc-pVTZ with RI
+    keywords: [HF]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8611875289
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -24.970619
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 17.314207
+            tolerance: 0.0001
+ne.in:
+    description: HF neon atom cc-pV6Z with RI
+    keywords: [HF]
+    checks:
+    -   SCF Total Energy:
+            reference: -128.5470596583
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -23.140408
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 10.036631
+            tolerance: 0.0001
+he_wb97.in:
+    description: He with wB97 functional wo RI
+    keywords: [noRI, range-separated]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8943088825
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -20.795329
+            tolerance: 0.0001
+he_wb97x.in:
+    description: He with wB97X functional wo RI
+    keywords: [noRI, range-separated]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8980609307
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -20.856905
+            tolerance: 0.03
+he_pbe_libxc.in:
+    description: He with PBE functional wo RI using LIBXC index
+    keywords: [DFT, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8869559704
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -15.724589
+            tolerance: 0.003
+he_pbeh_libxc.in:
+    description: He with PBEH=PBE0 functional wo RI using LIBXC index
+    keywords: [DFT, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8893617513
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -18.193561
+            tolerance: 0.003
+he_wb97x_libxc.in:
+    description: He with wB97X functional wo RI using LIBXC index
+    keywords: [DFT, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8980609307
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -20.856905
+            tolerance: 0.03
+ne_pbe_autori.in:
+    description: PBE neon atom cc-pVTZ with auto RI
+    keywords: [DFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -128.8459979064
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -12.87536
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 22.337191
+            tolerance: 0.0001
+k2_lda_autori.in:
+    description: LDA K2 cc-pVDZ with auto RI
+    keywords: [DFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -1196.3686739027
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -2.690935
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -1.743026
+            tolerance: 0.0001
+ne_hf_pautori.in:
+    description: HF neon atom cc-pVDZ with Pauto RI
+    keywords: [HF]
+    checks:
+    -   SCF Total Energy:
+            reference: -128.489142497
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -22.652055
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 46.078902
+            tolerance: 0.0001
+kr_rsh_poorman.in:
+    description: Range-separated hybrid with mpi_poorman
+    keywords: [range-separated]
+    checks:
+    -   SCF Total Energy:
+            reference: -2753.440035385
+            tolerance: 1.0e-07
+nh3_genuine_ri.in:
+    description: PBE ammonia with genuine RI
+    keywords: [DFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -56.4954295025
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 38.424417882
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -5.591748
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 0.022631
+            tolerance: 0.0001
+na2_lda.in:
+    description: LDA Na2 molecule without RI
+    keywords: [DFT, noRI]
+    no_parallel: true
+    checks:
+    -   SCF Total Energy:
+            reference: -322.8615203603
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -3.230199
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -1.930441
+            tolerance: 0.0001
+na2_lda_outofcore.in:
+    description: LDA Na2 molecule without RI with out-of-core Coulomb integrals
+    keywords: [DFT, noRI]
+    no_parallel: true
+    checks:
+    -   SCF Total Energy:
+            reference: -322.8615203603
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -3.230199
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -1.930441
+            tolerance: 0.0001
+butadiene_diago.in:
+    description: HF butadiene with diagonalizations made with (P)DSYEVD
+    keywords: [HF]
+    checks:
+    -   SCF Total Energy:
+            reference: -154.9336767704
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -8.694923
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 3.218456
+            tolerance: 0.0001
+h2o_distorted.in:
+    description: BHLYP distorted water (having quadrupole)
+    keywords: [hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.381554752
+            tolerance: 1.0e-07
+    -   Dipole (a.u.):
+            reference: -0.097584
+            tolerance: 0.0001
+    -   Dipole (a.u.):
+            reference: 0.00578
+            tolerance: 0.0001
+            column: 1
+    -   Dipole (a.u.):
+            reference: -0.785808
+            tolerance: 0.0001
+            column: 2
+    -   Quadrupole (a.u.):
+            reference: -5.234602
+            tolerance: 0.0001
+    -   Quadrupole (a.u.):
+            reference: 0.068177
+            tolerance: 0.0001
+            column: 1
+    -   Quadrupole (a.u.):
+            reference: 0.054699
+            tolerance: 0.0001
+            column: 2
+h2o_pbe0.in:
+    description: PBE0 water with a small basis (generate RESTART)
+    keywords: [hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.3408991125
+            tolerance: 1.0e-07
+h2o_pbe0_basis_restart.in:
+    description: PBE0 water restarting from a previous run with a smaller basis
+    keywords: [hybrid]
+    dependence:
+    - h2o_pbe0.in
+    checks:
+    -   SCF Total Energy:
+            reference: -76.3536424842
+            tolerance: 1.0e-07
+propanol_neutral.in:
+    description: Neutral propanol (generate RESTART)
+    keywords: [hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -194.1549010191
+            tolerance: 1.0e-07
+propanol_cation_restart.in:
+    description: propanol cation (use neutral RESTART)
+    keywords: [hybrid, spin-unrestricted]
+    dependence:
+    - propanol_neutral.in
+    checks:
+    -   SCF Total Energy:
+            reference: -193.7189853894
+            tolerance: 1.0e-07
+na08_damping.in:
+    description: LDA Na8 cluster with density damping stopped after 2 SCF cycles
+    keywords: [DFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -1232.7456930389
+            tolerance: 1.0e-07
+    -   Convergence criterium:
+            reference: 645.101
+            tolerance: 0.1
+h2_guess_mix.in:
+    description: HF mixing the HOMO-LUMO in nspin=2
+    keywords: [HF, spin-unrestricted]
+    checks:
+    -   SCF Total Energy:
+            reference: -0.9985575214
+            tolerance: 1.0e-05
+    -   gKS HOMO energy:
+            reference: -13.586058
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.996172
+            tolerance: 0.0002
+h2_basis_nori.in:
+    description: LDA H2 molecule with an atom-dependent basis set
+    keywords: [DFT, noRI]
+    no_parallel: true
+    checks:
+    -   SCF Total Energy:
+            reference: -1.1306882151
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -10.061109
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 7.282713
+            tolerance: 0.0001
+h2_basis_ri.in:
+    description: LDA H2 molecule with an atom-dependent basis set with RI
+    keywords: [DFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -1.1351648702
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -10.247609
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.328924
+            tolerance: 0.0001
+o2_rsh.in:
+    description: Range-separated hybrid mimicing HSE08 for triplet O2 wo RI
+    keywords: [noRI, range-separated, spin-unrestricted]
+    no_parallel: true
+    checks:
+    -   SCF Total Energy:
+            reference: -150.1671750256
+            tolerance: 1.0e-07
+    -   XC Energy:
+            reference: -13.0323509136
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -8.324037
+            tolerance: 0.0001
+    -   gKS HOMO energy:
+            reference: -12.31639
+            tolerance: 0.0001
+            column: 1
+    -   gKS LUMO energy:
+            reference: 5.557588
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -3.007564
+            tolerance: 0.0001
+            column: 1
+ne_fraccharge.in:
+    description: Neon atoms with two fractional charges
+    keywords: [DFT]
+    checks:
+    -   number of basis functions:
+            reference: 56.0
+            tolerance: 1.0e-07
+    -   Total number of grid points:
+            reference: 4258.0
+            tolerance: 1.0e-07
+    -   SCF Total Energy:
+            reference: -128.1560939423
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -12.210687
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 35.106709
+            tolerance: 0.0001
+lih_ghost.in:
+    description: LiH molecule with addition basis functions on ghost atoms
+    keywords: [HF]
+    checks:
+    -   Kinetic Energy:
+            reference: 8.3706450131
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -21.8154519211
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 6.1980439217
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -2.2262796016
+            tolerance: 1.0e-07
+    -   SCF Total Energy:
+            reference: -7.8855109768
+            tolerance: 1.0e-07
+be_ghost_bsse.in:
+    description: Be atom with addition basis functions on a ghost atom
+    keywords: [DFT]
+    checks:
+    -   Kinetic Energy:
+            reference: 14.5578650555
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -33.6357518059
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 7.1727007457
+            tolerance: 1.0e-07
+    -   XC Energy:
+            reference: -2.7227945659
+            tolerance: 1.0e-07
+    -   SCF Total Energy:
+            reference: -14.6279805707
+            tolerance: 1.0e-07
+b_temperature.in:
+    description: LDA boron atom cc-pVTZ with finite temperature
+    keywords: [DFT, noRI, spin-unrestricted]
+    checks:
+    -   SCF Total Energy:
+            reference: -24.3458246337
+            tolerance: 1.0e-07
+    -   Fermi level:
+            reference: -4.06545
+            tolerance: 0.0001
+    -   gKS HOMO energy:
+            reference: -3.970996
+            tolerance: 0.0001
+    -   gKS HOMO energy:
+            reference: -2.93137
+            tolerance: 0.0001
+            column: 1
+acetamide.in:
+    description: one single LDA cycle based on a guessed starting point
+    keywords: [DFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -207.1430859034
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: 0.56033
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 2.254836
+            tolerance: 0.0001
+zn_ecp.in:
+    description: HF zinc atom with ECP and no RI
+    keywords: [ECP, HF, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -225.9509886619
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -8.086232
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.864607
+            tolerance: 0.0001
+zn2_ecp.in:
+    description: PBE zinc dimer with ECP and RI
+    keywords: [DFT, ECP]
+    checks:
+    -   SCF Total Energy:
+            reference: -454.2107706479
+            tolerance: 0.0005
+    -   gKS HOMO energy:
+            reference: -5.216078
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -1.700107
+            tolerance: 0.0001
+ne_psp6.in:
+    description: LDA Ne atom with numerical pseudo in ABINIT psp6 format
+    keywords: [DFT, ECP]
+    checks:
+    -   SCF Total Energy:
+            reference: -34.4029673176
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -13.530724
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.936774
+            tolerance: 0.0001
+ne_psp8.in:
+    description: LDA Ne atom with numerical pseudo in ONCVPSP psp8 format
+    keywords: [DFT, ECP]
+    checks:
+    -   SCF Total Energy:
+            reference: -33.3866795065
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -13.532263
+            tolerance: 0.0001
+ar_psp8.in:
+    description: LDA Ar atom with numerical pseudo in ONCVPSP psp8 format with NLCC
+    keywords: [DFT, ECP, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -22.5456669541
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -10.493177
+            tolerance: 0.0001
+ar_pbe_psp8.in:
+    description: PBE Ar atom with numerical pseudo in ONCVPSP psp8 format with NLCC
+    keywords: [DFT, ECP, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -22.5673330538
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -10.341776
+            tolerance: 0.0001
+ne_gth.in:
+    description: BLYP Ne atom with analytical pseudo in GTH formalism
+    keywords: [DFT, ECP]
+    requirements:
+    - HAVE_LIBCINT
+    checks:
+    -   SCF Total Energy:
+            reference: -34.9153582541
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -13.008824
+            tolerance: 0.001
+h2o_scalapack.in:
+    description: H2O molecule within PBE0 with possibly SCALAPACK
+    keywords: [hybrid]
+    checks:
+    -   gKS HOMO energy:
+            reference: -9.039335
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -0.359596
+            tolerance: 0.0001
+    -   Hartree Energy:
+            reference: 46.6386768738
+            tolerance: 5.0e-07
+    -   Exchange Energy:
+            reference: -2.2284166998
+            tolerance: 1.0e-07
+    -   XC Energy:
+            reference: -7.0110900711
+            tolerance: 1.0e-07
+    -   Total Energy:
+            reference: -76.3812141506
+            tolerance: 1.0e-07
+    -   Dipole (a.u.):
+            reference: -0.738914
+            tolerance: 0.0001
+            column: 2
+benzene_filtered.in:
+    description: HF benzene with RI having a filtered 2-center ERI with 3-center parallelization and batches
+    keywords: [HF]
+    checks:
+    -   Hartree Energy:
+            reference: 312.6277067326
+            tolerance: 1.0e-07
+    -   SCF Total Energy:
+            reference: -230.624208112
+            tolerance: 1.0e-07
+n2o_hse06.in:
+    description: range-separated hybrid function for N2O without RI with cartesian gaussian
+    keywords: [noRI, range-separated]
+    checks:
+    -   SCF Total Energy:
+            reference: -184.3896918122
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -4.9713001171
+            tolerance: 1.0e-07
+    -   XC Energy:
+            reference: -17.1161140356
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -9.249028
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -1.009892
+            tolerance: 0.0001
+    -   Dipole (a.u.):
+            reference: -0.085879
+            tolerance: 0.0001
+methanol_hf.in:
+    description: methanol within HF
+    keywords: [HF]
+    checks:
+    -   gKS HOMO energy:
+            reference: -12.220058
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 0.952608
+            tolerance: 0.0001
+    -   Nucleus-Nucleus:
+            reference: 40.2672693143
+            tolerance: 1.0e-07
+    -   Kinetic Energy:
+            reference: 114.8545334406
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -351.5356046432
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 96.1858385911
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -14.8334416451
+            tolerance: 1.0e-07
+    -   Total Energy:
+            reference: -115.0614049423
+            tolerance: 1.0e-07
+methanol_uks.in:
+    description: methanol with UKS
+    keywords: [hybrid, spin-unrestricted]
+    checks:
+    -   gKS HOMO energy:
+            reference: -7.661792
+            tolerance: 0.0001
+    -   gKS HOMO energy:
+            reference: -7.661792
+            tolerance: 0.0001
+            column: 1
+    -   gKS LUMO energy:
+            reference: -0.414295
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -0.414295
+            tolerance: 0.0001
+            column: 1
+    -   Kinetic Energy:
+            reference: 114.966021633
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -351.745956476
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 96.2670765071
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -2.9606225006
+            tolerance: 1.0e-07
+    -   XC Energy:
+            reference: -12.5371878224
+            tolerance: 1.0e-07
+    -   Total Energy:
+            reference: -115.7433993446
+            tolerance: 1.0e-07
+    -   Hartree  HOMO expectation:
+            reference: 250.895321
+            tolerance: 0.0001
+    -   Hartree  HOMO expectation:
+            reference: 250.895321
+            tolerance: 0.0001
+            column: 1
+    -   Exchange HOMO expectation:
+            reference: -24.840082
+            tolerance: 0.0001
+    -   Exchange HOMO expectation:
+            reference: -24.840082
+            tolerance: 0.0001
+            column: 1
+beh2_complex_hf.in:
+    description: HF with complex orbitals
+    keywords: [HF]
+    checks:
+    -   SCF Total Energy:
+            reference: -15.5379349891
+            tolerance: 1.0e-05
+he2_x2c.in:
+    description: PBE He2 atom cc-pVDZ relativistic X2C
+    keywords: [DFT, spin-unrestricted]
+    checks:
+    -   Rel Hcore Energy:
+            reference: -10.4713708712
+            tolerance: 1.0e-07
+    -   XC Energy:
+            reference: -2.1190696847
+            tolerance: 1.0e-05
+    -   SCF Total Energy:
+            reference: -5.7625306723
+            tolerance: 1.0e-05
+he2_x2c_hf.in:
+    description: HF He2 atom cc-pVDZ relativistic X2C
+    keywords: [HF, spin-unrestricted]
+    checks:
+    -   Rel Hcore Energy:
+            reference: -10.4713708712
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -23.632001
+            tolerance: 0.0001
+    -   gKS HOMO energy:
+            reference: -23.632001
+            tolerance: 0.0001
+            column: 1
+    -   gKS LUMO energy:
+            reference: 35.98324
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 35.98324
+            tolerance: 0.0001
+            column: 1
+    -   Exchange Energy:
+            reference: -2.0649086895
+            tolerance: 1.0e-05
+    -   SCF Total Energy:
+            reference: -5.7026836978
+            tolerance: 1.0e-05
+he2_x2c_cam_b3lyp.in:
+    description: CAM-B3LYP He2 atom cc-pVDZ relativistic X2C
+    keywords: [range-separated, spin-unrestricted]
+    checks:
+    -   Rel Hcore Energy:
+            reference: -10.4713708712
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -18.456549
+            tolerance: 0.0001
+    -   gKS HOMO energy:
+            reference: -18.456549
+            tolerance: 0.0001
+            column: 1
+    -   gKS LUMO energy:
+            reference: 30.285552
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 30.285552
+            tolerance: 0.0001
+            column: 1
+    -   Exchange Energy:
+            reference: -0.7085396751
+            tolerance: 1.0e-05
+    -   XC Energy:
+            reference: -1.4272352536
+            tolerance: 1.0e-05
+    -   SCF Total Energy:
+            reference: -5.7805567603
+            tolerance: 1.0e-05
+he2_x2c_rsx_qidh.in:
+    description: RSX-QIDH He2 atom cc-pVDZ relativistic X2C
+    keywords: [MP2, double-hybrid, range-separated, spin-unrestricted]
+    checks:
+    -   Rel Hcore Energy:
+            reference: -10.4713708712
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -22.1766
+            tolerance: 0.0001
+    -   gKS HOMO energy:
+            reference: -22.1766
+            tolerance: 0.0001
+            column: 1
+    -   gKS LUMO energy:
+            reference: 34.279314
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 34.279314
+            tolerance: 0.0001
+            column: 1
+    -   Exchange Energy:
+            reference: -1.6046100361
+            tolerance: 1.0e-05
+    -   XC Energy:
+            reference: -0.4829208853
+            tolerance: 1.0e-05
+    -   SCF Total Energy:
+            reference: -5.7316204455
+            tolerance: 1.0e-05
+    -   MP2 Total Energy:
+            reference: -5.7497555559
+            tolerance: 1.0e-05
+he_tdpbe0.in:
+    description: TDDFT calculation of He atom with PBE0 without RI
+    keywords: [LR-TDDFT, hybrid, noRI]
+    no_parallel: true
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8945155987
+            tolerance: 1.0e-07
+    -   Exc. 0001:
+            reference: 32.27823228
+            tolerance: 0.0001
+    -   Exc. 0001:
+            reference: 0.0
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0002:
+            reference: 50.929434
+            tolerance: 0.0001
+    -   Exc. 0002:
+            reference: 0.76144839
+            tolerance: 0.0001
+            column: 1
+    -   Sum over oscillator strengths:
+            reference: 2.285259
+            tolerance: 0.0001
+    -   Mean excitation energy:
+            reference: 50.958526
+            tolerance: 0.0001
+    -   polarizability trace:
+            reference: 0.652132
+            tolerance: 0.0001
+he_tdpbe0_ri.in:
+    description: TDDFT calculation of He atom with PBE0 with RI
+    keywords: [LR-TDDFT, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8945750464
+            tolerance: 1.0e-07
+    -   Exc. 0001:
+            reference: 32.27007245
+            tolerance: 0.0001
+    -   Exc. 0001:
+            reference: 0.0
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0002:
+            reference: 50.93742103
+            tolerance: 0.0001
+    -   Exc. 0002:
+            reference: 0.76155796
+            tolerance: 0.0001
+            column: 1
+    -   Sum over oscillator strengths:
+            reference: 2.285574
+            tolerance: 0.0001
+    -   Mean excitation energy:
+            reference: 50.966087
+            tolerance: 0.0001
+    -   polarizability trace:
+            reference: 0.652021
+            tolerance: 0.0001
+n2_mp2.in:
+    description: 2nd order self-energy of N2 with no RI
+    keywords: [MP2, hybrid, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -109.4082002996
+            tolerance: 1.0e-07
+    -   PT2 HOMO energy:
+            reference: -12.354501
+            tolerance: 0.0001
+    -   PT2 LUMO energy:
+            reference: 3.639478
+            tolerance: 0.0001
+    -   PT2 HOMO-LUMO gap:
+            reference: 15.993987
+            tolerance: 0.0001
+    -   MP2 Energy:
+            reference: -0.4798462582
+            tolerance: 1.0e-07
+    -   MP2 Total Energy:
+            reference: -109.4192739002
+            tolerance: 1.0e-07
+n2_mp2_ri.in:
+    description: 2nd order self-energy of N2 with RI using MPI poorman
+    keywords: [HF, MP2]
+    checks:
+    -   SCF Total Energy:
+            reference: -108.9743823838
+            tolerance: 1.0e-07
+    -   PT2 HOMO energy:
+            reference: -14.987897
+            tolerance: 0.0001
+    -   PT2 LUMO energy:
+            reference: 2.755544
+            tolerance: 0.0001
+    -   PT2 HOMO-LUMO gap:
+            reference: 17.74344
+            tolerance: 0.0001
+    -   MP2 Energy:
+            reference: -0.4080027465
+            tolerance: 1.0e-07
+    -   MP2 Total Energy:
+            reference: -109.3823851303
+            tolerance: 1.0e-07
+h2o_pbe_rpa.in:
+    description: RPA at PBE
+    keywords: [DFT, RPA]
+    checks:
+    -   RPA Total Energy:
+            reference: -76.3318887813
+            tolerance: 1.0e-07
+h2o_pbe_rpap.in:
+    description: RPA+ at PBE
+    keywords: [DFT, RPA]
+    checks:
+    -   RPA+ Total Energy:
+            reference: -76.138598608
+            tolerance: 1.0e-07
+h2o_lc_blyp.in:
+    description: RPA at LC-BLYP range-sep hybrid functional with RI
+    keywords: [RPA, range-separated]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.3121689564
+            tolerance: 1.0e-07
+    -   RPA Total Energy:
+            reference: -76.37717843
+            tolerance: 1.0e-07
+h2o_b2plyp.in:
+    description: B2PLYP double hybrid functional with RI
+    keywords: [MP2, double-hybrid]
+    checks:
+    -   MP2 Energy:
+            reference: -0.0812625983
+            tolerance: 1.0e-07
+    -   MP2 Total Energy:
+            reference: -76.4074345014
+            tolerance: 1.0e-07
+h2o_pbeqidh.in:
+    description: PBE-QIDH double hybrid functional with RI
+    keywords: [MP2, double-hybrid]
+    checks:
+    -   MP2 Energy:
+            reference: -0.093613877
+            tolerance: 1.0e-07
+    -   MP2 Total Energy:
+            reference: -76.3666106951
+            tolerance: 1.0e-07
+h2o_rsxqidh.in:
+    description: RSX-QIDH double hybrid functional with RI
+    keywords: [MP2, double-hybrid, range-separated]
+    checks:
+    -   MP2 Energy:
+            reference: -0.0896689601
+            tolerance: 1.0e-07
+    -   MP2 Total Energy:
+            reference: -76.3286588826
+            tolerance: 1.0e-07
+h2o_pbe0_dh.in:
+    description: PBE0-DH double hybrid functional with RI
+    keywords: [MP2, double-hybrid]
+    checks:
+    -   MP2 Energy:
+            reference: -0.0377521092
+            tolerance: 1.0e-07
+    -   MP2 Total Energy:
+            reference: -76.3764848105
+            tolerance: 1.0e-07
+h2o_pbeqidh_rpap.in:
+    description: PBE-QIDH-RPA+ double hybrid functional
+    keywords: [RPA, double-hybrid]
+    checks:
+    -   RPA+ Total Energy:
+            reference: -76.2594859892
+            tolerance: 1.0e-07
+h2o_pbeqidh_rpap_im.in:
+    description: PBE-QIDH-RPA+ double hybrid functional with RI and imag omegas
+    keywords: [RPA, double-hybrid]
+    checks:
+    -   RPA+ Total Energy:
+            reference: -76.2594859892
+            tolerance: 1.0e-07
+boron_gw_spinpolarized.in:
+    description: GW@HF boron atom without RI with spin
+    keywords: [GW, HF, noRI, spin-unrestricted]
+    no_parallel: true
+    checks:
+    -   Hartree Energy:
+            reference: 11.6084909105
+            tolerance: 1.0e-07
+    -   Total Energy:
+            reference: -24.5299616244
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -8.582101
+            tolerance: 0.0001
+    -   gKS HOMO energy:
+            reference: -12.136214
+            tolerance: 0.0001
+            column: 1
+    -   gKS LUMO energy:
+            reference: 1.465785
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.834198
+            tolerance: 0.0001
+            column: 1
+    -   Total Spin S**2:
+            reference: 0.7575
+            tolerance: 0.001
+    -   RPA correlation energy:
+            reference: -0.0608555452
+            tolerance: 1.0e-07
+    -   Lowest neutral excitation:
+            reference: 10.503027
+            tolerance: 0.0001
+    -   GW HOMO energy:
+            reference: -8.289499
+            tolerance: 0.0001
+    -   GW HOMO energy:
+            reference: -12.668274
+            tolerance: 0.0001
+            column: 1
+    -   GW LUMO energy:
+            reference: 0.872077
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 1.238943
+            tolerance: 0.0001
+            column: 1
+h2_even_tempered.in:
+    description: GW@HF on H2 molecules (even-tempered basis)
+    keywords: [GW, HF]
+    checks:
+    -   SCF Total Energy:
+            reference: -1.1307346964
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -15.702396
+            tolerance: 0.0001
+    -   GW HOMO energy:
+            reference: -16.036617
+            tolerance: 0.0001
+co2.in:
+    description: GW@LDA CO2 without RI with 6-31G
+    keywords: [DFT, GW, noRI]
+    no_parallel: true
+    checks:
+    -   Kinetic Energy:
+            reference: 186.4258076613
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -548.2550188543
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 142.7897017889
+            tolerance: 1.0e-07
+    -   Lowest neutral excitation:
+            reference: 2.531059
+            tolerance: 0.0001
+    -   RPA Total energy:
+            reference: -187.8892338918
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -11.039136
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: -1.357914
+            tolerance: 0.0001
+n2_lcwpbe.in:
+    description: GW@LC-wPBE with RI
+    keywords: [GW, range-separated]
+    checks:
+    -   Total Energy:
+            reference: -109.4784567421
+            tolerance: 1.0e-07
+    -   RPA Total energy:
+            reference: -109.4737102418
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -15.895624
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 2.153744
+            tolerance: 0.0001
+cdo_ecp_gw.in:
+    description: CdO- (ECP) within GW@PBE0 with level shifting
+    keywords: [ECP, GW, hybrid, spin-unrestricted]
+    checks:
+    -   SCF Total Energy:
+            reference: -242.8403302221
+            tolerance: 0.0005
+    -   RPA correlation energy:
+            reference: -0.9666472866
+            tolerance: 1.0e-05
+    -   GW HOMO energy:
+            reference: -1.787172
+            tolerance: 0.0001
+    -   GW HOMO energy:
+            reference: -1.350967
+            tolerance: 0.0005
+            column: 1
+    -   GW LUMO energy:
+            reference: 3.687306
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 3.689422
+            tolerance: 0.0001
+            column: 1
+sih4_dftcore.in:
+    description: GW@PBE0 with DFT core-valence interaction
+    keywords: [GW, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -291.7541352166
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -12.305926
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 4.000047
+            tolerance: 0.0001
+ar_camb3lyp_gw.in:
+    description: Range-separated hybrid argon atom with 6-31*G+ and G0W0
+    keywords: [GW, range-separated]
+    checks:
+    -   SCF Total Energy:
+            reference: -527.5394815512
+            tolerance: 1.0e-07
+    -   gKS HOMO-LUMO gap:
+            reference: 15.378169
+            tolerance: 0.0001
+    -   1/2 Tr[ Sig_c * G ]:
+            reference: -0.3335895161
+            tolerance: 1.0e-07
+    -   Lowest neutral excitation:
+            reference: 15.692205
+            tolerance: 0.0001
+    -   RPA Total energy:
+            reference: -526.9633301175
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -15.012653
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 3.143477
+            tolerance: 0.0001
+h2_pbe_gw.in:
+    description: PBE H2 molecule cc-pVDZ and G0W0 wo RI
+    keywords: [DFT, GW, noRI]
+    no_parallel: true
+    checks:
+    -   SCF Total Energy:
+            reference: -1.0727602939
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -8.191536
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -2.674684
+            tolerance: 0.0001
+    -   RPA correlation energy:
+            reference: -0.0838669374
+            tolerance: 1.0e-07
+    -   Lowest neutral excitation:
+            reference: 9.996355
+            tolerance: 0.0001
+    -   Total EXX Energy:
+            reference: -1.0186704037
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -12.857222
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 1.474561
+            tolerance: 0.0001
+h2_hse06_overlap_gw.in:
+    description: HSE06 H2 molecule aug-cc-pVDZ and G0W0 with a filtered overlap
+    keywords: [GW, range-separated]
+    checks:
+    -   Exchange Energy:
+            reference: -0.1340583009
+            tolerance: 1.0e-07
+    -   XC Energy:
+            reference: -0.5589344847
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -11.541033
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 0.507931
+            tolerance: 0.0001
+    -   GW HOMO energy:
+            reference: -15.804859
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 1.785876
+            tolerance: 0.0001
+h2_rsh_overlap_ci.in:
+    description: RSH recipe for HSE08 H2 molecule no RI and CI with a filtered overlap
+    keywords: [CI, noRI, range-separated]
+    requirements:
+    - HAVE_SCALAPACK
+    checks:
+    -   Exchange Energy:
+            reference: -0.1340776991
+            tolerance: 1.0e-07
+    -   XC Energy:
+            reference: -0.5585487906
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -11.534702
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 0.508373
+            tolerance: 0.0001
+    -   CI ground-state energy:
+            reference: -1.1645948686
+            tolerance: 1.0e-07
+    -   CI 1st excited-state energy:
+            reference: -0.7782051515
+            tolerance: 1.0e-07
+    -   CI 2nd excited-state energy:
+            reference: -0.7076536165
+            tolerance: 1.0e-07
+    -   CI 3rd excited-state energy:
+            reference: -0.6991862094
+            tolerance: 1.0e-07
+    -   CI 4th excited-state energy:
+            reference: -0.6832271665
+            tolerance: 1.0e-07
+be_qsgw.in:
+    description: QSGW Be atom cc-pVDZ without RI
+    keywords: [GW]
+    no_parallel: true
+    checks:
+    -   RPA Total energy:
+            reference: -14.6144623635
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -8.944298
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.283104
+            tolerance: 0.0001
+be_qsgw_ri.in:
+    description: QSGW Be atom cc-pVDZ with RI
+    keywords: [GW]
+    checks:
+    -   RPA Total energy:
+            reference: -14.6146048917
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -8.944487
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.282521
+            tolerance: 0.0001
+be_qspt2.in:
+    description: QSPT2 Be atom cc-pVDZ without RI
+    keywords: [GW, MP2]
+    checks:
+    -   MP2 Total Energy:
+            reference: -14.5995945786
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -8.81769
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.204203
+            tolerance: 0.0001
+be_qspt2_ri.in:
+    description: QSPT2 Be atom cc-pVDZ with RI
+    keywords: [GW, MP2]
+    checks:
+    -   MP2 Total Energy:
+            reference: -14.59973719
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -8.817876
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.203606
+            tolerance: 0.0001
+be_cohsex_ri.in:
+    description: perturbative COHSEX Be atom cc-pVDZ with RI
+    keywords: [GW, hybrid]
+    checks:
+    -   gKS HOMO energy:
+            reference: -6.512318
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -1.162004
+            tolerance: 0.0001
+    -   COHSEX HOMO energy:
+            reference: -10.349276
+            tolerance: 0.0001
+    -   COHSEX LUMO energy:
+            reference: 0.829051
+            tolerance: 0.0001
+be_sc-cohsex_nori.in:
+    description: self-consistent COHSEX Be atom cc-pVDZ without RI
+    keywords: [GW, noRI]
+    no_parallel: true
+    checks:
+    -   gKS HOMO energy:
+            reference: -9.681301
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.13429
+            tolerance: 0.0001
+be_sc-cohsex_ri.in:
+    description: self-consistent COHSEX Be atom cc-pVDZ with RI
+    keywords: [GW]
+    checks:
+    -   gKS HOMO energy:
+            reference: -9.681476
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.133775
+            tolerance: 0.0001
+h2_mp2.in:
+    description: MP2 energy of H2 molecule aug-cc-pVDZ (spin-unrestricted)
+    keywords: [HF, MP2, noRI, spin-unrestricted]
+    checks:
+    -   SCF Total Energy:
+            reference: -1.0224203713
+            tolerance: 1.0e-07
+    -   Total Spin S**2:
+            reference: 0.0
+            tolerance: 0.001
+    -   MP2 Total Energy:
+            reference: -1.0578154072
+            tolerance: 1.0e-07
+h2_mp2_ri.in:
+    description: MP2 energy of H2 molecule with RI and ferromagnetic configuration
+    keywords: [DFT, MP2, spin-unrestricted]
+    checks:
+    -   SCF Total Energy:
+            reference: -0.956140856
+            tolerance: 1.0e-07
+    -   Total Spin S**2:
+            reference: 2.0
+            tolerance: 0.001
+    -   2-ring diagram:
+            reference: -0.0373333132
+            tolerance: 1.0e-07
+    -   SOX diagram:
+            reference: 0.037329316
+            tolerance: 1.0e-07
+h2_noft.in:
+    description: RI-NOFT calculation applied to dissociated H2 with RI
+    keywords: [HF, NOFT]
+    checks:
+    -   NOFT Total Energy:
+            reference: -0.9985575214
+            tolerance: 1.0e-05
+h2_noft_restart.in:
+    description: RI-NOFT calculation applied to dissociated H2 with RI using restart
+    keywords: [HF, NOFT]
+    checks:
+    -   NOFT Total Energy:
+            reference: -0.999619835
+            tolerance: 1.0e-05
+h2_noft_rsh.in:
+    description: RI-NOFT calculation applied to H2 with RI using range-sep NOFT
+    keywords: [NOFT, range-separated, spin-unrestricted]
+    checks:
+    -   NOFT Total Energy:
+            reference: -0.9973489203
+            tolerance: 1.0e-05
+n2_noft.in:
+    description: RI-NOFT calculation applied to dissociated N2 with RI
+    keywords: [HF, NOFT]
+    checks:
+    -   NOFT Total Energy:
+            reference: -108.7663308357
+            tolerance: 5.0e-05
+n2_noft_cpx.in:
+    description: RI-NOFT calculation applied to N2 with RI (complex orbs)
+    keywords: [HF, NOFT]
+    no_parallel: true
+    checks:
+    -   NOFT Total Energy:
+            reference: -108.9393597626
+            tolerance: 5.0e-05
+n2_noft_rsh.in:
+    description: RI-NOFT calculation applied to N2 with RI using range-sep NOFT
+    keywords: [NOFT, range-separated, spin-unrestricted]
+    checks:
+    -   NOFT Total Energy:
+            reference: -109.3365081665
+            tolerance: 1.0e-05
+lih_pccd.in:
+    description: RI-pCCD calculation applied to dissociated LiH
+    keywords: [HF, NOFT]
+    checks:
+    -   NOFT Total Energy:
+            reference: -7.9317651039
+            tolerance: 5.0e-05
+lih_bogoliubov.in:
+    description: RI-HF-Bogoliubov calculation applied to dissociated LiH
+    keywords: [HF]
+    checks:
+    -   Anomal   Energy:
+            reference: -0.0929300372
+            tolerance: 1.0e-05
+    -   Norm Anomalous:
+            reference: 1.7474607162
+            tolerance: 5.0e-05
+    -   Chemical potential:
+            reference: -0.1036959329
+            tolerance: 5.0e-05
+    -   SCF Total Energy:
+            reference: -7.8497595181
+            tolerance: 1.0e-05
+h2_ci.in:
+    description: Full CI for 2 electrons applied to H2
+    keywords: [CI, hybrid, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -1.1636125481
+            tolerance: 1.0e-07
+    -   Configurations:
+            reference: 324.0
+            tolerance: 1.0e-07
+    -   Uncorrelated energy:
+            reference: -1.1285529195
+            tolerance: 1.0e-07
+    -   Correlation energy:
+            reference: -0.0360548711
+            tolerance: 1.0e-07
+    -   CI ground-state energy:
+            reference: -1.1646077906
+            tolerance: 1.0e-07
+    -   CI 1st excited-state energy:
+            reference: -0.778401318
+            tolerance: 1.0e-07
+    -   CI 2nd excited-state energy:
+            reference: -0.7076718213
+            tolerance: 1.0e-07
+    -   CI 3rd excited-state energy:
+            reference: -0.6995673544
+            tolerance: 1.0e-07
+    -   CI 4th excited-state energy:
+            reference: -0.6832390122
+            tolerance: 1.0e-07
+h2_ci_ri.in:
+    description: Full CI for 2 electrons applied to H2 with RI
+    keywords: [CI, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -1.1636322091
+            tolerance: 1.0e-07
+    -   Uncorrelated energy:
+            reference: -1.1285642532
+            tolerance: 1.0e-07
+    -   CI ground-state energy:
+            reference: -1.1646360042
+            tolerance: 1.0e-07
+    -   CI 1st excited-state energy:
+            reference: -0.7784041102
+            tolerance: 1.0e-07
+    -   CI 2nd excited-state energy:
+            reference: -0.7076928929
+            tolerance: 1.0e-07
+    -   CI 3rd excited-state energy:
+            reference: -0.6995866795
+            tolerance: 1.0e-07
+    -   CI 4th excited-state energy:
+            reference: -0.6832892656
+            tolerance: 1.0e-07
+sih4_hf.in:
+    description: TDHF SiH4 aug-cc-pVDZ
+    keywords: [HF, LR-TDDFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -291.2427972343
+            tolerance: 1.0e-07
+    -   Exc. 0001:
+            reference: 9.81657258
+            tolerance: 0.0001
+    -   Exc. 0001:
+            reference: 0.21703439
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0010:
+            reference: 11.17712689
+            tolerance: 0.0001
+    -   Exc. 0010:
+            reference: 0.39234144
+            tolerance: 0.0001
+            column: 1
+    -   Sum over oscillator strengths:
+            reference: 7.866846
+            tolerance: 0.0001
+    -   polarizability trace:
+            reference: 30.035246
+            tolerance: 0.0001
+    -   Mean excitation energy:
+            reference: 15.838736
+            tolerance: 0.0001
+sih4_hf_tda.in:
+    description: TDHF SiH4 aug-cc-pVDZ with TDA restarting from previous run
+    keywords: [HF, LR-TDDFT]
+    dependence:
+    - sih4_hf.in
+    checks:
+    -   Exc. 0001:
+            reference: 9.82654263
+            tolerance: 0.0001
+    -   Exc. 0001:
+            reference: 0.22685574
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0010:
+            reference: 11.2463169
+            tolerance: 0.0001
+    -   Exc. 0010:
+            reference: 0.40996808
+            tolerance: 0.0001
+            column: 1
+c2h4_b3lyp_triplet.in:
+    description: TDDFT with B3LYP for triplet final state
+    keywords: [LR-TDDFT, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -78.5912034336
+            tolerance: 1.0e-07
+    -   Exc. 0001:
+            reference: 4.07380649
+            tolerance: 0.0001
+    -   Exc. 0001:
+            reference: 0.0
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0002:
+            reference: 7.64527152
+            tolerance: 0.0001
+    -   Exc. 0002:
+            reference: 0.0
+            tolerance: 0.0001
+            column: 1
+c2h4_cam-b3lyp_singlet.in:
+    description: TDDFT with CAM-B3LYP for singlet final state
+    keywords: [LR-TDDFT, range-separated]
+    checks:
+    -   SCF Total Energy:
+            reference: -78.5350405329
+            tolerance: 1.0e-07
+    -   Exc. 0001:
+            reference: 8.08483674
+            tolerance: 0.0001
+    -   Exc. 0001:
+            reference: 0.38241977
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0002:
+            reference: 8.33159784
+            tolerance: 0.0001
+    -   Exc. 0002:
+            reference: 0.0
+            tolerance: 0.0001
+            column: 1
+ch4_bse_scissor.in:
+    description: BSE CH4 aug-cc-pVDZ without GW (scissor)
+    keywords: [BSE, hybrid]
+    checks:
+    -   XC Energy:
+            reference: -3.5802787452
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -12.451955
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 0.291176
+            tolerance: 0.0001
+    -   Scissor operator:
+            reference: 1.360569
+            tolerance: 0.0001
+    -   Exc. 0001:
+            reference: 9.05385518
+            tolerance: 0.0001
+    -   Exc. 0001:
+            reference: 0.1328944
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0007:
+            reference: 10.69387268
+            tolerance: 0.0001
+    -   Exc. 0007:
+            reference: 1.0e-08
+            tolerance: 0.0001
+            column: 1
+    -   Sum over oscillator strengths:
+            reference: 4.642395
+            tolerance: 0.0001
+    -   polarizability trace:
+            reference: 17.627303
+            tolerance: 0.0001
+    -   Mean excitation energy:
+            reference: 14.812805
+            tolerance: 0.0001
+ch2o_gw_wori.in:
+    description: GW@LDA wo RI on formaldehyde to prepare BSE
+    keywords: [DFT, GW, noRI]
+    no_parallel: true
+    checks:
+    -   SCF Total Energy:
+            reference: -113.5803830624
+            tolerance: 1.0e-07
+    -   RPA Total energy:
+            reference: -114.3099788424
+            tolerance: 0.0001
+    -   GW HOMO energy:
+            reference: -9.641505
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 2.436318
+            tolerance: 0.0001
+ch2o_bse_wori.in:
+    description: GW@LDA wo RI on formaldehyde using previous run
+    keywords: [BSE, DFT, noRI]
+    dependence:
+    - ch2o_gw_wori.in
+    no_parallel: true
+    checks:
+    -   Lowest neutral excitation:
+            reference: 3.063375
+            tolerance: 0.0001
+    -   '0002 :':
+            reference: 8.14022514
+            tolerance: 0.0001
+    -   '0002 :':
+            reference: 0.00223728
+            tolerance: 0.0001
+            column: 1
+    -   '0003 :':
+            reference: 8.50475677
+            tolerance: 0.0001
+    -   '0003 :':
+            reference: 0.13726421
+            tolerance: 0.0001
+            column: 1
+    -   Sum over oscillator strengths:
+            reference: 11.598793
+            tolerance: 0.0001
+    -   polarizability trace:
+            reference: 13.362175
+            tolerance: 0.0001
+ch2o_gw.in:
+    description: GW@B3LYP on formaldehyde to prepare BSE
+    keywords: [GW, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -114.5110479343
+            tolerance: 1.0e-07
+    -   1/2 Tr[ Sig_c * G ]:
+            reference: -0.7854236777
+            tolerance: 1.0e-07
+    -   RPA Total energy:
+            reference: -114.3237167485
+            tolerance: 0.0001
+    -   GW HOMO energy:
+            reference: -9.921426
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 2.494864
+            tolerance: 0.0001
+ch2o_bse.in:
+    description: BSE on formaldehyde
+    keywords: [BSE, hybrid]
+    dependence:
+    - ch2o_gw.in
+    checks:
+    -   Lowest neutral excitation:
+            reference: 3.389151
+            tolerance: 0.0001
+    -   Lowest bare excitation:
+            reference: 12.492477
+            tolerance: 0.0001
+    -   '0002 :':
+            reference: 7.92628881
+            tolerance: 0.0001
+    -   '0002 :':
+            reference: 0.11520374
+            tolerance: 0.0001
+            column: 1
+    -   Sum over oscillator strengths:
+            reference: 12.036833
+            tolerance: 0.0001
+    -   polarizability trace:
+            reference: 13.347008
+            tolerance: 0.0001
+ch2o_bse_nokernel.in:
+    description: BSE wo kernel on formaldehyde
+    keywords: [BSE, RPA, hybrid]
+    dependence:
+    - ch2o_bse.in
+    checks:
+    -   '0001 :':
+            reference: 13.0850093
+            tolerance: 0.0001
+    -   '0002 :':
+            reference: 15.00951006
+            tolerance: 0.0001
+    -   '0002 :':
+            reference: 0.166246754
+            tolerance: 0.0001
+            column: 1
+oh_m_gnwn.in:
+    description: GnWn (eigenvalue self-consistent) on OH- 1st iteration
+    keywords: [GW, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -75.7671834802
+            tolerance: 1.0e-07
+    -   G0W0 HOMO energy:
+            reference: -1.100134
+            tolerance: 0.0001
+    -   G0W0 LUMO energy:
+            reference: 5.328126
+            tolerance: 0.0001
+    -   G1W1 HOMO energy:
+            reference: -1.208873
+            tolerance: 0.0001
+    -   G1W1 LUMO energy:
+            reference: 5.33701
+            tolerance: 0.0001
+    -   G2W2 HOMO energy:
+            reference: -1.207707
+            tolerance: 0.0001
+    -   G2W2 LUMO energy:
+            reference: 5.336834
+            tolerance: 0.0001
+oh_0_gnw0.in:
+    description: GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 1st iteration
+    keywords: [GW, hybrid, spin-unrestricted]
+    checks:
+    -   Total Spin S**2:
+            reference: 0.7532
+            tolerance: 0.001
+    -   XC Energy:
+            reference: -4.5883907272
+            tolerance: 1.0e-07
+    -   SCF Total Energy:
+            reference: -75.7190424535
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -11.94197
+            tolerance: 0.0001
+    -   gKS HOMO energy:
+            reference: -11.070991
+            tolerance: 0.0001
+            column: 1
+    -   gKS LUMO energy:
+            reference: 0.060279
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -2.560124
+            tolerance: 0.0001
+            column: 1
+    -   G0W0 HOMO energy:
+            reference: -13.404668
+            tolerance: 0.0001
+    -   G0W0 HOMO energy:
+            reference: -12.46765
+            tolerance: 0.0001
+            column: 1
+    -   G0W0 LUMO energy:
+            reference: 0.964613
+            tolerance: 0.0001
+    -   G0W0 LUMO energy:
+            reference: -0.293379
+            tolerance: 0.0001
+            column: 1
+    -   G1W0 HOMO energy:
+            reference: -13.340412
+            tolerance: 0.0001
+    -   G1W0 HOMO energy:
+            reference: -12.400933
+            tolerance: 0.0001
+            column: 1
+    -   G1W0 LUMO energy:
+            reference: 0.964805
+            tolerance: 0.0001
+    -   G1W0 LUMO energy:
+            reference: -0.331161
+            tolerance: 0.0001
+            column: 1
+oh_m_1.in:
+    description: GnWn (eigenvalue self-consistent) on OH- 1st iteration
+    keywords: [GW, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -75.7671834802
+            tolerance: 1.0e-07
+    -   RPA correlation energy:
+            reference: -0.2924060323
+            tolerance: 1.0e-07
+    -   1/2 Tr[ Sig_c * G ]:
+            reference: -0.5031685208
+            tolerance: 1.0e-07
+    -   G0W0 HOMO energy:
+            reference: -1.100134
+            tolerance: 0.0001
+    -   G0W0 LUMO energy:
+            reference: 5.328126
+            tolerance: 0.0001
+oh_m_2.in:
+    description: GnWn (eigenvalue self-consistent) on OH- 2nd iteration
+    keywords: [GW, hybrid]
+    dependence:
+    - oh_m_1.in
+    checks:
+    -   1/2 Tr[ Sig_c * G ]:
+            reference: -0.4816111091
+            tolerance: 1.0e-07
+    -   RPA correlation energy:
+            reference: -0.2780353842
+            tolerance: 1.0e-07
+    -   G0W0 HOMO energy:
+            reference: -1.208873
+            tolerance: 0.0001
+    -   G0W0 LUMO energy:
+            reference: 5.33701
+            tolerance: 0.0001
+oh_m_3.in:
+    description: GnWn (eigenvalue self-consistent) on OH- 3rd iteration
+    keywords: [GW, hybrid]
+    dependence:
+    - oh_m_2.in
+    checks:
+    -   1/2 Tr[ Sig_c * G ]:
+            reference: -0.4785659835
+            tolerance: 1.0e-07
+    -   RPA correlation energy:
+            reference: -0.2760358773
+            tolerance: 1.0e-07
+    -   G0W0 HOMO energy:
+            reference: -1.207707
+            tolerance: 0.0001
+    -   G0W0 LUMO energy:
+            reference: 5.336834
+            tolerance: 0.0001
+oh_0_1.in:
+    description: GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 1st iteration
+    keywords: [GW, hybrid, spin-unrestricted]
+    checks:
+    -   Total Spin S**2:
+            reference: 0.7532
+            tolerance: 0.001
+    -   XC Energy:
+            reference: -4.5883907272
+            tolerance: 1.0e-07
+    -   SCF Total Energy:
+            reference: -75.7190424535
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -11.94197
+            tolerance: 0.0001
+    -   gKS HOMO energy:
+            reference: -11.070991
+            tolerance: 0.0001
+            column: 1
+    -   gKS LUMO energy:
+            reference: 0.060279
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -2.560124
+            tolerance: 0.0001
+            column: 1
+    -   RPA Total energy:
+            reference: -75.6295502398
+            tolerance: 1.0e-07
+    -   G0W0 HOMO energy:
+            reference: -13.404668
+            tolerance: 0.0001
+    -   G0W0 HOMO energy:
+            reference: -12.46765
+            tolerance: 0.0001
+            column: 1
+    -   G0W0 LUMO energy:
+            reference: 0.964613
+            tolerance: 0.0001
+    -   G0W0 LUMO energy:
+            reference: -0.293379
+            tolerance: 0.0001
+            column: 1
+oh_0_2.in:
+    description: GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 2nd iteration
+    keywords: [GW, hybrid, spin-unrestricted]
+    dependence:
+    - oh_0_1.in
+    checks:
+    -   G0W0 HOMO energy:
+            reference: -13.340412
+            tolerance: 0.0001
+    -   G0W0 HOMO energy:
+            reference: -12.400933
+            tolerance: 0.0001
+            column: 1
+    -   G0W0 LUMO energy:
+            reference: 0.964805
+            tolerance: 0.0001
+    -   G0W0 LUMO energy:
+            reference: -0.331161
+            tolerance: 0.0001
+            column: 1
+ethylene_davidson.in:
+    description: 'C2H4: BSE@HF for ethyelene with iterative Davidson diago'
+    keywords: [BSE, HF]
+    checks:
+    -   SCF Total Energy:
+            reference: -78.0413852386
+            tolerance: 1.0e-07
+    -   Exc. 0001:
+            reference: 9.69283827
+            tolerance: 0.0001
+    -   Exc. 0001:
+            reference: 0.49473918
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0002:
+            reference: 10.05948188
+            tolerance: 0.0001
+    -   Exc. 0002:
+            reference: 0.03083017
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0005:
+            reference: 11.25700794
+            tolerance: 0.0001
+    -   Exc. 0005:
+            reference: 0.0
+            tolerance: 0.0001
+            column: 1
+lih_gw+sosex.in:
+    description: 'LiH: GW+SOSEX@PBE0 with non-auxiliary basis parallelization (=mpi_poorman)'
+    keywords: [GW, hybrid, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -8.0512581571
+            tolerance: 1.0e-07
+    -   RPA correlation energy:
+            reference: -0.085482721
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -7.426968
+            tolerance: 0.0001
+    -   GW+SOSEX HOMO energy:
+            reference: -8.003938
+            tolerance: 0.0001
+lih_gw+sosex_nori.in:
+    description: 'LiH: GW+SOSEX@PBE0 without RI'
+    keywords: [GW, hybrid, noRI, vertex]
+    no_parallel: true
+    checks:
+    -   SCF Total Energy:
+            reference: -8.0461044345
+            tolerance: 1.0e-07
+    -   RPA correlation energy:
+            reference: -0.0363952366
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -7.038813
+            tolerance: 0.0001
+    -   GW+SOSEX HOMO energy:
+            reference: -7.702063
+            tolerance: 0.0001
+lih_gw+sosex_w_tdhf.in:
+    description: 'LiH: GW+SOSEX with TDHF screening'
+    keywords: [GW, HF, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -7.9836862051
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -7.24341
+            tolerance: 0.0001
+    -   GW+SOSEX HOMO energy:
+            reference: -7.332104
+            tolerance: 0.0001
+n2_gw+sosex.in:
+    description: 'N2: GW+SOSEX@BHLYP with frozencore and frozen virtual with mpi_poorman'
+    keywords: [GW, hybrid, spin-unrestricted, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -109.4724604609
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -13.734359
+            tolerance: 0.0001
+    -   gKS HOMO energy:
+            reference: -13.734359
+            tolerance: 0.0001
+            column: 1
+    -   gKS LUMO energy:
+            reference: 0.89961
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 0.89961
+            tolerance: 0.0001
+            column: 1
+    -   RPA correlation energy:
+            reference: -0.3765925757
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -14.590159
+            tolerance: 0.0001
+    -   GW HOMO energy:
+            reference: -14.590159
+            tolerance: 0.0001
+            column: 1
+    -   GW LUMO energy:
+            reference: 4.439916
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 4.439916
+            tolerance: 0.0001
+            column: 1
+    -   GW+SOSEX HOMO energy:
+            reference: -15.238221
+            tolerance: 0.0001
+    -   GW+SOSEX HOMO energy:
+            reference: -15.238221
+            tolerance: 0.0001
+            column: 1
+    -   GW+SOSEX LUMO energy:
+            reference: 4.607546
+            tolerance: 0.0001
+    -   GW+SOSEX LUMO energy:
+            reference: 4.607546
+            tolerance: 0.0001
+            column: 1
+ethene_p_tdhf.in:
+    description: 'C2H4+: TDHF with doublet configuration (spin unrestricted)'
+    keywords: [HF, LR-TDDFT, spin-unrestricted]
+    checks:
+    -   SCF Total Energy:
+            reference: -77.7149628447
+            tolerance: 1.0e-07
+    -   Exc. 0001:
+            reference: 3.83416085
+            tolerance: 0.0001
+    -   Exc. 0001:
+            reference: 0.0
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0002:
+            reference: 5.24071414
+            tolerance: 0.0001
+    -   Exc. 0002:
+            reference: 0.00164979
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0003:
+            reference: 6.2546605
+            tolerance: 0.0001
+    -   Exc. 0003:
+            reference: 0.21189336
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0004:
+            reference: 6.27559067
+            tolerance: 0.0001
+    -   Exc. 0004:
+            reference: 0.0
+            tolerance: 0.0001
+            column: 1
+h2o_gw_smallbasis.in:
+    description: 'H2O: GW@PBE0 using a small basis set for virtual orbitals'
+    keywords: [GW, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.3743156395
+            tolerance: 1.0e-07
+    -   GW small basis HOMO energy:
+            reference: -12.015516
+            tolerance: 0.0001
+    -   GW small basis LUMO energy:
+            reference: 3.579917
+            tolerance: 0.0001
+    -   GW HOMO energy:
+            reference: -11.927726
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 3.286831
+            tolerance: 0.0001
+h2o_gw_smallbasis_aug.in:
+    description: 'H2O: GW@PBE0 using a small basis set for virtual orbitals with diffuse functions'
+    keywords: [GW, hybrid]
+    no_parallel: true
+    checks:
+    -   SCF Total Energy:
+            reference: -76.3830840045
+            tolerance: 1.0e-07
+    -   Lowest neutral excitation:
+            reference: 8.913835
+            tolerance: 0.0001
+    -   GW small basis HOMO energy:
+            reference: -12.150542
+            tolerance: 0.0001
+    -   GW small basis LUMO energy:
+            reference: 0.843681
+            tolerance: 0.0001
+    -   GW HOMO energy:
+            reference: -12.322069
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 0.817942
+            tolerance: 0.0001
+h2_relax.in:
+    description: H2 forces without RI
+    keywords: [HF, noRI]
+    requirements:
+    - HAVE_FORCES
+    checks:
+    -   SCF Total Energy:
+            reference: -1.1313335905
+            tolerance: 1.0e-05
+    -   H-F force atom      1:
+            reference: 0.5090922298
+            tolerance: 0.001
+    -   H-F force atom      2:
+            reference: -0.5090922298
+            tolerance: 0.001
+    -   Pulay force atom    1:
+            reference: -0.5090885778
+            tolerance: 0.001
+    -   Pulay force atom    2:
+            reference: 0.5090885778
+            tolerance: 0.001
+    -   Total force atom    1:
+            reference: 3.652e-06
+            tolerance: 1.0e-06
+    -   Total force atom    2:
+            reference: -3.652e-06
+            tolerance: 1.0e-06
+    -   atom    1   H:
+            reference: -0.69218
+            tolerance: 0.001
+    -   atom    2   H:
+            reference: 0.69218
+            tolerance: 0.001
+h2o_gw_pade.in:
+    description: GW calculation with Pade analytic continuation
+    keywords: [GW, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.3797751143
+            tolerance: 1.0e-07
+    -   RPA correlation energy:
+            reference: -0.3839751863
+            tolerance: 1.0e-07
+    -   RPA Total energy:
+            reference: -76.4392995158
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -12.131041
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 0.883074
+            tolerance: 0.0001
+h2o_gw_polynomial.in:
+    description: GW calculation with polynomical continuation
+    keywords: [GW, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.3797751143
+            tolerance: 1.0e-07
+    -   RPA correlation energy:
+            reference: -0.3839751863
+            tolerance: 1.0e-07
+    -   RPA Total energy:
+            reference: -76.4392995158
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -12.175845
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 0.884386
+            tolerance: 0.0001
+h2o_gw_contour.in:
+    description: GW@HF calculation with contour deformation
+    keywords: [GW, HF]
+    no_parallel: true
+    checks:
+    -   SCF Total Energy:
+            reference: -76.0571524942
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -12.794522
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 3.450246
+            tolerance: 0.0001
+h2o_mp3.in:
+    description: MP3 total energy with RI
+    keywords: [HF, MP2]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.0262395455
+            tolerance: 1.0e-07
+    -   MP2 Energy:
+            reference: -0.202287033
+            tolerance: 1.0e-07
+    -   MP2 Total Energy:
+            reference: -76.2285265785
+            tolerance: 1.0e-07
+    -   MP3 Energy:
+            reference: -0.0069228191
+            tolerance: 1.0e-07
+    -   MP3 Total Energy:
+            reference: -76.2354493975
+            tolerance: 1.0e-07
+h2o_rt_tddft_hf_PC2B.in:
+    description: RT-TDDFT T=200.0 dt=0.5 PC="PC2B"
+    keywords: [HF, RT-TDDFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.0278711935
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -76.0278711836
+            tolerance: 1.0e-07
+    -   RT-TDDFT Dipole Moment:
+            reference: 7.79927e-05
+            tolerance: 1.0e-05
+    -   RT-TDDFT Dipole Moment:
+            reference: 2.0565916321
+            tolerance: 1.0e-05
+            column: 1
+    -   RT-TDDFT Dipole Moment:
+            reference: -0.0001037457
+            tolerance: 1.0e-05
+            column: 2
+h2o_rt_tddft_camb3lyp_PC2B.in:
+    description: RT-TDDFT T=60.0 with CAM-B3LYP
+    keywords: [RT-TDDFT, range-separated]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.3938220823
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -76.3937709023
+            tolerance: 1.0e-07
+    -   RT-TDDFT Dipole Moment:
+            reference: 0.0031844444
+            tolerance: 1.0e-05
+    -   RT-TDDFT Dipole Moment:
+            reference: 1.9421276421
+            tolerance: 1.0e-05
+            column: 1
+    -   RT-TDDFT Dipole Moment:
+            reference: 0.0104520959
+            tolerance: 1.0e-05
+            column: 2
+h2o_rt_tddft_hf_PC2B_TZ.in:
+    description: RT-TDDFT within cc-pVTZ T=200.0 dt=0.5 PC="PC2B"
+    keywords: [HF, RT-TDDFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.0571529836
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -76.0571529689
+            tolerance: 1.0e-07
+    -   RT-TDDFT Dipole Moment:
+            reference: 0.0001368162
+            tolerance: 1.0e-05
+    -   RT-TDDFT Dipole Moment:
+            reference: 2.0246334571
+            tolerance: 1.0e-05
+            column: 1
+    -   RT-TDDFT Dipole Moment:
+            reference: -0.0003241743
+            tolerance: 1.0e-05
+            column: 2
+h2o_rt_tddft_lda_PC2B.in:
+    description: RT-TDDFT T=20.0 dt=0.5 PC="PC2B"
+    keywords: [DFT, RT-TDDFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -75.8540895545
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -75.8540895309
+            tolerance: 1.0e-07
+    -   RT-TDDFT Dipole Moment:
+            reference: -0.0001846589
+            tolerance: 1.0e-07
+    -   RT-TDDFT Dipole Moment:
+            reference: 1.9474309646
+            tolerance: 1.0e-07
+            column: 1
+    -   RT-TDDFT Dipole Moment:
+            reference: 3.76516e-05
+            tolerance: 1.0e-07
+            column: 2
+h2o_rt_tddft_lda_PC2B_restart.in:
+    description: RT-TDDFT from RESTART_TDDFT (need previous run)
+    keywords: [DFT, RT-TDDFT]
+    dependence:
+    - h2o_rt_tddft_lda_PC2B.in
+    checks:
+    -   RT-TDDFT Total Energy:
+            reference: -75.8540895314
+            tolerance: 1.0e-07
+    -   RT-TDDFT Dipole Moment:
+            reference: 0.0001669089
+            tolerance: 1.0e-07
+    -   RT-TDDFT Dipole Moment:
+            reference: 1.9475062577
+            tolerance: 1.0e-07
+            column: 1
+    -   RT-TDDFT Dipole Moment:
+            reference: 0.000292278
+            tolerance: 1.0e-07
+            column: 2
+h2o_rt_tddft_h_projectile.in:
+    description: RT-TDDFT projectile without basis function PC="PC2B",tddft
+    keywords: [DFT, RT-TDDFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -75.8551200924
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -75.0285116443
+            tolerance: 1.0e-07
+h2o_rt_tddft_h_proj_pbe0.in:
+    description: RT-TDDFT proj without basis pbe0
+    keywords: [RT-TDDFT, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.3418386927
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -75.5745023928
+            tolerance: 1.0e-07
+h2o_rt_tddft_h_proj_pbe0_restart.in:
+    description: RT-TDDFT proj without basis pbe0 restart
+    keywords: [RT-TDDFT, hybrid]
+    dependence:
+    - h2o_rt_tddft_h_proj_pbe0.in
+    checks:
+    -   RT-TDDFT Total Energy:
+            reference: -75.509814864
+            tolerance: 1.0e-07
+h2o_rt_tddft_h_proj_temp_pbe0.in:
+    description: RT-TDDFT PBE0 with temperature,tddft
+    keywords: [RT-TDDFT, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.3191476781
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -75.5420266865
+            tolerance: 1.0e-07
+h2o_rt_tddft_h_proj_temp_pbe0_restart.in:
+    description: RT-TDDFT PBE0 with temperature restart
+    keywords: [RT-TDDFT, hybrid]
+    dependence:
+    - h2o_rt_tddft_h_proj_temp_pbe0.in
+    checks:
+    -   RT-TDDFT Total Energy:
+            reference: -75.4884909894
+            tolerance: 1.0e-07
+h2o_rt_tddft_h_proj_pbe0_TZ.in:
+    description: RT-TDDFT with projectile without basis within PBE0,tddft
+    keywords: [RT-TDDFT, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.3757991664
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -75.3811268142
+            tolerance: 1.0e-07
+h2o_rt_tddft_min_overlap.in:
+    description: proj wihtout basis nstate ne nbf,tddft
+    keywords: [DFT, RT-TDDFT]
+    checks:
+    -   RT-TDDFT Total Energy:
+            reference: -75.6302124982
+            tolerance: 1.0e-07
+be2_qsgw_bse.in:
+    description: BSE calculation after QSGW for Be2
+    keywords: [BSE, GW]
+    checks:
+    -   gKS HOMO energy:
+            reference: -8.818516
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 0.836309
+            tolerance: 0.0001
+    -   Exc. 0001:
+            reference: 5.02843848
+            tolerance: 0.0001
+    -   Exc. 0001:
+            reference: 0.87774973
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0002:
+            reference: 5.19744839
+            tolerance: 0.0001
+    -   Exc. 0002:
+            reference: 0.0
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0003:
+            reference: 5.19744839
+            tolerance: 0.0001
+    -   Exc. 0003:
+            reference: 0.0
+            tolerance: 0.0001
+            column: 1
+    -   Exc. 0004:
+            reference: 5.42103143
+            tolerance: 0.0001
+    -   Exc. 0004:
+            reference: 0.89322698
+            tolerance: 0.0001
+            column: 1
+be_ci.in:
+    description: CI calculation for boron atom (4e-)
+    keywords: [CI, HF, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -14.5667640335
+            tolerance: 1.0e-07
+    -   Uncorrelated energy:
+            reference: -14.5667640335
+            tolerance: 1.0e-07
+    -   Correlation energy:
+            reference: -0.0467812361
+            tolerance: 1.0e-07
+    -   CI ground-state energy:
+            reference: -14.6135452696
+            tolerance: 1.0e-07
+    -   CI 1st excited-state energy:
+            reference: -14.5083864183
+            tolerance: 1.0e-07
+    -   CI 2nd excited-state energy:
+            reference: -14.5083864183
+            tolerance: 1.0e-07
+    -   CI 3rd excited-state energy:
+            reference: -14.5083864183
+            tolerance: 1.0e-07
+    -   CI 4th excited-state energy:
+            reference: -14.3718323663
+            tolerance: 1.0e-07
+be_ci_davidson.in:
+    description: CI calculation for boron atom (Davidson diago)
+    keywords: [CI, HF, noRI]
+    requirements:
+    - HAVE_SCALAPACK
+    checks:
+    -   SCF Total Energy:
+            reference: -14.5667640335
+            tolerance: 1.0e-07
+    -   Uncorrelated energy:
+            reference: -14.5667640335
+            tolerance: 1.0e-07
+    -   Correlation energy:
+            reference: -0.0467812361
+            tolerance: 1.0e-07
+    -   CI ground-state energy:
+            reference: -14.6135452696
+            tolerance: 1.0e-07
+    -   CI 1st excited-state energy:
+            reference: -14.5083864183
+            tolerance: 1.0e-07
+    -   CI 2nd excited-state energy:
+            reference: -14.5083864183
+            tolerance: 1.0e-07
+    -   CI 3rd excited-state energy:
+            reference: -14.5083864183
+            tolerance: 1.0e-07
+    -   CI 4th excited-state energy:
+            reference: -14.3718323663
+            tolerance: 1.0e-07
+be_ci_nocore.in:
+    description: CI calculation for boron atom without exciting core electrons (2e-)
+    keywords: [CI, HF, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -14.572337631
+            tolerance: 1.0e-07
+    -   Uncorrelated energy:
+            reference: -14.572337631
+            tolerance: 1.0e-07
+    -   Correlation energy:
+            reference: -0.0440450204
+            tolerance: 1.0e-07
+    -   CI ground-state energy:
+            reference: -14.6163826513
+            tolerance: 1.0e-07
+    -   CI 1st excited-state energy:
+            reference: -14.5113958769
+            tolerance: 1.0e-07
+    -   CI 2nd excited-state energy:
+            reference: -14.5113958769
+            tolerance: 1.0e-07
+    -   CI 3rd excited-state energy:
+            reference: -14.5113958769
+            tolerance: 1.0e-07
+    -   CI 4th excited-state energy:
+            reference: -14.3852527351
+            tolerance: 1.0e-07
+be_ci_self.in:
+    description: CI Green's function for boron atom
+    keywords: [HF, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -14.4868202422
+            tolerance: 1.0e-07
+    -   Uncorrelated energy:
+            reference: -14.4154135368
+            tolerance: 1.0e-07
+    -   Correlation energy:
+            reference: -0.0232144105
+            tolerance: 1.0e-07
+    -   CI ground-state energy:
+            reference: -14.4386279473
+            tolerance: 1.0e-07
+    -   CI 1st excited-state energy:
+            reference: -14.4386279473
+            tolerance: 1.0e-07
+    -   CI 2nd excited-state energy:
+            reference: -14.4386279473
+            tolerance: 1.0e-07
+    -   -IP (eV) and Weight:
+            reference: -9.117419
+            tolerance: 0.0001
+    -   -IP (eV) and Weight:
+            reference: 0.928433
+            tolerance: 0.001
+            column: 1
+    -   -EA:
+            reference: 2.112603
+            tolerance: 0.0001
+li2_ci_self.in:
+    description: CI Green's function for Li2 limited to single and double excitations
+    keywords: [HF, noRI]
+    requirements:
+    - HAVE_SCALAPACK
+    checks:
+    -   SCF Total Energy:
+            reference: -14.86568634
+            tolerance: 1.0e-07
+    -   Uncorrelated energy:
+            reference: -14.6876451256
+            tolerance: 1.0e-07
+    -   Correlation energy:
+            reference: -0.0080314929
+            tolerance: 1.0e-07
+    -   CI ground-state energy:
+            reference: -14.6956766185
+            tolerance: 1.0e-07
+    -   CI 1st excited-state energy:
+            reference: -14.5566215438
+            tolerance: 1.0e-07
+    -   CI 2nd excited-state energy:
+            reference: -14.5566215438
+            tolerance: 1.0e-07
+    -   -IP:
+            reference: -4.95434
+            tolerance: 0.0001
+    -   -IP (eV) and Weight:
+            reference: 0.897967
+            tolerance: 0.001
+            column: 1
+ne_pt3.in:
+    description: 3rd order perturbation theory on neon atom
+    keywords: [HF, MP2, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -128.4887755517
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -22.642556
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 46.111228
+            tolerance: 0.0001
+    -   PT3 HOMO energy:
+            reference: -21.446232
+            tolerance: 0.0001
+    -   PT3 LUMO energy:
+            reference: 44.946098
+            tolerance: 0.0001
+ne_rings.in:
+    description: Perturbation theory with only 1- and 2-ring diagrams on neon atom (close to GW)
+    keywords: [GW, HF, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -128.4900916481
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -22.639065
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 46.110304
+            tolerance: 0.0001
+    -   TWO_RINGS HOMO energy:
+            reference: -22.788691
+            tolerance: 0.0001
+    -   TWO_RINGS LUMO energy:
+            reference: 46.034447
+            tolerance: 0.0001
+h2o_temperature.in:
+    description: for a restart test with non-zero temperature
+    keywords: [hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.3174966596
+            tolerance: 1.0e-07
+h2o_restart_temperature.in:
+    description: restart with non-zero temperature
+    keywords: [hybrid]
+    dependence:
+    - h2o_temperature.in
+    checks:
+    -   SCF Total Energy:
+            reference: -76.3174966596
+            tolerance: 1.0e-07
+sih4_sc-cohsex.in:
+    description: sc-COHSEX for SiH4 to prepare a subsequent G0W0 calculation
+    keywords: [GW]
+    checks:
+    -   SCF Total Energy:
+            reference: -291.2399059845
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -13.781513
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 3.880683
+            tolerance: 0.0001
+sih4_g0w0@sc-cohsex.in:
+    description: G0W0 for SiH4 based on the previous sc-COHSEX run
+    keywords: [DFT, GW]
+    dependence:
+    - sih4_sc-cohsex.in
+    checks:
+    -   GW HOMO energy:
+            reference: -12.855076
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 4.073908
+            tolerance: 0.0001
+co_efield_rpa.in:
+    description: RPA using imag. freqs. (and RI) including an electric field
+    keywords: [RPA, hybrid]
+    checks:
+    -   Nucleus-Nucleus:
+            reference: 22.0808683692
+            tolerance: 1.0e-07
+    -   SCF Total Energy:
+            reference: -113.1971652965
+            tolerance: 1.0e-07
+    -   RPA Total Energy:
+            reference: -113.1376200065
+            tolerance: 1.0e-07
+co_gw_dm.in:
+    description: G0W0 based on G0W0 density matrix
+    keywords: [GW, HF, density-matrix]
+    checks:
+    -   SCF Total Energy:
+            reference: -112.7480846685
+            tolerance: 1.0e-07
+    -   Kinetic Energy:
+            reference: 112.6578090099
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -309.8366546783
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 75.7940290895
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -13.209154991
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -13.799652
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 3.373258
+            tolerance: 0.0001
+    -   Hartree  HOMO expectation:
+            reference: 188.102908
+            tolerance: 0.0001
+    -   Exchange HOMO expectation:
+            reference: -20.682616
+            tolerance: 0.0001
+co_gw_dm_restart.in:
+    description: G0W0 based on G0W0 density matrix
+    keywords: [GW, HF]
+    dependence:
+    - co_gw_dm.in
+    checks:
+    -   GW HOMO energy:
+            reference: -13.799652
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 3.373258
+            tolerance: 0.0001
+co_gw_dm_pbe0.in:
+    description: G0W0 based on G0W0 density matrix based on PBE0
+    keywords: [GW, density-matrix, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -113.1959738781
+            tolerance: 1.0e-07
+    -   Trace:
+            reference: 14.0
+            tolerance: 0.0001
+    -   Kinetic Energy:
+            reference: 112.5902914956
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -309.5853966982
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 75.6702552756
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -13.1260407194
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -13.178304
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 3.008745
+            tolerance: 0.0001
+co_gw_pt2_dm.in:
+    description: G0W0 based on PT2 density matrix
+    keywords: [GW, HF, density-matrix]
+    checks:
+    -   SCF Total Energy:
+            reference: -112.7480846685
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -13.500329
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 3.390125
+            tolerance: 0.0001
+co_gw_dm_imag.in:
+    description: G0W0 based on G0W0 density matrix using an imaginary axis integration
+    keywords: [HF, density-matrix]
+    no_parallel: true
+    checks:
+    -   SCF Total Energy:
+            reference: -112.7480846685
+            tolerance: 1.0e-07
+    -   Kinetic Energy:
+            reference: 112.6577241524
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -309.836351317
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 75.7938038329
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -13.2091319492
+            tolerance: 1.0e-07
+co_gw_dm_dyson.in:
+    description: G0W0 density matrix obtained from the Dyson equation solution using a imaginary frequencies
+    keywords: [density-matrix, hybrid]
+    no_parallel: true
+    checks:
+    -   SCF Total Energy:
+            reference: -113.2675617628
+            tolerance: 1.0e-07
+    -   Trace:
+            reference: 14.006159
+            tolerance: 0.0001
+cs_gwdm_minoverlap.in:
+    description: G0W0 density matrix used for GW calculations when min_overlap is high
+    keywords: [GW, HF, density-matrix]
+    checks:
+    -   SCF Total Energy:
+            reference: -435.3493884743
+            tolerance: 1.0e-07
+    -   Trace:
+            reference: 22.0
+            tolerance: 0.0001
+    -   Hartree Energy:
+            reference: 227.3626344754
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -30.0102296815
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -12.546934
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 0.653967
+            tolerance: 0.0001
+h2_dyson.in:
+    description: G0W0 with a analytic solution of the Dyson equation
+    keywords: [GW, range-separated]
+    checks:
+    -   SCF Total Energy:
+            reference: -1.1669981156
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -13.542791
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 3.333788
+            tolerance: 0.0001
+    -   Projection on state 00001:
+            reference: -16.082106
+            tolerance: 0.0001
+    -   Projection on state 00001:
+            reference: 0.941619
+            tolerance: 0.0001
+            column: 1
+    -   Projection on state 00002:
+            reference: 5.171425
+            tolerance: 0.0001
+    -   Projection on state 00002:
+            reference: 0.987882
+            tolerance: 0.0001
+            column: 1
+he_stopping.in:
+    description: Linear-response stopping cross section for He
+    keywords: [DFT, LR-TDDFT, stopping]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8343129408
+            tolerance: 1.0e-07
+    -   Exc. 0001:
+            reference: 17.24297222
+            tolerance: 0.0001
+    -   Sum over oscillator strengths:
+            reference: 2.000962
+            tolerance: 0.0001
+    -   Bethe sumrule for q   0.020:
+            reference: 2.000975
+            tolerance: 0.0001
+    -   Bethe sumrule for q   0.500:
+            reference: 2.007298
+            tolerance: 0.0001
+    -   Bethe sumrule for q   5.000:
+            reference: 1.196301
+            tolerance: 0.0001
+    -   Bethe sumrule for q  10.000:
+            reference: 0.082536
+            tolerance: 0.0001
+    -   velocity   0.000  0.000  0.100:
+            reference: 0.000408
+            tolerance: 0.0001
+    -   velocity   0.000  0.000  0.500:
+            reference: 1.065613
+            tolerance: 0.0001
+    -   velocity   0.000  0.000  0.800:
+            reference: 3.804473
+            tolerance: 0.0001
+    -   velocity   0.000  0.000  1.400:
+            reference: 7.319374
+            tolerance: 0.0001
+    -   velocity   0.000  0.000  2.000:
+            reference: 7.299591
+            tolerance: 0.0001
+ne_ap_stopping.in:
+    description: Linear-response stopping cross section for a non-spherical system
+    keywords: [DFT, LR-TDDFT, stopping]
+    checks:
+    -   SCF Total Energy:
+            reference: -134.7929508744
+            tolerance: 1.0e-07
+    -   Exc. 0001:
+            reference: 37.06922165
+            tolerance: 0.0001
+    -   Sum over oscillator strengths:
+            reference: 9.124419
+            tolerance: 0.0001
+    -   velocity   0.000  0.000  0.250:
+            reference: 0.210189
+            tolerance: 0.0001
+    -   velocity   0.000  0.000  0.500:
+            reference: 1.018946
+            tolerance: 0.0001
+ne_ap_stopping2.in:
+    description: Linear-response stopping cross section for a non-spherical system with another input for the geometry
+    keywords: [DFT, LR-TDDFT, stopping]
+    checks:
+    -   SCF Total Energy:
+            reference: -134.7929508744
+            tolerance: 1.0e-07
+    -   Exc. 0001:
+            reference: 37.06922165
+            tolerance: 0.0001
+    -   Sum over oscillator strengths:
+            reference: 9.124419
+            tolerance: 0.0001
+    -   velocity   0.000  0.000  0.250:
+            reference: 0.210189
+            tolerance: 0.0001
+    -   velocity   0.000  0.000  0.500:
+            reference: 1.018946
+            tolerance: 0.0001
+ch4_cbs.in:
+    description: CBS extrapolation
+    keywords: [GW, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -40.4856598233
+            tolerance: 1.0e-07
+    -   state    5 spin  1:
+            reference: 25.861771
+            tolerance: 0.0001
+    -   state    5 spin  1:
+            reference: -0.460572
+            tolerance: 0.0001
+            column: 1
+    -   state    5 spin  1:
+            reference: -14.08209
+            tolerance: 0.0001
+            column: 2
+    -   state    5 spin  1:
+            reference: -14.542662
+            tolerance: 0.0001
+            column: 3
+ch4_gwtdhf.in:
+    description: GW calculation with W from TDHF
+    keywords: [GW, HF]
+    checks:
+    -   SCF Total Energy:
+            reference: -40.2135693443
+            tolerance: 1.0e-07
+    -   Lowest neutral excitation:
+            reference: 11.03679656
+            tolerance: 0.0001
+    -   GW HOMO energy:
+            reference: -14.341403
+            tolerance: 0.0001
+    -   GW LUMO energy:
+            reference: 0.689333
+            tolerance: 0.0001
+h_in_he_rt_lda_MB_PC2B_nucleus.in:
+    description: RT-TDDFT PC="MB_PC2B" projectile without basis
+    keywords: [DFT, RT-TDDFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8287092624
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -2.6776119436
+            tolerance: 1.0e-07
+h_in_he_rt_lda_MB_PC2B_nucleus_restart.in:
+    description: RT-TDDFT PC="MB_PC2B" projectile without basis
+    keywords: [DFT, RT-TDDFT]
+    dependence:
+    - h_in_he_rt_lda_MB_PC2B_nucleus.in
+    checks:
+    -   RT-TDDFT Total Energy:
+            reference: -2.7195375026
+            tolerance: 1.0e-05
+h_in_he_rt_lda_MB_PC2B_ions.in:
+    description: RT-TDDFT PC="MB_PC2B" projectile with basis
+    keywords: [DFT, RT-TDDFT]
+    requirements:
+    - HAVE_GRADIENTS
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8286834572
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -2.3307557977
+            tolerance: 1.0e-05
+    -   Number of electrons:
+            reference: 2.002093
+            tolerance: 0.0005
+    -   Lowdin projectile charge:
+            reference: 0.7216317
+            tolerance: 0.0001
+h_in_he_rt_lda_MB_PC2B_ions_restart.in:
+    description: RT-TDDFT PC="MB_PC2B" projectile with basis
+    keywords: [DFT, RT-TDDFT]
+    requirements:
+    - HAVE_GRADIENTS
+    dependence:
+    - h_in_he_rt_lda_MB_PC2B_ions.in
+    checks:
+    -   RT-TDDFT Total Energy:
+            reference: -2.1264059147
+            tolerance: 1.0e-05
+    -   Number of electrons:
+            reference: 2.00033
+            tolerance: 0.0001
+    -   Lowdin projectile charge:
+            reference: 0.540957
+            tolerance: 0.0001
+he_in_h_ghost_rt_lda_MB_PC2B.in:
+    description: RT-TDDFT PC="MB_PC2B" projectile in ghost
+    keywords: [DFT, RT-TDDFT]
+    requirements:
+    - HAVE_GRADIENTS
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8356240593
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -1.6095526306
+            tolerance: 1.0e-05
+    -   Number of electrons:
+            reference: 1.99959
+            tolerance: 0.0001
+benzene_he_rt-tddft.in:
+    description: RT-TDDFT with moving basis for He++
+    keywords: [DFT, RT-TDDFT]
+    requirements:
+    - HAVE_GRADIENTS
+    checks:
+    -   SCF Total Energy:
+            reference: -232.8924888075
+            tolerance: 5.0e-05
+    -   RT-TDDFT Total Energy:
+            reference: -230.4199238294
+            tolerance: 5.0e-05
+    -   Number of electrons:
+            reference: 42.0025941
+            tolerance: 0.01
+lih_rpa.in:
+    description: RPA energy of LiH
+    keywords: [HF, RPA]
+    checks:
+    -   SCF Total Energy:
+            reference: -7.9867544306
+            tolerance: 1.0e-07
+    -   RPA Total Energy:
+            reference: -8.0590527892
+            tolerance: 1.0e-07
+lih_rpa-i.in:
+    description: RPA-I energy of LiH (identical to RPA)
+    keywords: [HF, RPA]
+    checks:
+    -   SCF Total Energy:
+            reference: -7.9867544306
+            tolerance: 1.0e-07
+    -   RPA Total Energy:
+            reference: -8.0590527892
+            tolerance: 1.0e-07
+lih_rpax.in:
+    description: RPAX energy (RPAx-II) of LiH
+    keywords: [HF, RPA]
+    checks:
+    -   SCF Total Energy:
+            reference: -7.9867544306
+            tolerance: 1.0e-07
+    -   RPAx Total Energy:
+            reference: -8.0599498366
+            tolerance: 1.0e-07
+lih_rpax-i.in:
+    description: RPAX energy (RPAx-I) of LiH
+    keywords: [HF, RPA]
+    checks:
+    -   SCF Total Energy:
+            reference: -7.9867544306
+            tolerance: 1.0e-07
+    -   RPAx-I Energy:
+            reference: -0.0483538239
+            tolerance: 1.0e-07
+    -   RPAx-I Total Energy:
+            reference: -8.0351082545
+            tolerance: 1.0e-07
+lih_gw_frozencore_molgw.in:
+    description: test MOLGW frozencore for Li
+    keywords: [GW, HF]
+    checks:
+    -   GW HOMO energy:
+            reference: -8.270983
+            tolerance: 0.0001
+lih_gw_frozencore_gaussian.in:
+    description: test GAUSSIAN frozencore for Li
+    keywords: [GW, HF]
+    checks:
+    -   GW HOMO energy:
+            reference: -8.265769
+            tolerance: 0.0001
+lih_gw.in:
+    description: This only prepares ENERGY_QP file
+    keywords: [GW, HF]
+    checks:
+    -   GW HOMO-LUMO gap:
+            reference: 8.053158
+            tolerance: 0.0001
+lih_bse-i.in:
+    description: BSE energy (BSE-I) of LiH
+    keywords: [BSE, HF]
+    dependence:
+    - lih_gw.in
+    checks:
+    -   SCF Total Energy:
+            reference: -7.9872035011
+            tolerance: 1.0e-07
+    -   BSE-I Energy:
+            reference: -0.0775580357
+            tolerance: 1.0e-07
+    -   BSE-I Total Energy:
+            reference: -8.0647615367
+            tolerance: 1.0e-07
+hf_electricfieldx.in:
+    description: Finite-electric field along x for HF dimer with PBEsol
+    keywords: [DFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -100.03983413
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -8.29719
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.095084
+            tolerance: 0.0001
+hf_electricfieldy.in:
+    description: Finite-electric field along y for HF dimer with PBEsol
+    keywords: [DFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -100.03983413
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -8.29719
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.095084
+            tolerance: 0.0001
+hf_electricfieldz.in:
+    description: Finite-electric field along z for HF dimer with PBEsol
+    keywords: [DFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -100.0391397744
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -8.259038
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 1.090268
+            tolerance: 0.0001
+he_g3w2_numerical.in:
+    description: G3W2 with numerical integration
+    keywords: [GW, HF, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.855237789
+            tolerance: 1.0e-07
+    -   GW+G3W2 HOMO energy:
+            reference: -24.176851
+            tolerance: 0.0001
+he_g3w2_analytic.in:
+    description: G3W2 with analytic formula
+    keywords: [GW, HF, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.855237789
+            tolerance: 1.0e-07
+    -   GW HOMO energy:
+            reference: -23.691585
+            tolerance: 0.0001
+    -   GW+SOSEX2 HOMO energy:
+            reference: -24.13989
+            tolerance: 0.0001
+    -   GW+G3W2 HOMO energy:
+            reference: -24.176851
+            tolerance: 0.0001
+he_gw+sox.in:
+    description: GW+SOX for He
+    keywords: [GW, HF, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8551604777
+            tolerance: 1.0e-07
+    -   GW+SOX HOMO energy:
+            reference: -24.821455
+            tolerance: 0.0001
+he_gw+sox_pade.in:
+    description: GW+SOX for He on the imaginary axis
+    keywords: [GW, HF, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8551604777
+            tolerance: 1.0e-07
+    -   GW+SOX HOMO energy:
+            reference: -24.82133
+            tolerance: 0.0001
+he_gw+sosex.in:
+    description: GW+SOSEX for He
+    keywords: [GW, HF, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8551604777
+            tolerance: 1.0e-07
+    -   GW+SOSEX HOMO energy:
+            reference: -24.745514
+            tolerance: 0.0001
+he_gw+sosex_pade.in:
+    description: GW+SOSEX for He on the imaginary axis
+    keywords: [GW, HF, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8551604777
+            tolerance: 1.0e-07
+    -   GW+SOSEX HOMO energy:
+            reference: -24.745514
+            tolerance: 0.0001
+he_gw+sosex2.in:
+    description: GW+SOSEX2 for He
+    keywords: [GW, HF]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8551604777
+            tolerance: 1.0e-07
+    -   GW+SOSEX HOMO energy:
+            reference: -24.670771
+            tolerance: 0.0001
+he_gw+sosex2_pade.in:
+    description: GW+2SOSEX for He on the imaginary axis
+    keywords: [GW, HF]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8551604777
+            tolerance: 1.0e-07
+    -   GW+SOSEX HOMO energy:
+            reference: -24.67084
+            tolerance: 0.0001
+he_gw+g3w2.in:
+    description: GW+G3W2 for He
+    keywords: [GW, HF, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8551604777
+            tolerance: 1.0e-07
+    -   GW+G3W2 HOMO energy:
+            reference: -24.696203
+            tolerance: 0.0001
+he_gw+g3w2_pade.in:
+    description: GW+G3W2 for He on the imaginary axis (setting the axis origin)
+    keywords: [GW, HF, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8551604777
+            tolerance: 1.0e-07
+    -   GW+G3W2 HOMO energy:
+            reference: -24.680279
+            tolerance: 0.0001
+ne_sigma_tdhf.in:
+    description: Sigma_TDHF vertex correction for Neon atom
+    keywords: [GW, HF, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -128.489142497
+            tolerance: 1.0e-07
+    -   SIGMA_TDHF HOMO energy:
+            reference: -20.893601
+            tolerance: 0.0001
+ne_sigma_tdschf.in:
+    description: Sigma_TDscHF vertex correction for Neon atom
+    keywords: [GW, HF, vertex]
+    checks:
+    -   SCF Total Energy:
+            reference: -128.489142497
+            tolerance: 1.0e-07
+    -   SIGMA_TDSCHF HOMO energy:
+            reference: -20.762555
+            tolerance: 0.0001
+he_h_collision_rt-tddft_force.in:
+    description: RT-TDDFT with force calculation
+    keywords: [DFT, RT-TDDFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -1.8029834147
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -0.9236896915
+            tolerance: 1.0e-07
+    -   RT-TDDFT work on projectile:
+            reference: -0.8735542178
+            tolerance: 1.0e-07
+ne_gw2sosex_psd.in:
+    description: PSD-ized 2SOSEX self-energy
+    keywords: [GW, HF]
+    checks:
+    -   SCF Total Energy:
+            reference: -128.5414975632
+            tolerance: 1.0e-07
+    -   GW+2SOSEX_PSD HOMO energy:
+            reference: -21.798228
+            tolerance: 0.0001
+he_hf_cc4s_output.in:
+    description: HF+MP2 helium atom with output of Cc4s files
+    keywords: [HF, MP2]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8615142286
+            tolerance: 1.0e-07
+    -   Testing integral (11|11):
+            reference: 1.0258167
+            tolerance: 1.0e-07
+    -   MP2 correlation:
+            reference: -0.0354780027
+            tolerance: 1.0e-07
+he_hf_cc4s_input.in:
+    description: HF+MP2 helium atom from input Cc4s files
+    keywords: [HF, MP2]
+    dependence:
+    - he_hf_cc4s_output.in
+    checks:
+    -   HF Total Energy:
+            reference: -2.8615142286
+            tolerance: 1.0e-07
+    -   Testing integral (11|11):
+            reference: 1.0258167
+            tolerance: 1.0e-07
+    -   MP2 correlation:
+            reference: -0.0354780027
+            tolerance: 1.0e-07
+he_pt2_filtering.in:
+    description: 'He atom: PT2 density-matrix filtering the virtual orbitals'
+    keywords: [HF, MP2, density-matrix]
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8616250829
+            tolerance: 1.0e-07
+    -   Testing integral (11|11):
+            reference: 1.02578581
+            tolerance: 5.0e-07
+    -   MP2 correlation:
+            reference: -0.0364058094
+            tolerance: 1.0e-07
+he_mp2_from_filtered_CC4S.in:
+    description: 'He atom: reading CC4S files with filtered virtual orbitals'
+    keywords: [HF, MP2]
+    dependence:
+    - he_pt2_filtering.in
+    checks:
+    -   HF Total Energy:
+            reference: -2.8616250222
+            tolerance: 1.0e-07
+    -   Testing integral (11|11):
+            reference: 1.02578575
+            tolerance: 5.0e-07
+    -   MP2 correlation:
+            reference: -0.0355613477
+            tolerance: 1.0e-07
+he_mp2_from_filtered_RESTART.in:
+    description: 'He atom: reading RESTART with filtered virtual orbitals'
+    keywords: [HF, MP2]
+    dependence:
+    - he_mp2_from_filtered_CC4S.in
+    checks:
+    -   MP2 correlation:
+            reference: -0.0355613477
+            tolerance: 1.0e-07
+lih_bulk08_abinit_mp2.in:
+    description: MP2 correlation for bulk LiH with 8 atoms generated from ABINIT
+    keywords: [HF, MP2]
+    checks:
+    -   MP2 Energy:
+            reference: -0.0772686571
+            tolerance: 1.0e-07
+lih_bulk08_abinit_rpa.in:
+    description: RPA correlation for bulk LiH with 8 atoms generated from ABINIT
+    keywords: [HF, RPA]
+    checks:
+    -   RPA correlation:
+            reference: -0.1152301335
+            tolerance: 1.0e-07
+lih_bulk08_abinit_input_filtering.in:
+    description: Output PT2-filtered virtual orbitals in CC4S format for bulk LiH with 8 atoms generated from ABINIT
+    keywords: [HF, density-matrix]
+    checks:
+    -   HF Total Energy:
+            reference: -37.0939569108
+            tolerance: 1.0e-07
+    -   Testing integral (11|11):
+            reference: 0.292396387
+            tolerance: 1.0e-07
+lih_bulk08_rpa_from_filtered.in:
+    description: RPA correlation for bulk LiH with 8 atoms from PT2-filtered virtual orbital space
+    keywords: [HF, RPA]
+    dependence:
+    - lih_bulk08_abinit_input_filtering.in
+    checks:
+    -   RPA correlation:
+            reference: -0.0914355959
+            tolerance: 1.0e-07
+kr_ccECP.in:
+    description: RPA correlation Kr atom with a ccECP pseudo and basis
+    keywords: [ECP, HF, RPA, noRI]
+    checks:
+    -   SCF Total Energy:
+            reference: -18.22806758
+            tolerance: 1.0e-07
+    -   RPA correlation:
+            reference: -0.2186444854
+            tolerance: 1.0e-07
+si_energy_shift.in:
+    description: tests the scf_energy_shift input
+    keywords: [DFT, RT-TDDFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -284.8534330027
+            tolerance: 1.0e-06
+c2h4_lc-wpbe_tddft.in:
+    description: LR-TDDFT with long-range only functional
+    keywords: [LR-TDDFT, range-separated]
+    checks:
+    -   SCF Total Energy:
+            reference: -78.5180274712
+            tolerance: 1.0e-07
+    -   Exc. 0001:
+            reference: 8.13898708
+            tolerance: 0.0001
+    -   Exc. 0001:
+            reference: 0.38087818
+            tolerance: 0.0001
+            column: 1
+ge2h6_plusalpha.in:
+    description: PBE+alpha approximation for Ge
+    keywords: [DFT, ECP]
+    checks:
+    -   SCF Total Energy:
+            reference: -591.7684606578
+            tolerance: 1.0e-07
+    -   + alpha correction:
+            reference: 0.4192824813
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -7.463168
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -0.373146
+            tolerance: 0.0001
+Kr_He_ecp.in:
+    description: Kr->He colision using a pseudo potential on the projectile
+    keywords: [DFT, ECP, RT-TDDFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -464.9493999226
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -456.8233701487
+            tolerance: 1.0e-07
+Kr_Kr_ecp.in:
+    description: Kr->He colision using a pseudo potential on both projectile and target
+    keywords: [DFT, ECP, RT-TDDFT]
+    checks:
+    -   SCF Total Energy:
+            reference: -923.8534828159
+            tolerance: 1.0e-07
+    -   RT-TDDFT Total Energy:
+            reference: -893.692402361
+            tolerance: 1.0e-06
+h2_gth.in:
+    description: H2 molecule with analytical pseudo in GTH formalism
+    keywords: [DFT, ECP]
+    requirements:
+    - HAVE_LIBCINT
+    checks:
+    -   SCF Total Energy:
+            reference: -1.1339680189
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -10.411908
+            tolerance: 0.0001
+lif_gth.in:
+    description: LiF molecule with analytical pseudo in GTH formalism
+    keywords: [DFT, ECP]
+    requirements:
+    - HAVE_LIBCINT
+    checks:
+    -   SCF Total Energy:
+            reference: -31.5478831094
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -6.298148
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -1.373452
+            tolerance: 0.0001
+h2_gth_box.in:
+    description: H2 in a periodic box with analytical GTH pseudo
+    keywords: [DFT, ECP, noRI, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -1.1355173048
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -10.200378
+            tolerance: 0.0001
+    -   Nucleus-Nucleus:
+            reference: 0.1597873343
+            tolerance: 1.0e-07
+    -   Kinetic Energy:
+            reference: 1.140429346
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -2.5201554576
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 0.7492754898
+            tolerance: 1.0e-07
+    -   XC Energy:
+            reference: -0.6648540174
+            tolerance: 1.0e-07
+h2_gth_box_shifted.in:
+    description: H2 in a periodic box with analytical GTH pseudo
+    keywords: [DFT, ECP, noRI, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -1.1355173048
+            tolerance: 2.0e-05
+    -   gKS HOMO energy:
+            reference: -10.200378
+            tolerance: 0.005
+    -   Nucleus-Nucleus:
+            reference: 0.1597873343
+            tolerance: 5.0e-05
+    -   Kinetic Energy:
+            reference: 1.140429346
+            tolerance: 0.0005
+    -   Nucleus Energy:
+            reference: -2.5201554576
+            tolerance: 0.0005
+    -   Hartree Energy:
+            reference: 0.7492754898
+            tolerance: 0.0005
+    -   XC Energy:
+            reference: -0.6648540174
+            tolerance: 0.0005
+li2_gth_box.in:
+    description: Li2 in a periodic box GTH pseudo (local only)
+    keywords: [DFT, ECP, noRI, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -14.663897682
+            tolerance: 1.0e-07
+    -   Nucleus-Nucleus:
+            reference: -1.3333009531
+            tolerance: 1.0e-07
+    -   Kinetic Energy:
+            reference: 13.0609436559
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -29.8326614516
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 6.7425313354
+            tolerance: 1.0e-07
+    -   XC Energy:
+            reference: -3.3014102685
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -3.337858
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -1.1165
+            tolerance: 0.0001
+lif_gth_box.in:
+    description: LiF molecule in a periodic box (GTH pseudo local and non-local)
+    keywords: [DFT, ECP, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -31.5040990758
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -5.915098
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: -1.117682
+            tolerance: 0.0001
+he_gth_bcc_box.in:
+    description: He atom in a periodic BCC box
+    keywords: [DFT, ECP, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8318434028
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -15.170383
+            tolerance: 0.0001
+he2_gth_bcc_box.in:
+    description: 2 He atoms in a periodic BCC box
+    keywords: [DFT, ECP, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -5.6636285654
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -15.170383
+            tolerance: 0.0001
+he2_chain_gth_bcc_box.in:
+    description: Two-helium chain in a periodic box
+    keywords: [DFT, ECP, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -5.6635911088
+            tolerance: 1.0e-07
+    -   Nucleus-Nucleus:
+            reference: -0.7965664252
+            tolerance: 1.0e-07
+    -   Kinetic Energy:
+            reference: 5.4198504198
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -15.070116
+            tolerance: 0.0001
+he4_chain_gth_bcc_box.in:
+    description: Four-helium chain in a periodic box
+    keywords: [DFT, ECP, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -11.3272009156
+            tolerance: 1.0e-07
+    -   Nucleus-Nucleus:
+            reference: -1.5931328505
+            tolerance: 1.0e-07
+    -   Kinetic Energy:
+            reference: 10.8396099943
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -15.070255
+            tolerance: 0.0001
+he4_square_gth_bcc_box.in:
+    description: Four-helium square in a periodic box
+    keywords: [DFT, ECP, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -11.327113556
+            tolerance: 1.0e-07
+    -   Nucleus-Nucleus:
+            reference: -2.155705739
+            tolerance: 1.0e-07
+    -   Kinetic Energy:
+            reference: 10.8398920507
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -14.88808
+            tolerance: 0.0001
+he8_lattice_gth_bcc_box.in:
+    description: Eight-helium lattice in a periodic box
+    keywords: [DFT, ECP, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -22.6542155364
+            tolerance: 1.0e-07
+    -   Nucleus-Nucleus:
+            reference: -7.7039928095
+            tolerance: 1.0e-07
+    -   Kinetic Energy:
+            reference: 21.6805153971
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -14.446911
+            tolerance: 0.0001
+he16_lattice_gth_sc_box.in:
+    description: Sixteen-helium lattice in a periodic box
+    keywords: [DFT, ECP, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -45.307160585
+            tolerance: 1.0e-07
+    -   Nucleus-Nucleus:
+            reference: -15.4064033273
+            tolerance: 1.0e-07
+    -   Kinetic Energy:
+            reference: 43.3596224486
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -75.2053835552
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -14.447436
+            tolerance: 0.0001
+diamond_gth_08.in:
+    description: 8-atom cell of diamond
+    keywords: [DFT, ECP, noRI, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   Nucleus-Nucleus:
+            reference: -51.1779066085
+            tolerance: 1.0e-07
+    -   SCF Total Energy:
+            reference: -44.623041884
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: 13.724214
+            tolerance: 0.0001
+he_gth_box_hf.in:
+    description: He atom within HF with PBC
+    keywords: [ECP, HF, noRI, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   Nucleus-Nucleus:
+            reference: -0.4568908243
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 1.5568791138
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -1.0253242172
+            tolerance: 1.0e-07
+    -   SCF Total Energy:
+            reference: -2.8179084628
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -24.891108
+            tolerance: 0.0001
+diamond_gth_08_hf.in:
+    description: 8-atom cell of diamond within HF
+    keywords: [ECP, HF, noRI, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   Nucleus-Nucleus:
+            reference: -51.1102279515
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 4.3523671507
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -13.1822569359
+            tolerance: 1.0e-07
+    -   SCF Total Energy:
+            reference: -43.5733353282
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: 9.61057
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 24.796982
+            tolerance: 0.0001
+he_hf_cc4s_box_output.in:
+    description: HF helium atom with output of Cc4s files
+    keywords: [ECP, HF, noRI, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8618499703
+            tolerance: 1.0e-07
+    -   Testing integral (11|11):
+            reference: 1.02301683
+            tolerance: 1.0e-07
+he_hf_cc4s_box_input.in:
+    description: HF+MP2 helium atom from input Cc4s files
+    keywords: [ECP, HF, MP2, noRI, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    dependence:
+    - he_hf_cc4s_box_output.in
+    checks:
+    -   HF Total Energy:
+            reference: -2.8625597646
+            tolerance: 1.0e-07
+    -   Testing integral (11|11):
+            reference: 1.02301683
+            tolerance: 1.0e-07
+    -   MP2 correlation:
+            reference: -0.0330692355
+            tolerance: 1.0e-07
+he_gth_box_pbe.in:
+    description: PBE helium atom in a box
+    keywords: [DFT, ECP, noRI, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -2.8922518757
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -15.516261
+            tolerance: 0.0001
+diamond_gth_08_pbe.in:
+    description: 8-atom cell of diamond within PBE
+    keywords: [DFT, ECP, noRI, periodic]
+    requirements:
+    - HAVE_LIBCINT
+    - HAVE_FFTW3
+    checks:
+    -   SCF Total Energy:
+            reference: -44.9101913413
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: 13.880276
+            tolerance: 0.0001
+    -   gKS LUMO energy:
+            reference: 18.497151
+            tolerance: 0.0001
+co2_gw_dm_cederbaum.in:
+    description: CO2 GW density-matrix a la Cederbaum
+    keywords: [GW, HF, density-matrix]
+    checks:
+    -   SCF Total Energy:
+            reference: -187.4495378734
+            tolerance: 1.0e-07
+    -   Kinetic Energy:
+            reference: 186.9058907148
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -548.6566331109
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 142.9060274911
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -21.1384503978
+            tolerance: 1.0e-07
+    -   Hartree  HOMO expectation:
+            reference: 291.642779
+            tolerance: 0.0001
+    -   Exchange HOMO expectation:
+            reference: -24.839183
+            tolerance: 0.0001
+    -   GW HOMO energy:
+            reference: -12.015375
+            tolerance: 0.0001
+co2_mp2_dm.in:
+    description: CO2 MP2 density-matrix
+    keywords: [GW, HF, density-matrix]
+    checks:
+    -   SCF Total Energy:
+            reference: -187.4495378734
+            tolerance: 1.0e-07
+    -   Kinetic Energy:
+            reference: 187.1068985336
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -548.8749834705
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 142.9727941016
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -21.0552706236
+            tolerance: 1.0e-07
+    -   Hartree  HOMO expectation:
+            reference: 291.425633
+            tolerance: 0.0001
+    -   Exchange HOMO expectation:
+            reference: -24.426481
+            tolerance: 0.0001
+co2_gw@pbeh_dm_cederbaum.in:
+    description: CO2 GW density-matrix a la Cederbaum
+    keywords: [density-matrix, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -188.2181587541
+            tolerance: 1.0e-07
+    -   Kinetic Energy:
+            reference: 186.8655436979
+            tolerance: 1.0e-07
+    -   Nucleus Energy:
+            reference: -548.3970589999
+            tolerance: 1.0e-07
+    -   Hartree Energy:
+            reference: 142.7575597891
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -21.0972552041
+            tolerance: 1.0e-07
+    -   Hartree  HOMO expectation:
+            reference: 293.645469
+            tolerance: 0.0001
+    -   Exchange HOMO expectation:
+            reference: -23.873869
+            tolerance: 0.0001

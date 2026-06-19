@@ -16,6 +16,7 @@ import re
 import argparse
 from dataclasses import dataclass, field
 from pathlib import Path
+import yaml
 
 # ---------------------------------------------------------------------------
 # Data structures
@@ -34,6 +35,8 @@ class TestCase:
     need_libcint: bool = False
     need_fftw3: bool = False
     command: str = ""
+    keywords: list = field(default_factory=list)
+    dependence: list = field(default_factory=list)
 
     @property
     def output_file(self):
@@ -220,6 +223,14 @@ def parse_args():
     parser.add_argument('-p', '--input-parameter', nargs='+', default=[], metavar='PARAM',
                         help="Only run inputs that contain this parameter.\n"
                              "Example: --input-parameter scf = 'LDA'")
+    parser.add_argument('-kw', '--keyword', nargs='+', default=[], metavar='KW',
+                        help='Only run tests that have at least one of these keywords.\n'
+                             'Available: HF DFT hybrid range-separated double-hybrid\n'
+                             '           GW vertex MP2 RPA BSE\n'
+                             '           LR-TDDFT RT-TDDFT CI NOFT noRI\n'
+                             '           spin-unrestricted ECP periodic stopping\n'
+                             '           density-matrix\n'
+                             'Example: --keyword GW BSE')
     parser.add_argument('-d', '--debug', action='store_true',
                         help='Output debug information for this script')
     parser.add_argument('-l', '--list', action='store_true',
@@ -235,42 +246,42 @@ def parse_args():
 
 
 # ---------------------------------------------------------------------------
-# Testsuite file parser
+# Testsuite YAML parser
 # ---------------------------------------------------------------------------
 
-def parse_testsuite(path: Path) -> list[TestCase]:
-    """Return a list of TestCase objects parsed from the testsuite file."""
+def parse_testsuite_yaml(path: Path) -> list[TestCase]:
+    """Return a list of TestCase objects parsed from the YAML testsuite file."""
+    with path.open('r') as f:
+        data = yaml.safe_load(f)
+
     tests: list[TestCase] = []
-
-    with path.open('r') as fts:
-        for line in fts:
-            # Strip comments
-            core = line.split('#')[0]
-            parts = [p.strip() for p in core.split(', ')]
-
-            if len(parts) == 2:
-                tests.append(TestCase(
-                    input_file=parts[0],
-                    name=parts[1],
-                ))
-
-            elif len(parts) == 3:
-                flags = parts[2].lower()
-                tests.append(TestCase(
-                    input_file=parts[0],
-                    name=parts[1],
-                    command=extract_between_quotes(parts[2]),
-                    restart='restart' in flags,
-                    parallel='noparallel' not in flags,
-                    need_scalapack='need_scalapack' in flags,
-                    need_gradients='need_gradients' in flags,
-                    need_forces='need_forces' in flags,
-                    need_libcint='need_libcint' in flags,
-                    need_fftw3='need_fftw3' in flags,
-                ))
-
-            elif len(parts) == 4 and tests:
-                tests[-1].checks.append(parts)
+    for filename, entry in data.items():
+        reqs = entry.get('requirements', [])
+        deps = entry.get('dependence', [])
+        checks_raw = []
+        for check_dict in entry.get('checks', []):
+            for key, vals in check_dict.items():
+                checks_raw.append([
+                    key,
+                    str(vals['reference']),
+                    str(vals.get('column', 0)),
+                    str(vals['tolerance']),
+                ])
+        tests.append(TestCase(
+            input_file=filename,
+            name=entry.get('description', ''),
+            checks=checks_raw,
+            restart=bool(deps),
+            parallel=not entry.get('no_parallel', False),
+            need_scalapack='HAVE_SCALAPACK' in reqs,
+            need_gradients='HAVE_GRADIENTS' in reqs,
+            need_forces='HAVE_FORCES' in reqs,
+            need_libcint='HAVE_LIBCINT' in reqs,
+            need_fftw3='HAVE_FFTW3' in reqs,
+            command=entry.get('command', ''),
+            keywords=entry.get('keywords', []),
+            dependence=deps,
+        ))
 
     return tests
 
@@ -295,7 +306,8 @@ def apply_selection(tests: list[TestCase], selected: list[str],
         for name in normalized:
             if name not in all_names:
                 sys.exit(f'Input file name: {name} not present in the test suite')
-        return [t for t in tests if t.input_file in normalized]
+        chosen = [t for t in tests if t.input_file in normalized]
+        return resolve_dependencies(chosen, tests)
 
     if excluded:
         normalized = {normalize_input_name(e) for e in excluded}
@@ -307,28 +319,44 @@ def apply_selection(tests: list[TestCase], selected: list[str],
     return tests
 
 
-def resolve_restart_dependencies(selected: list[TestCase], all_tests: list[TestCase]) -> list[TestCase]:
-    """For every selected test tagged as restart=True, ensure the closest preceding
-    non-restart test in the full suite is also included (it produces the files the
-    restart test depends on).  Original testsuite order is preserved."""
+def apply_keyword_filter(tests: list[TestCase], keywords: list[str],
+                         all_tests: list[TestCase]) -> list[TestCase]:
+    """Keep tests that have at least one of the specified keywords (case-insensitive)."""
+    if not keywords:
+        return tests
+
+    kw_lower = {kw.lower() for kw in keywords}
+    selected = [t for t in tests
+                if any(k.lower() in kw_lower for k in t.keywords)]
+
+    if not selected:
+        sys.exit(f'No tests found with keyword(s): {", ".join(keywords)}\n'
+                 f'Available keywords: HF DFT hybrid range-separated double-hybrid '
+                 f'GW vertex MP2 RPA BSE LR-TDDFT RT-TDDFT CI NOFT '
+                 f'noRI spin-unrestricted ECP periodic stopping density-matrix')
+
+    print(f'\nRunning tests with keyword(s): {", ".join(keywords)}\n')
+    return resolve_dependencies(selected, all_tests)
+
+
+def resolve_dependencies(selected: list[TestCase], all_tests: list[TestCase]) -> list[TestCase]:
+    """Recursively add prerequisite tests required by any test with non-empty dependence.
+    Original testsuite order is preserved in the returned list."""
+    tests_by_name = {t.input_file: t for t in all_tests}
     selected_files = {t.input_file for t in selected}
-    to_add = []
 
-    for test in selected:
-        if not test.restart:
-            continue
-        idx = all_tests.index(test)
-        # Walk backwards to find the nearest preceding non-restart test
-        for predecessor in reversed(all_tests[:idx]):
-            if not predecessor.restart:
-                if predecessor.input_file not in selected_files:
-                    to_add.append(predecessor)
-                    selected_files.add(predecessor.input_file)
-                    print(f'  Adding prerequisite test "{predecessor.input_file}" '
-                          f'required by restart test "{test.input_file}"')
-                break
+    queue = list(selected)
+    while queue:
+        test = queue.pop(0)
+        for dep_name in test.dependence:
+            if dep_name not in selected_files:
+                dep_test = tests_by_name.get(dep_name)
+                if dep_test:
+                    selected_files.add(dep_name)
+                    queue.append(dep_test)
+                    print(f'  Adding prerequisite test "{dep_name}" '
+                          f'required by "{test.input_file}"')
 
-    # Rebuild in original suite order
     return [t for t in all_tests if t.input_file in selected_files]
 
 
@@ -355,7 +383,7 @@ def apply_param_filter(tests: list[TestCase], param_tokens: list[str],
     if not selected:
         sys.exit('User selected an input parameter or a value that is not present in any input file')
 
-    return resolve_restart_dependencies(selected, all_tests)
+    return resolve_dependencies(selected, all_tests)
 
 
 # ---------------------------------------------------------------------------
@@ -454,20 +482,22 @@ def main():
     if have_openmp:
         os.environ['OMP_STACKSIZE'] = '32M'
 
-    # Parse testsuite file
-    all_tests = parse_testsuite(Path('inputs/testsuite'))
+    # Parse testsuite YAML file
+    all_tests = parse_testsuite_yaml(Path('inputs/testsuite.yaml'))
+
+    # Apply filters (before --list so listing respects filters)
+    tests = apply_param_filter(all_tests, args.input_parameter, all_tests)
+    tests = apply_keyword_filter(tests, args.keyword, all_tests)
+    tests = apply_selection(tests, args.input, args.exclude)
 
     # --list
     if args.list:
         print('=== List of input files in the Suite ===')
-        for i, test in enumerate(all_tests, start=1):
-            print(f'{i:04d}: {test.input_file}')
+        for i, test in enumerate(tests, start=1):
+            kw_str = ', '.join(test.keywords) if test.keywords else ''
+            print(f'{i:04d}: {test.input_file:<50} [{kw_str}]')
         print('========================================')
         sys.exit(0)
-
-    # Apply filters
-    tests = apply_param_filter(all_tests, args.input_parameter, all_tests)
-    tests = apply_selection(tests, args.input, args.exclude)
 
     print(f'Input files to be executed: {len(tests)}')
 
