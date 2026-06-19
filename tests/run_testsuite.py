@@ -225,7 +225,7 @@ def parse_args():
                              "Example: --input-parameter scf = 'LDA'")
     parser.add_argument('-kw', '--keyword', nargs='+', default=[], metavar='KW',
                         help='Only run tests that have at least one of these keywords.\n'
-                             'Available: HF DFT hybrid range-separated double-hybrid\n'
+                             'Available: HF DFT hybrid\n'
                              '           GW vertex MP2 RPA BSE\n'
                              '           LR-TDDFT RT-TDDFT CI NOFT noRI\n'
                              '           spin-unrestricted ECP PBC stopping\n'
@@ -235,6 +235,8 @@ def parse_args():
                         help='Output debug information for this script')
     parser.add_argument('-l', '--list', action='store_true',
                         help='List all input files and exit')
+    parser.add_argument('-lk', '--list-keywords', action='store_true',
+                        help='List all available keywords and exit')
     parser.add_argument('-v', '--verbose', action='store_true',
                         help='Display the output file for any failed test')
     args = parser.parse_args()
@@ -489,6 +491,16 @@ def main():
     tests = apply_param_filter(all_tests, args.input_parameter, all_tests)
     tests = apply_keyword_filter(tests, args.keyword, all_tests)
     tests = apply_selection(tests, args.input, args.exclude)
+
+    # --list-keywords
+    if args.list_keywords:
+        from collections import Counter
+        kw_count = Counter(kw for t in all_tests for kw in t.keywords)
+        print('=== Available keywords ===')
+        for kw, count in sorted(kw_count.items()):
+            print(f'  {kw:<25} ({count} tests)')
+        print('=========================')
+        sys.exit(0)
 
     # --list
     if args.list:

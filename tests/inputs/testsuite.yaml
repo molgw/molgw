@@ -18,12 +18,10 @@
 # Available keywords:
 #   HF               Hartree-Fock (no exchange-correlation)
 #   DFT              DFT with local or semi-local functional (LDA, GGA)
-#   hybrid           Hybrid DFT (fixed fraction of HF exchange)
-#   range-separated  Range-separated hybrid functional
-#   double-hybrid    Double-hybrid (MP2 correlation mixed with DFT)
+#   hybrid           Hybrid DFT (fixed fraction or range-separated HF exchange)
 #   GW               GW, QSGW, or COHSEX self-energy
 #   vertex           Vertex corrections beyond GW (SOSEX, SOX, G3W2, sigma_TDHF)
-#   MP2              MP2, MP3, or PT2/PT3 energy or self-energy
+#   MP2              MP2, MP3, PT2/PT3, or double-hybrid DFT
 #   RPA              Random phase approximation correlation energy
 #   BSE              Bethe-Salpeter equation excitation energies
 #   LR-TDDFT         Linear-response TDDFT or TDHF
@@ -85,7 +83,7 @@ ne.in:
             tolerance: 0.0001
 he_wb97.in:
     description: He with wB97 functional wo RI
-    keywords: [noRI, range-separated]
+    keywords: [hybrid, noRI]
     checks:
     -   SCF Total Energy:
             reference: -2.8943088825
@@ -95,7 +93,7 @@ he_wb97.in:
             tolerance: 0.0001
 he_wb97x.in:
     description: He with wB97X functional wo RI
-    keywords: [noRI, range-separated]
+    keywords: [hybrid, noRI]
     checks:
     -   SCF Total Energy:
             reference: -2.8980609307
@@ -174,7 +172,7 @@ ne_hf_pautori.in:
             tolerance: 0.0001
 kr_rsh_poorman.in:
     description: Range-separated hybrid with mpi_poorman
-    keywords: [range-separated]
+    keywords: [hybrid]
     checks:
     -   SCF Total Energy:
             reference: -2753.440035385
@@ -349,7 +347,7 @@ h2_basis_ri.in:
             tolerance: 0.0001
 o2_rsh.in:
     description: Range-separated hybrid mimicing HSE08 for triplet O2 wo RI
-    keywords: [noRI, range-separated, spin-unrestricted]
+    keywords: [hybrid, noRI, spin-unrestricted]
     no_parallel: true
     checks:
     -   SCF Total Energy:
@@ -588,7 +586,7 @@ benzene_filtered.in:
             tolerance: 1.0e-07
 n2o_hse06.in:
     description: range-separated hybrid function for N2O without RI with cartesian gaussian
-    keywords: [noRI, range-separated]
+    keywords: [hybrid, noRI]
     checks:
     -   SCF Total Energy:
             reference: -184.3896918122
@@ -735,7 +733,7 @@ he2_x2c_hf.in:
             tolerance: 1.0e-05
 he2_x2c_cam_b3lyp.in:
     description: CAM-B3LYP He2 atom cc-pVDZ relativistic X2C
-    keywords: [range-separated, spin-unrestricted]
+    keywords: [hybrid, spin-unrestricted]
     checks:
     -   Rel Hcore Energy:
             reference: -10.4713708712
@@ -765,7 +763,7 @@ he2_x2c_cam_b3lyp.in:
             tolerance: 1.0e-05
 he2_x2c_rsx_qidh.in:
     description: RSX-QIDH He2 atom cc-pVDZ relativistic X2C
-    keywords: [MP2, double-hybrid, range-separated, spin-unrestricted]
+    keywords: [MP2, spin-unrestricted]
     checks:
     -   Rel Hcore Energy:
             reference: -10.4713708712
@@ -917,7 +915,7 @@ h2o_pbe_rpap.in:
             tolerance: 1.0e-07
 h2o_lc_blyp.in:
     description: RPA at LC-BLYP range-sep hybrid functional with RI
-    keywords: [RPA, range-separated]
+    keywords: [RPA, hybrid]
     checks:
     -   SCF Total Energy:
             reference: -76.3121689564
@@ -927,7 +925,7 @@ h2o_lc_blyp.in:
             tolerance: 1.0e-07
 h2o_b2plyp.in:
     description: B2PLYP double hybrid functional with RI
-    keywords: [MP2, double-hybrid]
+    keywords: [MP2]
     checks:
     -   MP2 Energy:
             reference: -0.0812625983
@@ -937,7 +935,7 @@ h2o_b2plyp.in:
             tolerance: 1.0e-07
 h2o_pbeqidh.in:
     description: PBE-QIDH double hybrid functional with RI
-    keywords: [MP2, double-hybrid]
+    keywords: [MP2]
     checks:
     -   MP2 Energy:
             reference: -0.093613877
@@ -947,7 +945,7 @@ h2o_pbeqidh.in:
             tolerance: 1.0e-07
 h2o_rsxqidh.in:
     description: RSX-QIDH double hybrid functional with RI
-    keywords: [MP2, double-hybrid, range-separated]
+    keywords: [MP2]
     checks:
     -   MP2 Energy:
             reference: -0.0896689601
@@ -957,7 +955,7 @@ h2o_rsxqidh.in:
             tolerance: 1.0e-07
 h2o_pbe0_dh.in:
     description: PBE0-DH double hybrid functional with RI
-    keywords: [MP2, double-hybrid]
+    keywords: [MP2]
     checks:
     -   MP2 Energy:
             reference: -0.0377521092
@@ -967,14 +965,14 @@ h2o_pbe0_dh.in:
             tolerance: 1.0e-07
 h2o_pbeqidh_rpap.in:
     description: PBE-QIDH-RPA+ double hybrid functional
-    keywords: [RPA, double-hybrid]
+    keywords: [MP2, RPA]
     checks:
     -   RPA+ Total Energy:
             reference: -76.2594859892
             tolerance: 1.0e-07
 h2o_pbeqidh_rpap_im.in:
     description: PBE-QIDH-RPA+ double hybrid functional with RI and imag omegas
-    keywords: [RPA, double-hybrid]
+    keywords: [MP2, RPA]
     checks:
     -   RPA+ Total Energy:
             reference: -76.2594859892
@@ -1068,7 +1066,7 @@ co2.in:
             tolerance: 0.0001
 n2_lcwpbe.in:
     description: GW@LC-wPBE with RI
-    keywords: [GW, range-separated]
+    keywords: [GW, hybrid]
     checks:
     -   Total Energy:
             reference: -109.4784567421
@@ -1121,7 +1119,7 @@ sih4_dftcore.in:
             tolerance: 0.0001
 ar_camb3lyp_gw.in:
     description: Range-separated hybrid argon atom with 6-31*G+ and G0W0
-    keywords: [GW, range-separated]
+    keywords: [GW, hybrid]
     checks:
     -   SCF Total Energy:
             reference: -527.5394815512
@@ -1175,7 +1173,7 @@ h2_pbe_gw.in:
             tolerance: 0.0001
 h2_hse06_overlap_gw.in:
     description: HSE06 H2 molecule aug-cc-pVDZ and G0W0 with a filtered overlap
-    keywords: [GW, range-separated]
+    keywords: [GW, hybrid]
     checks:
     -   Exchange Energy:
             reference: -0.1340583009
@@ -1197,7 +1195,7 @@ h2_hse06_overlap_gw.in:
             tolerance: 0.0001
 h2_rsh_overlap_ci.in:
     description: RSH recipe for HSE08 H2 molecule no RI and CI with a filtered overlap
-    keywords: [CI, noRI, range-separated]
+    keywords: [CI, hybrid, noRI]
     requirements: [HAVE_SCALAPACK]
     checks:
     -   Exchange Energy:
@@ -1362,7 +1360,7 @@ h2_noft_restart.in:
             tolerance: 1.0e-05
 h2_noft_rsh.in:
     description: RI-NOFT calculation applied to H2 with RI using range-sep NOFT
-    keywords: [NOFT, range-separated, spin-unrestricted]
+    keywords: [NOFT, hybrid, spin-unrestricted]
     checks:
     -   NOFT Total Energy:
             reference: -0.9973489203
@@ -1384,7 +1382,7 @@ n2_noft_cpx.in:
             tolerance: 5.0e-05
 n2_noft_rsh.in:
     description: RI-NOFT calculation applied to N2 with RI using range-sep NOFT
-    keywords: [NOFT, range-separated, spin-unrestricted]
+    keywords: [NOFT, hybrid, spin-unrestricted]
     checks:
     -   NOFT Total Energy:
             reference: -109.3365081665
@@ -1541,7 +1539,7 @@ c2h4_b3lyp_triplet.in:
             column: 1
 c2h4_cam-b3lyp_singlet.in:
     description: TDDFT with CAM-B3LYP for singlet final state
-    keywords: [LR-TDDFT, range-separated]
+    keywords: [LR-TDDFT, hybrid]
     checks:
     -   SCF Total Energy:
             reference: -78.5350405329
@@ -2234,7 +2232,7 @@ h2o_rt_tddft_hf_PC2B.in:
             column: 2
 h2o_rt_tddft_camb3lyp_PC2B.in:
     description: RT-TDDFT T=60.0 with CAM-B3LYP
-    keywords: [RT-TDDFT, range-separated]
+    keywords: [RT-TDDFT, hybrid]
     checks:
     -   SCF Total Energy:
             reference: -76.3938220823
@@ -2796,7 +2794,7 @@ cs_gwdm_minoverlap.in:
             tolerance: 0.0001
 h2_dyson.in:
     description: G0W0 with a analytic solution of the Dyson equation
-    keywords: [GW, range-separated]
+    keywords: [GW, hybrid]
     checks:
     -   SCF Total Energy:
             reference: -1.1669981156
@@ -3401,7 +3399,7 @@ si_energy_shift.in:
             tolerance: 1.0e-06
 c2h4_lc-wpbe_tddft.in:
     description: LR-TDDFT with long-range only functional
-    keywords: [LR-TDDFT, range-separated]
+    keywords: [LR-TDDFT, hybrid]
     checks:
     -   SCF Total Energy:
             reference: -78.5180274712
