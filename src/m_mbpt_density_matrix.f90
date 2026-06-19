@@ -1111,7 +1111,7 @@ subroutine cederbaum_blas(energy, c_matrix, hfock_ao, p_matrix_mo)
 
   !
   ! Step 3: Add the density-matrix correction to the GW density-matrix
-  ! Note: only the occ-virt block is involved
+  ! NOTE: only the occ-virt block is involved
   it = 0
   do istate=ncore_G+1, nhomo_G
     do astate=nhomo_G+1, nvirtual_G-1
@@ -1129,6 +1129,8 @@ end subroutine cederbaum_blas
 
 
 !=========================================================================
+! NOTE: Only works for HF starting point
+!
 subroutine cederbaum_naive1(energy, c_matrix, hfock_ao, p_matrix_mo)
   real(dp), intent(in)    :: energy(:, :)
   real(dp), intent(in)    :: c_matrix(:, :, :)
@@ -1254,6 +1256,7 @@ end subroutine cederbaum_naive1
 !=========================================================================
 ! Like naive but also works for non-HF starting point
 ! implements the old formula that is equivalent to the new one
+! Old formula considers the first-order Fock density matrix directly added to the GW one.
 subroutine cederbaum_naive2(energy, c_matrix, hfock_ao, p_matrix_mo)
   real(dp), intent(in)    :: energy(:, :)
   real(dp), intent(in)    :: c_matrix(:, :, :)
@@ -1406,6 +1409,8 @@ end subroutine cederbaum_naive2
 ! Furche-Eshuit
 ! "Analytical First-Order Molecular Properties and Forces within the Adiabatic Connection Random Phase Approximation"
 ! JCTC 2013
+! As of today: this routine is identical to Furche-Eshuit for HF starting point, but differs for gKS
+!
 subroutine cederbaum_naive3(energy, c_matrix, hfock_ao, p_matrix_mo)
   real(dp), intent(in)    :: energy(:, :)
   real(dp), intent(in)    :: c_matrix(:, :, :)
@@ -1460,10 +1465,8 @@ subroutine cederbaum_naive3(energy, c_matrix, hfock_ao, p_matrix_mo)
   end if
 
   !
-  ! Step 1: Build B= (B₁
-  !                   B₂)
-  !
-  ! Block 1: occ-virt block
+  ! Step 1: Build B = B₁
+  !         occ-virt block
   ! Equation B2.b
   !
   call timer_tmp2%start
@@ -1498,15 +1501,8 @@ subroutine cederbaum_naive3(energy, c_matrix, hfock_ao, p_matrix_mo)
   b1(:) = -b1(:)
 
   !
-  ! Step 2: Build A = ( A₁₁  0 )
-  !                   ( A₂₁  0 )
-  !
-  ! to obtain
-  ! A⁻¹ = ( (1-A₁₁)⁻¹       0 )
-  !       ( A₂₁·(1-A₁₁)⁻¹   1 )
-
-  ! Step 2.1: do (1 - A₁₁)
-  ! Block 11: indices  (ia, jb)
+  ! In Z-vector equation, we consider A+B, which happens to be
+  ! Cederbaum's A₁₁ * Δϵ for TDHF
   it = 0
   do istate=ncore_G+1, nhomo_G
     do astate=nhomo_G+1, nvirtual_G-1
