@@ -2679,6 +2679,8 @@ subroutine setup_nucleus_gth_nonlocal(basis, h_ecp, atom_list)
   real(C_DOUBLE), allocatable :: env_local(:)
   !=====
 
+
+!TODO FBFB clean up this mess
 #if 0
   block
     !FBFB
@@ -2703,7 +2705,7 @@ subroutine setup_nucleus_gth_nonlocal(basis, h_ecp, atom_list)
 
     ! Projector definition
     C = [0.0d0, 0.0d0, 0.0d0]
-    li = 0
+    li = 1
     ipl = 2
     gth_rl = 0.2d0
 
@@ -2798,14 +2800,21 @@ subroutine setup_nucleus_gth_nonlocal(basis, h_ecp, atom_list)
     ni_cart = number_basis_function_am('CART', li)
     nj_cart = number_basis_function_am('CART', lj)
     allocate(array_cart_C(ni_cart * nj_cart))
+    allocate(array_cart(ni_cart * nj_cart))
     call libcint_gth_projector(amB, contrdepthB, B, alphaB, cB, &
                                amC, contrdepthC, C, alphaC, cC, &
                                ipl, array_cart_C)
+    array_cart(:) = array_cart_C(:)
+    call transform_libint_to_molgw_gth_projector(basis%gaussian_type, li, lj, array_cart, matrix)
 
     write(*,*) 'analytic', array_cart_C(:)
+    write(*,*) 'analytic after transform', matrix(:)
+
     deallocate(cC, alphaC)
     deallocate(cB, alphaB)
+    deallocate(array_cart)
     deallocate(array_cart_C)
+    deallocate(matrix)
 
     stop "ENOUGH"
   end block
