@@ -845,7 +845,7 @@ end subroutine recalc_kinetic
 
 
 !=========================================================================
-! calculate  ( \nabla_{R_\alpha} \alpha | p**2 /2 | \beta) 
+! calculate  ( \nabla_{R_\alpha} \alpha | p**2 /2 | \beta)
 subroutine setup_kinetic_grad(basis, hamiltonian_kinetic_grad)
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: hamiltonian_kinetic_grad(basis%nbf, basis%nbf, 3)
@@ -1141,7 +1141,7 @@ subroutine setup_para_conf(basis, hamiltonian_nucleus)
 #endif
 
   if(TRIM(harmonium)=='yes') then
-    
+
      write(stdout, '(/,a)') ' Replacing the -Z/r potential by 1/2 w**2 r**2 (i.e. Harmonium atom)'
      hamiltonian_nucleus(:, :) = 0.0e0
 
@@ -1465,8 +1465,8 @@ subroutine setup_nucleus_grad(basis, hamiltonian_nucleus_grad, atom_list, verbos
           !   ( \alpha | \nabla_{R_C} -Z_C / |r-R_C| | \beta )
           !
           !    thanks to translational invariance, we have:
-          !    ( \nabla_{R_\alpha} \alpha | -Z_C / |r-R_C| | \beta ) 
-          !          + ( \alpha | \nabla_{R_C} -Z_C / |r-R_C| | \beta ) 
+          !    ( \nabla_{R_\alpha} \alpha | -Z_C / |r-R_C| | \beta )
+          !          + ( \alpha | \nabla_{R_C} -Z_C / |r-R_C| | \beta )
           !             + ( \alpha | -Z_C / |r-R_C| | \nabla_{R_\beta} \beta )  = 0
           !  Hence,
           !   ( \alpha | \nabla_{R_C} -Z_C / |r-R_C| | \beta ) = - ( \nabla_{R_\alpha} \alpha | -Z_C / |r-R_C| | \beta )
@@ -2185,7 +2185,7 @@ subroutine setup_nucleus_ecp_quadrature(basis, hamiltonian_nucleus, atom_list)
     end if
   end if
 
-  do icenter=1, ncenter_nuclei 
+  do icenter=1, ncenter_nuclei
     ! Skip the contribution if icenter is not contained in the list
     if( PRESENT(atom_list) ) then
       if( ALL(atom_list(:) /= icenter ) ) cycle
@@ -2532,7 +2532,7 @@ subroutine setup_nucleus_gth_local(basis, h_ecp, atom_list)
     allocate(env_local_erf, SOURCE=basis%LIBCINT_env)
     call set_rinv_origin_libcint(xatom(:, icenter), env_local)
     call set_rinv_origin_libcint(xatom(:, icenter), env_local_erf)
-    alphapp = 1.0_dp / SQRT(2.0_dp) / ecp(ie)%gth_rpploc  
+    alphapp = 1.0_dp / SQRT(2.0_dp) / ecp(ie)%gth_rpploc
     ! LIBCINT needs the square since the input is the Gaussian distribution exponent
     env_local_erf(LIBCINT_PTR_RINV_ZETA+1) =  alphapp**2
     env_local(LIBCINT_PTR_RINV_ZETA+1)     =  0.0_dp
@@ -2679,6 +2679,138 @@ subroutine setup_nucleus_gth_nonlocal(basis, h_ecp, atom_list)
   real(C_DOUBLE), allocatable :: env_local(:)
   !=====
 
+#if 0
+  block
+    !FBFB
+    integer, parameter :: nang = 302
+    integer, parameter :: nrad = 8000
+    real(dp) :: x1(nang)
+    real(dp) :: y1(nang)
+    real(dp) :: z1(nang)
+    real(dp) :: w1(nang)
+    integer :: n1, ir, iang
+    real(dp) :: rr(nrad), r(3), rB, rC
+    real(dp) :: gth_rl, dr, integral, proj, bfr(3), rtmp, alpha
+    real(dp) :: integralx, integraly, integralz
+
+    dr = 0.0025d0
+    n1 = nang
+    call ld0302(x1, y1, z1, w1, n1)
+    write(*,*) 'W1 norm', SUM(w1)
+    do ir=1, nrad
+      rr(ir) = ir * dr
+    end do
+
+    ! Projector definition
+    C = [0.0d0, 0.0d0, 0.0d0]
+    li = 0
+    ipl = 2
+    gth_rl = 0.2d0
+
+    amC = li
+    if( amC > 0 ) call die('not coded')
+    contrdepthC = 1
+    allocate(cC(contrdepthC), alphaC(contrdepthC))
+    alphaC(1) = 1.0_dp / ( 2.0_dp * gth_rl**2 )
+    cC(1) = SQRT( 2.0_dp / GAMMA(li + (4.0_dp * ipl - 1.0_dp) / 2.0_dp) ) &
+                  / gth_rl**( li + (4.0_dp * ipl - 1.0_dp) /2.0_dp )
+    write(*,*) 'projector normalization factor', cC(1)
+
+    integral = 0.0d0
+    do ir=1, nrad
+      do iang=1, nang
+        proj = cC(1) * rr(ir)**(li+2*(ipl-1)) * EXP( -0.5d0 * rr(ir)**2 / gth_rl**2)
+        integral = integral + w1(iang) * dr * rr(ir)**2 * proj**2
+      end do
+    end do
+    write(*,*) 'Projector normalization:'
+    write(*,*) 'li, ipl, gth_rl, should be 1.00 ?'
+    write(*,*) li, ipl, gth_rl, integral
+
+    !
+    ! basis function definition
+    !
+
+    !
+    ! get shell: jshell
+    !
+    !jshell = 1 ! s orbital on atom 1
+    !jshell = 2 ! p orbital on atom 1
+    !jshell = 3 ! s orbital on atom 2
+    jshell = 4 ! p orbital on atom 2
+
+    call set_libint_shell(basis%shell(jshell), amB, contrdepthB, B, alphaB, cB)
+    lj = amB
+    write(*,*) 'FBFB get shell', amB, contrdepthB
+    write(*,*) 'FBFB get shell', B(:), alphaB(:), cB(:)
+
+
+    write(*,*) 'basis function: position, angmom, alpha', B(:), lj, alphaB(1)
+    integralx = 0.0d0
+    integraly = 0.0d0
+    integralz = 0.0d0
+    do ir=1, nrad
+      do iang=1, nang
+        r(1) = rr(ir) * x1(iang)
+        r(2) = rr(ir) * y1(iang)
+        r(3) = rr(ir) * z1(iang)
+        rB = NORM2(r(:) - B(:))
+        bfr(:) = cB(1) * (r(:) - B(:))**lj * EXP( -alphaB(1) * rB**2 )
+        integralx = integralx + w1(iang) * dr * rr(ir)**2 * bfr(1)**2 * 4.0d0 * pi
+        integraly = integraly + w1(iang) * dr * rr(ir)**2 * bfr(2)**2 * 4.0d0 * pi
+        integralz = integralz + w1(iang) * dr * rr(ir)**2 * bfr(3)**2 * 4.0d0 * pi
+      end do
+    end do
+    write(*,*) 'Px, Py, Pz normalization'
+    write(*,*) lj, B(:), alphaB(:), integralx
+    write(*,*) lj, B(:), alphaB(:), integraly
+    write(*,*) lj, B(:), alphaB(:), integralz
+
+
+    !==============================
+    write(*,*) '===== projector application on basis function'
+    write(*,*) 'basis function: position, angmom, alpha', B(:), lj, alphaB(:)
+    write(*,*) 'projector function: position, angmom, gth_rl, ipl', C(:), li, ipl, gth_rl
+    integralx = 0.0d0
+    integraly = 0.0d0
+    integralz = 0.0d0
+    do ir=1, nrad
+      do iang=1, nang
+        r(1) = rr(ir) * x1(iang)
+        r(2) = rr(ir) * y1(iang)
+        r(3) = rr(ir) * z1(iang)
+        rB = NORM2(r(:) - B(:))
+        rC = NORM2(r(:) - C(:))
+        proj   = cC(1) * rC**(li+2*(ipl-1)) * EXP( -0.5d0 * rC**2 / gth_rl**2)
+        bfr(:) = cB(1) * (r(:)-B(:))**lj * EXP( -alphaB(1) * rB**2 )
+        integralx = integralx + w1(iang) * dr * rr(ir)**2 * bfr(1) * proj * 4.0d0 * pi / SQRT(4.0d0 * pi)
+        integraly = integraly + w1(iang) * dr * rr(ir)**2 * bfr(2) * proj * 4.0d0 * pi / SQRT(4.0d0 * pi)
+        integralz = integralz + w1(iang) * dr * rr(ir)**2 * bfr(3) * proj * 4.0d0 * pi / SQRT(4.0d0 * pi)
+      end do
+    end do
+    write(*,*) '========================================'
+    write(*,*) lj, B(:), alphaB(:), integralx
+    write(*,*) lj, B(:), alphaB(:), integraly
+    write(*,*) lj, B(:), alphaB(:), integralz
+    write(*,*) '========================================'
+
+    write(*,*) 'analytic'
+    ni_cart = number_basis_function_am('CART', li)
+    nj_cart = number_basis_function_am('CART', lj)
+    allocate(array_cart_C(ni_cart * nj_cart))
+    call libcint_gth_projector(amB, contrdepthB, B, alphaB, cB, &
+                               amC, contrdepthC, C, alphaC, cC, &
+                               ipl, array_cart_C)
+
+    write(*,*) 'analytic', array_cart_C(:)
+    deallocate(cC, alphaC)
+    deallocate(cB, alphaB)
+    deallocate(array_cart_C)
+
+    stop "ENOUGH"
+  end block
+#endif
+
   allocate(h_tmp, MOLD=h_ecp)
   h_ecp(:, :) = 0.0_dp
 
@@ -2747,7 +2879,6 @@ subroutine setup_nucleus_gth_nonlocal(basis, h_ecp, atom_list)
           call transform_libint_to_molgw_gth_projector(basis%gaussian_type, li, lj, array_cart, matrix)
 
           proj_i(jbf1:jbf2, :, ipl) = TRANSPOSE(matrix(:, :))
-
 
           deallocate(array_cart, array_cart_C, matrix)
         end do ! jshell
@@ -2987,7 +3118,7 @@ subroutine recalc_nucleus_ecp_quadrature(basis, basis_t, basis_p, hamiltonian_nu
                          basis_function_r(basis_t%nbf+1:basis%nbf), 1, &
                          hamiltonian_ecp(basis_t%nbf+1:basis%nbf,basis_t%nbf+1:basis%nbf), basis_t%nbf+1)
               ! <T|1/R|P> contribution
-              call DGER(basis_t%nbf, basis_p%nbf, w1(i1) * 4.0_dp * pi * wxa(iradial) * xa(iradial)**2 * ecp(ie)%dk(iecp) & 
+              call DGER(basis_t%nbf, basis_p%nbf, w1(i1) * 4.0_dp * pi * wxa(iradial) * xa(iradial)**2 * ecp(ie)%dk(iecp) &
                          * EXP( -ecp(ie)%zetak(iecp) * xa(iradial)**2 ) * xa(iradial)**(ecp(ie)%nk(iecp)-2), &
                          basis_function_r(1:basis_t%nbf), 1, basis_function_r(basis_t%nbf+1:basis%nbf), 1, &
                          hamiltonian_ecp(1:basis_t%nbf, basis_t%nbf+1:basis%nbf), basis_t%nbf)
@@ -3199,13 +3330,13 @@ subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucl
 
   hamiltonian_ecp(:, :) = 0.0_dp
 
-  do icenter=1, natom 
+  do icenter=1, natom
     ! MPI parallelization over ECP centers
     if( MODULO(icenter-1, world%nproc) /= world%rank ) cycle
 
     element_has_ecp = .FALSE.
     do ie=1, nelement_ecp
-      if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then 
+      if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then
         element_has_ecp = .TRUE.
         exit
       end if
@@ -3219,9 +3350,9 @@ subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucl
     !! We firstly calculate the <T|1/R|P> contribution
 
 
-    !    
+    !
     ! First, the local part
-    !    
+    !
     allocate(env_local, SOURCE=basis%LIBCINT_env)
     allocate(env_local_erf, SOURCE=basis%LIBCINT_env)
     call set_rinv_origin_libcint(xatom(:, icenter), env_local)
@@ -3235,14 +3366,14 @@ subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucl
     hamiltonian_nucleus( basis_t%nbf+1:, 1:basis_t%nbf ) = 0.0_dp
 
 
-    do jshell=1, basis_p%nshell 
+    do jshell=1, basis_p%nshell
       lj      = basis_p%shell(jshell)%am
       nj_cart = number_basis_function_am('CART',lj)
       nj      = number_basis_function_am(basis_p%gaussian_type, lj)
       jbf1    = basis_p%shell(jshell)%istart + basis_t%nbf
       jbf2    = basis_p%shell(jshell)%iend + basis_t%nbf
 
-      jglobal = basis_t%nshell + jshell 
+      jglobal = basis_t%nshell + jshell
 
       if( MODULO(jshell-1, world%nproc) /= world%rank ) cycle
 
@@ -3379,7 +3510,7 @@ subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucl
           jbf2     = basis_p%shell(jshell)%iend + basis_t%nbf
 
           call set_libint_shell(basis_p%shell(jshell), amB, contrdepthB, B, alphaB, cB)
- 
+
           allocate(array_cart(ni_cart*njB_cart))
           allocate(array_cart_C(ni_cart*njB_cart))
 
@@ -3392,7 +3523,7 @@ subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucl
 
           call transform_libint_to_molgw_gth_projector(basis_p%gaussian_type, ljB, li, array_cart, matrix)
 
-          proj_i_B(jbf1 - basis_t%nbf:jbf2 - basis_t%nbf, :, ipl) = TRANSPOSE(matrix(:, :)) 
+          proj_i_B(jbf1 - basis_t%nbf:jbf2 - basis_t%nbf, :, ipl) = TRANSPOSE(matrix(:, :))
           deallocate(array_cart, array_cart_C)
         end do ! end loop for B
 
@@ -3415,15 +3546,15 @@ subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucl
                                      ipl, array_cart_C)
           array_cart(:) = array_cart_C(:)
 #endif
-  
+
           call transform_libint_to_molgw_gth_projector(basis_t%gaussian_type, liA, li, array_cart, matrix)
 
           proj_i_A(ibf1:ibf2, :, ipl) = TRANSPOSE(matrix(:, :))
 
           deallocate(array_cart, array_cart_C)
         end do ! end loop for A
-        
-  
+
+
        deallocate(array_cart, array_cart_C, matrix)
 
       deallocate(cC, alphaC)
@@ -3457,9 +3588,9 @@ subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucl
     !! We secondly calculate the <P|1/R|P> contribution
 
 
-    !    
+    !
     ! First, the local part
-    !    
+    !
     C(:) = xatom(:, icenter)
     hamiltonian_tmp(:, :) = 0.0_dp
 
@@ -3468,7 +3599,7 @@ subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucl
     allocate(env_local_erf, SOURCE=basis%LIBCINT_env)
     call set_rinv_origin_libcint(xatom(:, icenter), env_local)
     call set_rinv_origin_libcint(xatom(:, icenter), env_local_erf)
-    alphapp = 1.0_dp / SQRT(2.0_dp) / ecp(ie)%gth_rpploc 
+    alphapp = 1.0_dp / SQRT(2.0_dp) / ecp(ie)%gth_rpploc
     ! LIBCINT needs the square since the input is the Gaussian distribution exponent
     env_local_erf(LIBCINT_PTR_RINV_ZETA+1) =  alphapp**2
     env_local(LIBCINT_PTR_RINV_ZETA+1) =  0.0_dp
@@ -3621,7 +3752,7 @@ subroutine recalc_nucleus_ecp_analytic(basis, basis_t, basis_p, hamiltonian_nucl
           call libcint_gth_projector(amB, contrdepthB, B, alphaB, cB, &
                                      amC, contrdepthC, C, alphaC, cC, &
                                      ipl, array_cart_C)
-          array_cart(:) = array_cart_C(:) 
+          array_cart(:) = array_cart_C(:)
 #endif
 
           call transform_libint_to_molgw_gth_projector(basis_p%gaussian_type, ljB, li, array_cart, matrix)
@@ -3713,7 +3844,7 @@ subroutine setup_pbe_plus_alpha(basis, h_pbea)
   integer, parameter :: lmax_h  = 0
   integer, parameter :: lmax_ge = 2
   integer, parameter :: ng = 3
-  
+
   ! STO-3G orbital for H
   real(dp), parameter :: alpha_h(ng, lmax_h + 1) = &
    RESHAPE( [0.3425250914e+01, 0.6239137298e+00, 0.1688554040e+00], [ng, lmax_h+1] )

@@ -1203,8 +1203,10 @@ subroutine libcint_gth_projector(amA, contrdepthA, A, alphaA, cA, &
   off = off + contrdepthA
 
 
-  shls(1) = 0
-  shls(2) = 1
+  ! When calling cint1e_r2_origj_cart, (r-RC)² is taken with respect to the second center
+  ! One should absolutely stick to this ordering:
+  shls(1) = 1
+  shls(2) = 0
 
 #if defined(HAVE_LIBCINT)
   select case(iproj)
