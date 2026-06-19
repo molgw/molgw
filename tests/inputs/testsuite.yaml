@@ -33,7 +33,7 @@
 #   noRI             No resolution-of-identity (no auxiliary basis)
 #   spin-unrestricted Open-shell spin-unrestricted calculation (nspin=2)
 #   ECP              Effective core potential (PP, GTH, or numerical pseudopotential)
-#   periodic         Periodic boundary conditions (PBC)
+#   PBC              Periodic boundary conditions
 #   stopping         Stopping cross section calculation
 #   density-matrix   Correlated density matrix (pt_density_matrix input variable)
 #
@@ -44,7 +44,6 @@
 #   HAVE_LIBCINT     LIBCINT integral library
 #   HAVE_FFTW3       FFTW3 fast Fourier transform library
 #
-
 he.in:
     description: HF helium atom cc-pVTZ without RI
     keywords: [HF, noRI]
@@ -532,14 +531,24 @@ ar_pbe_psp8.in:
 ne_gth.in:
     description: BLYP Ne atom with analytical pseudo in GTH formalism
     keywords: [DFT, ECP]
-    requirements:
-    - HAVE_LIBCINT
+    requirements: [HAVE_LIBCINT]
     checks:
     -   SCF Total Energy:
             reference: -34.9153582541
             tolerance: 1.0e-07
     -   gKS HOMO energy:
             reference: -13.008824
+            tolerance: 0.001
+ne2_gth.in:
+    description: BLYP Ne atom with analytical pseudo in GTH formalism
+    keywords: [DFT, ECP]
+    requirements: [HAVE_LIBCINT]
+    checks:
+    -   SCF Total Energy:
+            reference: -68.0661983001
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: 6.537665
             tolerance: 0.001
 h2o_scalapack.in:
     description: H2O molecule within PBE0 with possibly SCALAPACK
@@ -1189,8 +1198,7 @@ h2_hse06_overlap_gw.in:
 h2_rsh_overlap_ci.in:
     description: RSH recipe for HSE08 H2 molecule no RI and CI with a filtered overlap
     keywords: [CI, noRI, range-separated]
-    requirements:
-    - HAVE_SCALAPACK
+    requirements: [HAVE_SCALAPACK]
     checks:
     -   Exchange Energy:
             reference: -0.1340776991
@@ -2103,8 +2111,7 @@ h2o_gw_smallbasis_aug.in:
 h2_relax.in:
     description: H2 forces without RI
     keywords: [HF, noRI]
-    requirements:
-    - HAVE_FORCES
+    requirements: [HAVE_FORCES]
     checks:
     -   SCF Total Energy:
             reference: -1.1313335905
@@ -2442,8 +2449,7 @@ be_ci.in:
 be_ci_davidson.in:
     description: CI calculation for boron atom (Davidson diago)
     keywords: [CI, HF, noRI]
-    requirements:
-    - HAVE_SCALAPACK
+    requirements: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -14.5667640335
@@ -2532,8 +2538,7 @@ be_ci_self.in:
 li2_ci_self.in:
     description: CI Green's function for Li2 limited to single and double excitations
     keywords: [HF, noRI]
-    requirements:
-    - HAVE_SCALAPACK
+    requirements: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -14.86568634
@@ -2954,8 +2959,7 @@ h_in_he_rt_lda_MB_PC2B_nucleus_restart.in:
 h_in_he_rt_lda_MB_PC2B_ions.in:
     description: RT-TDDFT PC="MB_PC2B" projectile with basis
     keywords: [DFT, RT-TDDFT]
-    requirements:
-    - HAVE_GRADIENTS
+    requirements: [HAVE_GRADIENTS]
     checks:
     -   SCF Total Energy:
             reference: -2.8286834572
@@ -2972,8 +2976,7 @@ h_in_he_rt_lda_MB_PC2B_ions.in:
 h_in_he_rt_lda_MB_PC2B_ions_restart.in:
     description: RT-TDDFT PC="MB_PC2B" projectile with basis
     keywords: [DFT, RT-TDDFT]
-    requirements:
-    - HAVE_GRADIENTS
+    requirements: [HAVE_GRADIENTS]
     dependence:
     - h_in_he_rt_lda_MB_PC2B_ions.in
     checks:
@@ -2989,8 +2992,7 @@ h_in_he_rt_lda_MB_PC2B_ions_restart.in:
 he_in_h_ghost_rt_lda_MB_PC2B.in:
     description: RT-TDDFT PC="MB_PC2B" projectile in ghost
     keywords: [DFT, RT-TDDFT]
-    requirements:
-    - HAVE_GRADIENTS
+    requirements: [HAVE_GRADIENTS]
     checks:
     -   SCF Total Energy:
             reference: -2.8356240593
@@ -3004,8 +3006,7 @@ he_in_h_ghost_rt_lda_MB_PC2B.in:
 benzene_he_rt-tddft.in:
     description: RT-TDDFT with moving basis for He++
     keywords: [DFT, RT-TDDFT]
-    requirements:
-    - HAVE_GRADIENTS
+    requirements: [HAVE_GRADIENTS]
     checks:
     -   SCF Total Energy:
             reference: -232.8924888075
@@ -3451,8 +3452,7 @@ Kr_Kr_ecp.in:
 h2_gth.in:
     description: H2 molecule with analytical pseudo in GTH formalism
     keywords: [DFT, ECP]
-    requirements:
-    - HAVE_LIBCINT
+    requirements: [HAVE_LIBCINT]
     checks:
     -   SCF Total Energy:
             reference: -1.1339680189
@@ -3463,8 +3463,7 @@ h2_gth.in:
 lif_gth.in:
     description: LiF molecule with analytical pseudo in GTH formalism
     keywords: [DFT, ECP]
-    requirements:
-    - HAVE_LIBCINT
+    requirements: [HAVE_LIBCINT]
     checks:
     -   SCF Total Energy:
             reference: -31.5478831094
@@ -3477,10 +3476,8 @@ lif_gth.in:
             tolerance: 0.0001
 h2_gth_box.in:
     description: H2 in a periodic box with analytical GTH pseudo
-    keywords: [DFT, ECP, noRI, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC, noRI]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -1.1355173048
@@ -3505,10 +3502,8 @@ h2_gth_box.in:
             tolerance: 1.0e-07
 h2_gth_box_shifted.in:
     description: H2 in a periodic box with analytical GTH pseudo
-    keywords: [DFT, ECP, noRI, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC, noRI]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -1.1355173048
@@ -3533,10 +3528,8 @@ h2_gth_box_shifted.in:
             tolerance: 0.0005
 li2_gth_box.in:
     description: Li2 in a periodic box GTH pseudo (local only)
-    keywords: [DFT, ECP, noRI, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC, noRI]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -14.663897682
@@ -3564,10 +3557,8 @@ li2_gth_box.in:
             tolerance: 0.0001
 lif_gth_box.in:
     description: LiF molecule in a periodic box (GTH pseudo local and non-local)
-    keywords: [DFT, ECP, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -31.5040990758
@@ -3580,10 +3571,8 @@ lif_gth_box.in:
             tolerance: 0.0001
 he_gth_bcc_box.in:
     description: He atom in a periodic BCC box
-    keywords: [DFT, ECP, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -2.8318434028
@@ -3593,10 +3582,8 @@ he_gth_bcc_box.in:
             tolerance: 0.0001
 he2_gth_bcc_box.in:
     description: 2 He atoms in a periodic BCC box
-    keywords: [DFT, ECP, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -5.6636285654
@@ -3606,10 +3593,8 @@ he2_gth_bcc_box.in:
             tolerance: 0.0001
 he2_chain_gth_bcc_box.in:
     description: Two-helium chain in a periodic box
-    keywords: [DFT, ECP, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -5.6635911088
@@ -3625,10 +3610,8 @@ he2_chain_gth_bcc_box.in:
             tolerance: 0.0001
 he4_chain_gth_bcc_box.in:
     description: Four-helium chain in a periodic box
-    keywords: [DFT, ECP, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -11.3272009156
@@ -3644,10 +3627,8 @@ he4_chain_gth_bcc_box.in:
             tolerance: 0.0001
 he4_square_gth_bcc_box.in:
     description: Four-helium square in a periodic box
-    keywords: [DFT, ECP, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -11.327113556
@@ -3663,10 +3644,8 @@ he4_square_gth_bcc_box.in:
             tolerance: 0.0001
 he8_lattice_gth_bcc_box.in:
     description: Eight-helium lattice in a periodic box
-    keywords: [DFT, ECP, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -22.6542155364
@@ -3682,10 +3661,8 @@ he8_lattice_gth_bcc_box.in:
             tolerance: 0.0001
 he16_lattice_gth_sc_box.in:
     description: Sixteen-helium lattice in a periodic box
-    keywords: [DFT, ECP, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -45.307160585
@@ -3704,10 +3681,8 @@ he16_lattice_gth_sc_box.in:
             tolerance: 0.0001
 diamond_gth_08.in:
     description: 8-atom cell of diamond
-    keywords: [DFT, ECP, noRI, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC, noRI]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   Nucleus-Nucleus:
             reference: -51.1779066085
@@ -3720,10 +3695,8 @@ diamond_gth_08.in:
             tolerance: 0.0001
 he_gth_box_hf.in:
     description: He atom within HF with PBC
-    keywords: [ECP, HF, noRI, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [ECP, HF, PBC, noRI]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   Nucleus-Nucleus:
             reference: -0.4568908243
@@ -3742,10 +3715,8 @@ he_gth_box_hf.in:
             tolerance: 0.0001
 diamond_gth_08_hf.in:
     description: 8-atom cell of diamond within HF
-    keywords: [ECP, HF, noRI, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [ECP, HF, PBC, noRI]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   Nucleus-Nucleus:
             reference: -51.1102279515
@@ -3767,10 +3738,8 @@ diamond_gth_08_hf.in:
             tolerance: 0.0001
 he_hf_cc4s_box_output.in:
     description: HF helium atom with output of Cc4s files
-    keywords: [ECP, HF, noRI, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [ECP, HF, PBC, noRI]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -2.8618499703
@@ -3780,10 +3749,8 @@ he_hf_cc4s_box_output.in:
             tolerance: 1.0e-07
 he_hf_cc4s_box_input.in:
     description: HF+MP2 helium atom from input Cc4s files
-    keywords: [ECP, HF, MP2, noRI, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [ECP, HF, MP2, PBC, noRI]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     dependence:
     - he_hf_cc4s_box_output.in
     checks:
@@ -3798,10 +3765,8 @@ he_hf_cc4s_box_input.in:
             tolerance: 1.0e-07
 he_gth_box_pbe.in:
     description: PBE helium atom in a box
-    keywords: [DFT, ECP, noRI, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC, noRI]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -2.8922518757
@@ -3811,10 +3776,8 @@ he_gth_box_pbe.in:
             tolerance: 0.0001
 diamond_gth_08_pbe.in:
     description: 8-atom cell of diamond within PBE
-    keywords: [DFT, ECP, noRI, periodic]
-    requirements:
-    - HAVE_LIBCINT
-    - HAVE_FFTW3
+    keywords: [DFT, ECP, PBC, noRI]
+    requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
             reference: -44.9101913413

@@ -228,7 +228,7 @@ def parse_args():
                              'Available: HF DFT hybrid range-separated double-hybrid\n'
                              '           GW vertex MP2 RPA BSE\n'
                              '           LR-TDDFT RT-TDDFT CI NOFT noRI\n'
-                             '           spin-unrestricted ECP periodic stopping\n'
+                             '           spin-unrestricted ECP PBC stopping\n'
                              '           density-matrix\n'
                              'Example: --keyword GW BSE')
     parser.add_argument('-d', '--debug', action='store_true',
@@ -333,7 +333,7 @@ def apply_keyword_filter(tests: list[TestCase], keywords: list[str],
         sys.exit(f'No tests found with keyword(s): {", ".join(keywords)}\n'
                  f'Available keywords: HF DFT hybrid range-separated double-hybrid '
                  f'GW vertex MP2 RPA BSE LR-TDDFT RT-TDDFT CI NOFT '
-                 f'noRI spin-unrestricted ECP periodic stopping density-matrix')
+                 f'noRI spin-unrestricted ECP PBC stopping density-matrix')
 
     print(f'\nRunning tests with keyword(s): {", ".join(keywords)}\n')
     return resolve_dependencies(selected, all_tests)
