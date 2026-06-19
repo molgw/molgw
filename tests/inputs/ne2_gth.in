@@ -1,0 +1,16 @@
+&molgw
+ scf='blyp'
+
+ ecp_basis='DZVP_cp2k'
+ auxil_basis='AUTO'
+
+ npulay_hist=3
+ ecp_elements='Ne'
+ ecp_type='blyp.gth'
+
+ natom=2
+ length_unit='bohr'
+/
+Ne         0.000000    0.000000    0.000000   
+Ne         1.800000    0.000000    0.000000   
+
