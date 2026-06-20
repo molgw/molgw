@@ -7,7 +7,7 @@
 #       keywords: [KW1, KW2, ...]    # used by --keyword filter in run_testsuite.py
 #       requirements: [HAVE_X, ...]  # omitted when empty; test is skipped if library absent
 #       dependence: [other.in, ...]  # omitted when empty; listed tests must run first
-#       no_parallel: true            # optional; disables OpenMP/MPI parallelism for this test
+#       conflicts: [HAVE_X, ...]     # optional; test is skipped if any listed library is compiled in
 #       checks:
 #       -   "Output line key":
 #               reference: <float>   # expected numerical value
@@ -196,7 +196,7 @@ nh3_genuine_ri.in:
 na2_lda.in:
     description: LDA Na2 molecule without RI
     keywords: [DFT, noRI]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -322.8615203603
@@ -210,7 +210,7 @@ na2_lda.in:
 na2_lda_outofcore.in:
     description: LDA Na2 molecule without RI with out-of-core Coulomb integrals
     keywords: [DFT, noRI]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -322.8615203603
@@ -319,7 +319,7 @@ h2_guess_mix.in:
 h2_basis_nori.in:
     description: LDA H2 molecule with an atom-dependent basis set
     keywords: [DFT, noRI]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -1.1306882151
@@ -346,7 +346,7 @@ h2_basis_ri.in:
 o2_rsh.in:
     description: Range-separated hybrid mimicing HSE08 for triplet O2 wo RI
     keywords: [hybrid, noRI, spin-unrestricted]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -150.1671750256
@@ -795,7 +795,7 @@ he2_x2c_rsx_qidh.in:
 he_tdpbe0.in:
     description: TDDFT calculation of He atom with PBE0 without RI
     keywords: [LR-TDDFT, hybrid, noRI]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -2.8945155987
@@ -978,7 +978,7 @@ h2o_pbeqidh_rpap_im.in:
 boron_gw_spinpolarized.in:
     description: GW@HF boron atom without RI with spin
     keywords: [GW, HF, noRI, spin-unrestricted]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   Hartree Energy:
             reference: 11.6084909105
@@ -1039,7 +1039,7 @@ h2_even_tempered.in:
 co2.in:
     description: GW@LDA CO2 without RI with 6-31G
     keywords: [DFT, GW, noRI]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   Kinetic Energy:
             reference: 186.4258076613
@@ -1143,7 +1143,7 @@ ar_camb3lyp_gw.in:
 h2_pbe_gw.in:
     description: PBE H2 molecule cc-pVDZ and G0W0 wo RI
     keywords: [DFT, GW, noRI]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -1.0727602939
@@ -1226,7 +1226,7 @@ h2_rsh_overlap_ci.in:
 be_qsgw.in:
     description: QSGW Be atom cc-pVDZ without RI
     keywords: [GW]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   RPA Total energy:
             reference: -14.6144623635
@@ -1295,7 +1295,7 @@ be_cohsex_ri.in:
 be_sc-cohsex_nori.in:
     description: self-consistent COHSEX Be atom cc-pVDZ without RI
     keywords: [GW, noRI]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   gKS HOMO energy:
             reference: -9.681301
@@ -1373,7 +1373,7 @@ n2_noft.in:
 n2_noft_cpx.in:
     description: RI-NOFT calculation applied to N2 with RI (complex orbs)
     keywords: [HF, NOFT]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   NOFT Total Energy:
             reference: -108.9393597626
@@ -1597,7 +1597,7 @@ ch4_bse_scissor.in:
 ch2o_gw_wori.in:
     description: GW@LDA wo RI on formaldehyde to prepare BSE
     keywords: [DFT, GW, noRI]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -113.5803830624
@@ -1615,7 +1615,7 @@ ch2o_bse_wori.in:
     description: GW@LDA wo RI on formaldehyde using previous run
     keywords: [BSE, DFT, noRI]
     dependence: [ch2o_gw_wori.in]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   Lowest neutral excitation:
             reference: 3.063375
@@ -1941,7 +1941,7 @@ lih_gw+sosex.in:
 lih_gw+sosex_nori.in:
     description: 'LiH: GW+SOSEX@PBE0 without RI'
     keywords: [GW, hybrid, noRI, vertex]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -8.0461044345
@@ -2077,7 +2077,7 @@ h2o_gw_smallbasis.in:
 h2o_gw_smallbasis_aug.in:
     description: 'H2O: GW@PBE0 using a small basis set for virtual orbitals with diffuse functions'
     keywords: [GW, hybrid]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -76.3830840045
@@ -2170,7 +2170,7 @@ h2o_gw_polynomial.in:
 h2o_gw_contour.in:
     description: GW@HF calculation with contour deformation
     keywords: [GW, HF]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -76.0571524942
@@ -2727,7 +2727,7 @@ co_gw_pt2_dm.in:
 co_gw_dm_imag.in:
     description: G0W0 based on G0W0 density matrix using an imaginary axis integration
     keywords: [HF, density-matrix]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -112.7480846685
@@ -2747,7 +2747,7 @@ co_gw_dm_imag.in:
 co_gw_dm_dyson.in:
     description: G0W0 density matrix obtained from the Dyson equation solution using a imaginary frequencies
     keywords: [density-matrix, hybrid]
-    no_parallel: true
+    conflicts: [HAVE_SCALAPACK]
     checks:
     -   SCF Total Energy:
             reference: -113.2675617628

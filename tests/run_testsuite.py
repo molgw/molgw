@@ -274,7 +274,7 @@ def parse_testsuite_yaml(path: Path) -> list[TestCase]:
             name=entry.get('description', ''),
             checks=checks_raw,
             restart=bool(deps),
-            parallel=not entry.get('no_parallel', False),
+            parallel='HAVE_SCALAPACK' not in entry.get('conflicts', []),
             need_scalapack='HAVE_SCALAPACK' in reqs,
             need_gradients='HAVE_GRADIENTS' in reqs,
             need_forces='HAVE_FORCES' in reqs,
