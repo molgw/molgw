@@ -8,7 +8,6 @@
 #       requirements: [HAVE_X, ...]  # omitted when empty; test is skipped if library absent
 #       dependence: [other.in, ...]  # omitted when empty; listed tests must run first
 #       no_parallel: true            # optional; disables OpenMP/MPI parallelism for this test
-#       command: "extra args"        # optional; extra arguments appended to the molgw call
 #       checks:
 #       -   "Output line key":
 #               reference: <float>   # expected numerical value
@@ -42,6 +41,7 @@
 #   HAVE_LIBCINT     LIBCINT integral library
 #   HAVE_FFTW3       FFTW3 fast Fourier transform library
 #
+
 he.in:
     description: HF helium atom cc-pVTZ without RI
     keywords: [HF, noRI]
@@ -273,8 +273,7 @@ h2o_pbe0.in:
 h2o_pbe0_basis_restart.in:
     description: PBE0 water restarting from a previous run with a smaller basis
     keywords: [hybrid]
-    dependence:
-    - h2o_pbe0.in
+    dependence: [h2o_pbe0.in]
     checks:
     -   SCF Total Energy:
             reference: -76.3536424842
@@ -289,8 +288,7 @@ propanol_neutral.in:
 propanol_cation_restart.in:
     description: propanol cation (use neutral RESTART)
     keywords: [hybrid, spin-unrestricted]
-    dependence:
-    - propanol_neutral.in
+    dependence: [propanol_neutral.in]
     checks:
     -   SCF Total Energy:
             reference: -193.7189853894
@@ -1499,8 +1497,7 @@ sih4_hf.in:
 sih4_hf_tda.in:
     description: TDHF SiH4 aug-cc-pVDZ with TDA restarting from previous run
     keywords: [HF, LR-TDDFT]
-    dependence:
-    - sih4_hf.in
+    dependence: [sih4_hf.in]
     checks:
     -   Exc. 0001:
             reference: 9.82654263
@@ -1617,8 +1614,7 @@ ch2o_gw_wori.in:
 ch2o_bse_wori.in:
     description: GW@LDA wo RI on formaldehyde using previous run
     keywords: [BSE, DFT, noRI]
-    dependence:
-    - ch2o_gw_wori.in
+    dependence: [ch2o_gw_wori.in]
     no_parallel: true
     checks:
     -   Lowest neutral excitation:
@@ -1666,8 +1662,7 @@ ch2o_gw.in:
 ch2o_bse.in:
     description: BSE on formaldehyde
     keywords: [BSE, hybrid]
-    dependence:
-    - ch2o_gw.in
+    dependence: [ch2o_gw.in]
     checks:
     -   Lowest neutral excitation:
             reference: 3.389151
@@ -1691,8 +1686,7 @@ ch2o_bse.in:
 ch2o_bse_nokernel.in:
     description: BSE wo kernel on formaldehyde
     keywords: [BSE, RPA, hybrid]
-    dependence:
-    - ch2o_bse.in
+    dependence: [ch2o_bse.in]
     checks:
     -   '0001 :':
             reference: 13.0850093
@@ -1806,8 +1800,7 @@ oh_m_1.in:
 oh_m_2.in:
     description: GnWn (eigenvalue self-consistent) on OH- 2nd iteration
     keywords: [GW, hybrid]
-    dependence:
-    - oh_m_1.in
+    dependence: [oh_m_1.in]
     checks:
     -   1/2 Tr[ Sig_c * G ]:
             reference: -0.4816111091
@@ -1824,8 +1817,7 @@ oh_m_2.in:
 oh_m_3.in:
     description: GnWn (eigenvalue self-consistent) on OH- 3rd iteration
     keywords: [GW, hybrid]
-    dependence:
-    - oh_m_2.in
+    dependence: [oh_m_2.in]
     checks:
     -   1/2 Tr[ Sig_c * G ]:
             reference: -0.4785659835
@@ -1886,8 +1878,7 @@ oh_0_1.in:
 oh_0_2.in:
     description: GnW0 (eigenvalue self-consistent) on OH (spin-polarized) 2nd iteration
     keywords: [GW, hybrid, spin-unrestricted]
-    dependence:
-    - oh_0_1.in
+    dependence: [oh_0_1.in]
     checks:
     -   G0W0 HOMO energy:
             reference: -13.340412
@@ -2296,8 +2287,7 @@ h2o_rt_tddft_lda_PC2B.in:
 h2o_rt_tddft_lda_PC2B_restart.in:
     description: RT-TDDFT from RESTART_TDDFT (need previous run)
     keywords: [DFT, RT-TDDFT]
-    dependence:
-    - h2o_rt_tddft_lda_PC2B.in
+    dependence: [h2o_rt_tddft_lda_PC2B.in]
     checks:
     -   RT-TDDFT Total Energy:
             reference: -75.8540895314
@@ -2336,8 +2326,7 @@ h2o_rt_tddft_h_proj_pbe0.in:
 h2o_rt_tddft_h_proj_pbe0_restart.in:
     description: RT-TDDFT proj without basis pbe0 restart
     keywords: [RT-TDDFT, hybrid]
-    dependence:
-    - h2o_rt_tddft_h_proj_pbe0.in
+    dependence: [h2o_rt_tddft_h_proj_pbe0.in]
     checks:
     -   RT-TDDFT Total Energy:
             reference: -75.509814864
@@ -2355,8 +2344,7 @@ h2o_rt_tddft_h_proj_temp_pbe0.in:
 h2o_rt_tddft_h_proj_temp_pbe0_restart.in:
     description: RT-TDDFT PBE0 with temperature restart
     keywords: [RT-TDDFT, hybrid]
-    dependence:
-    - h2o_rt_tddft_h_proj_temp_pbe0.in
+    dependence: [h2o_rt_tddft_h_proj_temp_pbe0.in]
     checks:
     -   RT-TDDFT Total Energy:
             reference: -75.4884909894
@@ -2611,8 +2599,7 @@ h2o_temperature.in:
 h2o_restart_temperature.in:
     description: restart with non-zero temperature
     keywords: [hybrid]
-    dependence:
-    - h2o_temperature.in
+    dependence: [h2o_temperature.in]
     checks:
     -   SCF Total Energy:
             reference: -76.3174966596
@@ -2633,8 +2620,7 @@ sih4_sc-cohsex.in:
 sih4_g0w0@sc-cohsex.in:
     description: G0W0 for SiH4 based on the previous sc-COHSEX run
     keywords: [DFT, GW]
-    dependence:
-    - sih4_sc-cohsex.in
+    dependence: [sih4_sc-cohsex.in]
     checks:
     -   GW HOMO energy:
             reference: -12.855076
@@ -2689,8 +2675,7 @@ co_gw_dm.in:
 co_gw_dm_restart.in:
     description: G0W0 based on G0W0 density matrix
     keywords: [GW, HF]
-    dependence:
-    - co_gw_dm.in
+    dependence: [co_gw_dm.in]
     checks:
     -   GW HOMO energy:
             reference: -13.799652
@@ -2948,8 +2933,7 @@ h_in_he_rt_lda_MB_PC2B_nucleus.in:
 h_in_he_rt_lda_MB_PC2B_nucleus_restart.in:
     description: RT-TDDFT PC="MB_PC2B" projectile without basis
     keywords: [DFT, RT-TDDFT]
-    dependence:
-    - h_in_he_rt_lda_MB_PC2B_nucleus.in
+    dependence: [h_in_he_rt_lda_MB_PC2B_nucleus.in]
     checks:
     -   RT-TDDFT Total Energy:
             reference: -2.7195375026
@@ -2975,8 +2959,7 @@ h_in_he_rt_lda_MB_PC2B_ions_restart.in:
     description: RT-TDDFT PC="MB_PC2B" projectile with basis
     keywords: [DFT, RT-TDDFT]
     requirements: [HAVE_GRADIENTS]
-    dependence:
-    - h_in_he_rt_lda_MB_PC2B_ions.in
+    dependence: [h_in_he_rt_lda_MB_PC2B_ions.in]
     checks:
     -   RT-TDDFT Total Energy:
             reference: -2.1264059147
@@ -3082,8 +3065,7 @@ lih_gw.in:
 lih_bse-i.in:
     description: BSE energy (BSE-I) of LiH
     keywords: [BSE, HF]
-    dependence:
-    - lih_gw.in
+    dependence: [lih_gw.in]
     checks:
     -   SCF Total Energy:
             reference: -7.9872035011
@@ -3298,8 +3280,7 @@ he_hf_cc4s_output.in:
 he_hf_cc4s_input.in:
     description: HF+MP2 helium atom from input Cc4s files
     keywords: [HF, MP2]
-    dependence:
-    - he_hf_cc4s_output.in
+    dependence: [he_hf_cc4s_output.in]
     checks:
     -   HF Total Energy:
             reference: -2.8615142286
@@ -3326,8 +3307,7 @@ he_pt2_filtering.in:
 he_mp2_from_filtered_CC4S.in:
     description: 'He atom: reading CC4S files with filtered virtual orbitals'
     keywords: [HF, MP2]
-    dependence:
-    - he_pt2_filtering.in
+    dependence: [he_pt2_filtering.in]
     checks:
     -   HF Total Energy:
             reference: -2.8616250222
@@ -3341,8 +3321,7 @@ he_mp2_from_filtered_CC4S.in:
 he_mp2_from_filtered_RESTART.in:
     description: 'He atom: reading RESTART with filtered virtual orbitals'
     keywords: [HF, MP2]
-    dependence:
-    - he_mp2_from_filtered_CC4S.in
+    dependence: [he_mp2_from_filtered_CC4S.in]
     checks:
     -   MP2 correlation:
             reference: -0.0355613477
@@ -3374,8 +3353,7 @@ lih_bulk08_abinit_input_filtering.in:
 lih_bulk08_rpa_from_filtered.in:
     description: RPA correlation for bulk LiH with 8 atoms from PT2-filtered virtual orbital space
     keywords: [HF, RPA]
-    dependence:
-    - lih_bulk08_abinit_input_filtering.in
+    dependence: [lih_bulk08_abinit_input_filtering.in]
     checks:
     -   RPA correlation:
             reference: -0.0914355959
@@ -3749,8 +3727,7 @@ he_hf_cc4s_box_input.in:
     description: HF+MP2 helium atom from input Cc4s files
     keywords: [ECP, HF, MP2, PBC, noRI]
     requirements: [HAVE_LIBCINT, HAVE_FFTW3]
-    dependence:
-    - he_hf_cc4s_box_output.in
+    dependence: [he_hf_cc4s_box_output.in]
     checks:
     -   HF Total Energy:
             reference: -2.8625597646
