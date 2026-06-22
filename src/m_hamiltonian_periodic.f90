@@ -1390,7 +1390,7 @@ subroutine calculate_coulombvertex_periodic(c_matrix, rootname)
         plan = fftw_plan_dft_r2c_3d(nfft3, nfft2, nfft1, phiphir_fftw, phiphig_fftw, FFTW_ESTIMATE)
         call fftw_execute_dft_r2c(plan, phiphir_fftw, phiphig_fftw)
         call fftw_destroy_plan(plan)
-        call timer_tmp4%start()
+        call timer_tmp4%stop()
 
         phiphig_fftw(:, :, :) = phiphig_fftw(:, :, :) * volume / REAL(nfft_global, KIND=dp)
 

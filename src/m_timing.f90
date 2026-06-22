@@ -383,7 +383,7 @@ subroutine timer_start(t)
   !=====
 
   if( t%running ) then
-    write(stdout, *) 'Timer is already started:', t%label
+    write(stdout, '(1x,a,a)') 'Timer is already started: ', t%label
     call die('timer_start: timer already started: ' // TRIM(t%label))
   end if
 
