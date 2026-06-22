@@ -4139,7 +4139,7 @@ subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
 
   nstate = MIN(SIZE(occupation, DIM=1), SIZE(energy, DIM=1))
 
-  open(newunit=unit_file, file=TRIM(rootname_) // '_EigenEnergies.elements', action='write', form='formatted')
+  open(newunit=unit_file, file=TRIM(rootname_) // '_EigenEnergies.elements', status='replace', action='write', form='formatted')
   do istate=1, nstate
     write(unit_file, '(1x,es16.8)') energy(istate, 1)
   end do
@@ -4148,7 +4148,7 @@ subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
   nocc = get_number_occupied_states(occupation)
   efermi = 0.5_dp * ( energy(nocc, 1) + energy(nocc+1, 1) ) 
 
-  open(newunit=unit_file, file=TRIM(rootname_) // '_EigenEnergies.yaml', action='write', form='formatted')
+  open(newunit=unit_file, file=TRIM(rootname_) // '_EigenEnergies.yaml', status='replace', action='write', form='formatted')
   write(unit_file, '(a)')    'version: 100'
   write(unit_file, '(a)')    'type: Tensor'
   write(unit_file, '(a)')    'scalarType: Real64'
@@ -4495,6 +4495,30 @@ subroutine read_molden_file(moldenfilename, basis, occupation, energy, c_matrix)
 
 
 end subroutine read_molden_file
+
+
+!=========================================================================
+subroutine erase_file(filename)
+  implicit none
+
+  character(len=*), intent(in) :: filename
+  !=====
+  logical :: exists
+  integer :: fu
+  !=====
+
+  if(is_iomaster) then
+    inquire(file=TRIM(filename), exist=exists)
+
+    if(exists) then
+      open(newunit=fu, file=TRIM(filename), status="old", action="read")
+      close(fu, status="delete")
+    endif
+  endif
+
+  call world%barrier()
+
+end subroutine erase_file
 
 
 !=========================================================================

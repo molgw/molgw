@@ -571,6 +571,7 @@ subroutine read_gth_file(ecp_filename, element, ecpi)
   allocate(ecpi%gth_rl(ecpi%gth_nl))
   allocate(ecpi%gth_npl(ecpi%gth_nl))
   allocate(ecpi%gth_hijl(6, ecpi%gth_nl))
+  ecpi%gth_hijl(:, :) = 0.0_dp
   do il=1, ecpi%gth_nl
     read(ecpunit, *, iostat=istat) rtmp, ecpi%gth_npl(il)
     if( ecpi%gth_npl(il) > 1 ) read(ecpunit, *, iostat=istat)
@@ -589,11 +590,11 @@ subroutine read_gth_file(ecp_filename, element, ecpi)
       read(ecpunit, *, iostat=istat) ecpi%gth_rl(il), i1, ecpi%gth_hijl(1, il)
     case(2)
       read(ecpunit, *, iostat=istat) ecpi%gth_rl(il), i1, ecpi%gth_hijl(1:2, il)
-      read(ecpunit, *, iostat=istat)                    ecpi%gth_hijl(3, il)
+      read(ecpunit, *, iostat=istat)                      ecpi%gth_hijl(3, il)
     case(3)
       read(ecpunit, *, iostat=istat) ecpi%gth_rl(il), i1, ecpi%gth_hijl(1:3, il)
-      read(ecpunit, *, iostat=istat)                    ecpi%gth_hijl(4:5, il)
-      read(ecpunit, *, iostat=istat)                    ecpi%gth_hijl(  6, il)
+      read(ecpunit, *, iostat=istat)                      ecpi%gth_hijl(4:5, il)
+      read(ecpunit, *, iostat=istat)                      ecpi%gth_hijl(  6, il)
     case default
       call die('read_gth_file: i > 3 in non-local GTH projector is not possible')
     end select
