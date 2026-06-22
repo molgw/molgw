@@ -22,6 +22,8 @@ module m_hamiltonian_wrapper
   use m_scf
   use m_atoms
 
+  implicit none
+
   interface calculate_exchange
     module procedure calculate_exchange_real
   end interface
@@ -30,7 +32,6 @@ contains
 
 !=========================================================================
 subroutine setup_overlap(basis, s_matrix)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: s_matrix(:, :)
@@ -40,14 +41,13 @@ subroutine setup_overlap(basis, s_matrix)
     call setup_overlap_periodic(basis, s_matrix)
   else
     call setup_overlap_finite(basis, s_matrix)
-  endif
+  end if
 
 end subroutine setup_overlap
 
 
 !=========================================================================
 subroutine setup_kinetic(basis, hkin_ao)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(out)       :: hkin_ao(:, :)
@@ -57,14 +57,13 @@ subroutine setup_kinetic(basis, hkin_ao)
     call setup_kinetic_periodic(basis, hkin_ao)
   else
     call setup_kinetic_finite(basis, hkin_ao)
-  endif
+  end if
 
 end subroutine setup_kinetic
 
 
 !=========================================================================
 subroutine calculate_hartree(basis, p_matrix, hhartree, eh)
-  implicit none
   type(basis_set), intent(inout)  :: basis
   class(*), intent(in)            :: p_matrix(:, :, :)
   real(dp), intent(out)           :: hhartree(:, :)
@@ -76,7 +75,7 @@ subroutine calculate_hartree(basis, p_matrix, hhartree, eh)
 
   if( pbc_ ) then
     call die('calculate_hartree: should not happen. PBC are implemented somewhere else')
-  endif
+  end if
 
   !
   if( .NOT. has_auxil_basis ) then
@@ -86,7 +85,7 @@ subroutine calculate_hartree(basis, p_matrix, hhartree, eh)
         call setup_hartree(p_matrix, hhartree, ehartree)
       else
         call setup_hartree_oneshell(basis, p_matrix, hhartree, ehartree)
-      endif
+      end if
     class default
       call die('calculate_hartree: should not happen')
     end select
@@ -97,8 +96,8 @@ subroutine calculate_hartree(basis, p_matrix, hhartree, eh)
       call calculate_density_auxilbasis(p_matrix, rho_coeff)
       call setup_hartree_genuine_ri(p_matrix, rho_coeff, hhartree, ehartree)
       deallocate(rho_coeff)
-    endif
-  endif
+    end if
+  end if
 
   if( PRESENT(eh) ) eh = ehartree
 
@@ -107,7 +106,6 @@ end subroutine calculate_hartree
 
 !=========================================================================
 subroutine calculate_exchange_real(basis, p_matrix, hexx, ex, occupation, c_matrix)
-  implicit none
   type(basis_set), intent(in)    :: basis
   real(dp), intent(in)           :: p_matrix(:, :, :)
   real(dp), intent(out)          :: hexx(:, :, :)
@@ -134,14 +132,14 @@ subroutine calculate_exchange_real(basis, p_matrix, hexx, ex, occupation, c_matr
         call issue_warning('no out-of-core exchange implemented yet')
         hexx(:, :, :) = 0.0_dp
         eexx = 0.0_dp
-      endif
+      end if
     else
       if( PRESENT(occupation) .AND. PRESENT(c_matrix) ) then
         if( .NOT. eri3_genuine_ ) then
           call setup_exchange_ri(occupation, c_matrix, p_matrix, hexx, eexx)
         else
           call setup_exchange_genuine_ri(occupation, c_matrix, p_matrix, hexx, eexx)
-        endif
+        end if
       else
         !
         ! c_matrix is not provided, then calculate it from the square-root of P
@@ -150,9 +148,9 @@ subroutine calculate_exchange_real(basis, p_matrix, hexx, ex, occupation, c_matr
         deallocate(c_matrix_tmp)
         deallocate(occupation_tmp)
 
-      endif
-    endif
-  endif
+      end if
+    end if
+  end if
 
   if( PRESENT(ex) ) ex = eexx
 
@@ -161,7 +159,6 @@ end subroutine calculate_exchange_real
 
 !=========================================================================
 subroutine calculate_exchange_lr(basis, p_matrix, hexx, ex, occupation, c_matrix)
-  implicit none
   type(basis_set), intent(in)    :: basis
   real(dp), intent(in)           :: p_matrix(:, :, :)
   real(dp), intent(out)          :: hexx(:, :, :)
@@ -188,8 +185,8 @@ subroutine calculate_exchange_lr(basis, p_matrix, hexx, ex, occupation, c_matrix
       deallocate(c_matrix_tmp)
       deallocate(occupation_tmp)
 
-    endif
-  endif
+    end if
+  end if
 
   if( PRESENT(ex) ) ex = eexx
 
@@ -198,7 +195,6 @@ end subroutine calculate_exchange_lr
 
 !=========================================================================
 subroutine calculate_hamiltonian_hxc(basis, nstate, occupation, c_matrix, p_matrix, hamiltonian_hxc, en_inout)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   integer, intent(in)            :: nstate
@@ -236,7 +232,7 @@ subroutine calculate_hamiltonian_hxc(basis, nstate, occupation, c_matrix, p_matr
 
   do ispin=1, nspin
     hamiltonian_hxc(:, :, ispin) = hamiltonian_nospin_real(:, :)
-  enddo
+  end do
 
 
   !
@@ -252,7 +248,7 @@ subroutine calculate_hamiltonian_hxc(basis, nstate, occupation, c_matrix, p_matr
     call dft_exc_vxc_batch(BATCH_SIZE, basis, occupation, c_matrix, hamiltonian_spin_real, en_inout%xc)
 
     hamiltonian_hxc(:, :, :) = hamiltonian_hxc(:, :, :) + hamiltonian_spin_real(:, :, :)
-  endif
+  end if
 
 
   !
@@ -266,7 +262,7 @@ subroutine calculate_hamiltonian_hxc(basis, nstate, occupation, c_matrix, p_matr
     en_inout%exx_hyb = beta_hybrid * exx_lr
     hamiltonian_hxc(:, :, :) = hamiltonian_hxc(:, :, :) + hamiltonian_spin_real(:, :, :) * beta_hybrid
 
-  endif
+  end if
 
 
   !
@@ -280,7 +276,7 @@ subroutine calculate_hamiltonian_hxc(basis, nstate, occupation, c_matrix, p_matr
     en_inout%exx_hyb = en_inout%exx_hyb + alpha_hybrid * en_inout%exx
     hamiltonian_hxc(:, :, :) = hamiltonian_hxc(:, :, :) + hamiltonian_spin_real(:, :, :) * alpha_hybrid
 
-  endif
+  end if
 
   deallocate(hamiltonian_spin_real)
   deallocate(hamiltonian_nospin_real)
@@ -296,7 +292,6 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
                                               p_matrix_cmplx,         &
                                               hamiltonian_hxc_cmplx,  &
                                               en_inout)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: occupation(:, :)
@@ -335,10 +330,10 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
       call setup_exchange_ri_cmplx(occupation, c_matrix_cmplx, p_matrix_cmplx, hamiltonian_hxc_cmplx, en_inout%exx)
     else
       call setup_exchange_genuine_ri_cmplx(occupation, c_matrix_cmplx, p_matrix_cmplx, hamiltonian_hxc_cmplx, en_inout%exx)
-    endif
+    end if
 
     hamiltonian_hxc_cmplx(:, :, :) = hamiltonian_hxc_cmplx(:, :, :) * alpha_hybrid
-  endif
+  end if
 
   allocate(hamiltonian_nospin_real(basis%nbf, basis%nbf))
   !
@@ -349,7 +344,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
 
   do ispin=1, nspin
     hamiltonian_hxc_cmplx(:, :, ispin) = hamiltonian_hxc_cmplx(:, :, ispin) + hamiltonian_nospin_real(:, :)
-  enddo
+  end do
   deallocate(hamiltonian_nospin_real)
 
   !
@@ -365,7 +360,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
 
     hamiltonian_hxc_cmplx(:, :, :) = hamiltonian_hxc_cmplx(:, :, :) + hamiltonian_spin_real(:, :, :)
     deallocate(hamiltonian_spin_real)
-  endif
+  end if
 
   !
   ! LR Exchange contribution to the Hamiltonian
@@ -380,7 +375,7 @@ subroutine calculate_hamiltonian_hxc_ri_cmplx(basis,                  &
     deallocate(hamiltonian_spin_cmplx)
   else
     en_inout%exx_hyb = 0.0_dp
-  endif
+  end if
 
   ! Rescale exchange energy with alpha_hybrid and beta_hybrid for hybrid functionals
   en_inout%exx_hyb = alpha_hybrid * en_inout%exx + beta_hybrid * en_inout%exx_hyb
@@ -395,7 +390,6 @@ subroutine calculate_hamiltonian_hartree_x2c(basis,                  &
                                              p_matrix_cmplx,         &
                                              hamiltonian_hxc_cmplx,  &
                                              en_inout)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: occupation(:, :)
@@ -430,7 +424,7 @@ subroutine calculate_hamiltonian_hartree_x2c(basis,                  &
 
   do ispin=1, nspin
     hamiltonian_hxc_cmplx(:, :, ispin) = hamiltonian_nospin_real(:, :)
-  enddo
+  end do
 
   deallocate(hamiltonian_nospin_real)
 
@@ -444,7 +438,6 @@ subroutine calculate_hamiltonian_xc_x2c(basis,                  &
                                         c_matrix_cmplx,         &
                                         hamiltonian_hxc_cmplx,  &
                                         en_inout)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)           :: occupation(:, :)
@@ -477,7 +470,7 @@ subroutine calculate_hamiltonian_xc_x2c(basis,                  &
 
     hamiltonian_hxc_cmplx(:, :, :) = hamiltonian_spin_real(:, :, :)
     deallocate(hamiltonian_spin_real)
-  endif
+  end if
 
 
 end subroutine calculate_hamiltonian_xc_x2c

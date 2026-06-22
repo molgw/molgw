@@ -16,6 +16,8 @@ module m_mpi
 #endif
 
 
+  implicit none
+
   logical, parameter :: parallel_grid      = .TRUE.
   logical, parameter :: parallel_auxil     = .TRUE.
 
@@ -61,7 +63,6 @@ contains
 
 !=========================================================================
 subroutine init_mpi_world()
-  implicit none
 
   !=====
   integer :: dummy, ierror
@@ -83,14 +84,13 @@ subroutine init_mpi_world()
     close(stdout)
     open(unit=stdout, file='/dev/null')
 #endif
-  endif
+  end if
 
 end subroutine init_mpi_world
 
 
 !=========================================================================
 subroutine init_mpi_other_communicators(mpi_poorman_)
-  implicit none
 
   logical, intent(in) :: mpi_poorman_
   !=====
@@ -104,7 +104,7 @@ subroutine init_mpi_other_communicators(mpi_poorman_)
     poorman%nproc = world%nproc
   else
     poorman%nproc = 1
-  endif
+  end if
 
   !
   ! Set up grid communicator
@@ -124,7 +124,7 @@ subroutine init_mpi_other_communicators(mpi_poorman_)
   if( auxil%nproc /= world%nproc / poorman%nproc ) then
     write(stdout, *) world%rank, color, auxil%nproc, world%nproc, poorman%nproc
     call die('Problem in init_mpi')
-  endif
+  end if
 
   !
   ! Set up poorman communicator
@@ -169,7 +169,6 @@ end subroutine init_mpi_other_communicators
 
 !=========================================================================
 subroutine finish_mpi()
-  implicit none
   integer :: ier
   !=====
 
@@ -190,7 +189,6 @@ end subroutine finish_mpi
 
 !=========================================================================
 subroutine init_dft_grid_distribution(ngrid)
-  implicit none
   integer, intent(inout) :: ngrid
   !=====
 
@@ -198,7 +196,7 @@ subroutine init_dft_grid_distribution(ngrid)
 
   if( grid%nproc > 1 .AND. parallel_grid ) then
     write(stdout, '(/,a)') ' Initializing the distribution of the quadrature grid points'
-  endif
+  end if
 
   call distribute_grid_workload()
 
@@ -209,7 +207,6 @@ end subroutine init_dft_grid_distribution
 
 !=========================================================================
 subroutine destroy_dft_grid_distribution()
-  implicit none
   !=====
 
   if( ALLOCATED(task_grid_proc) )   deallocate(task_grid_proc)
@@ -221,7 +218,6 @@ end subroutine destroy_dft_grid_distribution
 
 !=========================================================================
 function is_my_grid_task(igrid)
-  implicit none
   integer, intent(in) :: igrid
   logical            :: is_my_grid_task
   !=====
@@ -233,7 +229,6 @@ end function is_my_grid_task
 
 !=========================================================================
 subroutine distribute_grid_workload()
-  implicit none
   !=====
   integer            :: igrid, iproc_local
   integer            :: igrid_current
@@ -262,12 +257,12 @@ subroutine distribute_grid_workload()
       ! A simple check to avoid unexpected surprises
       if( iproc_local < 0 .OR. iproc_local >= grid%nproc ) then
         call die('error in the distribution')
-      endif
+      end if
 
       task_grid_proc(igrid)        = iproc_local
       ntask_grid_proc(iproc_local) = ntask_grid_proc(iproc_local) + 1
 
-    enddo
+    end do
 
     task_grid_number(:)=0
     igrid_current=0
@@ -275,8 +270,8 @@ subroutine distribute_grid_workload()
       if( grid%rank == task_grid_proc(igrid) ) then
         igrid_current = igrid_current + 1
         task_grid_number(igrid) = igrid_current
-      endif
-    enddo
+      end if
+    end do
 
   else
     !
@@ -286,9 +281,9 @@ subroutine distribute_grid_workload()
     task_grid_proc(:)  = grid%rank
     do igrid=1, ngrid_mpi
       task_grid_number(igrid) = igrid
-    enddo
+    end do
 
-  endif
+  end if
 
 
 end subroutine distribute_grid_workload

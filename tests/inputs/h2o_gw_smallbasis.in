@@ -5,7 +5,7 @@
  auxil_basis='cc-pVTZ-RI'
 
  postscf='g0w0'
- frozencore='yes'
+ frozencore='molgw'
  selfenergy_state_min=5
  selfenergy_state_max=6
 

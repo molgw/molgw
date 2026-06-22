@@ -21,7 +21,7 @@ module m_io
   use m_libint_tools, only: libint_init
   use m_libcint_tools, only: libcint_has_range_separation, check_capability_libcint, pypzpx_order
   use m_libxc_tools, only: xc_version
-  use m_linear_algebra, only: determinant_3x3_matrix
+  use m_linear_algebra, only: determinant_3x3_matrix, invert
   use m_inputparam
   use m_hamiltonian_tools, only: get_number_occupied_states, dump_out_energy
   use m_atoms
@@ -32,6 +32,8 @@ module m_io
   use m_elements
   use m_hdf5_tools
 
+
+  implicit none
 
   interface dump_out_matrix
     module procedure dump_out_matrix_nospin_dp
@@ -54,20 +56,19 @@ contains
 !
 !=========================================================================
 subroutine this_is_the_end()
-  implicit none
 
   !=====
   !=====
 
   call total_memory_statement()
 
-  call output_timing()
+  call output_timers()
 
   if( print_yaml_ .AND. is_iomaster ) then
     call output_all_warnings(unit_yaml)
   else
     call output_all_warnings()
-  endif
+  end if
 
   if( print_yaml_ .AND. is_iomaster ) then
     write(unit_yaml, '(/,a)')  'run:'
@@ -81,17 +82,17 @@ subroutine this_is_the_end()
 
     write(unit_yaml, '(4x,a)') 'timing:'
     write(unit_yaml, '(8x,a)')           'unit: s'
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'total:  ', get_timing(timing_total)
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'prescf: ', get_timing(timing_prescf)
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'scf:    ', get_timing(timing_scf)
-    write(unit_yaml, '(8x,a,1x,es18.8)') 'postscf:', get_timing(timing_postscf)
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'total:  ', timer_get(timer_molgw)
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'prescf: ', timer_get(timer_prescf)
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'scf:    ', timer_get(timer_scf)
+    write(unit_yaml, '(8x,a,1x,es18.8)') 'postscf:', timer_get(timer_postscf)
     write(unit_yaml, '(4x,a)') 'memory:'
     write(unit_yaml, '(8x,a)')           'unit: Gb'
     write(unit_yaml, '(8x,a,1x,es18.8)') 'peak:   ', get_peak_memory()
 
     write(unit_yaml, '(a)') '...'
     close(unit_yaml)
-  endif
+  end if
 
   write(stdout, '(/,1x,a)') 'When using MOLGW for a publication, citation to the following article is appreciated:'
   write(stdout, '(6x,a)')   '    Bruneval, Rangel, Hamed, Shao, Yang, Neaton, Comput. Phys. Comm. 208, 149 (2016).'
@@ -107,7 +108,6 @@ end subroutine this_is_the_end
 
 !=========================================================================
 subroutine header()
-  implicit none
 
   !=====
   character(len=40)   :: git_sha
@@ -150,7 +150,7 @@ subroutine header()
     if( lchar == 0 ) exit
     write(stdout, '(6x,a,a)') 'FCFLAGS ', chartmp(kchar:kchar+lchar-1)
     kchar = kchar + lchar
-  enddo
+  end do
   write(stdout, *)
 
 
@@ -180,7 +180,7 @@ subroutine header()
   write(stdout, '(5x,a,a)') 'LIBXC version: ', TRIM(chartmp)
   if( libxc_version(1) < 5 ) then
     call die('Code compiled with a too old version of LIBXC. Please update to version 5 or newer')
-  endif
+  end if
 #else
   write(stdout, *) 'Running without LIBXC'
   write(stdout, *) 'Hartree-Fock-only code'
@@ -206,25 +206,25 @@ subroutine header()
         write(stdout, '(5x,a,f14.3)') 'with OPENMP stack size (Mb): ', REAL(omp_stacksize_value, kind=dp) / 1024.0_dp
         if( REAL(omp_stacksize_value, kind=dp) / 1024.0_dp < 127.9_dp ) then
           call issue_warning('OMP_STACKSIZE is maybe small. Consider increasing it with, for instance, `export OMP_STACKSIZE=512M`')
-        endif
+        end if
       case('M')
         write(stdout, '(5x,a,f14.3)') 'with OPENMP stack size (Mb): ', REAL(omp_stacksize_value, kind=dp)
         if( REAL(omp_stacksize_value, kind=dp) < 127.9_dp ) then
           call issue_warning('OMP_STACKSIZE is maybe small. Consider increasing it with, for instance, `export OMP_STACKSIZE=512M`')
-        endif
+        end if
       case('G')
         write(stdout, '(5x,a,f14.3)') 'with OPENMP stack size (Mb): ', REAL(omp_stacksize_value, kind=dp) * 1024.0_dp
         if( REAL(omp_stacksize_value, kind=dp) * 1024.0_dp < 127.9_dp ) then
           call issue_warning('OMP_STACKSIZE is maybe small. Consider increasing it with, for instance, `export OMP_STACKSIZE=512M`')
-        endif
+        end if
       case default
         write(stdout, '(5x,a)') 'with OPENMP stack size unit not recognized'
       end select
     else
       write(stdout, '(5x,a)') 'with OPENMP stack size not recognized'
-    endif
+    end if
 
-  endif
+  end if
 
 #endif
 #if defined(HAVE_MPI) && defined(HAVE_SCALAPACK)
@@ -268,12 +268,12 @@ subroutine header()
     write(stdout, '(1x,a,i5)') 'Current LIBCINT compilation uses PYPZPX ordering for p pure orbitals'
   else
     write(stdout, '(1x,a,i5)') 'Current LIBCINT compilation uses PXPYPZ ordering for p pure orbitals'
-  endif
+  end if
   if( .NOT. libcint_has_range_separation ) then
     write(stdout, '(1x,a,i5)') 'Current LIBCINT compilation has no range-separation capability'
   else
     write(stdout, '(1x,a,i5)') 'Current LIBCINT compilation has range-separation capability'
-  endif
+  end if
 #endif
 
 #if !defined(HAVE_LIBCINT) && defined(NO_LIBINT)
@@ -287,7 +287,7 @@ subroutine header()
     write(stdout, '(1x,a)')  'Running with external LIBINT or LIBCINT calculation of the one-body operators (faster)'
   else
     write(stdout, '(1x,a)')  'Running with internal calculation of the one-body operators (slower)'
-  endif
+  end if
 
 #if defined(LIBINT2_DERIV_ONEBODY_ORDER) && (LIBINT2_DERIV_ONEBODY_ORDER > 0)
  write(stdout, '(1x,a)') 'Running with external LIBINT calculation of the gradients of the one-body integrals'
@@ -304,7 +304,6 @@ end subroutine header
 
 !=========================================================================
 subroutine dump_out_matrix_dp(print_matrix, title, matrix, fmt)
-  implicit none
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
@@ -324,7 +323,7 @@ subroutine dump_out_matrix_dp(print_matrix, title, matrix, fmt)
     fmt_ = fmt
   else
     fmt_ = 'f12.5'
-  endif
+  end if
  
   mmat  = SIZE(matrix, DIM=1)
   nmat  = SIZE(matrix, DIM=2)
@@ -335,7 +334,7 @@ subroutine dump_out_matrix_dp(print_matrix, title, matrix, fmt)
   do ispin=1, nspin
     if( nspin == 2 ) then
       write(stdout, '(a,i1)') ' spin polarization # ', ispin
-    endif
+    end if
     write(stdout,'(4x,*(1x,i12))') (imat, imat=1,SIZE(row))
     do imat=1, MIN(mmat, MAXSIZE)
       where( ABS(matrix(imat, 1:MIN(nmat, MAXSIZE), ispin)) > 1.0e-5_dp )
@@ -344,58 +343,66 @@ subroutine dump_out_matrix_dp(print_matrix, title, matrix, fmt)
         row(:) = 1.0e-6_dp
       end where
       write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
-    enddo
+    end do
     write(stdout, *)
-  enddo
+  end do
 
 end subroutine dump_out_matrix_dp
 
 
 !=========================================================================
-subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, fmt)
-  implicit none
+subroutine dump_out_matrix_nospin_dp(print_matrix, title, matrix, fmt, maxcol)
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
   real(dp), intent(in)         :: matrix(:, :)
   character(len=*), optional, intent(in) :: fmt
+  integer, optional, intent(in) :: maxcol
   !=====
-  integer, parameter :: MAXSIZE=50
+  integer :: maxcol_ = 50
   !=====
-  real(dp) :: row(MIN(SIZE(matrix, DIM=2), MAXSIZE))
+  real(dp), allocatable :: row(:)
   integer :: imat, mmat, nmat
   character(:), allocatable :: fmt_
   !=====
 
   if( .NOT. print_matrix .AND. .NOT. debug ) return
 
+  mmat  = SIZE(matrix, DIM=1)
+  nmat  = SIZE(matrix, DIM=2)
+
   if( PRESENT(fmt) ) then
     fmt_ = fmt
   else
     fmt_ = 'f12.5'
-  endif
+  end if
+  if( PRESENT(maxcol) ) then
+    maxcol_ = maxcol
+  else
+    maxcol_ = MIN(50, nmat)
+  end if
+  allocate(row(maxcol_))
 
-  mmat  = SIZE(matrix, DIM=1)
-  nmat  = SIZE(matrix, DIM=2)
 
   write(stdout, '(/,1x,a)') TRIM(title)
 
-  do imat=1, MIN(mmat, MAXSIZE)
-    where( ABS(matrix(imat, 1:MIN(nmat, MAXSIZE))) > 1.0e-5_dp )
-      row(:) = matrix(imat, 1:MIN(nmat, MAXSIZE))
+  do imat=1, MIN(mmat, maxcol_)
+    where( ABS(matrix(imat, 1:MIN(nmat, maxcol_))) > 1.0e-5_dp )
+      row(:) = matrix(imat, 1:MIN(nmat, maxcol_))
     elsewhere
       row(:) = 1.0e-6_dp
     end where
     write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
-  enddo
+  end do
   write(stdout, *)
+
+  deallocate(row)
 
 end subroutine dump_out_matrix_nospin_dp
 
 
 !=========================================================================
 subroutine dump_out_matrix_cdp(print_matrix, title, matrix, fmt)
-  implicit none
 
   logical, intent(in)          :: print_matrix
   character(len=*), intent(in) :: title
@@ -415,7 +422,7 @@ subroutine dump_out_matrix_cdp(print_matrix, title, matrix, fmt)
     fmt_ = fmt
   else
     fmt_ = 'f12.5'
-  endif
+  end if
 
   mmat  = SIZE(matrix, DIM=1)
   nmat  = SIZE(matrix, DIM=2)
@@ -426,7 +433,7 @@ subroutine dump_out_matrix_cdp(print_matrix, title, matrix, fmt)
   do ispin=1, nspin
     if( nspin == 2 ) then
       write(stdout, '(a,i1)') ' spin polarization # ', ispin
-    endif
+    end if
 
     write(stdout, '(1x,a)') '=== Real part ==='
     do imat=1, MIN(mmat, MAXSIZE)
@@ -436,7 +443,7 @@ subroutine dump_out_matrix_cdp(print_matrix, title, matrix, fmt)
           row(:) = 1.0e-6_dp
       end where
       write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
-    enddo
+    end do
     write(stdout, *)
 
     write(stdout, '(1x,a)') '=== Imaginary part ==='
@@ -447,9 +454,9 @@ subroutine dump_out_matrix_cdp(print_matrix, title, matrix, fmt)
           row(:) = 1.0e-6_dp
       end where
       write(stdout, '(1x,i3,*(1x,' // fmt_ // '))') imat, row(:)
-    enddo
+    end do
     write(stdout, *)
-  enddo
+  end do
   write(stdout, *)
 
 end subroutine dump_out_matrix_cdp
@@ -457,7 +464,6 @@ end subroutine dump_out_matrix_cdp
 
 !=========================================================================
 subroutine mulliken_pdos(basis, s_matrix, c_matrix, occupation, energy)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: s_matrix(:, :)
@@ -499,7 +505,7 @@ subroutine mulliken_pdos(basis, s_matrix, c_matrix, occupation, energy)
   else
     natom1=1
     natom2=1
-  endif
+  end if
   write(stdout, '(1x,a,i5,2x,i5)') 'Range of atoms considered: ', natom1, natom2
 
   if( print_yaml_ ) write(unit_yaml, '(/,a)') 'mulliken projections:'
@@ -510,26 +516,26 @@ subroutine mulliken_pdos(basis, s_matrix, c_matrix, occupation, energy)
 
     iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%icenter
     li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
-  enddo
+  end do
 
   ! Find the unique elements in the system
   iemax = 0
   do ielement=1, nelement_max
     if( ANY(zbasis(1:ncenter_basis) == ielement) ) then
       iemax = iemax + 1
-    endif
+    end if
     do icenter=1, ncenter_basis
       if( zbasis(icenter) == ielement ) atom2element(icenter) = iemax
-    enddo
-  enddo
+    end do
+  end do
   allocate(proj_element(0:lmax+1, iemax), element_list(iemax))
   iemax = 0
   do ielement=1, nelement_max
     if( ANY(zbasis(1:ncenter_basis) == ielement) ) then
       iemax = iemax + 1
       element_list(iemax) = ielement
-    endif
-  enddo
+    end if
+  end do
 
   write(stdout, '(1x,a)') '==========================================='
   write(stdout, '(1x,a)') 'spin state  energy(eV)  Mulliken proj. total        proj s         proj p      proj d ... '
@@ -551,11 +557,11 @@ subroutine mulliken_pdos(basis, s_matrix, c_matrix, occupation, energy)
         if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
           li = li_ibf(ibf)
           proj_state_i(li) = proj_state_i(li) + c_matrix(ibf, istate, ispin) * cs_vector_i(ibf)
-        endif
+        end if
         weight = c_matrix(ibf, istate, ispin) * cs_vector_i(ibf)
         proj_element(MIN(li_ibf(ibf), lmax+1), atom2element(iatom_ibf(ibf))) = &
                 proj_element(MIN(li_ibf(ibf), lmax+1), atom2element(iatom_ibf(ibf))) + weight
-      enddo
+      end do
       proj_charge = proj_charge + occupation(istate, ispin) * SUM(proj_state_i(:))
 
       if( print_yaml_) then
@@ -565,16 +571,16 @@ subroutine mulliken_pdos(basis, s_matrix, c_matrix, occupation, energy)
           do li=0, lmax
             write(char2, '(i2)') li
             write(unit_yaml, '(16x,a2,3x,a,1x,es18.8)') ADJUSTL(char2), ':', proj_element(li, ielement)
-          enddo
+          end do
           write(unit_yaml, '(16x,a,1x,es18.8)') 'total:', SUM(proj_element(:, ielement))
-        enddo
-      endif
+        end do
+      end if
 
       write(stdout, '(i3,1x,i5,1x,20(f16.6,4x))') ispin, istate, energy(istate, ispin) * Ha_eV, &
           SUM(proj_state_i(:)), proj_state_i(:)
 
-    enddo
-  enddo
+    end do
+  end do
 
   write(stdout, '(1x,a)') '==========================================='
   write(stdout, '(1x,a,f12.6)') 'Total Mulliken charge: ', proj_charge
@@ -586,7 +592,6 @@ end subroutine mulliken_pdos
 
 !=========================================================================
 subroutine mulliken_pdos_cmplx(basis, s_matrix, c_matrix_cmplx, occupation, file_mulliken, time_cur)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: s_matrix(:, :)
@@ -619,7 +624,7 @@ subroutine mulliken_pdos_cmplx(basis, s_matrix, c_matrix_cmplx, occupation, file
   else
     natom1=1
     natom2=1
-  endif
+  end if
 
   do ishell=1, basis%nshell
     ibf1    = basis%shell(ishell)%istart
@@ -629,7 +634,7 @@ subroutine mulliken_pdos_cmplx(basis, s_matrix, c_matrix_cmplx, occupation, file
     iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%icenter
     !! Label basis functions with angular momentum index
     li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
-  enddo
+  end do
 
   nocc        = get_number_occupied_states(occupation)
   proj_charge = ( 0.0_dp, 0.0_dp )
@@ -647,15 +652,15 @@ subroutine mulliken_pdos_cmplx(basis, s_matrix, c_matrix_cmplx, occupation, file
           if( iatom_ibf(ibf) == atom_sampled ) then
             li = li_ibf(ibf)
             proj_state_i(li) = proj_state_i(li) + c_matrix_cmplx(ibf, istate, ispin) * cs_vector_i(ibf)
-          endif
-        enddo
+          end if
+        end do
         proj_charge(atom_sampled) = proj_charge(atom_sampled) &
                         + occupation(istate, ispin) * SUM(proj_state_i(:))
 
-      enddo
+      end do
 
-    enddo
-  enddo
+    end do
+  end do
 
   n_column = 2 + ncenter_basis
   write( myfmt, '("(1x,",I0,"(2x,es18.8))")' ) n_column
@@ -673,7 +678,6 @@ end subroutine mulliken_pdos_cmplx
 
 !=========================================================================
 subroutine lowdin_pdos(basis, s_matrix_sqrt, c_matrix, occupation, energy)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: s_matrix_sqrt(:, :)
@@ -709,7 +713,7 @@ subroutine lowdin_pdos(basis, s_matrix_sqrt, c_matrix, occupation, energy)
   else
     natom1=1
     natom2=1
-  endif
+  end if
   write(stdout, '(1x,a,i5,2x,i5)') 'Range of atoms considered: ', natom1, natom2
 
   do ishell=1, basis%nshell
@@ -718,7 +722,7 @@ subroutine lowdin_pdos(basis, s_matrix_sqrt, c_matrix, occupation, energy)
 
     iatom_ibf(ibf1:ibf2) = basis%shell(ishell)%icenter
     li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
-  enddo
+  end do
 
   write(stdout, '(1x,a)') '==========================================='
   write(stdout, '(1x,a)') 'spin state  energy(eV)  Lowdin proj. total        proj s         proj p      proj d ... '
@@ -737,15 +741,15 @@ subroutine lowdin_pdos(basis, s_matrix_sqrt, c_matrix, occupation, energy)
         if( iatom_ibf(ibf) >= natom1 .AND. iatom_ibf(ibf) <= natom2 ) then
           li = li_ibf(ibf)
           proj_state_i(li) = proj_state_i(li) + cs_vector_i(ibf)**2
-        endif
-      enddo
+        end if
+      end do
       proj_charge = proj_charge + occupation(istate, ispin) * SUM(proj_state_i(:))
 
       write(stdout, '(i3,1x,i5,1x,20(f16.6,4x))') ispin, istate, energy(istate, ispin) * Ha_eV, &
           SUM(proj_state_i(:)), proj_state_i(:)
 
-    enddo
-  enddo
+    end do
+  end do
 
   write(stdout, '(1x,a)') '==========================================='
   write(stdout, '(1x,a,f12.6)') 'Total Lowdin charge : ', proj_charge
@@ -757,7 +761,6 @@ end subroutine lowdin_pdos
 
 !=========================================================================
 subroutine lowdin_pdos_cmplx(basis, s_matrix_sqrt, c_matrix_cmplx, occupation, file_lowdin, time_cur, atom_state_occ)
-  implicit none
 
   integer, intent(in)             :: file_lowdin
   integer, intent(inout), optional :: atom_state_occ(:, :)
@@ -797,7 +800,7 @@ subroutine lowdin_pdos_cmplx(basis, s_matrix_sqrt, c_matrix_cmplx, occupation, f
       natom1=ncenter_nuclei  ! by convention the last atom is the projectile
       natom2=ncenter_nuclei  ! by convention the last atom is the projectile
     end if
-  endif
+  end if
 
   natom_total = natom2 - natom1 + 1
   allocate(nbf_per_atom(natom_total))
@@ -816,7 +819,7 @@ subroutine lowdin_pdos_cmplx(basis, s_matrix_sqrt, c_matrix_cmplx, occupation, f
     end do
     !! Label basis functions with angular momentum index
     li_ibf(ibf1:ibf2)    = basis%shell(ishell)%am
-  enddo
+  end do
 
   nocc        = get_number_occupied_states(occupation)
   allocate(proj_charge(natom_total))
@@ -842,8 +845,8 @@ subroutine lowdin_pdos_cmplx(basis, s_matrix_sqrt, c_matrix_cmplx, occupation, f
             proj_state_i(li) = proj_state_i(li) + ABS( cs_vector_i(ibf) )**2
             !proj_charge_orb(count_nbf + offset_nbf) = proj_charge_orb(count_nbf + offset_nbf) &
             !              + occupation(istate,ispin) * REAL(ABS( cs_vector_i(ibf) )**2)
-          endif
-        enddo
+          end if
+        end do
         proj_charge(atom_sampled-natom1+1) = proj_charge(atom_sampled-natom1+1) &
                         + occupation(istate, ispin) * REAL(SUM(proj_state_i(:)))
 
@@ -852,11 +855,11 @@ subroutine lowdin_pdos_cmplx(basis, s_matrix_sqrt, c_matrix_cmplx, occupation, f
             atom_state_occ(istate, ispin) = atom_sampled
           end if
         end if
-      enddo
+      end do
 
-    enddo
+    end do
     offset_nbf = sum(nbf_per_atom(1:atom_sampled-natom1+1))
-  enddo
+  end do
 
   n_column = 4 + natom_total ! + size(proj_charge_orb)
   write( myfmt, '("(1x,",I0,"(2x,es18.8))")' ) n_column
@@ -875,7 +878,6 @@ end subroutine lowdin_pdos_cmplx
 
 !=========================================================================
 subroutine plot_wfn(basis, c_matrix)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: c_matrix(:, :, :)
@@ -909,7 +911,7 @@ subroutine plot_wfn(basis, c_matrix)
     u(:)=0.0_dp
     u(1)=1.0_dp
     a(:)=0.0_dp
-  endif
+  end if
   u(:) = u(:) / SQRT(SUM(u(:)**2))
   allocate(phase(cube_state_min:cube_state_max, nspin), phi(cube_state_min:cube_state_max, nspin))
   write(stdout, '(a,2(2x,i4))')   ' states:   ', cube_state_min, cube_state_max
@@ -929,7 +931,7 @@ subroutine plot_wfn(basis, c_matrix)
 
     do ispin=1, nspin
       phi(cube_state_min:cube_state_max, ispin) = MATMUL( basis_function_r(:) , c_matrix(:, cube_state_min:cube_state_max, ispin) )
-    enddo
+    end do
 
     !
     ! turn the wfns so that they are all positive at a given point
@@ -937,14 +939,14 @@ subroutine plot_wfn(basis, c_matrix)
       do ispin=1, nspin
         do istate=cube_state_min, cube_state_max
           if( phi(istate, ispin) < 0.0_dp ) phase(istate, ispin) = -1.0_dp
-        enddo
-      enddo
-    endif
+        end do
+      end do
+    end if
 
     write(101, '(50(e16.8,2x))') DOT_PRODUCT(rr(:), u(:)), phi(:, :)*phase(:, :)
     write(102, '(50(e16.8,2x))') DOT_PRODUCT(rr(:), u(:)), phi(:, :)**2
 
-  enddo
+  end do
 
   deallocate(phase, phi)
 
@@ -953,7 +955,6 @@ end subroutine plot_wfn
 
 !=========================================================================
 subroutine plot_wfn_fourier(basis, c_matrix)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: c_matrix(:, :, :)
@@ -992,7 +993,7 @@ subroutine plot_wfn_fourier(basis, c_matrix)
   do istate=cube_state_min, cube_state_max
     write(cstate, '(i4.4)') istate
     open(newunit=file_state(istate), file='wfn_fourier_'//cstate//'.dat', action='write')
-  enddo
+  end do
 
   !allocate(ekin(cube_state_min:cube_state_max))
   !ekin(:) = 0.0_dp
@@ -1001,7 +1002,7 @@ subroutine plot_wfn_fourier(basis, c_matrix)
   !  xtmp = ( iqradial - 0.5_dp ) / REAL(nqradial,dp)
   !  xa(iqradial)   = -alpha * log( 1.0_dp - xtmp**3)
   !  wxa(iqradial)  = 3.0_dp * alpha * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nqradial,dp)
-  !enddo
+  !end do
   !call ld0086(x1,y1,z1,w1,iq)
   !iq = 0
   !do iqradial=1,nqradial
@@ -1011,8 +1012,8 @@ subroutine plot_wfn_fourier(basis, c_matrix)
   !    qlist(1,iq) = xa(iqradial) * x1(ix1)
   !    qlist(2,iq) = xa(iqradial) * y1(ix1)
   !    qlist(3,iq) = xa(iqradial) * z1(ix1)
-  !  enddo
-  !enddo
+  !  end do
+  !end do
 
 
   do iq=1, nq
@@ -1032,25 +1033,25 @@ subroutine plot_wfn_fourier(basis, c_matrix)
 
       do i_cart=1, ni_cart
         basis_function_q_cart(i_cart) = basis_function_fourier(basis%bfc(ibf1_cart+i_cart-1), qvec)
-      enddo
+      end do
       basis_function_q(ibf1:ibf2) = MATMUL( TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)), basis_function_q_cart(:) )
       deallocate(basis_function_q_cart)
 
-    enddo
+    end do
 
 
     do istate=cube_state_min, cube_state_max
       write(file_state(istate), '(f12.5,2x,2(1x,es16.6))') NORM2(qvec(:)), DOT_PRODUCT(basis_function_q(:), c_matrix(:, istate, 1))
       !ekin(istate) = ekin(istate) + weight * NORM2(qvec)**2 &
       !                                * ABS(DOT_PRODUCT(basis_function_q(:),c_matrix(:,istate,1)))**2 * ( 2.0_dp *pi )**3
-    enddo
+    end do
 
-  enddo
+  end do
 
   do istate=cube_state_min, cube_state_max
     !write(stdout,*) 'kinetic energy',istate,0.5_dp*ekin(istate)
     close(file_state(istate))
-  enddo
+  end do
   deallocate(file_state)
   !deallocate(ekin)
 
@@ -1059,7 +1060,6 @@ end subroutine plot_wfn_fourier
 
 !=========================================================================
 subroutine plot_rho(rootname, basis, occupation, c_matrix)
-  implicit none
 
   type(basis_set), intent(in)  :: basis
   real(dp), intent(in)         :: occupation(:, :)
@@ -1097,7 +1097,7 @@ subroutine plot_rho(rootname, basis, occupation, c_matrix)
     u(:)=0.0_dp
     u(1)=1.0_dp
     a(:)=0.0_dp
-  endif
+  end if
   u(:) = u(:) / NORM2(u)
   allocate(phi(nstate, nspin))
   write(stdout, '(a,3(2x,f8.3))') ' direction:', u(:)
@@ -1116,11 +1116,11 @@ subroutine plot_rho(rootname, basis, occupation, c_matrix)
 
     do ispin=1, nspin
       phi(:, ispin) = MATMUL( basis_function_r(:) , c_matrix(:, :, ispin) )
-    enddo
+    end do
 
     write(unit_rho, '(2(1x,e14.6))') DOT_PRODUCT(rr(:), u(:)), SUM( phi(:, :)**2 * occupation(:, :) )
 
-  enddo
+  end do
   close(unit_rho)
 
   deallocate(phi)
@@ -1130,7 +1130,6 @@ end subroutine plot_rho
 
 !=========================================================================
 subroutine plot_rho_xy(basis, occupation, c_matrix)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(:, :)
@@ -1199,7 +1198,6 @@ end subroutine plot_rho_xy
 
 !=========================================================================
 subroutine plot_rho_list(nstate, basis, occupation, c_matrix)
-  implicit none
 
   integer, intent(in)         :: nstate
   type(basis_set), intent(in) :: basis
@@ -1215,7 +1213,7 @@ subroutine plot_rho_list(nstate, basis, occupation, c_matrix)
   real(dp)                   :: basis_function_r(basis%nbf)
   integer                    :: rhorfile
   integer                    :: ix, iy, iz
-  real(dp), parameter         :: dx = 0.174913 ! 0.204034
+  real(dp), parameter         :: dx = 0.174913_dp ! 0.204034_dp
   real(dp)                   :: rr0(3)
   integer                    :: unitfile
   !=====
@@ -1230,7 +1228,7 @@ subroutine plot_rho_list(nstate, basis, occupation, c_matrix)
     open(newunit=rhorfile, file='manual_plotrho', status='old')
     close(rhorfile)
   else
-  endif
+  end if
   allocate(phi(nstate, nspin))
 
   rr0(1) = -6.512752 ! -8.790885
@@ -1251,13 +1249,13 @@ subroutine plot_rho_list(nstate, basis, occupation, c_matrix)
 
         do ispin=1, nspin
           phi(:, ispin) = MATMUL( basis_function_r(:) , c_matrix(:, :, ispin) )
-        enddo
+        end do
 
         write(unitfile, '(1x,e16.8)') SUM( phi(3:, :)**2 * occupation(3:, :) )
 
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
   close(unitfile)
 
   deallocate(phi)
@@ -1267,7 +1265,6 @@ end subroutine plot_rho_list
 
 !=========================================================================
 subroutine plot_cube_wfn(rootname, basis, occupation, c_matrix)
-  implicit none
 
   character(len=*), intent(in) :: rootname
   type(basis_set), intent(in)  :: basis
@@ -1331,9 +1328,9 @@ subroutine plot_cube_wfn(rootname, basis, occupation, c_matrix)
       write(ocubefile(istate, ispin), '(i6,3(f12.6,2x))') cube_nz, 0., 0., dz
       do icenter=1, ncenter_nuclei
         write(ocubefile(istate, ispin), '(i6,4(2x,f12.6))') NINT(zatom(icenter)), 0.0, xatom(:, icenter)
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   !
   ! check whether cube_state_min:cube_state_max spans all the occupied states
@@ -1349,8 +1346,8 @@ subroutine plot_cube_wfn(rootname, basis, occupation, c_matrix)
       write(ocuberho(ispin), '(i6,3(f12.6,2x))') cube_nz, 0., 0., dz
       do icenter=1, ncenter_nuclei
         write(ocuberho(ispin), '(i6,4(2x,f12.6))') NINT(zatom(icenter)), 0.0, xatom(:, icenter)
-      enddo
-    enddo
+      end do
+    end do
 
     do ix=1, cube_nx
       rr(1) = xmin + (ix-1)*dx
@@ -1364,31 +1361,31 @@ subroutine plot_cube_wfn(rootname, basis, occupation, c_matrix)
           do ispin=1, nspin
             phi(cube_state_min:cube_state_max, ispin) = MATMUL( basis_function_r(:) , &
                                                               c_matrix(:, cube_state_min:cube_state_max, ispin) )
-          enddo
+          end do
 
           do ispin=1, nspin
             write(ocuberho(ispin), '(50(e16.8,2x))') SUM( phi(:, ispin)**2 * occupation(cube_state_min:cube_state_max, ispin) )
-          enddo
+          end do
 
 
           do istate=cube_state_min, cube_state_max
             do ispin=1, nspin
               write(ocubefile(istate, ispin), '(50(e16.8,2x))') phi(istate, ispin)
-            enddo
-          enddo
+            end do
+          end do
 
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
 
     do ispin=1, nspin
       do istate=cube_state_min, cube_state_max
         close(ocubefile(istate, ispin))
-      enddo
+      end do
       close(ocuberho(ispin))
-    enddo
-  endif
+    end do
+  end if
 
   deallocate(phi)
   deallocate(ocubefile)
@@ -1401,9 +1398,8 @@ end subroutine plot_cube_wfn
 ! Author: Mauricio Rodriguez-Mayorga
 !=========================================================================
 subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy, print_all)
-  implicit none
 
-  character(len=*)             :: rootname
+  character(len=*), intent(in) :: rootname
   type(basis_set), intent(in)   :: basis
   real(dp), intent(in)          :: etotal
   real(dp), intent(in)          :: occupation(:, :)
@@ -1428,21 +1424,21 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
 
   do ie=1, nelement_max
     write(el_list(ie), '(a4)') capitalize(element_list(ie))
-  enddo
+  end do
 
   if( .NOT. is_iomaster ) return
 
   completely_empty_local = completely_empty
-  if(present(print_all)) then
+  if(PRESENT(print_all)) then
     if(print_all) completely_empty_local = -TEN
-  endif
+  end if
 
   if( basis%gaussian_type /= 'CART' ) then ! Pure, not implemented (TODO)
     write(stdout, '(/,1x,a)') "Computation of WFN files requires cartesian gaussian functions"
     write(stdout, '(1x,a,/)') "Include: gaussian_type = 'cart' in the input file and run again the calculation."
     call issue_warning('print_wfn_file: not coded for PURE Gaussians as of today')
     return
-  endif
+  end if
 
   nstate = MIN( SIZE(occupation(:, :), DIM=1), SIZE(c_matrix(:, :, :), DIM=2) )
 
@@ -1455,8 +1451,8 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
   do istate=1, nstate
     do ispin=1, nspin
       if( ABS(occupation(istate, ispin) ) > completely_empty_local ) nocc = nocc + 1
-    enddo
-  enddo
+    end do
+  end do
 
   nprim = SUM(basis%bfc(:)%ngaussian)
   write(owfn, '(a80)') 'MOLGW WFN file generated'
@@ -1465,7 +1461,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
   do icenter=1, ncenter_nuclei
     write(owfn, '(a4,i4,4x,a7,i3,a1,1x,3f12.8,a10,f5.1)') el_list(NINT(zatom(icenter))), icenter, &
    '(CENTRE', icenter, ')', xatom(:, icenter), '  CHARGE =', zatom(icenter)
-  enddo
+  end do
 
   allocate(icent(nprim), itype(nprim), expon(nprim), prim_coefs(nprim))
   !We have: MO = COEF_AO*AO | and | AO = COEF_P*Primitives
@@ -1484,7 +1480,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
 
   do ibf=1, basis%nbf
     ao_map(ibf) = ibf
-  enddo
+  end do
 
   ibf=1
   ibf2=1
@@ -1497,18 +1493,18 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
     prev_typ=0
     do istyp=0, shell_typ-1
       prev_typ = prev_typ + number_basis_function_am('CART', istyp)
-    enddo
+    end do
     allocate(prim_per_shell(iprim_per_shell))
     do istyp=1, iprim_per_shell
       prim_per_shell(istyp) = istyp + prev_typ
-    enddo
+    end do
 
 
     ! Order MO Coefs
     if(shell_typ==1) then                    ! p-shell
       p_aos(1:3)=ao_map(ibf2:ibf2+2)
       ao_map(ibf2:ibf2+2)=p_aos(:)
-      elseif(shell_typ==2) then                ! d-shell
+    elseif(shell_typ==2) then                ! d-shell
       d_aos(1:6)=ao_map(ibf2:ibf2+5)
       ao_map(ibf2  )=d_aos(1)
       ao_map(ibf2+1)=d_aos(4)
@@ -1516,7 +1512,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
       ao_map(ibf2+3)=d_aos(2)
       ao_map(ibf2+4)=d_aos(3)
       ao_map(ibf2+5)=d_aos(5)
-      elseif(shell_typ==3) then                ! f-shell
+    elseif(shell_typ==3) then                ! f-shell
       f_aos(1:10)=ao_map(ibf2:ibf2+9)
       ao_map(ibf2  )=f_aos(1)
       ao_map(ibf2+1)=f_aos(7)
@@ -1528,7 +1524,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
       ao_map(ibf2+7)=f_aos(6)
       ao_map(ibf2+8)=f_aos(9)
       ao_map(ibf2+9)=f_aos(5)
-      elseif(shell_typ==4) then                ! g-shell
+    elseif(shell_typ==4) then                ! g-shell
       g_aos(1:15)=ao_map(ibf2:ibf2+14)
       ao_map(ibf2  )=g_aos( 1)
       ao_map(ibf2+1)=g_aos(11)
@@ -1545,11 +1541,11 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
       ao_map(ibf2+12)=g_aos( 5)
       ao_map(ibf2+13)=g_aos( 8)
       ao_map(ibf2+14)=g_aos( 9)
-      elseif(shell_typ==0) then                ! s-shell
+    elseif(shell_typ==0) then                ! s-shell
       ! Do nothing
     else                ! h-, i-,...shell
       write(stdout, '(1x,a,i5,a)') "Shell type", shell_typ, " not reordered."
-    endif
+    end if
     ibf2 = ibf2 + iprim_per_shell
 
     do istyp=1, iprim_per_shell
@@ -1564,7 +1560,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
           case(3)
             nxp=0;nyp=0;nzp=1
           end select
-        endif
+        end if
         if(shell_typ==2) then         ! d-shell
           select case(istyp)
           case(1)
@@ -1580,7 +1576,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
           case(6)
             nxp=0;nyp=1;nzp=1
           end select
-        endif
+        end if
         if(shell_typ==3) then         ! f-shell
           select case(istyp)
           case(1)
@@ -1604,7 +1600,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
           case(10)
             nxp=1;nyp=1;nzp=1
           end select
-        endif
+        end if
         if(shell_typ==4) then         ! g-shell
           select case(istyp)
           case(1)
@@ -1638,7 +1634,7 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
           case(15)
             nxp=1;nyp=1;nzp=2
           end select
-        endif
+        end if
         nxp=2*nxp-1;nyp=2*nyp-1;nzp=2*nzp-1
         dfact = double_factorial(nxp) * double_factorial(nyp) * double_factorial(nzp)
         prim_coefs(iprim) = basis%shell(ishell)%coeff(igaus) / SQRT(dfact)
@@ -1646,36 +1642,36 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
         icent(iprim) = basis%shell(ishell)%icenter
         expon(iprim) = basis%shell(ishell)%alpha(igaus)
         iprim = iprim + 1
-      enddo
+      end do
       coefs_prims(ibf, :) = prim_coefs(:)
       prim_coefs(:) = 0.0_dp
       ibf = ibf + 1
-    enddo
+    end do
     deallocate(prim_per_shell)
-  enddo
+  end do
 
 
   do iprint=1, nprim/20
     if(20+(iprint-1)*20 <= nprim) then
       write(owfn, '(a18,2x,20i3)') 'CENTRE ASSIGNMENTS', icent(1+(iprint-1)*20:20+(iprint-1)*20)
       ilast=20+(iprint-1)*20
-    endif
-  enddo
+    end if
+  end do
   if(ilast/=nprim) write(owfn, '(a18,2x,*(i3))') 'CENTRE ASSIGNMENTS', icent(ilast+1:)
 
   do iprint=1, nprim/20
     if(20+(iprint-1)*20 <= nprim) then
       write(owfn, '(a16,4x,20i3)') 'TYPE ASSIGNMENTS', itype(1+(iprint-1)*20:20+(iprint-1)*20)
-    endif
-  enddo
+    end if
+  end do
   if(ilast/=nprim) write(owfn, '(a16,4x,*(i3))') 'TYPE ASSIGNMENTS', itype(ilast+1:)
 
   do iprint=1, nprim/5
     if(5+(iprint-1)*5 <= nprim) then
       write(owfn, '(a9,1x,1P,5E14.7)') 'EXPONENTS', expon(1+(iprint-1)*5:5+(iprint-1)*5)
-    endif
+    end if
     ilast=5+(iprint-1)*5
-  enddo
+  end do
   if(ilast/=nprim) write(owfn, '(a9,1x,1P,5E14.7)') 'EXPONENTS', expon(ilast+1:)
 
   allocate(energy_local(nstate, nspin))
@@ -1683,12 +1679,12 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
   energy_local(:, :) = 0.0_dp
   if( PRESENT(energy) .AND. (.NOT. complex_scf_) .AND. (.NOT. x2c_) ) then
     energy_local(:, :) = energy(:, :)
-  endif
+  end if
 
   !write(*,*) ' '
   !do ibf=1,basis%nbf
   !  write(*,'(*(f7.3))') coefs_prims(ibf,:)
-  !enddo
+  !end do
   !write(*,*) ' '
 
   allocate(mo_coefs(basis%nbf))
@@ -1701,13 +1697,13 @@ subroutine print_wfn_file(rootname, basis, occupation, c_matrix, etotal, energy,
         prim_coefs(1:nprim) = MATMUL(mo_coefs(:), coefs_prims(:, 1:nprim))
         do iprim=1, nprim
           if( ABS(prim_coefs(iprim)) < TOL_COEFF ) prim_coefs(iprim) = 0.0_dp
-        enddo
+        end do
         write(owfn, '(a2,i5,5x,a6,8x,a9,f12.7,a15,f12.6)') 'MO', istate, 'MO 0.0', 'OCC NO = ', occupation(istate, ispin), &
        '  ORB. ENERGY =', energy_local(istate, ispin)
         write(owfn, '(1P,5E16.8)') prim_coefs(:)
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
   deallocate(icent, itype, expon, prim_coefs, coefs_prims, mo_coefs)
 
@@ -1720,14 +1716,13 @@ end subroutine print_wfn_file
 
 !=========================================================================
 subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, num, time_cur)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(nstate, nspin)
   real(dp), intent(in)        :: c_matrix(basis%nbf, nstate, nspin)
-  integer                    :: num
+  integer, intent(in)        :: num
   real(dp), intent(in)        :: time_cur
   !=====
   integer                    :: nr=1000, nh=100
@@ -1759,13 +1754,13 @@ subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, nu
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
-  endif
+  end if
   ! Find highest occupied state
   nocc = 0
   nocc_max = 0
@@ -1774,11 +1769,11 @@ subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, nu
       if( occupation(istate, ispin) < completely_empty)  cycle
       nocc(ispin) = istate
       if( istate > nocc_max ) nocc_max = istate
-    enddo
+    end do
     if( .NOT. (ALL( occupation(nocc(ispin)+1, :) < completely_empty )) ) then
       call die('Not all occupied states selected in the plot_rho_traj_bunch subroutine')
-    endif
-  enddo
+    end if
+  end do
 
   inquire(file='manual_dens_traj', exist=file_exists)
   if(file_exists) then
@@ -1795,7 +1790,7 @@ subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, nu
     point_b = (/ 0.0_dp,  0.0_dp,  10.0_dp  /)
     point_c = (/ 3.49_dp, 0.0_dp, -10.0_dp  /)
     call issue_warning('plot_rho_traj_bunch: manual_dens_traj_tddft file was not found')
-  endif
+  end if
   ! point_b(:) = point_b(:) / bohr_A
   ! point_a(:) = point_a(:) / bohr_A
   ! In analogy with cube file, this file is also in Bohr
@@ -1808,7 +1803,7 @@ subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, nu
     open(newunit=line_rho(ispin), file=file_name)
     write(line_rho(ispin), '(a,i3)') '# density integral file generated from MOLGW for spin ', ispin
     write(line_rho(ispin), '(a,f9.5)') '# time_cur = ', time_cur
-  enddo
+  end do
 
   deltar=NORM2( point_b(:) - point_a(:) )/nr
   do ih=0, nh
@@ -1824,11 +1819,11 @@ subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, nu
         call calculate_basis_functions_r(basis, rr, basis_function_r)
         phi(:, ispin) = MATMUL( basis_function_r(:) , c_matrix(:, :, ispin) )
         integral=integral+SUM( (phi(:, ispin))**2 * occupation(:, ispin) )*deltar
-      enddo
+      end do
 
       write(line_rho(ispin), '(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)), integral
-    enddo
-  enddo
+    end do
+  end do
 
   do ispin=1, nspin
     close(line_rho(ispin))
@@ -1836,20 +1831,19 @@ subroutine plot_rho_traj_bunch(nstate, nocc_dim, basis, occupation, c_matrix, nu
 
   deallocate(phi)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_traj_bunch
 
 
 !=========================================================================
 subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num, time_cur)
-  implicit none
 
   integer, intent(in)         :: nstate
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(nstate, nspin)
   real(dp), intent(in)        :: c_matrix(basis%nbf, nstate, nspin)
-  integer                    :: num
+  integer, intent(in)        :: num
   real(dp), intent(in)        :: time_cur
   !=====
   integer                    :: nr=1000, nh=100
@@ -1893,16 +1887,16 @@ subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num,
     do istate=1, nstate
       if( occupation(istate, ispin) < completely_empty ) cycle
       if( istate > nocc ) nocc = istate
-    enddo
+    end do
   end do
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
-  endif
+  end if
 
   inquire(file='manual_dens_traj', exist=file_exists)
   if(file_exists) then
@@ -1919,7 +1913,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num,
     point_b = (/ 0.0_dp,  0.0_dp,  10.0_dp  /)
     point_c = (/ 3.49_dp, 0.0_dp, -10.0_dp  /)
     call issue_warning('plot_rho_traj_bunch: manual_dens_traj file was not found')
-  endif
+  end if
 
   inquire(file='manual_dens_traj_states', exist=file_exists)
   if(file_exists) then
@@ -1936,7 +1930,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num,
         istate_cut(iline, 2) = nstate
       else
         call die("manual_q_matrix_param must contain 1 or two fields.")
-      endif
+      end if
 
     end do
     close(statesfile)
@@ -1946,7 +1940,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num,
     istate_cut(1, 1) = 1; istate_cut(1, 2) = 1;
     istate_cut(2, 1) = 2; istate_cut(2, 2) = nstate;
     call issue_warning('plot_rho_traj_bunch_contrib: manual_dens_traj_states file was not found')
-  endif
+  end if
 
   allocate(integral(ncut))
   allocate(integral_phi_square(ncut))
@@ -1968,7 +1962,7 @@ subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num,
     open(newunit=line_phi_square(ispin), file=file_name)
     write(line_phi_square(ispin), '(a,i3)') '# density integral file generated from MOLGW for spin ', ispin
     write(line_phi_square(ispin), '(a,f9.5)') '# time_cur = ', time_cur
-  enddo
+  end do
 
   deltar=NORM2( point_b(:) - point_a(:) )/nr
   path_length=NORM2(point_b(:)-point_a(:))
@@ -2000,9 +1994,9 @@ subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num,
 
       write(line_phi_square(ispin), '(50(f14.8,2x))') NORM2(a_cur(:)-point_a(:)), integral_phi_square(:)
       write(line_rho(ispin), '(50(f14.8,2x))') NORM2(a_cur(:)-point_a(:)), integral(:)
-    enddo
+    end do
 
-  enddo
+  end do
 
   do ispin=1, nspin
     close(line_rho(ispin))
@@ -2011,20 +2005,19 @@ subroutine plot_rho_traj_bunch_contrib(nstate, basis, occupation, c_matrix, num,
 
   deallocate(phi)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_traj_bunch_contrib
 
 
 !=========================================================================
 subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix, num, time_cur)
-  implicit none
 
   integer, intent(in)         :: nstate
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(nstate, nspin)
   real(dp), intent(in)        :: c_matrix(basis%nbf, nstate, nspin)
-  integer                    :: num
+  integer, intent(in)        :: num
   real(dp), intent(in)        :: time_cur
   !=====
   integer                    :: nr=1000, nh=100
@@ -2070,16 +2063,16 @@ subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix,
     do istate=1, nstate
       if( occupation(istate, ispin) < completely_empty ) cycle
       if( istate > nocc ) nocc = istate
-    enddo
+    end do
   end do
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
-  endif
+  end if
 
   inquire(file='manual_dens_points_set', exist=file_exists)
   if(file_exists) then
@@ -2100,7 +2093,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix,
     rpoints_start(1, :) = (/ 0.0_dp,  0.0_dp, 0.0_dp  /)
     rpoints_end(1, :)   = (/ 0.0_dp,  0.0_dp, 5.0_dp  /)
     call issue_warning('plot_rho_traj_bunch: manual_dens_points_set file was not found')
-  endif
+  end if
 
   inquire(file='manual_dens_traj_states', exist=file_exists)
   if(file_exists) then
@@ -2117,7 +2110,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix,
         istate_cut(iline, 2) = nstate
       else
         call die("manual_q_matrix_param must contain 1 or two fields.")
-      endif
+      end if
 
     end do
     close(statesfile)
@@ -2126,7 +2119,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix,
     allocate(istate_cut(2, 2))
     istate_cut(1, 1) = 1; istate_cut(1, 2) = nstate;
     call issue_warning('plot_rho_traj_bunch_contrib: manual_dens_traj_states file was not found')
-  endif
+  end if
 
   allocate(integral(ncut))
 
@@ -2144,7 +2137,7 @@ subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix,
     open(newunit=line_phi_square(ispin), file=file_name)
     write(line_phi_square(ispin), '(a,i3)') '# density integral file generated from MOLGW for spin ', ispin
     write(line_phi_square(ispin), '(a,f9.5)') '# time_cur = ', time_cur
-  enddo
+  end do
 
   do ispin=1, nspin
 
@@ -2175,9 +2168,9 @@ subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix,
       ! output in ANGSTROMS
       write(line_phi_square(ispin), '(50(f14.8,2x))') rpoints_start(ipoint, 1:2)*bohr_A, integral_phi_square(:)
       write(line_rho(ispin), '(50(f14.8,2x))') rpoints_start(ipoint, 1:2)*bohr_A, integral(:)
-    enddo
+    end do
 
-  enddo
+  end do
 
   do ispin=1, nspin
     close(line_rho(ispin))
@@ -2186,21 +2179,20 @@ subroutine plot_rho_traj_points_set_contrib(nstate, basis, occupation, c_matrix,
 
   deallocate(phi)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_traj_points_set_contrib
 
 
 !=========================================================================
 subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(nstate, nspin)
   complex(dp), intent(in)     :: c_matrix_cmplx(basis%nbf, nocc_dim, nspin)
-  integer                    :: num
+  integer, intent(in)        :: num
   !=====
   integer                    :: gt
   integer                    :: nocc(2), nocc_max
@@ -2226,13 +2218,13 @@ subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_cube_rho_tddft)
+  call timer_print_cube_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
-  endif
+  end if
   ! Find highest occupied state
   nocc = 0
   nocc_max = 0
@@ -2241,23 +2233,23 @@ subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
       if( occupation(istate, ispin) < completely_empty)  cycle
       nocc(ispin) = istate
       if( istate > nocc_max ) nocc_max = istate
-    enddo
+    end do
     if( .NOT. (ALL( occupation(nocc(ispin)+1, :) < completely_empty )) ) then
       call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-    endif
-  enddo
+    end if
+  end do
 
 
   allocate(phi_cmplx(1:nocc_max, nspin))
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(a,2(2x,i4))')   ' states:   ', 1, nocc_max
-  endif
+  end if
 
   if( excit_type%form==EXCIT_PROJECTILE ) then
     i_max_atom=ncenter_nuclei-nprojectile
   else
     i_max_atom=ncenter_nuclei
-  endif
+  end if
 
   xmin =MIN(MINVAL( xatom(1, 1:i_max_atom) ), MINVAL( xbasis(1, :) )) - length
   xmax =MAX(MAXVAL( xatom(1, 1:i_max_atom) ), MAXVAL( xbasis(1, :) )) + length
@@ -2280,8 +2272,8 @@ subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
     write(ocuberho(ispin), '(i6,3(f12.6,2x))') cube_nz, 0., 0., dz
     do icenter=1, ncenter_nuclei
       write(ocuberho(ispin), '(i6,4(2x,f12.6))') NINT(zatom(icenter)), 0.0, xatom(:, icenter)
-    enddo
-  enddo
+    end do
+  end do
 
   do ix=1, cube_nx
     rr(1) = ( xmin + (ix-1)*dx )
@@ -2296,11 +2288,11 @@ subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
           nocc_max=nocc(ispin)
           phi_cmplx(1:nocc_max, ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:, 1:nocc_max, ispin) )
           write(ocuberho(ispin), '(50(e16.8,2x))') SUM( ABS(phi_cmplx(:, ispin))**2 * occupation(1:nocc_max, ispin) ) * spin_fact
-        enddo
+        end do
 
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   do ispin=1, nspin
     close(ocuberho(ispin))
@@ -2308,14 +2300,13 @@ subroutine plot_cube_wfn_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_cube_rho_tddft)
+  call timer_print_cube_rho_tddft%stop()
 
 end subroutine plot_cube_wfn_cmplx
 
 
 !=========================================================================
 subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num, time_cur)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
@@ -2348,13 +2339,13 @@ subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupatio
   real(dp), allocatable       :: charge_layer(:)
   !=====
 
-  call start_clock(timing_calc_dens_disc)
+  call timer_calc_dens_disc%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Calculate electronic density in discs'
-  endif
+  end if
   ! Find highest occupied state
   nocc = 0
   nocc_max = 0
@@ -2363,11 +2354,11 @@ subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupatio
       if( occupation(istate, ispin) < completely_empty)  cycle
       nocc(ispin) = istate
       if( istate > nocc_max ) nocc_max = istate
-    enddo
+    end do
     if( .NOT. (ALL( occupation(nocc(ispin)+1, :) < completely_empty )) ) then
       call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-    endif
-  enddo
+    end if
+  end do
 
 
   inquire(file='manual_disc_density', exist=file_exists)
@@ -2378,7 +2369,7 @@ subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupatio
   else
     length=10.0_dp
     call issue_warning('calc_density_in_disc_cmplx_regular: manual file was not found')
-  endif
+  end if
   allocate(phi_cmplx(1:nocc_max, nspin))
 
   i_max_atom = ncenter_nuclei - nprojectile
@@ -2401,8 +2392,8 @@ subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupatio
       open(newunit=file_out(ispin), file=file_name)
       write(file_out(ispin), '(a,F12.6,a,3F12.6)') '# Time: ', time_cur, &
                                                    '  Projectile position (A): ', xatom(:, ncenter_nuclei)*bohr_A
-    enddo
-  endif
+    end do
+  end if
 
   allocate(charge_layer(cube_nz))
 
@@ -2420,11 +2411,11 @@ subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupatio
             call calculate_basis_functions_r(basis, rr, basis_function_r)
             phi_cmplx(1:nocc(ispin), ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:, 1:nocc(ispin), ispin) )
             charge_layer(iz)=charge_layer(iz)+SUM( ABS(phi_cmplx(:, ispin))**2 * occupation(1:nocc(ispin), ispin) ) * spin_fact
-          endif
+          end if
 
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
     call world%sum(charge_layer(:))
 
@@ -2436,20 +2427,19 @@ subroutine calc_density_in_disc_cmplx_regular(nstate, nocc_dim, basis, occupatio
         write(file_out(ispin), '(F16.4,F19.10)') rr(3)*bohr_A, charge_layer(iz)
       end do
       close(file_out(ispin))
-    endif
+    end if
 
-  enddo ! ispin
+  end do ! ispin
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_calc_dens_disc)
+  call timer_calc_dens_disc%stop()
 
 end subroutine calc_density_in_disc_cmplx_regular
 
 
 !=========================================================================
 subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
-  implicit none
   type(basis_set), intent(in)  :: basis
   real(dp), intent(in)         :: occupation(:, :)
   complex(dp), intent(in)      :: c_matrix_cmplx(:, :, :)
@@ -2477,13 +2467,13 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
   real(dp), allocatable, save  :: cube_density_start(:, :)
   !=====
 
-  call start_clock(timing_print_cube_rho_tddft)
+  call timer_print_cube_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting some selected wavefunctions in a cube file'
-  endif
+  end if
 
   ! Find highest occupied state
   nocc = 0
@@ -2493,17 +2483,17 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
       if( occupation(istate, ispin) < completely_empty)  cycle
       nocc(ispin) = istate
       if( istate > nocc_max ) nocc_max = istate
-    enddo
+    end do
     if( .NOT. (ALL( occupation(nocc(ispin)+1, :) < completely_empty )) ) then
       call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-    endif
-  enddo
+    end if
+  end do
 
 
   allocate(phi_cmplx(1:nocc_max, nspin))
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(a,2(2x,i4))')   ' states:   ', 1, nocc_max
-  endif
+  end if
 
   !
   ! First call: initialization and storage
@@ -2552,9 +2542,9 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
             rr(1, ir) = xmin + (ix-1)*dx
             rr(2, ir) = ymin + (iy-1)*dy
             rr(3, ir) = zmin + (iz-1)*dz
-          enddo
-        enddo
-      enddo
+          end do
+        end do
+      end do
       cube_density_start(:, :) = 0.0_dp
       !$OMP PARALLEL PRIVATE(basis_function_r, phi_cmplx)
       !$OMP DO
@@ -2565,8 +2555,8 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
         do ispin=1, nspin
           phi_cmplx(1:nocc(ispin), ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:, 1:nocc(ispin), ispin) )
           cube_density_start(ir, ispin)=SUM( ABS(phi_cmplx(:, ispin))**2 * occupation(1:nocc(ispin), ispin) ) * spin_fact
-        enddo
-      enddo
+        end do
+      end do
       !$OMP END DO
       !$OMP END PARALLEL
 
@@ -2574,7 +2564,7 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
 
     else
       call die('should not happen')
-    endif
+    end if
 
 
   else  ! not first call
@@ -2596,15 +2586,15 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
         write(ocuberho(ispin), '(i6,3(f12.6,2x))') cube_nz, 0., 0., dz
         do icenter=1, ncenter_nuclei
           write(ocuberho(ispin), '(i6,4(2x,f12.6))') NINT(zatom(icenter)), 0.0, xatom(:, icenter)
-        enddo
-      enddo
-    endif
+        end do
+      end do
+    end if
 
     call clean_allocate("dens_diff for the cube density", dens_diff, cube_nx*cube_ny*cube_nz, verbose=.FALSE.)
 
     do ispin=1, nspin
 
-      !call start_clock(timing_tmp0)
+      !call timer_tmp0%start()
       dens_diff(:) = 0.0_dp
 
       !$OMP PARALLEL PRIVATE(basis_function_r, phi_cmplx)
@@ -2618,24 +2608,24 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
         dens_diff(ir) = SUM( ABS(phi_cmplx(:, ispin))**2 * occupation(1:nocc(ispin), ispin) ) * spin_fact &
                                - cube_density_start(ir, ispin)
 
-      enddo
+      end do
       !$OMP END DO
       !$OMP END PARALLEL
-      !call stop_clock(timing_tmp0)
+      !call timer_tmp0%stop()
 
-      !call start_clock(timing_tmp1)
+      !call timer_tmp1%start()
       call world%sum(dens_diff)
-      !call stop_clock(timing_tmp1)
+      !call timer_tmp1%stop()
 
       if( is_iomaster ) then
-        !call start_clock(timing_tmp2)
+        !call timer_tmp2%start()
         do ir=1, cube_nx*cube_ny*cube_nz
           write(ocuberho(ispin), '(50(e16.8,2x))') dens_diff(ir)
         end do
-        !call stop_clock(timing_tmp2)
-      endif
+        !call timer_tmp2%stop()
+      end if
 
-    enddo !do ispin
+    end do !do ispin
 
     do ispin=1, nspin
       close(ocuberho(ispin))
@@ -2644,16 +2634,15 @@ subroutine plot_cube_diff_cmplx(basis, occupation, c_matrix_cmplx, initialize)
     deallocate(phi_cmplx)
     call clean_deallocate("dens_diff for the cube density", dens_diff, verbose=.FALSE.)
 
-  endif
+  end if
 
-  call stop_clock(timing_print_cube_rho_tddft)
+  call timer_print_cube_rho_tddft%stop()
 
 end subroutine plot_cube_diff_cmplx
 
 
 !=========================================================================
 subroutine charge_projectile_cmplx(basis, occupation, c_matrix_cmplx)
-  implicit none
 
   type(basis_set), intent(in)  :: basis
   real(dp), intent(in)         :: occupation(:, :)
@@ -2686,9 +2675,9 @@ subroutine charge_projectile_cmplx(basis, occupation, c_matrix_cmplx)
         phi_cmplx(:, ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:, :, ispin) )
         charge = charge + SUM( ABS(phi_cmplx(:, ispin))**2 * occupation(:SIZE(c_matrix_cmplx, DIM=2), ispin) ) &
                            * 4.0_dp * pi * w1(iang) * dr
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
   write(stdout, *) 'charge : ', charge
 
 
@@ -2697,7 +2686,6 @@ end subroutine charge_projectile_cmplx
 
 !=========================================================================
 subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num, time_cur)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
@@ -2734,13 +2722,13 @@ subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, n
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting some selected wavefunctions along one line'
-  endif
+  end if
   ! Find highest occupied state
   nocc = 0
   nocc_max = 0
@@ -2749,11 +2737,11 @@ subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, n
       if( occupation(istate, ispin) < completely_empty)  cycle
       nocc(ispin) = istate
       if( istate > nocc_max ) nocc_max = istate
-    enddo
+    end do
     if( .NOT. (ALL( occupation(nocc(ispin)+1, :) < completely_empty )) ) then
       call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-    endif
-  enddo
+    end if
+  end do
 
   inquire(file='manual_plot_rho_tddft', exist=file_exists)
   if(file_exists) then
@@ -2767,7 +2755,7 @@ subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, n
     point_a = (/ 0.0_dp, 0.0_dp, 0.0_dp  /)
     point_b = (/ 0.0_dp, 0.0_dp, 10.0_dp  /)
     call issue_warning('plot_line_wfn_cmplx: manual_plot_rho_tddft file was not found')
-  endif
+  end if
   ! point_b(:) = point_b(:) / bohr_A
   ! point_a(:) = point_a(:) / bohr_A
   ! In analogy with cube file, this file is also in Bohr
@@ -2781,7 +2769,7 @@ subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, n
     !   write(line_rho(ispin),'(a,i3)') '# line density file generated from MOLGW for spin ',ispin
     write(line_rho(ispin), '(a,F12.6,a,3F12.6)') '# Time: ', time_cur, &
                            '  Projectile position (A): ', xatom(:, ncenter_nuclei)*bohr_A
-  enddo
+  end do
 
   do ir=0, nr
     rr(:) = (ir + 0.0_dp) / nr * ( point_b(:) - point_a(:) ) + point_a(:)
@@ -2792,8 +2780,8 @@ subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, n
       phi_cmplx(:, ispin) = matmul( basis_function_r(:) , c_matrix_cmplx(:, :, ispin) )
       write(line_rho(ispin), '(50(e16.8,2x))') dot_product(rr(:), u(:)), &
                                              sum( abs(phi_cmplx(:, ispin))**2 * occupation(:nocc_dim, ispin) )
-    enddo
-  enddo
+    end do
+  end do
 
   do ispin=1, nspin
     close(line_rho(ispin))
@@ -2801,7 +2789,7 @@ subroutine plot_rho_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, n
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_cmplx
 
@@ -2809,7 +2797,6 @@ end subroutine plot_rho_cmplx
 !=========================================================================
 subroutine plot_rho_diff_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num, time_cur, &
                                nr_line_rho, point_a, point_b, rho_start)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
@@ -2833,7 +2820,7 @@ subroutine plot_rho_diff_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -2848,7 +2835,7 @@ subroutine plot_rho_diff_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
     open(newunit=line_rho(ispin), file=file_name)
     write(line_rho(ispin), '(a,f12.6,a,3f12.6)') '# Time: ', time_cur, &
                                                  '  Projectile position (A): ', xatom(:, ncenter_nuclei)*bohr_A
-  enddo
+  end do
 
   do ir=1, nr_line_rho
     rr(:) = (ir - 1.d0) / (nr_line_rho - 1) * ( point_b(:) - point_a(:) ) + point_a(:)
@@ -2859,8 +2846,8 @@ subroutine plot_rho_diff_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
       phi_cmplx(:, ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:, :, ispin) )
       write(line_rho(ispin), '(50(e16.8,2x))') DOT_PRODUCT(rr(:), u(:)), &
                            SUM( ABS(phi_cmplx(:, ispin))**2 * occupation(:nocc_dim, ispin) ) - rho_start(ir, ispin)
-    enddo
-  enddo
+    end do
+  end do
 
   do ispin=1, nspin
     close(line_rho(ispin))
@@ -2868,7 +2855,7 @@ subroutine plot_rho_diff_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmp
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_diff_cmplx
 
@@ -2876,7 +2863,6 @@ end subroutine plot_rho_diff_cmplx
 !=========================================================================
 subroutine calc_rho_initial_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num, time_cur, &
                                   nr_line_rho, point_a, point_b, rho_start)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
@@ -2900,7 +2886,7 @@ subroutine calc_rho_initial_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
@@ -2915,7 +2901,7 @@ subroutine calc_rho_initial_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_
     open(newunit=line_rho(ispin), file=file_name)
     write(line_rho(ispin), '(a,F12.6,a,3F12.6)') '# Time: ', time_cur, &
                                                  '  Projectile position (A): ', xatom(:, ncenter_nuclei)*bohr_A
-  enddo
+  end do
 
   do ir=1, nr_line_rho
     rr(:) = (ir - 1.d0) / (nr_line_rho - 1) * ( point_b(:) - point_a(:) ) + point_a(:)
@@ -2926,8 +2912,8 @@ subroutine calc_rho_initial_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_
       phi_cmplx(:, ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:, :, ispin) )
       rho_start(ir, ispin) = SUM( ABS(phi_cmplx(:, ispin))**2 * occupation(:nocc_dim, ispin) )
       write(line_rho(ispin), '(50(e16.8,2x))') DOT_PRODUCT(rr(:), u(:)), rho_start(ir, ispin)
-    enddo
-  enddo
+    end do
+  end do
 
   do ispin=1, nspin
     close(line_rho(ispin))
@@ -2935,14 +2921,13 @@ subroutine calc_rho_initial_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine calc_rho_initial_cmplx
 
 
 !=========================================================================
 subroutine initialize_rho_diff_cmplx(nr_line_rho, point_a, point_b)
-  implicit none
 
   real(dp), intent(out)       :: point_a(3), point_b(3)
   integer, intent(out)        :: nr_line_rho
@@ -2965,21 +2950,20 @@ subroutine initialize_rho_diff_cmplx(nr_line_rho, point_a, point_b)
     point_a = (/ 0.0_dp, 0.0_dp, 0.0_dp  /)
     point_b = (/ 0.0_dp, 0.0_dp, 10.0_dp  /)
     call issue_warning('initialize_rho_diff_cmplx: manual_plot_rho_tddft file was not found')
-  endif
+  end if
 
 end subroutine initialize_rho_diff_cmplx
 
 
 !=========================================================================
 subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matrix_cmplx, num, time_cur)
-  implicit none
 
   integer, intent(in)         :: nstate
   integer, intent(in)         :: nocc_dim
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: occupation(nstate, nspin)
   complex(dp), intent(in)     :: c_matrix_cmplx(basis%nbf, nocc_dim, nspin)
-  integer                    :: num
+  integer, intent(in)        :: num
   real(dp), intent(in)        :: time_cur
   !=====
   integer                    :: nr=1000, nh=100
@@ -3011,13 +2995,13 @@ subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matr
 
   if( .NOT. is_iomaster ) return
 
-  call start_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%start()
 
   gt = get_gaussian_type_tag(basis%gaussian_type)
 
-  if( .NOT. in_rt_tddft ) then
+  if( TIMING_current_stage /= TIMING_POSTSCF ) then
     write(stdout, '(/,1x,a)') 'Plotting electronic density along the projectile trajectory for several impact parameters'
-  endif
+  end if
   ! Find highest occupied state
   nocc = 0
   nocc_max = 0
@@ -3026,11 +3010,11 @@ subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matr
       if( occupation(istate, ispin) < completely_empty)  cycle
       nocc(ispin) = istate
       if( istate > nocc_max ) nocc_max = istate
-    enddo
+    end do
     if( .NOT. (ALL( occupation(nocc(ispin)+1, :) < completely_empty )) ) then
       call die('Not all occupied states selected in the plot_cube_wfn_cmplx')
-    endif
-  enddo
+    end if
+  end do
 
   inquire(file='manual_dens_traj_tddft', exist=file_exists)
   if(file_exists) then
@@ -3047,7 +3031,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matr
     point_b = (/ 0.0_dp,  0.0_dp,  10.0_dp  /)
     point_c = (/ 3.49_dp, 0.0_dp, -10.0_dp  /)
     call issue_warning('plot_line_wfn_cmplx: manual_dens_traj_tddft file was not found')
-  endif
+  end if
   ! point_b(:) = point_b(:) / bohr_A
   ! point_a(:) = point_a(:) / bohr_A
   ! In analogy with cube file, this file is also in Bohr
@@ -3060,7 +3044,7 @@ subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matr
     open(newunit=line_rho(ispin), file=file_name)
     write(line_rho(ispin), '(a,i3)') '# density integral file generated from MOLGW for spin ', ispin
     write(line_rho(ispin), '(a,f9.5)') '# time_cur = ', time_cur
-  enddo
+  end do
 
   deltar=NORM2( point_b(:) - point_a(:) )/nr
   do ih=0, nh
@@ -3076,12 +3060,12 @@ subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matr
         call calculate_basis_functions_r(basis, rr, basis_function_r)
         phi_cmplx(:, ispin) = MATMUL( basis_function_r(:) , c_matrix_cmplx(:, :, ispin) )
         integral=integral+SUM( ABS(phi_cmplx(:, ispin))**2 * occupation(:, ispin) )*deltar
-      enddo
+      end do
 
       write(line_rho(ispin), '(50(e16.8,2x))') NORM2(a_cur(:)-point_a(:)), integral, &
                                              SUM( ABS(phi_cmplx(:, ispin))**2 * occupation(:, ispin) )
-    enddo
-  enddo
+    end do
+  end do
 
   do ispin=1, nspin
     close(line_rho(ispin))
@@ -3089,14 +3073,13 @@ subroutine plot_rho_traj_bunch_cmplx(nstate, nocc_dim, basis, occupation, c_matr
 
   deallocate(phi_cmplx)
 
-  call stop_clock(timing_print_line_rho_tddft)
+  call timer_print_line_rho_tddft%stop()
 
 end subroutine plot_rho_traj_bunch_cmplx
 
 
 !=========================================================================
 subroutine write_cube_from_header(rootname, basis, occupation, c_matrix)
-  implicit none
 
   character(len=*), intent(in) :: rootname
   type(basis_set), intent(in)  :: basis
@@ -3137,7 +3120,7 @@ subroutine write_cube_from_header(rootname, basis, occupation, c_matrix)
   if( .NOT. file_exists ) then
     call issue_warning('write_cube_from_header: in.cube file not found. Skip cube file generation')
     return
-  endif
+  end if
   open(newunit=icubefile, file=TRIM(file_name), action='read', status='old')
   read(icubefile, *) tmp
   read(icubefile, *) tmp
@@ -3147,11 +3130,11 @@ subroutine write_cube_from_header(rootname, basis, occupation, c_matrix)
   read(icubefile, *) n3, dr(:, 3)
   do icenter=1, natom1
     read(icubefile, *)
-  enddo
+  end do
   if( natom1 /= ncenter_nuclei ) then
     call issue_warning('write_cube_from_header: wrong input number of atoms. Skip cube file generation')
     return
-  endif
+  end if
   dv = determinant_3x3_matrix(dr)
   if( read_volumetric_data ) then
     allocate(pot(n1, n2, n3))
@@ -3159,12 +3142,12 @@ subroutine write_cube_from_header(rootname, basis, occupation, c_matrix)
       do i2=1, n2
         do i3=1, (n3/stride-1)*stride+1, stride
           read(icubefile, *) pot(i1, i2, i3:i3+stride-1)
-        enddo
+        end do
         if( modulo(n3, stride) /=0 ) read(icubefile, *) pot(i1, i2, (n3/stride)*stride+1:n3)
-      enddo
-    enddo
+      end do
+    end do
     write(stdout, *) 'normalization:', SUM(pot(:, :, :))*dv
-  endif
+  end if
   close(icubefile)
 
 
@@ -3189,9 +3172,9 @@ subroutine write_cube_from_header(rootname, basis, occupation, c_matrix)
       write(ocuberho(ispin), '(i6,3(f12.6,2x))') n3, dr(:, 3)
       do icenter=1, ncenter_nuclei
         write(ocuberho(ispin), '(i6,4(2x,f12.6))') NINT(zatom(icenter)), 0.0, xatom(:, icenter)
-      enddo
-    enddo
-  endif
+      end do
+    end do
+  end if
 
   if( write_wfn ) then
     do istate=cube_state_min, cube_state_max
@@ -3206,10 +3189,10 @@ subroutine write_cube_from_header(rootname, basis, occupation, c_matrix)
         write(ocubefile(istate, ispin), '(i6,3(f12.6,2x))') n3, dr(:, 3)
         do icenter=1, ncenter_nuclei
           write(ocubefile(istate, ispin), '(i6,4(2x,f12.6))') NINT(zatom(icenter)), 0.0, xatom(:, icenter)
-        enddo
-      enddo
-    enddo
-  endif
+        end do
+      end do
+    end do
+  end if
 
   if( read_volumetric_data ) pot_i(:, :) = 0.0_dp
   chi2 = 0.0_dp
@@ -3227,7 +3210,7 @@ subroutine write_cube_from_header(rootname, basis, occupation, c_matrix)
         do ispin=1, nspin
           phi(cube_state_min:cube_state_max, ispin) = MATMUL( basis_function_r(:) , &
                                                               c_matrix(:, cube_state_min:cube_state_max, ispin) )
-        enddo
+        end do
 
         do istate=cube_state_min, cube_state_max
           do ispin=1, nspin
@@ -3235,8 +3218,8 @@ subroutine write_cube_from_header(rootname, basis, occupation, c_matrix)
              write(ocubefile(istate, ispin), '(50(e16.8,2x))') phi(istate, ispin)
             if( read_volumetric_data ) &
              pot_i(istate, ispin) = pot_i(istate, ispin) - pot(i1, i2, i3) * phi(istate, ispin)**2 * dv
-          enddo
-        enddo
+          end do
+        end do
 
         !
         ! check whether cube_state_min:cube_state_max spans all the occupied states
@@ -3248,20 +3231,20 @@ subroutine write_cube_from_header(rootname, basis, occupation, c_matrix)
             write(ocuberho(ispin), '(1x,es12.4)') rhor
             if( read_volumetric_data ) then
               chi2 = chi2 + ( pot(i1, i2, i3) - SUM( phi(:, ispin)**2 * occupation(cube_state_min:cube_state_max, ispin) ) )**2
-            endif
-          enddo
-        endif
+            end if
+          end do
+        end if
 
 
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
   do ispin=1, nspin
     do istate=cube_state_min, cube_state_max
       if( write_wfn ) close(ocubefile(istate, ispin))
-    enddo
+    end do
     close(ocuberho(ispin))
-  enddo
+  end do
 
   write(stdout, '(1x,a25,f14.9)') 'Number of electrons: ', nelect
 
@@ -3275,7 +3258,6 @@ end subroutine write_cube_from_header
 
 !=========================================================================
 subroutine read_gaussian_fchk(read_fchk_in, file_name, basis, p_matrix_out)
-  implicit none
 
   character(len=*), intent(in) :: read_fchk_in
   character(len=*), intent(in) :: file_name
@@ -3305,14 +3287,14 @@ subroutine read_gaussian_fchk(read_fchk_in, file_name, basis, p_matrix_out)
   if( nspin /= 1 ) then
     call issue_warning('read_gaussian_fchk: unrestricted calculations not coded yet')
     return
-  endif
+  end if
 
   allocate(reordering(0:MOLGW_LMAX))
   do am=0, MOLGW_LMAX
     nbf_am = number_basis_function_am(basis%gaussian_type, am)
     allocate(reordering(am)%block(nbf_am, nbf_am))
     reordering(am)%block(:, :) = 0
-  enddo
+  end do
 
   if( is_iomaster ) then
 
@@ -3336,7 +3318,7 @@ subroutine read_gaussian_fchk(read_fchk_in, file_name, basis, p_matrix_out)
     if( .NOT. file_exists) then
       call issue_warning('File not found: ' // TRIM(file_name))
       return
-    endif
+    end if
 
     write(stdout, '(1x,a,a)') 'Density matrix read: ', TRIM(read_fchk_in)
 
@@ -3353,14 +3335,14 @@ subroutine read_gaussian_fchk(read_fchk_in, file_name, basis, p_matrix_out)
       if( IS_IOSTAT_END(istat) ) then
         call issue_warning(TRIM(keyword)//' not found in file')
         return
-      endif
+      end if
       found = ( INDEX(line, TRIM(keyword)) /= 0 )
-    enddo
+    end do
 
     do ispin=1, nspin
       do ijbf=1, (nel/stride-1)*stride+1, stride
         read(fu, *) p_matrix_read(ijbf:ijbf+stride-1)
-      enddo
+      end do
       if( MODULO(nel, stride) /=0 ) read(fu, *) p_matrix_read((nel/stride)*stride+1:nel)
       ijbf = 0
       do ibf=1, basis%nbf
@@ -3368,9 +3350,9 @@ subroutine read_gaussian_fchk(read_fchk_in, file_name, basis, p_matrix_out)
           ijbf = ijbf + 1
           p_matrix_out(ibf, jbf, ispin) = p_matrix_read(ijbf)
           p_matrix_out(jbf, ibf, ispin) = p_matrix_read(ijbf)
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
     close(fu)
 
     !
@@ -3406,8 +3388,8 @@ subroutine read_gaussian_fchk(read_fchk_in, file_name, basis, p_matrix_out)
         nbf_am = number_basis_function_am(basis%gaussian_type, am)
         do ibf=1, nbf_am
           reordering(am)%block(ibf, nbf_am+1-ibf) = 1
-        enddo
-      enddo
+        end do
+      end do
     else
       ! s
       reordering(0)%block(1, 1) = 1
@@ -3420,9 +3402,9 @@ subroutine read_gaussian_fchk(read_fchk_in, file_name, basis, p_matrix_out)
         do ibf=1, nbf_am
           ibf_molgw = ( nbf_am + 1 ) / 2 - ( 2 * MODULO(ibf, 2) - 1 ) * ibf / 2
           reordering(am)%block(ibf, ibf_molgw) = 1
-        enddo
-      enddo
-    endif
+        end do
+      end do
+    end if
 
     swap(:, :) = 0.0_dp
     ibf = 1
@@ -3436,13 +3418,13 @@ subroutine read_gaussian_fchk(read_fchk_in, file_name, basis, p_matrix_out)
 
       ibf = ibf + nbf_am
 
-    enddo
+    end do
 
     p_matrix_out(:, :, 1) = MATMUL( TRANSPOSE(swap), MATMUL(p_matrix_out(:, :, 1), swap) )
 
     do am=0, MOLGW_LMAX
       deallocate(reordering(am)%block)
-    enddo
+    end do
     deallocate(reordering)
 
     !call dump_out_matrix(.TRUE.,'gaussian density matrix',SIZE(p_matrix_out,DIM=1),SIZE(p_matrix_out,DIM=3),p_matrix_out)
@@ -3450,7 +3432,7 @@ subroutine read_gaussian_fchk(read_fchk_in, file_name, basis, p_matrix_out)
 
     deallocate(p_matrix_read)
 
-  endif
+  end if
 
   ! Broadcast the density matrix from proc rank_iomaster to all the other procs.
   call world%bcast(rank_iomaster, p_matrix_out)
@@ -3463,7 +3445,6 @@ end subroutine read_gaussian_fchk
 ! Author: Mauricio Rodriguez-Mayorga
 !=========================================================================
 subroutine read_guess_fchk(c_matrix, file_name, basis, nstate, nspin, energy)
-  implicit none
 
   integer, intent(in)     :: nstate, nspin
   type(basis_set), intent(in)   :: basis
@@ -3491,13 +3472,13 @@ subroutine read_guess_fchk(c_matrix, file_name, basis, nstate, nspin, energy)
 
   do ibf=1, basis%nbf
     ao_map(ibf) = ibf
-  enddo
+  end do
 
-  ibf=1
+  ibf = 1
   do ishell=1, nshell
-    shell_typ=basis%shell(ishell)%am   ! 0 for s, 1 for p, 2 for d, 3 for f,...,
+    shell_typ = basis%shell(ishell)%am   ! 0 for s, 1 for p, 2 for d, 3 for f,...,
 
-    iprim_per_shell=number_basis_function_am('CART', shell_typ)
+    iprim_per_shell = number_basis_function_am('CART', shell_typ)
 
     ! Order MO Coefs
     if(shell_typ==1) then                    ! p-shell
@@ -3550,20 +3531,20 @@ subroutine read_guess_fchk(c_matrix, file_name, basis, nstate, nspin, energy)
       ! Do nothing
     else                ! h-, i-,...shell
       write(stdout, '(1x,a,i5,a)') "Shell type ", shell_typ, " reading from fchk is not coded."
-    endif
+    end if
     ibf = ibf + iprim_per_shell
-  enddo
+  end do
 
   inquire(file=file_name, exist=file_exists)
   if( .NOT. file_exists) then
     call issue_warning('File not found: ' // TRIM(file_name))
     return
-  endif
+  end if
 
   write(stdout, '(/,1x,a,a)') 'Reading an existing Gaussian formatted checkpoint point: ', &
                              TRIM(file_name)
 
-  nel=nstate*basis%nbf
+  nel = nstate * basis%nbf
   allocate(c_coef(nel))
 
   open(newunit=fu, file=TRIM(file_name), status='old', action='read')
@@ -3576,24 +3557,24 @@ subroutine read_guess_fchk(c_matrix, file_name, basis, nstate, nspin, energy)
     if( IS_IOSTAT_END(istat) ) then
       call issue_warning(TRIM(keyword)//' not found in file')
       return
-    endif
+    end if
     found = ( INDEX(line, TRIM(keyword)) /= 0 )
-  enddo
+  end do
   write(stdout, '(/,1x,a)') 'Reading Alpha MO coefficients '
   do ijbf=1, (nel/stride-1)*stride+1, stride
     read(fu, *) c_coef(ijbf:ijbf+stride-1)
-  enddo
+  end do
   if( MODULO(nel, stride) /=0 ) read(fu, *) c_coef((nel/stride)*stride+1:nel)
   ijbf = 0
   do istate=1, nstate
     do ibf=1, basis%nbf
       ijbf = ijbf + 1
-      c_coef_tmp(ibf)=c_coef(ijbf)
-    enddo
-    c_matrix(:, istate, 1)=c_coef_tmp(ao_map(:))
-  enddo
+      c_coef_tmp(ibf) = c_coef(ijbf)
+    end do
+    c_matrix(:, istate, 1) = c_coef_tmp(ao_map(:))
+  end do
 
-  if (present(energy) ) then
+  if (PRESENT(energy) ) then
 
     allocate(energy_tmp(basis%nbf))
 
@@ -3607,21 +3588,21 @@ subroutine read_guess_fchk(c_matrix, file_name, basis, nstate, nspin, energy)
       if( IS_IOSTAT_END(istat) ) then
         call issue_warning(TRIM(keyword)//' not found in file')
         return
-      endif
+      end if
       found = ( INDEX(line, TRIM(keyword)) /= 0 )
-    enddo
+    end do
     write(stdout, '(/,1x,a)') 'Reading Alpha Orbital Energies '
     do ijbf=1, (basis%nbf/stride-1)*stride+1, stride
       read(fu, *) energy_tmp(ijbf:ijbf+stride-1)
-    enddo
+    end do
     if( MODULO(basis%nbf, stride) /=0 ) then
       read(fu, *) energy_tmp((basis%nbf/stride)*stride+1:basis%nbf)
-    endif
+    end if
     energy(:, 1)=energy_tmp(:)
 
     deallocate(energy_tmp)
 
-  endif
+  end if
 
   if ( nspin>1 ) then
 
@@ -3635,24 +3616,24 @@ subroutine read_guess_fchk(c_matrix, file_name, basis, nstate, nspin, energy)
       if( IS_IOSTAT_END(istat) ) then
         call issue_warning(TRIM(keyword)//' not found in file')
         return
-      endif
+      end if
       found = ( INDEX(line, TRIM(keyword)) /= 0 )
-    enddo
+    end do
     write(stdout, '(/,1x,a)') 'Reading Beta MO coefficients '
     do ijbf=1, (nel/stride-1)*stride+1, stride
       read(fu, *) c_coef(ijbf:ijbf+stride-1)
-    enddo
+    end do
     if( MODULO(nel, stride) /=0 ) read(fu, *) c_coef((nel/stride)*stride+1:nel)
     ijbf = 0
     do istate=1, nstate
       do ibf=1, basis%nbf
         ijbf = ijbf + 1
         c_coef_tmp(ibf)=c_coef(ijbf)
-      enddo
+      end do
       c_matrix(:, istate, 2)=c_coef_tmp(ao_map(:))
-    enddo
+    end do
 
-  endif
+  end if
 
   close(fu)
 
@@ -3662,7 +3643,6 @@ end subroutine read_guess_fchk
 
 !=========================================================================
 subroutine write_energy_qp(energy_qp)
-  implicit none
 
   real(dp), intent(in) :: energy_qp(:, :)
   !=====
@@ -3688,11 +3668,11 @@ subroutine write_energy_qp(energy_qp)
   case(1)
     do istate=1, nstate
       write(energy_qpfile, *) istate, energy_qp(istate, 1)
-    enddo
+    end do
   case(2)
     do istate=1, nstate
       write(energy_qpfile, *) istate, energy_qp(istate, 1), energy_qp(istate, 2)
-    enddo
+    end do
   end select
 
   close(energy_qpfile)
@@ -3703,7 +3683,6 @@ end subroutine write_energy_qp
 
 !=========================================================================
 subroutine read_energy_qp(nstate, energy_qp, reading_status)
-  implicit none
 
   integer, intent(in)   :: nstate
   integer, intent(out)  :: reading_status
@@ -3724,7 +3703,7 @@ subroutine read_energy_qp(nstate, energy_qp, reading_status)
     open(newunit=energy_qpfile, file='ENERGY_QP', form='formatted', status='old')
   else if(file_exists) then
     open(newunit=energy_qpfile, file='energy_qp', form='formatted', status='old')
-  endif
+  end if
 
   if( file_exists_capitalized .OR. file_exists ) then
     read(energy_qpfile, *) nspin_read
@@ -3740,15 +3719,15 @@ subroutine read_energy_qp(nstate, energy_qp, reading_status)
           reading_status=-1
           close(energy_qpfile)
           return
-        endif
-      enddo
+        end if
+      end do
       reading_status=0
-    endif
+    end if
     close(energy_qpfile)
   else
     reading_status=1
     call issue_warning('files ENERGY_QP and energy_qp do not exist')
-  endif
+  end if
 
 
 end subroutine read_energy_qp
@@ -3756,7 +3735,6 @@ end subroutine read_energy_qp
 
 !=========================================================================
 subroutine evaluate_wfn_r(nspin, nstate, basis, c_matrix, istate1, istate2, ispin, rr, wfn_i)
-  implicit none
 
   integer, intent(in)         :: nspin
   type(basis_set), intent(in) :: basis
@@ -3781,7 +3759,6 @@ end subroutine evaluate_wfn_r
 
 !=========================================================================
 function wfn_parity(nstate, basis, c_matrix, istate, ispin)
-  implicit none
 
   integer, intent(in)         :: nstate
   type(basis_set), intent(in) :: basis
@@ -3805,7 +3782,7 @@ function wfn_parity(nstate, basis, c_matrix, istate, ispin)
     wfn_parity = 1
   else
     wfn_parity = -1
-  endif
+  end if
 
 
 end function wfn_parity
@@ -3813,7 +3790,6 @@ end function wfn_parity
 
 !=========================================================================
 function wfn_reflection(nstate, basis, c_matrix, istate, ispin)
-  implicit none
 
   integer, intent(in)         :: nstate
   type(basis_set), intent(in) :: basis
@@ -3841,7 +3817,7 @@ function wfn_reflection(nstate, basis, c_matrix, istate, ispin)
     wfn_reflection = -1
   else
     wfn_reflection = 0
-  endif
+  end if
 
 
 end function wfn_reflection
@@ -3849,7 +3825,6 @@ end function wfn_reflection
 
 !=========================================================================
 subroutine calculation_parameters_yaml(nbf, auxil_nbf, nstate)
-  implicit none
 
   integer, intent(in)  :: nbf, auxil_nbf, nstate
   !=====
@@ -3866,7 +3841,6 @@ end subroutine calculation_parameters_yaml
 
 !=========================================================================
 subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
-  implicit none
 
   integer, intent(in)  :: nbf, auxil_nbf, nstate
   real(dp), intent(in) :: occupation(:, :)
@@ -3890,7 +3864,7 @@ subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
   else
     !          eri_4center    / symmetry
     mem = REAL(npair, dp)**2   / 2.0_dp
-  endif
+  end if
   mem = mem * 8.0_dp / 1024_dp**3
   write(stdout, '(5x,a30,1x,f14.3,1x,a)') 'Memory =', mem, '(Gb)'
 
@@ -3909,9 +3883,12 @@ subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
   write(stdout, '(/,1x,a)')  '==== RPA response calculation (MPI distributed)'
   ncore_W      = ncorew
   nvirtual_W   = MIN(nvirtualw, nstate+1)
-  if(frozencore_) then
+  select case(TRIM(frozencore))
+  case('MOLGW', 'YES')
     if( ncore_W == 0) ncore_W = atoms_core_states()
-  endif
+  case('GAUSSIAN')
+    if( ncore_W == 0) ncore_W = atoms_core_states_gaussian()
+  end select
   nhomo = get_number_occupied_states(occupation)
 
   write(stdout, '(5x,a)')  '== RPA response'
@@ -3933,7 +3910,7 @@ subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
   else
     !          eri_mo_klmin(
     mem = REAL(nbf, dp)**3 * nspin
-  endif
+  end if
   mem = mem * 8.0_dp / 1024_dp**3
   write(stdout, '(5x,a30,1x,f14.3,1x,a)') 'Memory =', mem, '(Gb)'
 
@@ -3952,8 +3929,8 @@ subroutine evaluate_memory(nbf, auxil_nbf, nstate, occupation)
   write(stdout, '(/,1x,70("="))')
 
 
-  call stop_clock(timing_prescf)
-  call stop_clock(timing_total)
+  call timer_prescf%stop()
+  call timer_molgw%stop()
   call this_is_the_end()
 
 end subroutine evaluate_memory
@@ -3961,7 +3938,6 @@ end subroutine evaluate_memory
 
 !=========================================================================
 subroutine dump_matrix_cmplx_hdf5(f_or_g_id, matrix_cmplx, isnap, matrix_name)
-  implicit none
   integer(HID_T), intent(in) :: f_or_g_id
   integer, intent(in)          :: isnap
   complex(dp), intent(in)      :: matrix_cmplx(:, :, :)
@@ -3974,7 +3950,7 @@ subroutine dump_matrix_cmplx_hdf5(f_or_g_id, matrix_cmplx, isnap, matrix_name)
 
   if( .NOT. is_iomaster ) return
 
-  if( present(matrix_name) ) then
+  if( PRESENT(matrix_name) ) then
     m_name = matrix_name
   else
     m_name = 'snap_'
@@ -3999,7 +3975,6 @@ end subroutine dump_matrix_cmplx_hdf5
 
 !=========================================================================
 subroutine yaml_search_keyword_i(filename, keyword, value)
-  implicit none
 
   character(len=*), intent(in) :: filename
   character(len=*), intent(in) :: keyword
@@ -4035,7 +4010,6 @@ end subroutine yaml_search_keyword_i
 
 !=========================================================================
 subroutine yaml_search_keyword_dp(filename, keyword, value)
-  implicit none
 
   character(len=*), intent(in) :: filename
   character(len=*), intent(in) :: keyword
@@ -4073,7 +4047,6 @@ end subroutine yaml_search_keyword_dp
 !=========================================================================
 subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, s_matrix, hamiltonian_fock, &
                                    rootname)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   integer, intent(inout)         :: nstate
@@ -4092,7 +4065,7 @@ subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, 
 
   if( PRESENT(rootname) ) then
     rootname_ = rootname
-  endif
+  end if
 
   if( nspin > 1 ) call die('read_cc4s_eigenenergies: only spin restricted implemented')
   write(stdout, '(/,1x,a)') 'Reading ' // TRIM(rootname_) // '_EigenEnergies.yaml and ' &
@@ -4123,7 +4096,7 @@ subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, 
   do istate=1, nstate
     c_matrix(istate, istate, 1) = 1.0_dp
     s_matrix(istate, istate)   = 1.0_dp
-  enddo
+  end do
 
   allocate(energy(nstate, nspin))
   allocate(occupation(nstate, nspin))
@@ -4134,7 +4107,7 @@ subroutine read_cc4s_eigenenergies(basis, nstate, energy, occupation, c_matrix, 
     read(ifile, *) energy(istate, 1)
     occupation(istate, 1) = MERGE(2.0_dp, 0.0_dp,  energy(istate, 1) < efermi + 1.0e-8 )
     hamiltonian_fock(istate, istate, 1) = energy(istate, 1)
-  enddo
+  end do
 
 
   write(stdout, *) 'Resizing occupation and energy from ', nstate_old, ' to ', nstate
@@ -4148,7 +4121,6 @@ end subroutine read_cc4s_eigenenergies
 
 !=========================================================================
 subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
-  implicit none
 
   real(dp), intent(in) :: occupation(:, :)
   real(dp), intent(in) :: energy(:, :)
@@ -4164,14 +4136,14 @@ subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
 
   if( PRESENT(rootname) ) then
     rootname_ = rootname
-  endif
+  end if
 
   nstate = MIN(SIZE(occupation, DIM=1), SIZE(energy, DIM=1))
 
   open(newunit=unit_file, file=TRIM(rootname_) // '_EigenEnergies.elements', status='replace', action='write', form='formatted')
   do istate=1, nstate
     write(unit_file, '(1x,es16.8)') energy(istate, 1)
-  enddo
+  end do
   close(unit_file)
 
   nocc = get_number_occupied_states(occupation)
@@ -4192,7 +4164,7 @@ subroutine write_cc4s_eigenenergies(occupation, energy, rootname)
   write(unit_file, '(a)')         '  energies:'
   do istate=1, nstate
     write(unit_file, '(2x,a,es16.8)') '- ', energy(istate, 1)
-  enddo
+  end do
 
   close(unit_file)
 
@@ -4202,7 +4174,6 @@ end subroutine write_cc4s_eigenenergies
 
 !=========================================================================
 subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: s_matrix(:, :)
@@ -4248,9 +4219,9 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
       if( basis%shell(jshell)%icenter == basis%shell(ishell)%icenter &
           .AND. basis%shell(jshell)%am == basis%shell(ishell)%am ) then
         shell_counter(ishell) = shell_counter(ishell) + 1
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
   allocate(basis_strings(basis%nbf))
   basis_strings(:)(:) = '          '
@@ -4264,7 +4235,7 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
     write(basis_strings(ibf)(6:6), '(i1)') shell_counter(basis%bff(ibf)%shell_index)
     basis_strings(ibf)(7:7)   = basis%bff(ibf)%amc
     write(basis_strings(ibf)(9:10), '(i2)') basis%bff(ibf)%mm
-  enddo
+  end do
   call hdf_write_dataset(current_group, 'Basis set labels', basis_strings)
 
   deallocate(basis_strings, shell_counter)
@@ -4304,7 +4275,7 @@ subroutine print_restart_hdf5(basis, s_matrix, c_matrix, occupation, energy )
 
   do istate=1, nstate
     sce_matrix(:, istate) = sc_matrix(:, istate) * energy(istate, 1)
-  enddo
+  end do
   call DGEMM('N', 'T', basis%nbf, basis%nbf, nstate, &
              1.0d0, sce_matrix, basis%nbf, sc_matrix, basis%nbf, &
              0.0d0, ham, basis%nbf)
@@ -4326,7 +4297,6 @@ end subroutine print_restart_hdf5
 ! Write a volumetric data in a cube format file
 !
 subroutine write_cube_file(cubefilename, n1, n2, n3, dr, data, comment)
-  implicit none
 
   character(len=*), intent(in) :: cubefilename
   integer, intent(in) :: n1, n2, n3
@@ -4344,7 +4314,7 @@ subroutine write_cube_file(cubefilename, n1, n2, n3, dr, data, comment)
     write(fileunit, '(a)') TRIM(comment)
   else
     write(fileunit, '(a)') ' volumetric data'
-  endif
+  end if
 
   write(fileunit, '(i6,3(f12.6,2x))') ncenter_nuclei, 0.0_dp, 0.0_dp, 0.0_dp
   write(fileunit, '(i6,3(f12.6,2x))') n1, dr(:, 1)
@@ -4352,7 +4322,7 @@ subroutine write_cube_file(cubefilename, n1, n2, n3, dr, data, comment)
   write(fileunit, '(i6,3(f12.6,2x))') n3, dr(:, 3)
   do icenter=1, ncenter_nuclei
     write(fileunit, '(i6,4(2x,f12.6))') NINT(zatom(icenter)), 0.0_dp, xatom(:, icenter)
-  enddo
+  end do
 
   ! cube files have C-ordering
   allocate(data_reshuffled, MOLD=data)
@@ -4362,9 +4332,9 @@ subroutine write_cube_file(cubefilename, n1, n2, n3, dr, data, comment)
       do i3=1, n3
         ii = ii + 1
         data_reshuffled(ii) = data(i1 + (i2-1) * n1 + (i3-1) * n1 * n2)
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   write(fileunit, '(10(e16.8,2x))') data_reshuffled(:)
   deallocate(data_reshuffled)
@@ -4372,6 +4342,161 @@ subroutine write_cube_file(cubefilename, n1, n2, n3, dr, data, comment)
   close(fileunit)
 
 end subroutine write_cube_file
+
+!=========================================================================
+! Write a MOLDEN type file
+!
+subroutine write_molden_file(moldenfilename, basis, occupation, energy, c_matrix)
+  implicit none
+
+  character(len=*), intent(in) :: moldenfilename
+  type(basis_set), intent(in)  :: basis
+  real(dp), intent(in)         :: c_matrix(:, :, :)
+  real(dp), intent(in)         :: occupation(:, :), energy(:, :)
+  !=====
+  integer :: fileunit, nbf, nstate, istate, ibf, ispin
+  integer :: li, ni_cart, ibf1, ibf2, ibfc, gt, ibf1_cart, ishell
+  real(dp), allocatable :: c_matrix_cart(:)
+  !=====
+
+  nbf = SIZE(c_matrix, DIM=1)
+  nstate = SIZE(c_matrix, DIM=2)
+  gt = get_gaussian_type_tag(basis%gaussian_type)
+
+
+  open(newunit=fileunit, file=TRIM(moldenfilename), action='write')
+
+  write(fileunit, '(a)') '[MO]'
+  do ispin=1, nspin
+    do istate=1, nstate
+      write(fileunit, '(a)') 'Sym= A'
+      write(fileunit, '(a,f24.16)') 'Ene= ', energy(istate, ispin)
+      write(fileunit, '(a)') 'Spin= Alpha'
+      write(fileunit, '(a,es14.6)') 'Occup= ', occupation(istate, ispin)
+
+      ibf = 0
+      do ishell=1, basis%nshell
+        li        = basis%shell(ishell)%am
+        ni_cart   = number_basis_function_am('CART',li)
+        ibf1      = basis%shell(ishell)%istart
+        ibf1_cart = basis%shell(ishell)%istart_cart
+        ibf2      = basis%shell(ishell)%iend
+        allocate(c_matrix_cart(ni_cart))
+        c_matrix_cart(:) = MATMUL( cart_to_pure_norm(li, gt)%matrix(:, :), c_matrix(ibf1:ibf2, istate, ispin))
+        do ibfc=1, ni_cart
+          ibf = ibf + 1
+          write(fileunit, '(i4,f16.10)') ibf, c_matrix_cart(m2molden_cart(li)%reindex(ibfc)) 
+        end do
+       
+        deallocate(c_matrix_cart)
+      end do
+    end do
+  end do
+
+  close(fileunit)
+
+
+end subroutine write_molden_file
+
+
+!=========================================================================
+! Read a MOLDEN type file
+!
+subroutine read_molden_file(moldenfilename, basis, occupation, energy, c_matrix)
+  implicit none
+
+  character(len=*), intent(in) :: moldenfilename
+  type(basis_set), intent(in)  :: basis
+  real(dp), intent(out)        :: c_matrix(:, :, :)
+  real(dp), intent(out)        :: occupation(:, :), energy(:, :)
+  !=====
+  integer :: fileunit, ios
+  integer :: nbf, nstate, istate, ibf, ispin
+  integer :: li, ni, ni_cart, ibf1, ibf2, ibfc, gt, ibf1_cart, ishell, ii
+  real(dp), allocatable :: c_matrix_cart(:), cart_to_pure_renorm(:, :), pseudo_inv(:, :)
+  real(dp) :: nelec
+  character(len=256) :: line, dummy
+  logical :: found
+  !=====
+
+  write(stdout, '(/,1x,a,a)') 'Read MOLDEN file: ', TRIM(moldenfilename)
+
+  nbf = SIZE(c_matrix, DIM=1)
+  nstate = SIZE(c_matrix, DIM=2)
+  gt = get_gaussian_type_tag(basis%gaussian_type)
+
+  !if (gt /= CARTG) then
+  !  call die('read_molden_file: only implemented for Cartesian gaussian')
+  !end if
+
+  open(newunit=fileunit, file=TRIM(moldenfilename), action='read', form='formatted', iostat=ios)
+  if (ios /= 0) then
+    call die('read_molden_file: error opening file ' // TRIM(moldenfilename))
+    stop
+  end if
+
+  ! Looking for the keyword [MO]
+  found = .FALSE.
+  do
+    read(fileunit, '(a)', iostat=ios) line
+    if (ios /= 0) exit ! End of file reached without finding [MO]
+
+    if(INDEX(line, '[MO]') > 0) then
+      found = .true.
+      exit
+    end if
+  end do
+  if( .NOT. found ) then
+    call die('read_molden_file: MOLDEN file does not contain [MO] tag. Is it corrupted?')
+  end if
+
+  do ispin=1, nspin
+    do istate=1, nstate
+      read(fileunit, '(a)', iostat=ios) line ! Sym line
+      read(fileunit, *) dummy, energy(istate, ispin)
+      read(fileunit, '(a)', iostat=ios) line ! spin line
+      read(fileunit, *) dummy, occupation(istate, ispin)
+
+      do ishell=1, basis%nshell
+        li        = basis%shell(ishell)%am
+        ni_cart   = number_basis_function_am('CART', li)
+        ni        = number_basis_function_am(basis%gaussian_type, li)
+        ibf1      = basis%shell(ishell)%istart
+        ibf1_cart = basis%shell(ishell)%istart_cart
+        ibf2      = basis%shell(ishell)%iend
+        allocate(c_matrix_cart(ni_cart))
+        do ibfc=1, ni_cart
+          read(fileunit, *) ibf, c_matrix_cart(m2molden_cart(li)%reindex(ibfc))
+        end do
+
+
+        !
+        ! Calculate the pseudo inverse of cart_to_pure_norm(li, gt)%matrix(:, :)
+        !
+        allocate(cart_to_pure_renorm(ni_cart, ni))
+        allocate(pseudo_inv(ni, ni))
+        pseudo_inv(:, :) = MATMUL( TRANSPOSE(cart_to_pure_norm(li, gt)%matrix(:, :)), cart_to_pure_norm(li, gt)%matrix(:, :))
+        call invert(pseudo_inv)
+        cart_to_pure_renorm(:, :) = MATMUL( cart_to_pure_norm(li, gt)%matrix(:, :), TRANSPOSE(pseudo_inv) )
+
+        c_matrix(ibf1:ibf2, istate, ispin) = MATMUL( TRANSPOSE(cart_to_pure_renorm(:, :)), c_matrix_cart(:) )
+
+        deallocate(cart_to_pure_renorm, pseudo_inv)
+
+        deallocate(c_matrix_cart)
+      end do
+    end do
+  end do
+
+
+  close(fileunit)
+
+  write(stdout, '(/,1x,a,i3)')  'Reading natural occupations for spin: ', 1
+  write(stdout, '(10(2x,f14.6))') occupation(:, 1)
+  write(stdout, '(1x,a,f14.6)') 'Number of electrons: ', SUM(occupation(:, :))
+
+
+end subroutine read_molden_file
 
 
 !=========================================================================

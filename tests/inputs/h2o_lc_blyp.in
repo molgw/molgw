@@ -8,7 +8,7 @@
  ! Post SCF compute the RPA energy
  postscf='RPA_IM'
  nomega_chi_imag=40
- frozencore='yes'
+ frozencore='molgw'
 
  natom=3
  length_unit='au'

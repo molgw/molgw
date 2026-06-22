@@ -75,7 +75,6 @@ subroutine opt_orb(iter,imethod,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff,mo
      &             NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,ERImolJsr_cmplx,ERImolLsr_cmplx,all_ERIs,&
      &             Edft_xc,do_xc_dft)
   use m_definitions
-  implicit none
 
   logical,optional,intent(in)     :: all_ERIs,do_xc_dft
   integer,intent(in)              :: nbf,nstate_occ,nstate_kji
@@ -711,7 +710,6 @@ subroutine num_grad_hess_orb(iorbp,iorbq,iorbr,iorbs,RDMd,INTEGd,Vnn,mo_ints,Pha
   subroutine mo_ints(NBF_tot,NBF_occ,NBF_jkl,Occ,NO_COEF,hCORE,ERImol,ERImolJsr,ERImolLsr,&
   & NO_COEF_cmplx,hCORE_cmplx,ERImol_cmplx,all_ERIs)
   use m_definitions
-  implicit none
   logical,optional,intent(in)::all_ERIs
   integer,intent(in)::NBF_tot,NBF_occ,NBF_jkl
   real(dp),intent(in)::Occ(NBF_occ)

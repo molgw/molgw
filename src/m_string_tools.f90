@@ -11,6 +11,8 @@ module m_string_tools
   use m_definitions
   use m_warning, only: die
 
+  implicit none
+
   interface append_to_list
     module procedure append_to_list_i
     module procedure append_to_list_r
@@ -22,7 +24,6 @@ contains
 
 !=========================================================================
 pure function lower(str)
-  implicit none
   character(*), intent(in) :: str
   character(LEN(str))      :: lower
   !=====
@@ -35,14 +36,13 @@ pure function lower(str)
   do ii=1, LEN_TRIM(str)
     ic = INDEX(cap, str(ii:ii))
     if (ic > 0) lower(ii:ii) = low(ic:ic)
-  enddo
+  end do
 
 end function lower
 
 
 !=========================================================================
 pure function capitalize(str)
-  implicit none
   character(*), intent(in) :: str
   character(LEN(str))      :: capitalize
   !=====
@@ -55,14 +55,13 @@ pure function capitalize(str)
   do ii=1, LEN_TRIM(str)
     ic = INDEX(low, str(ii:ii))
     if (ic > 0) capitalize(ii:ii) = cap(ic:ic)
-  enddo
+  end do
 
 end function capitalize
 
 
 !=========================================================================
 function orbital_momentum_number(amc)
-  implicit none
   character(len=1), intent(in) :: amc
   integer :: orbital_momentum_number
   !=====
@@ -94,7 +93,6 @@ end function orbital_momentum_number
 
 !=========================================================================
 pure function orbital_momentum_name(am)
-  implicit none
   integer, intent(in) :: am
   character(len=1) :: orbital_momentum_name
   !=====
@@ -135,7 +133,6 @@ end function orbital_momentum_name
 
 !=========================================================================
 subroutine append_to_list_i(new_element, list)
-  implicit none
 
   integer, intent(in)                :: new_element
   integer, allocatable, intent(inout) :: list(:)
@@ -148,19 +145,19 @@ subroutine append_to_list_i(new_element, list)
     nsize = SIZE(list)
   else
     nsize = 0
-  endif
+  end if
 
   ! Copy old list and free the list
   allocate(list_old(nsize))
   if( nsize > 0 ) then
     list_old(1:nsize) =list(1:nsize)
     deallocate(list)
-  endif
+  end if
 
   allocate(list(nsize+1))
   if( nsize > 0 ) then
     list(1:nsize) = list_old(1:nsize)
-  endif
+  end if
   list(nsize+1) = new_element
 
 end subroutine append_to_list_i
@@ -168,7 +165,6 @@ end subroutine append_to_list_i
 
 !=========================================================================
 subroutine append_to_list_r(new_element, list)
-  implicit none
 
   real(dp), intent(in)                :: new_element
   real(dp), allocatable, intent(inout) :: list(:)
@@ -181,19 +177,19 @@ subroutine append_to_list_r(new_element, list)
     nsize = SIZE(list)
   else
     nsize = 0
-  endif
+  end if
 
   ! Copy old list and free the list
   allocate(list_old(nsize))
   if( nsize > 0 ) then
     list_old(1:nsize) =list(1:nsize)
     deallocate(list)
-  endif
+  end if
 
   allocate(list(nsize+1))
   if( nsize > 0 ) then
     list(1:nsize) = list_old(1:nsize)
-  endif
+  end if
   list(nsize+1) = new_element
 
 end subroutine append_to_list_r
@@ -201,7 +197,6 @@ end subroutine append_to_list_r
 
 !=========================================================================
 pure function get_number_of_elements(string) result(num)
-  implicit none
   character(len=*), intent(in)  :: string
   integer                      :: num
   !=====
@@ -226,7 +221,6 @@ end function get_number_of_elements
 
 !=========================================================================
 function string_to_substrings(string_in) RESULT(array)
-  implicit none
 
   character(len=*), intent(in) :: string_in
   character(len=2), allocatable :: array(:)
@@ -251,14 +245,13 @@ function string_to_substrings(string_in) RESULT(array)
     array(ii) =  string(1:inextblank-1)
     string = string(inextblank+1:)
     ilen = LEN_TRIM(string)
-  enddo
+  end do
 
 end function string_to_substrings
 
 
 !=========================================================================
 function string_to_integers(string_in) RESULT(array)
-  implicit none
 
   character(len=*), intent(in) :: string_in
   integer, allocatable :: array(:)
@@ -283,14 +276,13 @@ function string_to_integers(string_in) RESULT(array)
     read(string(1:inextblank-1), *) array(ii)
     string = string(inextblank+1:)
     ilen = LEN_TRIM(string)
-  enddo
+  end do
 
 end function string_to_integers
 
 
 !=========================================================================
 function string_to_reals(string_in) RESULT(array)
-  implicit none
 
   character(len=*), intent(in) :: string_in
   real(dp), allocatable :: array(:)
@@ -315,14 +307,13 @@ function string_to_reals(string_in) RESULT(array)
     read(string(1:inextblank-1), *) array(ii)
     string = string(inextblank+1:)
     ilen = LEN_TRIM(string)
-  enddo
+  end do
 
 end function string_to_reals
 
 
 !=========================================================================
 function count_tokens(str) result(ntoken)
-  implicit none
 
   character(len=*), intent(in) :: str
   integer :: ntoken
@@ -349,7 +340,6 @@ end function count_tokens
 
 !=========================================================================
 function get_number_of_lines(filename) result(nlines)
-  implicit none
 
   character(len=*), intent(in) :: filename
   integer                      :: nlines
@@ -372,7 +362,6 @@ end function get_number_of_lines
 
 !=========================================================================
 function yesno_to_logical(char_in) RESULT(logical_out)
-  implicit none
   character(len=*), intent(in) :: char_in
   logical                     :: logical_out
   !=====
@@ -392,7 +381,6 @@ end function yesno_to_logical
 
 !=========================================================================
 function logical_to_yesno(logical_in) RESULT(yesno)
-  implicit none
   logical, intent(in)          :: logical_in
   character(len=3)            :: yesno
   !=====
@@ -402,13 +390,12 @@ function logical_to_yesno(logical_in) RESULT(yesno)
     yesno = 'yes'
   else
     yesno = 'no'
-  endif
+  end if
 
 end function logical_to_yesno
 
 !=========================================================================
 function yesno_to_TrueFalse(char_in) RESULT(TrueFalse)
-  implicit none
   character(len=*), intent(in) :: char_in
   character(len=5)            :: TrueFalse
   !=====

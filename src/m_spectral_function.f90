@@ -21,6 +21,8 @@ module m_spectral_function
   use m_basis_set
   use m_eri_ao_mo
 
+  implicit none
+
   integer, parameter :: NO_GRID        = 0
   integer, parameter :: IMAGINARY_QUAD = 1
   integer, parameter :: REAL_LINEAR    = 2
@@ -72,6 +74,19 @@ module m_spectral_function
 
     type(chi_type), allocatable :: vchiv_sqrt(:)
 
+    ! Calculation type settings
+    character(len=32) :: approximation
+    logical  :: tda
+    logical  :: is_triplet
+    logical  :: need_bse_kernel
+    logical  :: need_qp_energy
+    logical  :: include_tddft_kernel
+    logical  :: include_tdhf_kernel
+    real(dp) :: alpha_hybrid
+    real(dp) :: beta_hybrid
+    logical  :: need_lr_exchange
+    character(len=256) :: w_screening
+
   contains
 
     generic :: evaluate => sf_evaluate_several_omegas
@@ -83,8 +98,11 @@ module m_spectral_function
 
     procedure :: vsqrt_chi_vsqrt_rpa => sf_vsqrt_chi_vsqrt_rpa
     procedure :: interpolate_vsqrt_chi_vsqrt => sf_interpolate_vsqrt_chi_vsqrt
-    procedure :: init    => sf_init
-    procedure :: destroy => sf_destroy
+    procedure :: init             => sf_init
+    procedure :: destroy          => sf_destroy
+    procedure :: set_approximation => sf_set_approximation
+    procedure :: enforce_approximation => sf_enforce_approximation
+    procedure :: enforce_spin_multiplicity => sf_enforce_spin_multiplicity
 
   end type spectral_function
 
@@ -110,7 +128,6 @@ contains
 
 !=========================================================================
 pure function index_prodstate(istate, jstate)
-  implicit none
   integer, intent(in)  :: istate, jstate
   integer             :: index_prodstate
   !=====
@@ -136,7 +153,6 @@ end function index_prodstate
 
 !=========================================================================
 subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verbose)
-  implicit none
   class(spectral_function), intent(out)  :: sf
   integer, intent(in)                    :: nstate
   real(dp), intent(in)                   :: occupation(:, :)
@@ -160,39 +176,43 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
 
   if( nstate > SIZE( occupation(:, :) , DIM=1 ) ) then
     call die('sf_init: nstate is too large')
-  endif
+  end if
   if( PRESENT(grid_type) ) then
     grid_ = grid_type
   else
     grid_ = NO_GRID
-  endif
+  end if
   if( PRESENT(omega_max) ) then
     omega_max_ = omega_max
   else
     omega_max_ = 1.0_dp
-  endif
+  end if
   stdout_ = stdout
   if( PRESENT(verbose) ) then
     if( .NOT. verbose ) then
       open(newunit=stdout_, file='/dev/null')
-    endif
-  endif
+    end if
+  end if
 
   sf%type = grid_
 
   ncore_W      = ncorew
   nvirtual_W   = MIN(nvirtualw, nstate+1)
 
-  if(frozencore_) then
+  select case(TRIM(frozencore))
+  case('MOLGW', 'YES')
     if( ncore_W == 0) ncore_W = atoms_core_states()
-  endif
+  case('GAUSSIAN')
+    if( ncore_W == 0) ncore_W = atoms_core_states_gaussian()
+  end select
+
   if( ncore_W > 0 ) then
     write(stdout_, '(1x,a,i4,2x,i4)') 'frozen core approximation in W switched on up to state = ', ncore_W
-  endif
+  end if
 
   if( nvirtual_W <= nstate ) then
     write(stdout_, '(1x,a,i4,2x,i4)') 'frozen virtual approximation in W switched on starting with state = ', nvirtual_W
-  endif
+  end if
 
   !
   ! Find the highest occupied state
@@ -203,8 +223,8 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
       if( occupation(istate, ijspin) / spin_fact < completely_empty ) cycle
       nhomo_W              = MAX(nhomo_W, istate)
       nhomo_W_spin(ijspin) = MAX(nhomo_W_spin(ijspin), istate)
-    enddo
-  enddo
+    end do
+  end do
 
   !
   ! Find the lowest occupied state
@@ -215,8 +235,8 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
       if( (spin_fact - occupation(istate, ijspin)) / spin_fact < completely_empty) cycle
       nlumo_W              = MIN(nlumo_W, istate)
       nlumo_W_spin(ijspin) = MIN(nlumo_W_spin(ijspin), istate)
-    enddo
-  enddo
+    end do
+  end do
 
   write(stdout_, '(/,1x,a)') 'Prepare a polarizability spectral function with'
   if( nspin == 1 ) then
@@ -228,7 +248,7 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
     write(stdout_, '(30x,a,i8,2x,i8)') '  Virtual states: ', nvirtual_W-nlumo_W_spin(:)
     write(stdout_, '(30x,a,i8)')       'Transition space: ', (nvirtual_W-nlumo_W_spin(1))*(nhomo_W_spin(1)-ncore_W) &
                                                          + (nvirtual_W-nlumo_W_spin(nspin))*(nhomo_W_spin(nspin)-ncore_W)
-  endif
+  end if
 
   !
   ! First, count the number of resonant transitions
@@ -239,9 +259,9 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
         if( skip_transition(jstate, istate, occupation(jstate, ijspin), occupation(istate, ijspin)) ) cycle
         if( occupation(jstate, ijspin) - occupation(istate, ijspin) > 0.0_dp ) cycle
         itrans = itrans + 1
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   sf%npole_reso = itrans
   allocate(sf%transition_table(3, sf%npole_reso))
@@ -257,15 +277,15 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
         sf%transition_table(1, itrans) = istate
         sf%transition_table(2, itrans) = jstate
         sf%transition_table(3, itrans) = ijspin
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   if( has_auxil_basis ) then
     sf%nprodbasis_total = nauxil_global
   else
     sf%nprodbasis_total = index_prodstate(nvirtual_W-1, nvirtual_W-1) * nspin
-  endif
+  end if
 
 
   !
@@ -298,7 +318,7 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
                                 * ( 1.0_dp / (1.0_dp-omega_quad(iomega))**alpha - 1.0_dp ) * beta
       sf%omega(iomega)       =  omega_quad(iomega) * im
       write(stdout_, '(i5,2(2x,f14.6))') iomega, sf%omega(iomega)%im*Ha_eV, sf%weight_quad(iomega)
-    enddo
+    end do
     deallocate(omega_quad)
 
   case(REAL_LINEAR)
@@ -309,7 +329,7 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
     do iomega=1, nomega_in
       sf%omega(iomega) = REAL(iomega-1, dp)/REAL(nomega_in-1, dp) * omega_max_
       write(stdout_, '(i5,2(2x,f14.6))') iomega, sf%omega(iomega)%re*Ha_eV, sf%omega(iomega)%im*Ha_eV
-    enddo
+    end do
   case(MANUAL)
     if( nomega_in < 1 ) call die('sf_init: grid points is zero whereas a grid is requested')
     ! Just allocate and fill with default values
@@ -323,19 +343,139 @@ subroutine sf_init(sf, nstate, occupation, nomega_in, grid_type, omega_max, verb
     call die("sf_init: grid choice not valid")
   end select
 
+  call sf%set_approximation()
 
   if( PRESENT(verbose) ) then
     if( .NOT. verbose ) then
       close(stdout_)
-    endif
-  endif
+    end if
+  end if
 
 end subroutine sf_init
 
 
 !=========================================================================
+subroutine sf_set_approximation(sf)
+  class(spectral_function), intent(inout) :: sf
+  !=====
+  logical :: has_manual_tdhf
+  integer :: tdhffile
+  !=====
+
+  ! not used yet: set to RPA for the time being
+  sf%approximation = 'RPA'
+
+  sf%tda                  = tda_
+  sf%is_triplet           = triplet_
+
+  sf%need_bse_kernel      = calc_type%is_bse
+  sf%need_qp_energy       = calc_type%need_qp_energy
+  sf%include_tddft_kernel = calc_type%include_tddft_kernel .AND. calc_type%is_dft
+  sf%include_tdhf_kernel  = calc_type%include_tdhf_kernel
+
+  sf%beta_hybrid          = beta_hybrid
+  sf%need_lr_exchange     = (beta_hybrid > 1.0e-6_dp) .AND. &
+                            (TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' .OR. TRIM(w_screening) == 'TDDFT')
+  sf%w_screening          = w_screening
+
+  ! Set alpha_hybrid: the exchange fraction for this response calculation
+  ! manual_tdhf file can override anything
+  inquire(file='manual_tdhf', exist=has_manual_tdhf)
+  if( has_manual_tdhf ) then
+    open(newunit=tdhffile, file='manual_tdhf', status='old')
+    read(tdhffile, *) sf%alpha_hybrid
+    close(tdhffile)
+    write(msg, '(a,f12.6)') 'TDHF polarizability with alpha from manual_tdhf: ', sf%alpha_hybrid
+    call issue_warning(msg)
+  else if( calc_type%include_tddft_kernel .OR. TRIM(w_screening) == 'TDDFT' ) then
+    sf%alpha_hybrid = alpha_hybrid
+  else if( ( calc_type%is_bse .OR. calc_type%include_tdhf_kernel &
+            .OR. TRIM(w_screening) == 'TDHF' .OR. TRIM(w_screening) == 'BSE') ) then
+    sf%alpha_hybrid = 1.0_dp
+  else
+    sf%alpha_hybrid = 0.0_dp
+  end if
+
+
+end subroutine sf_set_approximation
+
+
+!=========================================================================
+subroutine sf_enforce_approximation(sf, approximation)
+  class(spectral_function), intent(inout) :: sf
+  character(len=*), intent(in) :: approximation
+  !=====
+
+  select case(TRIM(capitalize(approximation)))
+  case('RPA')
+    sf%approximation = 'RPA'
+    sf%w_screening   = 'RPA'
+    sf%need_bse_kernel      = .FALSE.
+    sf%need_qp_energy       = .FALSE.
+    sf%include_tddft_kernel = .FALSE.
+    sf%include_tdhf_kernel  = .FALSE.
+
+    sf%alpha_hybrid         = 0.0_dp
+    sf%beta_hybrid          = 0.0_dp
+    sf%need_lr_exchange     = .FALSE.
+  case('BSE')
+    sf%approximation = 'BSE'
+    sf%w_screening   = 'BSE'
+    sf%need_bse_kernel      = .TRUE.
+    sf%need_qp_energy       = .TRUE.
+    sf%include_tddft_kernel = .FALSE.
+    sf%include_tdhf_kernel  = .TRUE.
+    sf%alpha_hybrid         = 1.0_dp
+    sf%beta_hybrid          = 0.0_dp
+    sf%need_lr_exchange     = .FALSE.
+  case('TDHF')
+    sf%approximation = 'TDHF'
+    sf%w_screening   = 'TDHF'
+    sf%need_bse_kernel      = .FALSE.
+    sf%need_qp_energy       = .FALSE.
+    sf%include_tddft_kernel = .FALSE.
+    sf%include_tdhf_kernel  = .TRUE.
+    sf%alpha_hybrid         = 1.0_dp
+    sf%beta_hybrid          = 0.0_dp
+    sf%need_lr_exchange     = .FALSE.
+  case('TDDFT')
+    sf%approximation = 'TDDFT'
+    sf%w_screening   = 'TDDFT'
+    sf%need_bse_kernel      = .FALSE.
+    sf%need_qp_energy       = .FALSE.
+    sf%include_tddft_kernel = .TRUE.
+    sf%include_tdhf_kernel  = .TRUE.
+    !Don't touch this
+    !sf%alpha_hybrid         = 1.0_dp
+    !sf%beta_hybrid          = 0.0_dp
+    !sf%need_lr_exchange     = .FALSE.
+  case default
+    call die("sf_enforce_approximation: choice not implemented or not existing")
+  end select
+
+end subroutine sf_enforce_approximation
+
+
+!=========================================================================
+subroutine sf_enforce_spin_multiplicity(sf, spin_multiplicity)
+  class(spectral_function), intent(inout) :: sf
+  integer, intent(in) :: spin_multiplicity
+  !=====
+
+  select case(spin_multiplicity)
+  case(1)
+    sf%is_triplet = .FALSE.
+  case(3)
+    sf%is_triplet = .TRUE.
+  case default
+    call die('sf_enforce_spin_multiplicity: wrong value for spin multiplicity. Should be 1 or 3')
+  end select
+
+end subroutine sf_enforce_spin_multiplicity
+
+
+!=========================================================================
 subroutine allocate_spectral_function(nprodbasis, sf)
-  implicit none
   integer, intent(in)                    :: nprodbasis
   type(spectral_function), intent(inout) :: sf
   !=====
@@ -354,7 +494,6 @@ end subroutine allocate_spectral_function
 
 !=========================================================================
 pure function skip_transition(ib1, ib2, occ1, occ2)
-  implicit none
   logical             :: skip_transition
   integer, intent(in)  :: ib1, ib2
   real(dp), intent(in) :: occ1, occ2
@@ -378,7 +517,6 @@ end function skip_transition
 
 !=========================================================================
 subroutine sf_destroy(sf, verbose)
-  implicit none
   class(spectral_function), intent(inout) :: sf
   logical, optional, intent(in)            :: verbose
   !=====
@@ -388,30 +526,29 @@ subroutine sf_destroy(sf, verbose)
   verbose_ = .TRUE.
   if( PRESENT(verbose) ) then
     verbose_ = verbose
-  endif
+  end if
 
   if(ALLOCATED(sf%transition_table)) deallocate(sf%transition_table)
   if(ALLOCATED(sf%pole))             deallocate(sf%pole)
   if(ALLOCATED(sf%w_s)) then
     call clean_deallocate('Self-energy Lehman weight', sf%w_s, verbose=verbose_)
-  endif
+  end if
   if(ALLOCATED(sf%chi)) then
     call clean_deallocate('Chi', sf%chi, verbose=verbose_)
-  endif
+  end if
   if(ALLOCATED(sf%weight_quad)) deallocate(sf%weight_quad)
   if(ALLOCATED(sf%omega))       deallocate(sf%omega)
   if(ALLOCATED(sf%vchiv_sqrt))  deallocate(sf%vchiv_sqrt)
 
   if( verbose_ ) then
     write(stdout, '(/,a)') ' Spectral function destroyed'
-  endif
+  end if
 
 end subroutine sf_destroy
 
 
 !=========================================================================
 subroutine write_spectral_function(sf)
-  implicit none
   type(spectral_function), intent(in) :: sf
   !=====
   integer              :: wfile
@@ -441,10 +578,10 @@ subroutine write_spectral_function(sf)
     write(wfile) sf%pole(:)
     do spole=1, sf%npole_reso
       write(wfile) sf%w_s(:, spole)
-    enddo
+    end do
 
     close(wfile)
-  endif
+  end if
 
 #else
 
@@ -482,9 +619,9 @@ subroutine write_spectral_function(sf)
         buffer(:) = sf%w_s(ibf_auxil_l(ibf_auxil), :)
         call MPI_FILE_WRITE_AT(wfile, disp, buffer, sf%npole_reso, MPI_DOUBLE_PRECISION, MPI_STATUS_IGNORE, ierr)
 
-      endif
+      end if
       disp = disp + sf%npole_reso * STORAGE_SIZE(sf%w_s(1, 1))
-    enddo
+    end do
     deallocate(buffer)
   else
     if(is_iomaster) then
@@ -492,9 +629,9 @@ subroutine write_spectral_function(sf)
         call MPI_FILE_WRITE_AT(wfile, disp, sf%w_s(iprodbasis, :), sf%npole_reso, &
                                MPI_DOUBLE_PRECISION, MPI_STATUS_IGNORE, ierr)
         disp = disp + sf%npole_reso * STORAGE_SIZE(sf%w_s(1, 1))
-      enddo
-    endif
-  endif
+      end do
+    end if
+  end if
 
   call MPI_FILE_CLOSE(wfile, ierr)
 
@@ -506,7 +643,6 @@ end subroutine write_spectral_function
 
 !=========================================================================
 subroutine read_spectral_function(sf, reading_status)
-  implicit none
   type(spectral_function), intent(inout) :: sf
   integer, intent(out)                   :: reading_status
   !=====
@@ -532,7 +668,7 @@ subroutine read_spectral_function(sf, reading_status)
     write(stdout, '(a,/)') ' File does not exist'
     reading_status=1
     return
-  endif
+  end if
 
 #if !defined(HAVE_MPI)
   open(newunit=wfile, file='SCREENED_COULOMB', status='old', form='unformatted')
@@ -548,7 +684,7 @@ subroutine read_spectral_function(sf, reading_status)
   read(wfile) sf%pole(:)
   do spole_read=1, npole_read
     read(wfile) sf%w_s(:, spole_read)
-  enddo
+  end do
 
   reading_status=0
   msg='reading spectral function from SCREENED_COULOMB obtained from '//TRIM(postscf_name_read)
@@ -580,7 +716,7 @@ subroutine read_spectral_function(sf, reading_status)
     call allocate_spectral_function(nauxil_local, sf)
   else
     call allocate_spectral_function(nprodbasis_read, sf)
-  endif
+  end if
 
   call MPI_FILE_READ_AT(wfile, disp, sf%pole, sf%npole_reso, MPI_DOUBLE_PRECISION, MPI_STATUS_IGNORE, ierr)
   disp = disp + sf%npole_reso * STORAGE_SIZE(sf%pole(1))
@@ -595,17 +731,17 @@ subroutine read_spectral_function(sf, reading_status)
       if( auxil%rank == iproc_ibf_auxil(ibf_auxil) ) then
         call MPI_FILE_READ_AT(wfile, disp, buffer, sf%npole_reso, MPI_DOUBLE_PRECISION, MPI_STATUS_IGNORE, ierr)
         sf%w_s(ibf_auxil_l(ibf_auxil), :) = buffer(:)
-      endif
+      end if
       disp = disp + sf%npole_reso * STORAGE_SIZE(sf%w_s(1, 1))
-    enddo
+    end do
     deallocate(buffer)
   else
     do iprodbasis=1, sf%nprodbasis
       call MPI_FILE_READ_AT(wfile, disp, sf%w_s(iprodbasis, :), sf%npole_reso, &
                             MPI_DOUBLE_PRECISION, MPI_STATUS_IGNORE, ierr)
       disp = disp + sf%npole_reso * STORAGE_SIZE(sf%w_s(1, 1))
-    enddo
-  endif
+    end do
+  end if
 
 
 
@@ -623,7 +759,6 @@ end subroutine read_spectral_function
 
 !=========================================================================
 subroutine sf_evaluate_several_omegas(sf, omega_cmplx, chi)
-  implicit none
 
   class(spectral_function), intent(in) :: sf
   complex(dp), intent(in) :: omega_cmplx(:)
@@ -651,9 +786,9 @@ subroutine sf_evaluate_several_omegas(sf, omega_cmplx, chi)
                  + sf%w_s(:, spole) * sf%w_s(jauxil, spole) &
                        * REAL( 1.0_dp / ( omega_cmplx(iomega) - sf%pole(spole) + ieta ) &
                               -1.0_dp / ( omega_cmplx(iomega) + sf%pole(spole) - ieta ) )
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
   else
 
@@ -663,18 +798,18 @@ subroutine sf_evaluate_several_omegas(sf, omega_cmplx, chi)
       tmp(:, :) = sf%w_s(:, :)
       do spole=1, sf%npole_reso
         tmp(:, spole) = tmp(:, spole) * SQRT( 2.0_dp * sf%pole(spole) / ( ABS(omega_cmplx(iomega))**2 + sf%pole(spole)**2 ) )
-      enddo
+      end do
 
       call DSYRK('L', 'N', nauxil_global, sf%npole_reso, -1.0d0, tmp, nauxil_global, 0.0d0, chi(:, :, iomega),nauxil_global)
       do jauxil=1, nauxil_global
         do iauxil=jauxil+1, nauxil_global
           chi(jauxil, iauxil, iomega) = chi(iauxil, jauxil, iomega)
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
 
     deallocate(tmp)
-  endif
+  end if
 
 
 end subroutine sf_evaluate_several_omegas
@@ -682,7 +817,6 @@ end subroutine sf_evaluate_several_omegas
 
 !=========================================================================
 subroutine sf_evaluate_one_real_omega(sf, omega_real, chi)
-  implicit none
 
   class(spectral_function), intent(in) :: sf
   real(dp), intent(in) :: omega_real
@@ -706,8 +840,8 @@ subroutine sf_evaluate_one_real_omega(sf, omega_real, chi)
              + sf%w_s(:, spole) * sf%w_s(jauxil, spole) &
                    * ( 1.0_dp / ( omega_real - sf%pole(spole) + ieta ) &
                       -1.0_dp / ( omega_real + sf%pole(spole) - ieta ) )
-    enddo
-  enddo
+    end do
+  end do
 
 
 
@@ -716,7 +850,6 @@ end subroutine sf_evaluate_one_real_omega
 
 !=========================================================================
 subroutine sf_evaluate_one_omega(sf, omega_cmplx, chi)
-  implicit none
 
   class(spectral_function), intent(in) :: sf
   complex(dp), intent(in) :: omega_cmplx
@@ -742,8 +875,8 @@ subroutine sf_evaluate_one_omega(sf, omega_cmplx, chi)
                  + sf%w_s(:, spole) * sf%w_s(jauxil, spole) &
                        * REAL( 1.0_dp / ( omega_cmplx - sf%pole(spole) + ieta ) &
                               -1.0_dp / ( omega_cmplx + sf%pole(spole) - ieta ) )
-        enddo
-      enddo
+        end do
+      end do
 
   else
 
@@ -752,17 +885,17 @@ subroutine sf_evaluate_one_omega(sf, omega_cmplx, chi)
     tmp(:, :) = sf%w_s(:, :)
     do spole=1, sf%npole_reso
       tmp(:, spole) = tmp(:, spole) * SQRT( 2.0_dp * sf%pole(spole) / ( ABS(omega_cmplx)**2 + sf%pole(spole)**2 ) )
-    enddo
+    end do
 
     call DSYRK('L', 'N', nauxil_global, sf%npole_reso, -1.0d0, tmp, nauxil_global, 0.0d0, chi(:,:),nauxil_global)
     do jauxil=1, nauxil_global
       do iauxil=jauxil+1, nauxil_global
         chi(jauxil, iauxil) = chi(iauxil, jauxil)
-      enddo
-    enddo
+      end do
+    end do
 
     deallocate(tmp)
-  endif
+  end if
 
 
 end subroutine sf_evaluate_one_omega
@@ -770,7 +903,6 @@ end subroutine sf_evaluate_one_omega
 
 !=========================================================================
 subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, verbose)
-  implicit none
 
   class(spectral_function), intent(inout) :: sf
   real(dp), intent(in)                    :: occupation(:, :)
@@ -793,7 +925,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
   real(dp)             :: eigval(nauxil_global)
   !=====
 
-  call start_clock(timing_rpa_dynamic)
+  call timer_rpa_dynamic%start()
 
   stdout_  = stdout
   verbose_ = .TRUE.
@@ -801,12 +933,12 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
     verbose_ = verbose
     if( .NOT. verbose ) then
       open(newunit=stdout_, file='/dev/null')
-    endif
-  endif
+    end if
+  end if
   low_rank_ = .FALSE.
   if( PRESENT(low_rank) ) then
     low_rank_ = low_rank
-  endif
+  end if
 
   nstate = SIZE(occupation, DIM=1)
 
@@ -820,13 +952,13 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
   sf%nprodbasis = nauxil_local
   if( low_rank_ ) then
     allocate(sf%vchiv_sqrt(sf%nomega))
-  endif
+  end if
 
   ! Check if (I | p q) integrals are already available
   !   if not, then calculate them
   eri_3center_mo_available = ALLOCATED(eri_3center_mo)
   if( .NOT. eri_3center_mo_available ) then
-    call calculate_eri_3center_mo(c_matrix, ncore_W+1, nhomo_W, nlumo_W, nvirtual_W-1, timing=timing_aomo_pola)
+    call calculate_eri_3center_mo(c_matrix, ncore_W+1, nhomo_W, nlumo_W, nvirtual_W-1, timing=timer_aomo_pola)
   else
     ! eri_3center_mo is already available
     ! check if it has the correct dimensions
@@ -835,8 +967,8 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
       .OR. LBOUND(eri_3center_mo, DIM=3) > nlumo_W        &
       .OR. UBOUND(eri_3center_mo, DIM=3) > nvirtual_W-1 ) then
       call die('sf_vsqrt_chi_vsqrt_rpa: eri_3center_mo does not contain all the needed states')
-    endif
-  endif
+    end if
+  end if
 
   sf%mchi = nauxil_global
   sf%nchi = nauxil_global
@@ -871,7 +1003,7 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
       eri3_t1(:, t_ia) = eri_3center_mo(:, istate, astate, iaspin) * factor
       eri3_t2(:, t_ia) = eri_3center_mo(:, istate, astate, iaspin)
 
-    enddo
+    end do
 
 #if defined(HAVE_MKL)
     call DGEMMT('L', 'N', 'T', nauxil_global, sf%npole_reso, 1.0d0, eri3_t1, nauxil_global,eri3_t2,nauxil_global, &
@@ -912,8 +1044,8 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
           ieig = ieig + 1
           sf%vchiv_sqrt(iomega)%eigvec(:, ieig) = chi0tmp(:, jeig)
           sf%vchiv_sqrt(iomega)%eigval(ieig)   = eigval(jeig)
-        endif
-      enddo
+        end if
+      end do
 
     else
       !
@@ -922,18 +1054,18 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
       chi0tmp(:, :) = -chi0tmp(:, :)
       do jauxil=1, nauxil_global
         chi0tmp(jauxil, jauxil) = 1.0_dp + chi0tmp(jauxil, jauxil)
-      enddo
+      end do
       call invert_symmetric(chi0tmp)
       !sf%chi(:,:,iomega) = MATMUL( chi0tmp, chi0 )
       call DSYMM('L', 'L', nauxil_global, nauxil_global, 1.0d0, chi0tmp, nauxil_global, chi0,nauxil_global, &
                  0.0d0, sf%chi(:, :, iomega), nauxil_global)
 
-    endif
+    end if
 
     deallocate(chi0tmp)
 
 
-  enddo
+  end do
 
   call clean_deallocate('TMP 3-center MO integrals', eri3_t1, verbose=verbose_)
   call clean_deallocate('TMP 3-center MO integrals', eri3_t2, verbose=verbose_)
@@ -941,22 +1073,21 @@ subroutine sf_vsqrt_chi_vsqrt_rpa(sf, occupation, energy, c_matrix, low_rank, ve
 
   if( .NOT. eri_3center_mo_available ) then
     call destroy_eri_3center_mo()
-  endif
+  end if
 
   if( PRESENT(verbose) ) then
     if( .NOT. verbose ) then
       close(stdout_)
-    endif
-  endif
+    end if
+  end if
 
-  call stop_clock(timing_rpa_dynamic)
+  call timer_rpa_dynamic%stop()
 
 end subroutine sf_vsqrt_chi_vsqrt_rpa
 
 
 !=========================================================================
 subroutine sf_interpolate_vsqrt_chi_vsqrt(sf, omega, vchiv_sqrt_omega)
-  implicit none
 
   class(spectral_function), intent(in) :: sf
   real(dp), intent(in)                 :: omega
@@ -969,14 +1100,14 @@ subroutine sf_interpolate_vsqrt_chi_vsqrt(sf, omega, vchiv_sqrt_omega)
   if( ANY( ABS(sf%omega(:)%im) > 1.0e-6_dp ) ) then
     write(stdout, *) sf%omega(:)
     call die('sf_interpolate_vsqrt_chi_vsqrt_rpa: for real frequencies only')
-  endif
+  end if
 
   if( omega > MAXVAL(sf%omega(:)%re) .OR. omega < MINVAL(sf%omega(:)%re) ) then
     write(stdout, *) omega
     write(stdout, *) sf%omega(1)%re
     write(stdout, *) sf%omega(SIZE(sf%omega))%re
     call die('sf_interpolate_vsqrt_chi_vsqrt_rpa: requested frequency out of range')
-  endif
+  end if
 
   ! no interpolation, but just take the closest omega
   jomega = MINLOC( ABS(sf%omega(:)%re-omega) , DIM=1 )
@@ -989,7 +1120,6 @@ end subroutine sf_interpolate_vsqrt_chi_vsqrt
 
 !=========================================================================
 subroutine ct_destroy(chi)
-  implicit none
   !=====
   class(chi_type), intent(inout) :: chi
   !=====

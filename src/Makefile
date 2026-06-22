@@ -217,12 +217,12 @@ level055: m_restart.o
 
 level060: m_selfenergy_tools.o m_virtual_orbital_space.o m_linear_response.o
 
-level065: m_pt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o m_g3w2_selfenergy.o m_tdhf_selfenergy.o m_relativistic.o \
+level065: m_mbpt_density_matrix.o m_fourier_quadrature.o m_gw_selfenergy_grid.o m_noft_driver.o m_g3w2_selfenergy.o m_tdhf_selfenergy.o m_relativistic.o \
           m_gw_selfenergy_analytic.o
 
-level068: m_pt_selfenergy.o m_force.o
+level068: m_pt_selfenergy.o m_force.o m_dm_analysis.o
 
-level070: m_scf_loop.o m_ci.o m_dm_analysis.o m_selfenergy_evaluation.o m_acfd.o m_dm_mbpt.o m_realtime_tddft.o m_noft.o m_mp2_energy.o
+level070: m_scf_loop.o m_ci.o m_selfenergy_evaluation.o m_acfd.o m_dm_mbpt_driver.o m_realtime_tddft.o m_noft.o m_mp2_energy.o
 
 level100: molgw.o
 
@@ -240,10 +240,10 @@ level100: molgw.o
         m_basis_set.o \
         m_inputparam.o \
         m_eri.o m_scf.o m_dft_grid.o m_libint_tools.o m_libcint_tools.o m_selfenergy_tools.o \
-        m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o m_dm_mbpt.o m_spectra.o \
+        m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o m_dm_mbpt_driver.o m_spectra.o \
         m_spectral_function.o m_hamiltonian_tools.o m_hamiltonian_twobodies.o m_hamiltonian_onebody.o m_hamiltonian_periodic.o m_ci.o  \
         m_hamiltonian_wrapper.o \
-        m_virtual_orbital_space.o m_pt_selfenergy.o m_pt_density_matrix.o m_fourier_quadrature.o \
+        m_virtual_orbital_space.o m_pt_selfenergy.o m_mbpt_density_matrix.o m_fourier_quadrature.o \
         m_linear_response.o m_acfd.o m_gw_selfenergy_analytic.o m_gw_selfenergy_grid.o m_g3w2_selfenergy.o m_tdhf_selfenergy.o \
         m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o m_elag.o m_hessian.o m_gammatodm2.o m_diagf.o \
         m_e_grad_occ.o m_e_grad_occ_cpx.o m_optocc.o m_optorb.o m_tz_pccd_amplitudes.o m_noft_driver.o gitver.o \
@@ -256,10 +256,10 @@ level100: molgw.o
                         m_libxc_tools.o m_scalapack.o m_elpa.o m_nvtx.o m_timing.o m_memory.o m_inputparam.o \
                         m_string_tools.o m_numerical_tools.o m_linear_algebra.o m_scf.o m_selfenergy_tools.o m_atoms.o m_ecp.o \
                         m_gaussian.o m_block_diago.o m_basis_set.o m_eri.o m_dft_grid.o m_libint_tools.o m_libcint_tools.o \
-                        m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o m_dm_mbpt.o m_spectra.o \
+                        m_eri_calculate.o m_eri_ao_mo.o m_density_tools.o m_tddft_fxc.o m_dm_mbpt_driver.o m_spectra.o \
                         m_spectral_function.o m_ci.o \
                         libint_onebody.o libint_onebody_grad.o libint_twobody.o libint_twobody_grad.o \
-                        boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o m_pt_selfenergy.o m_pt_density_matrix.o \
+                        boys_function.o lebedev_quadrature.o m_virtual_orbital_space.o m_pt_selfenergy.o m_mbpt_density_matrix.o \
                         m_nofoutput.o m_lbfgs_intern.o m_integd.o m_rdmd.o m_anti2unit.o m_elag.o m_hessian.o m_gammatodm2.o m_diagf.o \
                         m_e_grad_occ.o m_e_grad_occ_cpx.o m_optocc.o m_optorb.o m_tz_pccd_amplitudes.o m_noft_driver.o gitver.o \
                         m_mp2_energy.o m_relativistic.o m_noft.o m_gw_selfenergy_analytic.o m_gw_selfenergy_grid.o m_g3w2_selfenergy.o m_tdhf_selfenergy.o m_build_bse.o \
@@ -282,7 +282,7 @@ molgw.o: m_definitions.o m_warning.o m_hdf5_tools.o m_fftw3.o m_timing.o m_memor
          m_atoms.o m_scf.o m_scalapack.o m_elpa.o m_ecp.o m_io.o \
          m_gaussian.o m_basis_set.o  m_eri.o m_dft_grid.o m_spectral_function.o m_ci.o m_eri_calculate.o m_eri_ao_mo.o \
          m_hamiltonian_onebody.o m_selfenergy_tools.o m_scf_loop.o \
-         m_dm_analysis.o m_realtime_tddft.o m_restart.o m_dm_mbpt.o m_multipole.o \
+         m_dm_analysis.o m_realtime_tddft.o m_restart.o m_dm_mbpt_driver.o m_multipole.o \
          m_virtual_orbital_space.o m_selfenergy_evaluation.o m_noft.o m_relativistic.o \
          m_fourier_quadrature.o m_libcint_tools.o m_linear_response.o m_acfd.o m_hamiltonian_twobodies.o m_mp2_energy.o m_force.o \
          molgw.f90
@@ -311,11 +311,11 @@ m_scf_loop.o: m_definitions.o m_warning.o m_timing.o m_memory.o m_atoms.o m_inpu
               m_scf_loop.f90
 	$(FC_W_OPTS) -c m_scf_loop.f90 $(LIBXC_INCS)
 
-m_dm_mbpt.o: m_definitions.o m_warning.o m_timing.o m_memory.o m_inputparam.o m_scf.o \
+m_dm_mbpt_driver.o: m_definitions.o m_warning.o m_timing.o m_memory.o m_inputparam.o m_scf.o \
              m_spectral_function.o m_atoms.o m_basis_set.o m_multipole.o m_hamiltonian_tools.o \
-             m_hamiltonian_wrapper.o m_selfenergy_tools.o m_gw_selfenergy_grid.o m_pt_density_matrix.o \
-             m_linear_response.o m_virtual_orbital_space.o m_dm_mbpt.f90
-	$(FC_W_OPTS) -c m_dm_mbpt.f90 $(LIBXC_INCS)
+             m_hamiltonian_wrapper.o m_selfenergy_tools.o m_gw_selfenergy_grid.o m_mbpt_density_matrix.o \
+             m_linear_response.o m_virtual_orbital_space.o m_dm_analysis.o m_dm_mbpt_driver.f90
+	$(FC_W_OPTS) -c m_dm_mbpt_driver.f90 $(LIBXC_INCS)
 
 m_dm_analysis.o: m_definitions.o m_warning.o m_timing.o m_memory.o m_atoms.o m_inputparam.o m_scf.o m_scalapack.o \
               m_gaussian.o m_lbfgs.o m_ecp.o m_density_tools.o m_multipole.o m_io.o \
@@ -470,9 +470,9 @@ m_pt_selfenergy.o: m_definitions.o m_mpi.o m_timing.o m_warning.o m_basis_set.o 
                  m_linear_response.o m_gw_selfenergy_analytic.o m_pt_selfenergy.f90
 	$(FC_W_OPTS) -c m_pt_selfenergy.f90 $(LIBXC_INCS)
 
-m_pt_density_matrix.o: m_definitions.o m_mpi.o m_timing.o m_warning.o m_basis_set.o \
-                  m_spectral_function.o m_inputparam.o m_selfenergy_tools.o m_eri_ao_mo.o m_hamiltonian_tools.o m_hamiltonian_onebody.o m_io.o m_pt_density_matrix.f90
-	$(FC_W_OPTS) -c m_pt_density_matrix.f90 $(LIBXC_INCS)
+m_mbpt_density_matrix.o: m_definitions.o m_mpi.o m_timing.o m_warning.o m_basis_set.o \
+                  m_spectral_function.o m_inputparam.o m_selfenergy_tools.o m_eri_ao_mo.o m_hamiltonian_tools.o m_hamiltonian_onebody.o m_io.o m_mbpt_density_matrix.f90
+	$(FC_W_OPTS) -c m_mbpt_density_matrix.f90 $(LIBXC_INCS)
 
 pdbssolver1.o: pdbssolver1.f
 	$(FC_W_OPTS) -c pdbssolver1.f $(LIBXC_INCS) $(ELPA_INCS)

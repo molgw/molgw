@@ -22,6 +22,8 @@ module m_dft_grid
   use m_ecp
   use m_numerical_tools, only: coeffs_gausslegint
 
+  implicit none
+
   integer, parameter :: BATCH_SIZE = 128
   !
   ! Grid definition
@@ -56,7 +58,6 @@ contains
 
 !=========================================================================
 subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn, batch_size)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: grid_level_in
@@ -80,8 +81,13 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
   real(dp), allocatable :: w_grid_tmp(:)
   !=====
 
-  call start_clock(MERGE(timing_tddft_grid_init, timing_grid_init, in_rt_tddft))
-  call start_clock(MERGE(timing_tddft_grid_generation, timing_grid_generation, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_grid_init%start()
+    call timer_tddft_grid_generation%start()
+  else
+    call timer_grid_init%start()
+    call timer_grid_generation%start()
+  end if
 
 
   ngrid_stored = 0
@@ -131,7 +137,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
   ! do icenter=2,ncenter_basis
   !   xa(:,icenter)  =  xa(:,1)
   !   wxa(:,icenter) = wxa(:,1)
-  ! enddo
+  ! end do
 
 
   !
@@ -149,9 +155,9 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
       xtmp = ( iradial - 0.5_dp ) / REAL(nradial, dp)
       xa(iradial, icenter)   = -alpha * log( 1.0_dp - xtmp**3)
       wxa(iradial, icenter)  = 3.0_dp * alpha * xtmp**2 / ( 1.0_dp - xtmp**3 ) / REAL(nradial, dp)
-    enddo
+    end do
 
-  enddo
+  end do
 
 
 
@@ -232,15 +238,15 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
         ngridmax = ngridmax + nangular_coarse
       else
         ngridmax = ngridmax + nangular_fine
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
   do kcenter=1, ncenter_basis
     do jcenter=1, ncenter_basis
       kj(jcenter, kcenter) = NORM2( xbasis(:, kcenter) - xbasis(:, jcenter) )
-    enddo
-  enddo
+    end do
+  end do
 
   !
   ! Temporary storage before the screening of the low weights
@@ -261,7 +267,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
         nangular = nangular_coarse
       else
         nangular = nangular_fine
-      endif
+      end if
 
       do iangular=1, nangular
         ir = ir + 1
@@ -279,7 +285,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
           rr_grid_tmp(2, ir) = xa(iradial, icenter) * y1(iangular) + xbasis(2, icenter)
           rr_grid_tmp(3, ir) = xa(iradial, icenter) * z1(iangular) + xbasis(3, icenter)
           weight   = wxa(iradial, icenter) * w1(iangular) * xa(iradial, icenter)**2 * 4.0_dp * pi
-        endif
+        end if
 
 
         select case(partition_scheme)
@@ -289,7 +295,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
           !
           do kcenter=1, ncenter_basis
             rk(kcenter) = NORM2(rr_grid_tmp(:, ir)-xbasis(:, kcenter))
-          enddo
+          end do
 
           s_becke(:, :) = 1.0_dp
           !$OMP PARALLEL PRIVATE(mu)
@@ -300,8 +306,8 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
               rtmp = smooth_step(smooth_step(smooth_step(mu)))
               s_becke(jcenter, kcenter) = 0.5_dp * ( 1.0_dp - rtmp )
               s_becke(kcenter, jcenter) = 0.5_dp * ( 1.0_dp + rtmp )
-            enddo
-          enddo
+            end do
+          end do
           !$OMP END DO
           !$OMP END PARALLEL
 
@@ -324,7 +330,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
 
             do kcenter=1, ncenter_basis
               rk(kcenter) = NORM2(rr_grid_tmp(:, ir)-xbasis(:, kcenter))
-            enddo
+            end do
 
             !$OMP PARALLEL PRIVATE(mu, mu_aa, rtmp)
             !$OMP DO
@@ -343,16 +349,16 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
 
                   s_becke(jcenter, kcenter) = 0.5_dp * ( 1.0_dp - rtmp )
                   s_becke(kcenter, jcenter) = 0.5_dp * ( 1.0_dp + rtmp )
-                endif
+                end if
 
-              enddo
-            enddo
+              end do
+            end do
             !$OMP END DO
             !$OMP END PARALLEL
 
             p_becke(:) = PRODUCT(s_becke(:, :), DIM=1)
             fact_becke = p_becke(icenter) / SUM( p_becke(:) )
-          endif
+          end if
 
         case default
           call die('Invalid choice for the partition scheme. Change partion_scheme value in the input file')
@@ -360,9 +366,9 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
 
         w_grid_tmp(ir) = weight * fact_becke
 
-      enddo
-    enddo
-  enddo
+      end do
+    end do
+  end do
 
   deallocate(x1, y1, z1, w1)
   deallocate(x2, y2, z2, w2)
@@ -396,15 +402,19 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
         ir = ir + 1
         w_grid(ir) = w_grid_tmp(ir1)
         rr_grid(:, ir) = rr_grid_tmp(:, ir1)
-      endif
+      end if
 
-    endif
-  enddo
+    end if
+  end do
 
 
   deallocate(rr_grid_tmp, w_grid_tmp)
 
-  call stop_clock(MERGE(timing_tddft_grid_generation, timing_grid_generation, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_grid_generation%stop()
+  else
+    call timer_grid_generation%stop()
+  end if
 
 
   !
@@ -413,7 +423,11 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
   !
   if( precalculate_wfn ) then
 
-    call start_clock(MERGE(timing_tddft_grid_wfn, timing_grid_wfn, in_rt_tddft))
+    if( TIMING_current_stage == TIMING_POSTSCF ) then
+      call timer_tddft_grid_wfn%start()
+    else
+      call timer_grid_wfn%start()
+    end if
     !
     ! grid_memory is given in Megabytes
     ! If gradient is needed, the storage is 4 times larger
@@ -421,7 +435,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
       ngrid_max_allowed = NINT( grid_memory * 1024.0_dp**2 / ( REAL(basis%nbf, dp) * REAL(dp, dp) ) )
     else
       ngrid_max_allowed = NINT( grid_memory * 1024.0_dp**2 / ( 4.0_dp * REAL(basis%nbf, dp) * REAL(dp, dp) ) )
-    endif
+    end if
 
     ngrid_stored = MIN(ngrid, ngrid_max_allowed)
     ! Enforce a multiple of batches
@@ -430,23 +444,30 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
     call prepare_basis_functions_r(basis, batch_size)
     if( needs_gradient ) then
       call prepare_basis_functions_gradr(basis, batch_size)
-    endif
-    call stop_clock(MERGE(timing_tddft_grid_wfn, timing_grid_wfn, in_rt_tddft))
+    end if
+    if( TIMING_current_stage == TIMING_POSTSCF ) then
+      call timer_tddft_grid_wfn%stop()
+    else
+      call timer_grid_wfn%stop()
+    end if
 
   else
     ngrid_stored = 0
-  endif
+  end if
 
   call setup_rhocore_grid()
 
-  call stop_clock(MERGE(timing_tddft_grid_init, timing_grid_init, in_rt_tddft))
+  if( TIMING_current_stage == TIMING_POSTSCF ) then
+    call timer_tddft_grid_init%stop()
+  else
+    call timer_grid_init%stop()
+  end if
 
 end subroutine init_dft_grid
 
 
 !=========================================================================
 subroutine setup_rhocore_grid()
-  implicit none
 
   !=====
   integer :: ie, icenter, ir, irad
@@ -463,8 +484,8 @@ subroutine setup_rhocore_grid()
   if( ANY(ecp(:)%ecp_format==ECP_PSP6) .OR. ANY(ecp(:)%ecp_format==ECP_PSP8) ) then
     do ie=1, nelement_ecp
       need_rhocore = need_rhocore .OR. ALLOCATED(ecp(ie)%rhocore)
-    enddo
-  endif
+    end do
+  end if
 
   if( .NOT. need_rhocore) return
 
@@ -479,8 +500,8 @@ subroutine setup_rhocore_grid()
       if( ABS( element_ecp(ie) - zatom(icenter) ) < 1.0e-5_dp ) then
         element_has_rhocore = ALLOCATED(ecp(ie)%rhocore)
         exit
-      endif
-    enddo
+      end if
+    end do
 
     if( .NOT. element_has_rhocore ) cycle
 
@@ -501,11 +522,11 @@ subroutine setup_rhocore_grid()
               + (  ecp(ie)%rhocore(irad, 2)   * ( ecp(ie)%rad(irad+1) - rr ) / ( ecp(ie)%rad(irad+1)-ecp(ie)%rad(irad) ) &
                  + ecp(ie)%rhocore(irad+1, 2) * ( rr - ecp(ie)%rad(irad  ) ) / ( ecp(ie)%rad(irad+1)-ecp(ie)%rad(irad) ) ) &
                 * ra(:) / rr
-        endif
-      endif
-    enddo
+        end if
+      end if
+    end do
 
-  enddo
+  end do
   write(*, *) 'Core density integral: ', SUM(w_grid(:)*rhocore(:))
 
 
@@ -514,26 +535,25 @@ end subroutine setup_rhocore_grid
 
 !=========================================================================
 subroutine destroy_dft_grid()
-  implicit none
 
   deallocate(rr_grid)
   deallocate(w_grid)
   if( ALLOCATED(bf_rad2) ) then
     deallocate(bf_rad2)
-  endif
+  end if
 
   if( ALLOCATED(bfr) ) then
     call clean_deallocate('basis ftns on grid', bfr)
-  endif
+  end if
   if( ALLOCATED(bfgx) ) then
     call clean_deallocate('basis grad ftns on grid', bfgx)
-  endif
+  end if
   if( ALLOCATED(bfgy) ) then
     call clean_deallocate('basis grad ftns on grid', bfgy)
-  endif
+  end if
   if( ALLOCATED(bfgz) ) then
     call clean_deallocate('basis grad ftns on grid', bfgz)
-  endif
+  end if
   if( ALLOCATED(rhocore)) deallocate(rhocore)
   if( ALLOCATED(rhocore_grad)) deallocate(rhocore_grad)
   call destroy_dft_grid_distribution()
@@ -554,7 +574,6 @@ end function smooth_step
 
 !=========================================================================
 subroutine prepare_basis_functions_r(basis, batch_size)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: batch_size
@@ -565,7 +584,7 @@ subroutine prepare_basis_functions_r(basis, batch_size)
   write(stdout, '(1x,a,i7)') 'Precalculate the functions on N grid points ', ngrid_stored
   if( batch_size /= 1 ) then
     write(stdout, '(3x,a,i5,a,i4)') 'which corresponds to ', ngrid_stored/batch_size, ' batches of size ', batch_size
-  endif
+  end if
   call clean_allocate('basis ftns on grid', bfr, basis%nbf, ngrid_stored)
 
   call calculate_basis_functions_r_batch(basis, rr_grid(:, 1:ngrid_stored), bfr)
@@ -575,7 +594,6 @@ end subroutine prepare_basis_functions_r
 
 !=========================================================================
 subroutine prepare_basis_functions_gradr(basis, batch_size)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: batch_size
@@ -586,7 +604,7 @@ subroutine prepare_basis_functions_gradr(basis, batch_size)
   write(stdout, *) 'Precalculate the gradients on N grid points', ngrid_stored
   if( batch_size /= 1 ) then
     write(stdout, '(3x,a,i5,a,i4)') 'which corresponds to ', ngrid_stored/batch_size, ' batches of size ', batch_size
-  endif
+  end if
   call clean_allocate('basis grad ftns on grid', bfgx, basis%nbf, ngrid_stored)
   call clean_allocate('basis grad ftns on grid', bfgy, basis%nbf, ngrid_stored)
   call clean_allocate('basis grad ftns on grid', bfgz, basis%nbf, ngrid_stored)
@@ -599,7 +617,6 @@ end subroutine prepare_basis_functions_gradr
 
 !=========================================================================
 subroutine get_basis_functions_r_batch(basis, igrid, basis_function_r)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: igrid
@@ -616,14 +633,13 @@ subroutine get_basis_functions_r_batch(basis, igrid, basis_function_r)
     basis_function_r(:, :) = bfr(:, igrid:igrid+nr-1)
   else
     call calculate_basis_functions_r_batch(basis, rr_grid(:, igrid:igrid+nr-1), basis_function_r)
-  endif
+  end if
 
 end subroutine get_basis_functions_r_batch
 
 
 !=========================================================================
 subroutine get_basis_functions_gradr_batch(basis, igrid, bf_gradx, bf_grady, bf_gradz)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   integer, intent(in)         :: igrid
@@ -643,14 +659,13 @@ subroutine get_basis_functions_gradr_batch(basis, igrid, bf_gradx, bf_grady, bf_
   else
     call calculate_basis_functions_gradr_batch(basis, rr_grid(:, igrid:igrid+nr-1), &
                                               bf_gradx, bf_grady, bf_gradz)
-  endif
+  end if
 
 end subroutine get_basis_functions_gradr_batch
 
 
 !=========================================================================
 subroutine calculate_basis_functions_r(basis, rr, basis_function_r)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(3)
@@ -680,11 +695,11 @@ subroutine calculate_basis_functions_r(basis, rr, basis_function_r)
 
     do i_cart=1, ni_cart
       basis_function_r_cart(i_cart) = eval_basis_function(basis%bfc(ibf1_cart+i_cart-1), rr)
-    enddo
+    end do
     basis_function_r(ibf1:ibf2) = MATMUL(  basis_function_r_cart(:) , cart_to_pure(li, gt)%matrix(:, :) )
     deallocate(basis_function_r_cart)
 
-  enddo
+  end do
   !$OMP END DO
   !$OMP END PARALLEL
 
@@ -694,7 +709,6 @@ end subroutine calculate_basis_functions_r
 
 !=========================================================================
 subroutine calculate_basis_functions_r_batch(basis, rr, basis_function_r)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(:, :)
@@ -726,13 +740,13 @@ subroutine calculate_basis_functions_r_batch(basis, rr, basis_function_r)
     do ir=1, nr
       do i_cart=1, ni_cart
         basis_function_r_cart(i_cart, ir) = eval_basis_function(basis%bfc(ibf1_cart+i_cart-1), rr(:, ir))
-      enddo
-    enddo
+      end do
+    end do
 
     basis_function_r(ibf1:ibf2, :) = MATMUL(  TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)) , basis_function_r_cart(:, :) )
     deallocate(basis_function_r_cart)
 
-  enddo
+  end do
   !$OMP END DO
   !$OMP END PARALLEL
 
@@ -742,7 +756,6 @@ end subroutine calculate_basis_functions_r_batch
 
 !=========================================================================
 subroutine calculate_basis_functions_gradr(basis, rr, basis_function_gradr)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(3)
@@ -770,13 +783,13 @@ subroutine calculate_basis_functions_gradr(basis, rr, basis_function_gradr)
 
     do i_cart=1, ni_cart
       basis_function_gradr_cart(:, i_cart) = eval_basis_function_grad(basis%bfc(ibf1_cart+i_cart-1), rr)
-    enddo
+    end do
 
     basis_function_gradr(:, ibf1:ibf2) = MATMUL( basis_function_gradr_cart(:, :) , cart_to_pure(li, gt)%matrix(:, :) )
 
     deallocate(basis_function_gradr_cart)
 
-  enddo
+  end do
   !$OMP END DO
   !$OMP END PARALLEL
 
@@ -786,7 +799,6 @@ end subroutine calculate_basis_functions_gradr
 
 !=========================================================================
 subroutine calculate_basis_functions_gradr_batch(basis, rr, bf_gradx, bf_grady, bf_gradz)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(:, :)
@@ -819,8 +831,8 @@ subroutine calculate_basis_functions_gradr_batch(basis, rr, bf_gradx, bf_grady, 
     do ir=1, nr
       do i_cart=1, ni_cart
         basis_function_gradr_cart(i_cart, ir, :) = eval_basis_function_grad(basis%bfc(ibf1_cart+i_cart-1), rr(:, ir))
-      enddo
-    enddo
+      end do
+    end do
 
     bf_gradx(ibf1:ibf2, :) = MATMUL(  TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)) , basis_function_gradr_cart(:, :, 1) )
     bf_grady(ibf1:ibf2, :) = MATMUL(  TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)) , basis_function_gradr_cart(:, :, 2) )
@@ -828,7 +840,7 @@ subroutine calculate_basis_functions_gradr_batch(basis, rr, bf_gradx, bf_grady, 
 
     deallocate(basis_function_gradr_cart)
 
-  enddo
+  end do
   !$OMP END DO
   !$OMP END PARALLEL
 
@@ -838,7 +850,6 @@ end subroutine calculate_basis_functions_gradr_batch
 
 !=========================================================================
 subroutine calculate_basis_functions_laplr(basis, rr, basis_function_gradr, basis_function_laplr)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: rr(3)
@@ -869,13 +880,13 @@ subroutine calculate_basis_functions_laplr(basis, rr, basis_function_gradr, basi
     do i_cart=1, ni_cart
       basis_function_gradr_cart(:, i_cart)        = eval_basis_function_grad(basis%bfc(ibf1_cart+i_cart-1), rr)
       basis_function_laplr_cart(:, i_cart)        = eval_basis_function_lapl(basis%bfc(ibf1_cart+i_cart-1), rr)
-    enddo
+    end do
 
     basis_function_gradr(:, ibf1:ibf2) = MATMUL(  basis_function_gradr_cart(:, :) , cart_to_pure(li, gt)%matrix(:, :) )
     basis_function_laplr(:, ibf1:ibf2) = MATMUL(  basis_function_laplr_cart(:, :) , cart_to_pure(li, gt)%matrix(:, :) )
     deallocate(basis_function_gradr_cart, basis_function_laplr_cart)
 
-  enddo
+  end do
 
 
 end subroutine calculate_basis_functions_laplr

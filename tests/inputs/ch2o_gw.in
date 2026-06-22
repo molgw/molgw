@@ -5,7 +5,7 @@
  integral_quality='medium'
  grid_quality='medium'
 
- frozencore='yes'
+ frozencore='molgw'
 
  postscf='gw'
  eta=0.005

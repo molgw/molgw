@@ -24,12 +24,13 @@ module m_gw_selfenergy_grid
   use m_linear_response
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw, wpol)
-  implicit none
 
   real(dp), intent(in)                   :: occupation(:, :)
   real(dp), intent(in)                   :: energy(:, :)
@@ -58,7 +59,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
 #endif
   !=====
 
-  call start_clock(timing_rpa_dynamic)
+  call timer_rpa_dynamic%start()
 
   write(stdout, '(/,1x,a)') 'Calculation of RPA polarizability on imaginary axis grid'
 #if defined(HAVE_SCALAPACK)
@@ -72,7 +73,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
 
   if( .NOT. has_auxil_basis ) then
     call die('dynamical_polarizability_sca requires an auxiliary basis')
-  endif
+  end if
 
 
 
@@ -89,8 +90,8 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
   ! Faster when the largest range (virtual states, occupied states) comes first
   if( has_auxil_basis ) then
     call calculate_eri_3center_mo(c_matrix, nlumo_W, nvirtual_W-1, ncore_W+1, nhomo_W, &
-                                     timing=timing_aomo_pola)
-  endif
+                                     timing=timer_aomo_pola)
+  end if
 
 
   !
@@ -133,7 +134,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
 
       eri3_t(:, t_ia) = eri_3center_mo(:, astate, istate, iaspin) * factor_sqrt
 
-    enddo
+    end do
 
 #if defined(HAVE_SCALAPACK)
     call PDGEMR2D(nauxil_global, wpol%npole_reso, eri3_t, 1, 1, desc_eri3_t, &
@@ -159,8 +160,8 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
       do ilocal=1, wpol%mchi
         iglobal = rowindex_local_to_global_descriptor(wpol%desc_chi, ilocal)
         if( iglobal == jglobal ) one_m_chi0(ilocal, jlocal) = one_m_chi0(ilocal, jlocal) + 1.0_dp
-      enddo
-    enddo
+      end do
+    end do
 
 
     one_m_chi0m1(:, :) = one_m_chi0(:, :)
@@ -187,7 +188,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
 #endif
 
 
-  enddo
+  end do
 
 #if defined(HAVE_SCALAPACK)
   call clean_deallocate('TMP 3-center MO integrals', eri3_sca)
@@ -202,7 +203,7 @@ subroutine polarizability_grid_scalapack(occupation, energy, c_matrix, erpa, egw
   write(stdout, '(/,1x,a,f16.10)') 'RPA correlation energy (Ha): ', erpa
   write(stdout, '(1x,a,f16.10)')   'GW  correlation energy (Ha): ', egw
 
-  call stop_clock(timing_rpa_dynamic)
+  call timer_rpa_dynamic%stop()
 
 
 end subroutine polarizability_grid_scalapack
@@ -210,7 +211,6 @@ end subroutine polarizability_grid_scalapack
 
 !=========================================================================
 subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
-  implicit none
 
   real(dp), intent(in)                 :: energy(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :)
@@ -235,15 +235,15 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
 
   if( .NOT. has_auxil_basis ) then
     call die('gw_selfenergy_imag_scalapack requires an auxiliary basis')
-  endif
+  end if
 
-  call start_clock(timing_gw_self)
+  call timer_gw_self%start()
 
   write(stdout, '(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_calc=1, se%nomega_calc
     write(stdout, '(1x,i4,1x,f14.4,1x,f14.4)') iomega_calc, se%omega_calc(iomega_calc)*Ha_eV
-  enddo
+  end do
   write(stdout, '(1x,a)') '========================================================'
 
   nstate = SIZE(energy, DIM=1)
@@ -257,7 +257,7 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
 #endif
 
 
-  if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timing_aomo_gw)
+  if( has_auxil_basis ) call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, nsemin, nsemax, timing=timer_aomo_gw)
 
 
   prange = nvirtual_G - ncore_G - 1
@@ -314,14 +314,14 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
                                + 1.0_dp / ( ( se%omega_calc(:) - energy(pstate, mpspin) )  &
                                               - wpol%omega(iomegap) )  ) &
                            * v_chi_v_p /  (2.0_dp * pi)
-        enddo
+        end do
         !$OMP END DO
         !$OMP END PARALLEL
 
-      enddo
+      end do
 
-    enddo
-  enddo
+    end do
+  end do
   call world%sum(sigmaigw)
 
   se%sigma_calc(:, :, :) = sigmaigw(:, :, :)
@@ -333,14 +333,13 @@ subroutine gw_selfenergy_imag_scalapack(energy, c_matrix, wpol, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gw_self)
+  call timer_gw_self%stop()
 
 end subroutine gw_selfenergy_imag_scalapack
 
 
 !=========================================================================
 subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
-  implicit none
 
   real(dp), intent(in)                 :: energy(:, :), occupation(:, :)
   real(dp), intent(in)                 :: c_matrix(:, :, :)
@@ -365,21 +364,21 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
 
   if( .NOT. has_auxil_basis ) then
     call die('gw_selfenergy_coutour_scalapack requires an auxiliary basis')
-  endif
+  end if
 
-  call start_clock(timing_gw_self)
+  call timer_gw_self%start()
 
   write(stdout, '(/,1x,a)') 'GW self-energy on a grid of real frequencies centered on the gKS energies'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_sigma=-se%nomega, se%nomega
     write(stdout, '(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma, se%omega(iomega_sigma)*Ha_eV
-  enddo
+  end do
   write(stdout, '(1x,a)') '========================================================'
 
   nstate = SIZE(energy, DIM=1)
 
 
-  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
 
   call wpol_imag%init(nstate, occupation, nomega_chi_imag, grid_type=IMAGINARY_QUAD)
   call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.TRUE.)
@@ -395,18 +394,18 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
           de = energy(pstate, mpspin) - (se%energy0(mstate, mpspin) + se%omega(iomega_sigma)%re)
           if( de < -eta ) cycle
           de_max = MAX(de_max, de)
-        enddo
-      enddo
+        end do
+      end do
       do pstate=nlumo_G, nvirtual_G-1
         do iomega_sigma=-se%nomega, se%nomega
           ! only poles in the third quadrant  \theta( omega - e_p)
           de = se%energy0(mstate, mpspin) + se%omega(iomega_sigma)%re - energy(pstate, mpspin)
           if( de < -eta ) cycle
           de_max = MAX(de_max, de)
-        enddo
-      enddo
-    enddo
-  enddo
+        end do
+      end do
+    end do
+  end do
 
   write(stdout, '(1x,a,f12.6)') 'Maximum real frequency needed (eV): ', de_max * Ha_eV
   call wpol_real%init(nstate, occupation, nomega_chi_real, grid_type=REAL_LINEAR, omega_max=de_max)
@@ -465,12 +464,12 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
                              * v_chi_v_p /  (2.0_dp * pi)
           end where
 
-        enddo
+        end do
         !$OMP END DO
         !$OMP END PARALLEL
 
         deallocate(tmp2)
-      enddo
+      end do
 
 
       !
@@ -501,8 +500,8 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
           deallocate(tmp)
           call vchiv_sqrt_tmp%destroy()
 
-        enddo
-      enddo
+        end do
+      end do
 
       !
       ! Residues for empty states
@@ -530,12 +529,12 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
           deallocate(tmp)
           call vchiv_sqrt_tmp%destroy()
 
-        enddo
-      enddo
+        end do
+      end do
 
 
-    enddo
-  enddo
+    end do
+  end do
   call world%sum(sigmagw)
 
   se%sigma(:, :, :) = sigmagw(:, :, :)
@@ -547,14 +546,13 @@ subroutine gw_selfenergy_contour(energy, occupation, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gw_self)
+  call timer_gw_self%stop()
 
 end subroutine gw_selfenergy_contour
 
 
 !=========================================================================
 subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
-  implicit none
 
   type(basis_set), intent(in)          :: basis
   real(dp), intent(in)                 :: energy(:, :), occupation(:, :)
@@ -564,7 +562,7 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
   integer              :: nstate
   integer              :: iomegap, iomega_sigma
   real(dp), allocatable :: eri3_p_m(:, :)
-  real(dp)             :: v_chi_v_p, erpa, egw
+  real(dp)             :: v_chi_v_p
   integer              :: mstate, pstate, mpspin
   integer              :: prange
   integer              :: first_omega, last_omega
@@ -576,35 +574,36 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
 
   if( .NOT. has_auxil_basis ) then
     call die('gw_selfenergy_grid requires an auxiliary basis')
-  endif
+  end if
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
-  call start_clock(timing_gw_self)
+  call timer_gw_self%start()
 
   write(stdout, '(/,1x,a)') 'GW self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_sigma=first_omega, last_omega
     write(stdout, '(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma, se%omega_calc(iomega_sigma)*Ha_eV
-  enddo
+  end do
   write(stdout, '(1x,a)') '========================================================'
 
   nstate = SIZE(energy, DIM=1)
 
 
-  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
 
   !
   ! Initialize wpol_imag any way to store chi(:,:,iomegap)
   call wpol_imag%init(nstate, occupation, nomega_chi_imag, grid_type=IMAGINARY_QUAD, verbose=.TRUE.)
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate, occupation, 0, grid_type=NO_GRID)
-    call polarizability(.TRUE., .TRUE., basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
+    call wpol_analytic%enforce_approximation('RPA')
+    call polarizability(basis, occupation, energy, c_matrix, wpol_analytic)
     call clean_allocate('Chi', wpol_imag%chi, nauxil_global, nauxil_global, wpol_imag%nomega, verbose=.FALSE.)
     call wpol_analytic%evaluate(wpol_imag%omega, wpol_imag%chi)
   else
     call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.FALSE.)
-  endif
+  end if
 
 
   prange = nvirtual_G - ncore_G - 1
@@ -648,15 +647,15 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
                                               - wpol_imag%omega(iomegap) )  ) &
                            * v_chi_v_p /  (2.0_dp * pi)
 
-        enddo
+        end do
         !$OMP END DO
         !$OMP END PARALLEL
 
         deallocate(tmp2)
-      enddo
+      end do
 
-    enddo
-  enddo
+    end do
+  end do
   call poorman%sum(sigmagw)
 
   se%sigma_calc(:, :, :) = sigmagw(:, :, :)
@@ -668,14 +667,13 @@ subroutine gw_selfenergy_grid(basis, occupation, energy, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gw_self)
+  call timer_gw_self%stop()
 
 end subroutine gw_selfenergy_grid
 
 
 !=========================================================================
 subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
-  implicit none
 
   type(basis_set), intent(in)          :: basis
   real(dp), intent(in)                 :: energy(:, :), occupation(:, :)
@@ -693,7 +691,6 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
   complex(dp), allocatable :: sigmagw(:, :, :)
   complex(dp)          :: denom1, denom2, omega_cmplx
   type(spectral_function) :: wpol_imag, wpol_one, wpol_analytic
-  real(dp) :: erpa, egw
   ! DGEMM
   integer :: astate, istate
   real(dp), allocatable :: eri3_i_m(:, :), eri3_i_a(:, :), eri3_r_m(:, :), eri3_r_a(:, :)
@@ -705,33 +702,34 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
 
   if( .NOT. has_auxil_basis ) then
     call die('gw_selfenergy_grid requires an auxiliary basis')
-  endif
+  end if
   first_omega = LBOUND(se%omega_calc(:), DIM=1)
   last_omega  = UBOUND(se%omega_calc(:), DIM=1)
 
-  call start_clock(timing_gw_self)
+  call timer_gw_self%start()
 
   write(stdout, '(/,1x,a)') 'FSOS self-energy on a grid of imaginary frequencies centered on the HOMO-LUMO gap'
   write(stdout, '(/,1x,a)') '========= Sigma evaluated at frequencies (eV): ========='
   do iomega_sigma=first_omega, last_omega
     write(stdout, '(1x,i4,1x,f14.4,1x,f14.4)') iomega_sigma, se%omega_calc(iomega_sigma)*Ha_eV
-  enddo
+  end do
   write(stdout, '(1x,a)') '========================================================'
 
   nstate = SIZE(energy, DIM=1)
 
 
-  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timing_aomo_gw)
+  call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1, timing=timer_aomo_gw)
 
   !
   ! Initialize wpol_imag any way to obtain the quadrature grid points and weights
   call wpol_imag%init(nstate, occupation, nomega_chi_imag, grid_type=IMAGINARY_QUAD)
   if( analytic_chi_ ) then
     call wpol_analytic%init(nstate, occupation, 0, grid_type=NO_GRID)
-    call polarizability(.TRUE., .TRUE., basis, occupation, energy, c_matrix, erpa, egw, wpol_analytic)
+    call wpol_analytic%enforce_approximation('RPA')
+    call polarizability(basis, occupation, energy, c_matrix, wpol_analytic)
   else
     call wpol_imag%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.FALSE.)
-  endif
+  end if
 
 
   prange = nvirtual_G - ncore_G - 1
@@ -755,11 +753,11 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
             call wpol_analytic%evaluate(wpol_imag%omega(iomegap), chi_wp)
           else
             chi_wp(:, :) = wpol_imag%chi(:, :, iomegap)
-          endif
-        endif
+          end if
+        end if
         do iauxil=1, nauxil_global
           chi_wp(iauxil, iauxil) = chi_wp(iauxil, iauxil) + 1.0_dp
-        enddo
+        end do
         write(stdout, '(1x,a,i4,a,i4)') 'Quadrature on iwp: ', iomegap, ' / ', wpol_imag%nomega
 
         !
@@ -783,11 +781,11 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
                 wpol_one%omega(1) = omega_cmplx
                 call wpol_one%vsqrt_chi_vsqrt_rpa(occupation, energy, c_matrix, low_rank=.FALSE., verbose=.FALSE.)
                 chi_wwp(:, :) = wpol_one%chi(:, :, 1)
-              endif
-            endif
+              end if
+            end if
             do iauxil=1, nauxil_global
               chi_wwp(iauxil, iauxil) = chi_wwp(iauxil, iauxil) + 1.0_dp
-            enddo
+            end do
             !write(stdout,*) iomegap,isignp,iomega_sigma,se%omega_calc(iomega_sigma)
 
             allocate(eri3_i_m(nauxil_global, ncore_G+1:nhomo_G))
@@ -848,10 +846,10 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
                                 + wpol_imag%weight_quad(iomegap) &
                                     * braket1 / denom1 * braket2 / denom2 / (2.0_dp * pi)
 
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
+            end do
 
             deallocate(eri3_i_m)
             deallocate(eri3_i_a)
@@ -928,10 +926,10 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
                                 - wpol_imag%weight_quad(iomegap) &
                                     * braket1 / denom1 * braket2 / denom2 / (2.0_dp * pi)
 
-                enddo
-              enddo
+                end do
+              end do
 
-            enddo
+            end do
 
             deallocate(eri3_a_m)
             deallocate(eri3_a_i)
@@ -943,12 +941,12 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
             deallocate(eri3_r_m)
 
             if( .NOT. analytic_chi_ ) call wpol_one%destroy(verbose=.FALSE.)
-          enddo !iomega_sigma
-        enddo ! isignp
-      enddo !iomegap
+          end do !iomega_sigma
+        end do ! isignp
+      end do !iomegap
 
-    enddo
-  enddo
+    end do
+  end do
   call poorman%sum(sigmagw)
 
   se%sigma_calc(:, :, :) = se%sigma_calc(:, :, :) + sigmagw(:, :, :)
@@ -959,7 +957,7 @@ subroutine fsos_selfenergy_grid(basis, energy, occupation, c_matrix, se)
 
   call destroy_eri_3center_mo()
 
-  call stop_clock(timing_gw_self)
+  call timer_gw_self%stop()
 
 end subroutine fsos_selfenergy_grid
 

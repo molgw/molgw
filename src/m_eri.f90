@@ -22,6 +22,8 @@ module m_eri
   use m_inputparam, only: integral_level
 
 
+  implicit none
+
   real(dp), parameter, public :: TOO_LOW_EIGENVAL=1.0e-6_dp
 
   !
@@ -79,7 +81,6 @@ contains
 
 !=========================================================================
 subroutine prepare_eri(basis)
-  implicit none
   !=====
   type(basis_set), intent(inout) :: basis
   !=====
@@ -110,7 +111,7 @@ subroutine prepare_eri(basis)
     call identify_negligible_shellpair(basis)
     call setup_shellpair(basis)
     call setup_basispair(basis)
-  endif
+  end if
 
 
   ! Carefully perform this calculation with 8-byte integers since the result can be very very large
@@ -122,40 +123,37 @@ end subroutine prepare_eri
 
 !=========================================================================
 subroutine deallocate_eri_4center()
-  implicit none
   !=====
 
   if(ALLOCATED(eri_4center)) then
     call clean_deallocate('4-center integrals', eri_4center)
-  endif
+  end if
 
 end subroutine deallocate_eri_4center
 
 
 !=========================================================================
 subroutine deallocate_eri_4center_lr()
-  implicit none
   !=====
 
   if(ALLOCATED(eri_4center_lr)) then
     call clean_deallocate('4-center LR integrals', eri_4center_lr)
-  endif
+  end if
 
 end subroutine deallocate_eri_4center_lr
 
 
 !=========================================================================
 subroutine deallocate_eri()
-  implicit none
 
   !=====
 
   if(ALLOCATED(eri_4center)) then
     call clean_deallocate('4-center integrals', eri_4center)
-  endif
+  end if
   if(ALLOCATED(eri_4center_lr)) then
     call clean_deallocate('4-center LR integrals', eri_4center_lr)
-  endif
+  end if
   if(ALLOCATED(negligible_shellpair))   deallocate(negligible_shellpair)
   if(ALLOCATED(index_shellpair))        deallocate(index_shellpair)
   if(ALLOCATED(index_pair_1d)) call clean_deallocate('index pair', index_pair_1d)
@@ -169,7 +167,6 @@ end subroutine deallocate_eri
 
 !=========================================================================
 pure function index_eri(ibf, jbf, kbf, lbf)
-  implicit none
 
   integer, intent(in) :: ibf, jbf, kbf, lbf
   integer(kind=int8) :: index_eri
@@ -192,7 +189,6 @@ end function index_eri
 
 !=========================================================================
 pure function index_pair(ibf, jbf)
-  implicit none
 
   integer, intent(in) :: ibf, jbf
   integer            :: index_pair
@@ -211,7 +207,6 @@ end function index_pair
 
 !=========================================================================
 elemental function eri(ibf, jbf, kbf, lbf)
-implicit none
 integer, intent(in) :: ibf, jbf, kbf, lbf
 real(dp)           :: eri
 !=====
@@ -220,14 +215,13 @@ if( negligible_basispair(ibf, jbf) .OR. negligible_basispair(kbf, lbf) ) then
   eri = 0.0_dp
 else
   eri = eri_4center(index_eri(ibf, jbf, kbf, lbf))
-endif
+end if
 
 end function eri
 
 
 !=========================================================================
 function eri_lr(ibf, jbf, kbf, lbf)
-  implicit none
   integer, intent(in) :: ibf, jbf, kbf, lbf
   real(dp)           :: eri_lr
   !=====
@@ -236,14 +230,13 @@ function eri_lr(ibf, jbf, kbf, lbf)
     eri_lr = 0.0_dp
   else
     eri_lr = eri_4center_lr(index_eri(ibf, jbf, kbf, lbf))
-  endif
+  end if
 
 end function eri_lr
 
 
 !=========================================================================
 subroutine setup_shell_index(basis)
-  implicit none
 
   type(basis_set), intent(in)   :: basis
   !=====
@@ -257,7 +250,6 @@ end subroutine setup_shell_index
 
 !=========================================================================
 subroutine setup_basispair(basis)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   !=====
@@ -272,9 +264,9 @@ subroutine setup_basispair(basis)
     do ibf=1, jbf
       if( .NOT. negligible_basispair(ibf, jbf) ) then
         npair = npair + 1
-      endif
-    enddo
-  enddo
+      end if
+    end do
+  end do
 
   call clean_allocate('index pair', index_pair_1d, (nbf_eri*(nbf_eri+1))/2)
   call clean_allocate('index basis', index_basis, 2, npair)
@@ -304,8 +296,8 @@ subroutine setup_basispair(basis)
           index_pair_1d(ijbf)  = ipair
           index_basis(1, ipair) = basis%shell(ishell)%istart + ibf - 1
           index_basis(2, ipair) = basis%shell(jshell)%istart + jbf - 1
-        enddo
-      enddo
+        end do
+      end do
     else
       do jbf=1, nj
         do ibf=1, jbf
@@ -318,11 +310,11 @@ subroutine setup_basispair(basis)
           index_pair_1d(ijbf)  = ipair
           index_basis(1, ipair) = basis%shell(ishell)%istart + ibf - 1
           index_basis(2, ipair) = basis%shell(jshell)%istart + jbf - 1
-        enddo
-      enddo
-    endif
+        end do
+      end do
+    end if
 
-  enddo
+  end do
 
 
 end subroutine setup_basispair
@@ -330,7 +322,6 @@ end subroutine setup_basispair
 
 !=========================================================================
 pure function negligible_basispair(ibf, jbf)
-  implicit none
 
   integer, intent(in) :: ibf, jbf
   logical :: negligible_basispair
@@ -355,7 +346,6 @@ end function negligible_basispair
 !
 !=========================================================================
 subroutine identify_negligible_shellpair(basis)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   !=====
@@ -384,9 +374,9 @@ subroutine identify_negligible_shellpair(basis)
     negligible_shellpair(:, :) = .FALSE.
     write(stdout, '(/,a)') ' Integral quality is insane, skip Cauchy-Schwartz screening'
     return
-  endif
+  end if
 
-  call start_clock(timing_eri_screening)
+  call timer_eri_screening%start()
 #if defined(HAVE_LIBCINT)
   write(stdout, '(/,a)')    ' Cauchy-Schwartz screening of the 3- or 4-center integrals (LIBCINT)'
   call set_erf_screening_length_libcint(basis, 0.0_dp)
@@ -405,7 +395,7 @@ subroutine identify_negligible_shellpair(basis)
     ! Cost function was evaluated from a few runs
     workload(ip) = workload(ip) + cost_function_eri(amj)
     shell_proc(jshell) = ip - 1
-  enddo
+  end do
 
 
   negligible_shellpair(:, :) = .TRUE.
@@ -471,8 +461,8 @@ subroutine identify_negligible_shellpair(basis)
       do ibf=1, ni
         do jbf=1, nj
           if( SQRT( ABS( integrals(ibf, jbf, ibf, jbf) ) ) > TOL_INT ) negligible_shellpair(ishell, jshell) = .FALSE.
-        enddo
-      enddo
+        end do
+      end do
 
       !
       ! Symmetrize
@@ -481,17 +471,17 @@ subroutine identify_negligible_shellpair(basis)
       deallocate(integrals)
       deallocate(int_shell)
 
-    enddo
+    end do
     !$OMP END DO
     !$OMP END PARALLEL
     deallocate(alpha2, coeff2)
-  enddo
+  end do
 
   call world%and(negligible_shellpair)
   !do ishell=1, basis%nshell
   !  write(stdout, *) negligible_shellpair(:, ishell)
   !end do
-  call stop_clock(timing_eri_screening)
+  call timer_eri_screening%stop()
 
 
 end subroutine identify_negligible_shellpair
@@ -499,7 +489,6 @@ end subroutine identify_negligible_shellpair
 
 !=========================================================================
 subroutine setup_shellpair(basis)
-  implicit none
 
   type(basis_set), intent(in) :: basis
   !=====
@@ -520,8 +509,8 @@ subroutine setup_shellpair(basis)
       if( negligible_shellpair(ishell, jshell) ) cycle
       ishellpair = ishellpair + 1
 
-    enddo
-  enddo
+    end do
+  end do
   nshellpair = ishellpair
   write(stdout, '(/,1x,a,i8,a,i8)') 'Non negligible shellpairs to be computed', nshellpair, '  over a total of', jshellpair
   write(stdout, '(1x,a,f12.4)')     'Saving (%): ', REAL(jshellpair-nshellpair, dp)/REAL(jshellpair, dp)*100.0_dp
@@ -555,12 +544,12 @@ subroutine setup_shellpair(basis)
         else
           index_shellpair(1, ishellpair) = jshell
           index_shellpair(2, ishellpair) = ishell
-        endif
+        end if
 
-      enddo
-    enddo
+      end do
+    end do
 
-  enddo
+  end do
 
 
 end subroutine setup_shellpair
@@ -568,49 +557,46 @@ end subroutine setup_shellpair
 
 !=================================================================
 subroutine destroy_eri_3center_lowerlevel()
-  implicit none
   !=====
 
   if(ALLOCATED(iproc_ibf_auxil)) then
     deallocate(iproc_ibf_auxil)
-  endif
+  end if
   if(ALLOCATED(ibf_auxil_g)) then
     deallocate(ibf_auxil_g)
-  endif
+  end if
   if(ALLOCATED(ibf_auxil_l)) then
     deallocate(ibf_auxil_l)
-  endif
+  end if
   if(ALLOCATED(eri_3center)) then
     call clean_deallocate('3-center integrals', eri_3center)
-  endif
+  end if
 
 end subroutine destroy_eri_3center_lowerlevel
 
 
 !=================================================================
 subroutine destroy_eri_3center_lr()
-  implicit none
   !=====
 
   if(ALLOCATED(iproc_ibf_auxil_lr)) then
     deallocate(iproc_ibf_auxil_lr)
-  endif
+  end if
   if(ALLOCATED(ibf_auxil_g_lr)) then
     deallocate(ibf_auxil_g_lr)
-  endif
+  end if
   if(ALLOCATED(ibf_auxil_l_lr)) then
     deallocate(ibf_auxil_l_lr)
-  endif
+  end if
   if(ALLOCATED(eri_3center_lr)) then
     call clean_deallocate('LR 3-center integrals', eri_3center_lr)
-  endif
+  end if
 
 end subroutine destroy_eri_3center_lr
 
 
 !=========================================================================
 subroutine dump_out_eri(rcut)
-  implicit none
   real(dp), intent(in) :: rcut
   !=====
   character(len=50)  :: filename
@@ -622,7 +608,7 @@ subroutine dump_out_eri(rcut)
     filename='molgw_eri.data'
   else
     filename='molgw_eri_lr.data'
-  endif
+  end if
   write(stdout, *) 'Dump out the ERI into file'
   write(stdout, *) 'Size of file (Gbytes)', REAL(nint_4center, dp) * dp / 1024.0_dp**3
 
@@ -636,10 +622,10 @@ subroutine dump_out_eri(rcut)
     do iline=1, nline
       write(erifile) eri_4center(icurrent+1:MIN(nint_4center, icurrent+line_length+1))
       icurrent = icurrent + line_length + 1
-    enddo
+    end do
 
     close(erifile)
-  endif
+  end if
 
   write(stdout, '(a,/)') ' file written'
 
@@ -648,7 +634,6 @@ end subroutine dump_out_eri
 
 !=========================================================================
 logical function read_eri(rcut)
-implicit none
 real(dp), intent(in) :: rcut
 !=====
 character(len=50)  :: filename
@@ -662,7 +647,7 @@ if(rcut < 1.0e-6_dp) then
   filename = 'molgw_eri.data'
 else
   filename = 'molgw_eri_lr.data'
-endif
+end if
 
 inquire(file=TRIM(filename), exist=read_eri)
 
@@ -682,16 +667,16 @@ if(read_eri) then
     do iline=1, nline
       read(erifile) eri_4center(icurrent+1:MIN(nint_4center, icurrent+line_length+1))
       icurrent = icurrent + line_length + 1
-    enddo
+    end do
     write(stdout, '(a,/)') ' ERI file read'
 
   else
     write(stdout, '(a,/)') ' reading aborted'
-  endif
+  end if
 
   close(erifile)
 
-endif
+end if
 
 
 end function read_eri
@@ -703,7 +688,6 @@ end function read_eri
 !
 !=========================================================================
 function cost_function_eri(am)
-  implicit none
   integer, intent(in)  :: am
   real(dp)            :: cost_function_eri
   !=====
@@ -715,7 +699,6 @@ end function cost_function_eri
 
 !=========================================================================
 subroutine distribute_auxil_basis(nbf_auxil_basis)
-  implicit none
 
   integer, intent(in)  :: nbf_auxil_basis
   !=====
@@ -729,20 +712,20 @@ subroutine distribute_auxil_basis(nbf_auxil_basis)
 
   do iproc=0, npcol_eri3_ao-1
     nbf_local_iproc(iproc) = NUMROC(nbf_auxil_basis, NB_eri3_ao, iproc, first_col, npcol_eri3_ao)
-  enddo
+  end do
 
   nauxil_local = nbf_local_iproc(ipcol_eri3_ao)
 
   allocate(ibf_auxil_g(nauxil_local))
   do ilocal=1, nauxil_local
     ibf_auxil_g(ilocal) = INDXL2G(ilocal, NB_eri3_ao, ipcol_eri3_ao, first_col, npcol_eri3_ao)
-  enddo
+  end do
   allocate(ibf_auxil_l(nbf_auxil_basis))
   allocate(iproc_ibf_auxil(nbf_auxil_basis))
   do iglobal=1, nbf_auxil_basis
     ibf_auxil_l(iglobal)     = INDXG2L(iglobal, NB_eri3_ao, 0, first_col, npcol_eri3_ao)
     iproc_ibf_auxil(iglobal) = INDXG2P(iglobal, NB_eri3_ao, 0, first_col, npcol_eri3_ao)
-  enddo
+  end do
 
 
   write(stdout, '(/,a)') ' Distribute auxiliary basis functions among processors'
@@ -755,7 +738,6 @@ end subroutine distribute_auxil_basis
 
 !=========================================================================
 subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
-  implicit none
 
   integer, intent(in)  :: nbf_auxil_basis
   !=====
@@ -772,20 +754,20 @@ subroutine distribute_auxil_basis_lr(nbf_auxil_basis)
 
   do iproc=0, npcol_eri3_ao-1
     nbf_local_iproc_lr(iproc) = NUMROC(nbf_auxil_basis, NB_eri3_ao, iproc, first_col, npcol_eri3_ao)
-  enddo
+  end do
 
   nauxil_local_lr = nbf_local_iproc_lr(ipcol_eri3_ao)
 
   allocate(ibf_auxil_g_lr(nauxil_local_lr))
   do ilocal=1, nauxil_local_lr
     ibf_auxil_g_lr(ilocal) = INDXL2G(ilocal, NB_eri3_ao, ipcol_eri3_ao, first_col, npcol_eri3_ao)
-  enddo
+  end do
   allocate(ibf_auxil_l_lr(nbf_auxil_basis))
   allocate(iproc_ibf_auxil_lr(nbf_auxil_basis))
   do iglobal=1, nbf_auxil_basis
     ibf_auxil_l_lr(iglobal)     = INDXG2L(iglobal, NB_eri3_ao, 0, first_col, npcol_eri3_ao)
     iproc_ibf_auxil_lr(iglobal) = INDXG2P(iglobal, NB_eri3_ao, 0, first_col, npcol_eri3_ao)
-  enddo
+  end do
 
   write(stdout, '(/,a)') ' Distribute LR auxiliary basis functions among processors'
   write(stdout, '(1x,a,i4,a,i6,a)') 'Max auxiliary basis functions ', &
@@ -799,7 +781,6 @@ end subroutine distribute_auxil_basis_lr
 
 !=========================================================================
 subroutine reshuffle_distribution_3center()
-  implicit none
 
   !=====
 #if defined(HAVE_SCALAPACK)
@@ -817,7 +798,7 @@ subroutine reshuffle_distribution_3center()
   if( nprow_eri3_ao == nprow_3center .AND. npcol_eri3_ao == npcol_3center .AND. MB_eri3_ao == MB_3center ) then
     write(stdout, *) 'Reshuffling not needed'
     return
-  endif
+  end if
 
   if( cntxt_eri3_ao > 0 ) then
     mlocal = NUMROC(npair        , MB_eri3_ao, iprow_eri3_ao, first_row, nprow_eri3_ao)
@@ -825,7 +806,7 @@ subroutine reshuffle_distribution_3center()
   else
     mlocal = -1
     nlocal = -1
-  endif
+  end if
   call poorman%max(mlocal)
   call poorman%max(nlocal)
 
@@ -842,13 +823,13 @@ subroutine reshuffle_distribution_3center()
   else
     call clean_deallocate('3-center integrals', eri_3center)
     call clean_allocate('3-center integrals', eri_3center, mlocal, nlocal)
-  endif
+  end if
 
   !
   ! Propagate to the poorman MPI direction
   if( cntxt_eri3_ao <= 0 ) then
     eri_3center(:, :) = 0.0_dp
-  endif
+  end if
   call poorman%sum(eri_3center)
 #endif
 

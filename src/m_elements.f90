@@ -12,6 +12,8 @@ module m_elements
   use m_warning, only: die
 
 
+  implicit none
+
   integer, parameter          :: nelement_max = 103
   character(len=2), parameter :: element_list(nelement_max) =                                    &
     (/' H',                                                                                'He', &  !   2
@@ -36,7 +38,6 @@ contains
 
 !=========================================================================
 function element_core(zval, zatom)
-  implicit none
   real(dp), intent(in) :: zval
   real(dp), intent(in) :: zatom
   integer             :: element_core
@@ -59,17 +60,48 @@ function element_core(zval, zatom)
       element_core = 9
     else
       element_core = 18
-    endif
+    end if
 
-  endif
+  end if
 
 
 end function element_core
 
 
 !=========================================================================
+function element_core_gaussian(zval, zatom) result(element_core)
+  real(dp), intent(in) :: zval
+  real(dp), intent(in) :: zatom
+  integer             :: element_core
+  !=====
+
+  !
+  ! If zval /= zatom, this is certainly an effective core potential
+  ! and no core states should be frozen.
+  if( ABS(zval - zatom) > 1.0e-3_dp ) then
+    element_core = 0
+  else
+
+    if( zval <= 2.00001 ) then  ! up to He
+      element_core = 0
+    else if( zval <= 10.00001 ) then  ! up to Ar
+      element_core = 1
+    else if( zval <= 30.00001 ) then  ! up to Zn
+      element_core = 5
+    else if( zval <= 48.00001 ) then  ! up to Cd
+      element_core = 9
+    else
+      element_core = 18
+    end if
+
+  end if
+
+
+end function element_core_gaussian
+
+
+!=========================================================================
 function element_covalent_radius(zatom)
-  implicit none
   integer, intent(in) :: zatom
   real(dp)           :: element_covalent_radius
   !=====
@@ -165,7 +197,6 @@ end function element_covalent_radius
 
 !=========================================================================
 function element_number(element_name)
-  implicit none
   character(len=*), intent(in) :: element_name
   integer                     :: element_number
   !=====
@@ -178,9 +209,9 @@ function element_number(element_name)
       write(stdout, '(a,a)')    ' Input symbol ', element_name
       write(stdout, '(a,i3,a)') ' Element symbol is not one of first ', nelement_max, ' elements'
       call die('element symbol not understood')
-    endif
+    end if
     ielement = ielement + 1
-  enddo
+  end do
 
   element_number = ielement
 
@@ -191,7 +222,6 @@ end function element_number
 !=========================================================================
 ! Return the element symbol from the Z number (be it integer or real)
 function element_name(zatom)
-  implicit none
 
   class(*), intent(in) :: zatom
   character(len=2)  :: element_name
@@ -209,11 +239,11 @@ function element_name(zatom)
   if( zatom_int == 0 ) then
     element_name='X'
     return
-  endif
+  end if
   if( zatom_int > nelement_max ) then
     write(stdout, '(a,i3,a)') 'Element symbol is not one of first ', nelement_max, ' elements'
     call die('element_name: element symbol not understood')
-  endif
+  end if
 
   ! use ABS() for anti-nucleus
   element_name = element_list(ABS(zatom_int))
@@ -225,7 +255,6 @@ end function element_name
 !=========================================================================
 ! Return the element symbol from the Z number (be it integer or real)
 function element_name_long(zatom)
-  implicit none
 
   class(*), intent(in) :: zatom
   character(len=8)  :: element_name_long
@@ -246,13 +275,13 @@ function element_name_long(zatom)
   if( zatom_int > nelement_max ) then
     write(stdout, '(a,i3,a)') 'Element symbol is not one of first ', nelement_max, ' elements'
     call die('element_name_long: element symbol not understood')
-  endif
+  end if
 
   if( zatom_real > 0.0 .AND. ABS(zatom_int - zatom_real) < 1.0e-9_dp ) then
     element_name_long = element_list(ABS(zatom_int))
   else
     write(element_name_long, '(f8.4)') zatom_real
-  endif
+  end if
 
 
 end function element_name_long
@@ -260,7 +289,6 @@ end function element_name_long
 
 !=========================================================================
 subroutine element_atomicdensity(zval, zatom, coeff, alpha)
-  implicit none
   real(dp), intent(in)  :: zval
   real(dp), intent(in)   :: zatom
   real(dp), intent(out) :: coeff(4)
@@ -269,41 +297,41 @@ subroutine element_atomicdensity(zval, zatom, coeff, alpha)
 
   select case(NINT(zatom))
   case( 1)
-    alpha(1) = 0.191852
-    alpha(2) = 5.6143
-    alpha(3) = 0.510303
-    alpha(4) = 1.47022
-    coeff(1) = 0.208981
-    coeff(2) = 0.0287008
-    coeff(3) = 0.358982
-    coeff(4) = 0.168689
+    alpha(1) = 0.191852_dp
+    alpha(2) = 5.6143_dp
+    alpha(3) = 0.510303_dp
+    alpha(4) = 1.47022_dp
+    coeff(1) = 0.208981_dp
+    coeff(2) = 0.0287008_dp
+    coeff(3) = 0.358982_dp
+    coeff(4) = 0.168689_dp
   case( 6)
-    alpha(1) = 0.294412
-    alpha(2) = 68.2412
-    alpha(3) = 16.7565
-    alpha(4) = 0.852332
-    coeff(1) = 1.90506
-    coeff(2) = 0.485794
-    coeff(3) = 1.2976
-    coeff(4) = 2.24937
+    alpha(1) = 0.294412_dp
+    alpha(2) = 68.2412_dp
+    alpha(3) = 16.7565_dp
+    alpha(4) = 0.852332_dp
+    coeff(1) = 1.90506_dp
+    coeff(2) = 0.485794_dp
+    coeff(3) = 1.2976_dp
+    coeff(4) = 2.24937_dp
   case( 7)
-    alpha(1) = 0.404121
-    alpha(2) = 23.2108
-    alpha(3) = 1.24119
-    alpha(4) = 93.8394
-    coeff(1) = 2.37996
-    coeff(2) = 1.29369
-    coeff(3) = 2.7861
-    coeff(4) = 0.49092
+    alpha(1) = 0.404121_dp
+    alpha(2) = 23.2108_dp
+    alpha(3) = 1.24119_dp
+    alpha(4) = 93.8394_dp
+    coeff(1) = 2.37996_dp
+    coeff(2) = 1.29369_dp
+    coeff(3) = 2.7861_dp
+    coeff(4) = 0.49092_dp
   case( 8)
-    alpha(1) = 122.833
-    alpha(2) = 30.5529
-    alpha(3) = 0.536011
-    alpha(4) = 1.71315
-    coeff(1) = 0.495436
-    coeff(2) = 1.27809
-    coeff(3) = 2.85614
-    coeff(4) = 3.27719
+    alpha(1) = 122.833_dp
+    alpha(2) = 30.5529_dp
+    alpha(3) = 0.536011_dp
+    alpha(4) = 1.71315_dp
+    coeff(1) = 0.495436_dp
+    coeff(2) = 1.27809_dp
+    coeff(3) = 2.85614_dp
+    coeff(4) = 3.27719_dp
   case(79) ! Au
     if( NINT(zval) == 19 ) then   ! Au ECP
       coeff(1) = zval -2.0_dp + 4.1_dp
@@ -323,7 +351,7 @@ subroutine element_atomicdensity(zval, zatom, coeff, alpha)
       coeff(4) = 0.0_dp
       alpha(3) = 1.0_dp
       alpha(4) = 1.0_dp
-    endif
+    end if
   case default
     alpha(1) = 0.3_dp
     coeff(1) = 2.0_dp
