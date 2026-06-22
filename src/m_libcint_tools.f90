@@ -131,6 +131,14 @@ module m_libcint_tools
       real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_r2_origj_cart
 
+    integer(C_INT) function cint1e_r2_origj_sph(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+    end function cint1e_r2_origj_sph
+
     integer(C_INT) function cint1e_r4_origj_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
       import :: C_INT, C_DOUBLE
       integer(C_INT), value  :: natm, nbas
@@ -138,6 +146,14 @@ module m_libcint_tools
       integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
       real(C_DOUBLE), intent(out) :: array_cart(*)
     end function cint1e_r4_origj_cart
+
+    integer(C_INT) function cint1e_r4_origj_sph(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
+      import :: C_INT, C_DOUBLE
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+    end function cint1e_r4_origj_sph
 
     integer(C_INT) function cint1e_kin_cart(array_cart, shls, atm, natm, bas, nbas, env) bind(C)
       import :: C_INT, C_DOUBLE
@@ -291,7 +307,7 @@ subroutine check_capability_libcint(lmax)
   real(C_DOUBLE), allocatable :: ovlp(:)
   !=====
 
-  ! LIBCINT goes up to lmax=7
+  ! LIBCINT goes up to lmax = LMAX_LIBCINT
   if( lmax > 0 ) then
     lmax = MIN(lmax, LMAX_LIBCINT)
   else
@@ -1137,6 +1153,8 @@ end subroutine libcint_overlap_3center
 ! if iproj=1, it reduces to an overlap
 ! if iproj=2, it reduces to an int1e_r2_origj
 ! if iproj=3, it reduces to an int1e_r4_origj
+!
+! Only coded for pure gaussian
 subroutine libcint_gth_projector(amA, contrdepthA, A, alphaA, cA, &
                                  amC, contrdepthC, C, alphaC, cC, &
                                  iproj, ovlpAC)
@@ -1156,8 +1174,11 @@ subroutine libcint_gth_projector(amA, contrdepthA, A, alphaA, cA, &
   integer(C_INT) :: tmp_atm(LIBCINT_ATM_SLOTS, 2)
   integer(C_INT) :: tmp_bas(LIBCINT_BAS_SLOTS, 2)
   integer(C_INT) :: shls(2)
-  integer        :: info, off
+  integer        :: info, off, i, j, m, n
+  real(C_DOUBLE), allocatable :: ovlpCA(:)
   !=====
+
+  allocate(ovlpCA, MOLD=ovlpAC)
 
   tmp_env(:) = 0.0_dp
 
@@ -1203,22 +1224,38 @@ subroutine libcint_gth_projector(amA, contrdepthA, A, alphaA, cA, &
   off = off + contrdepthA
 
 
-  ! When calling cint1e_r2_origj_cart, (r-RC)² is taken with respect to the second center
-  ! One should absolutely stick to this ordering:
+  ! WARNING:
+  ! In LIBCINT functions cint1e_r2_origj_cart and cint1e_r4_origj_cart
+  ! r2_origj means < φ_i | (r-R_j)² | φ_j >
+  ! where R_j is the center of φ_j
+  ! we need to revert shells here (against the convention used everywhere else in the code.
+  ! Regular ordering is recovered just after the LIBCINT calls.
   shls(1) = 1
   shls(2) = 0
 
 #if defined(HAVE_LIBCINT)
   select case(iproj)
   case(1)
-    info = cint1e_ovlp_cart(ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+    info = cint1e_ovlp_sph(ovlpCA, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
   case(2)
-    info = cint1e_r2_origj_cart(ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+    info = cint1e_r2_origj_sph(ovlpCA, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
   case(3)
-    info = cint1e_r4_origj_cart(ovlpAC, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
+    info = cint1e_r4_origj_sph(ovlpCA, shls, tmp_atm, 2_C_INT, tmp_bas, 2_C_INT, tmp_env)
   case default
   end select
 #endif
+
+
+  ! "Transpose" operation to recover the usual ordering of the code
+  m = number_basis_function_am('PUREG', amC)
+  n = number_basis_function_am('PUREG', amA)
+  do i = 1, m
+    do j = 1, n
+      ovlpAC((j-1) * m + i) = ovlpCA((i-1) * n + j)
+    end do
+  end do
+
+  deallocate(ovlpCA)
 
 
 end subroutine libcint_gth_projector
@@ -1364,6 +1401,63 @@ subroutine transform_libcint_to_molgw_3d(gaussian_type_left, am1, gaussian_type_
   end if
 
 end subroutine transform_libcint_to_molgw_3d
+
+
+!=========================================================================
+! With GTH projector, basis and projectors are always pure
+!
+! index 1 (am1, n1) is for the projector
+! index 2 (am2, n2) is for basis function
+! but on output, it is transposed matrix_out(basis, proj)
+subroutine transform_libcint_to_molgw_gth_projector(gaussian_type, am1, am2, array_in, matrix_out)
+  implicit none
+  character(len=4), intent(in)      :: gaussian_type
+  integer, intent(in)               :: am1, am2
+  real(C_DOUBLE), intent(in)        :: array_in(:)
+  real(dp), allocatable, intent(out) :: matrix_out(:, :)
+  !=====
+  integer :: n1, n2
+  integer :: ii, i1, i2
+  integer :: gt_tag
+  real(dp), allocatable :: matrix_tmp(:, :)
+  !=====
+
+  gt_tag = get_gaussian_type_tag(gaussian_type)
+  if( gt_tag /= PUREG ) call die("transform_libcint_to_molgw_gth_projector: gaussian_type=PURE is needed for GTH pseudos")
+
+  n1  = number_basis_function_am(gaussian_type, am1)
+  n2  = number_basis_function_am(gaussian_type, am2)
+
+  if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n2, n1))
+
+  ! Be aware.
+  ! We switched the loop ordering here as compared to the other routines of the same family
+  ii = 0
+  do i2=1, n2
+    do i1=1, n1
+      ii = ii + 1
+      matrix_out(i2, i1) = array_in(ii) * libcint_pure_norm(am2)
+    enddo
+  enddo
+
+  ! Special treatment for p-orbital in the libcint ordering
+  if( (am2 == 1) .AND. .NOT. pypzpx_order ) then
+    allocate(matrix_tmp, SOURCE=matrix_out)
+    matrix_out(1, :) = matrix_tmp(2, :)
+    matrix_out(2, :) = matrix_tmp(3, :)
+    matrix_out(3, :) = matrix_tmp(1, :)
+    deallocate(matrix_tmp)
+  endif
+  if( (am1 == 1) .AND. .NOT. pypzpx_order ) then
+    allocate(matrix_tmp, SOURCE=matrix_out)
+    matrix_out(:, 1) = matrix_tmp(:, 2)
+    matrix_out(:, 2) = matrix_tmp(:, 3)
+    matrix_out(:, 3) = matrix_tmp(:, 1)
+    deallocate(matrix_tmp)
+  endif
+
+
+end subroutine transform_libcint_to_molgw_gth_projector
 
 
 !=========================================================================

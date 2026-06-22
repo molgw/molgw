@@ -650,10 +650,11 @@ program molgw
       call write_cc4s_coulombvertex(nauxil_global, eri_3center_mo, rootname=cc4s_output)
       call destroy_eri_3center_mo()
     else
-      call calculate_coulombvertex_periodic(c_matrix)
-      call write_cc4s_coulombvertex(desc_eri3_mo_periodic(M_), eri_3center_mo_periodic, desc=desc_eri3_mo_periodic, &
-                                    rootname=cc4s_output)
-      call destroy_eri_3center_mo_periodic()
+      call calculate_coulombvertex_periodic(c_matrix, rootname=cc4s_output)
+      !call calculate_coulombvertex_periodic_legacy(c_matrix)
+      !call write_cc4s_coulombvertex(desc_eri3_mo_periodic(M_), eri_3center_mo_periodic, desc=desc_eri3_mo_periodic, &
+      !                              rootname=cc4s_output)
+      !call destroy_eri_3center_mo_periodic_legacy()
     end if
   end if
 

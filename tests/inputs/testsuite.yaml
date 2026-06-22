@@ -546,6 +546,17 @@ ne2_gth.in:
     -   gKS HOMO energy:
             reference: 6.537665
             tolerance: 0.001
+sih4_gth.in:
+    description: LDA silane molecule with analytical pseudo in GTH formalism
+    keywords: [DFT, ECP]
+    requirements: [HAVE_LIBCINT]
+    checks:
+    -   SCF Total Energy:
+            reference: -6.2359561987
+            tolerance: 1.0e-07
+    -   gKS HOMO energy:
+            reference: -8.504489
+            tolerance: 0.0001
 h2o_scalapack.in:
     description: H2O molecule within PBE0 with possibly SCALAPACK
     keywords: [hybrid]
@@ -2617,7 +2628,7 @@ sih4_sc-cohsex.in:
     -   gKS LUMO energy:
             reference: 3.880683
             tolerance: 0.0001
-sih4_g0w0@sc-cohsex.in:
+oih4_g0w0@sc-cohsex.in:
     description: G0W0 for SiH4 based on the previous sc-COHSEX run
     keywords: [DFT, GW]
     dependence: [sih4_sc-cohsex.in]
@@ -3841,3 +3852,4 @@ co2_gw@pbeh_dm_cederbaum.in:
     -   Exchange HOMO expectation:
             reference: -23.873869
             tolerance: 0.0001
+...
