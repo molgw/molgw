@@ -2628,7 +2628,7 @@ sih4_sc-cohsex.in:
     -   gKS LUMO energy:
             reference: 3.880683
             tolerance: 0.0001
-oih4_g0w0@sc-cohsex.in:
+sih4_g0w0@sc-cohsex.in:
     description: G0W0 for SiH4 based on the previous sc-COHSEX run
     keywords: [DFT, GW]
     dependence: [sih4_sc-cohsex.in]

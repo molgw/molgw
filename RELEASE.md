@@ -12,7 +12,8 @@
 - Linking with accelerated integral library `qcint`
 - Interface with CC4S
 - Now available the HF/DFT Bogoliubov methods for molecular systems
-- Bug fixes
+- Bug fixes (including GTH pseudopotential)
+- Vast refactoring and beautifications with Claude
 
 ### Contributors
 
@@ -39,6 +40,7 @@
 - Adding an orthogonalization step when reading a RESTART file using a different basis
 - Bug fix for range-separated hybrid in LR-TDDFT when alpha=0, beta /= 0
 - Spectral functions in files `selfenergy_XX_stateYYYY.dat` had incorrect eta sign 
+- Bug fix for GTH pseudopotentials
 
 ### Changes affecting the compilation
 
@@ -48,6 +50,9 @@
 ### Changes affecting the developers
 
 - A new self-consistent procedure is added (to run HF/DFT Bogoliubov calculations)
+- Testsuite has been refactored. The main file is now `tests/inputs/testsuite.yaml`.
+`run_testsuite.py` has many more options, including a keyword-based selection of tests.
+- New timers objects in place of the integer-based architecture
 
 ---
 
