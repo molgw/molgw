@@ -33,7 +33,7 @@ module m_timing
   integer, private :: count_rate, count_max
 
   type timer
-    character(len=64) :: label
+    character(len=64) :: label = ""
     integer           :: id
     logical           :: running
     real(dp)          :: start_time
@@ -277,6 +277,7 @@ subroutine init_timers()
   call timer_vchiv%init('Build W')
   call timer_spectrum%init('Optical spectrum')
   call timer_stopping%init('Stopping power')
+  call timer_coulombvertex%init('Calculate the Coulomb vertice')
   call timer_read_coulombvertex%init('Reading Coulomb vertex file')
   call timer_write_coulombvertex%init('Writing Coulomb vertex file')
 
@@ -385,6 +386,9 @@ subroutine timer_start(t)
   if( t%running ) then
     write(stdout, '(1x,a,a)') 'Timer is already started: ', t%label
     call die('timer_start: timer already started: ' // TRIM(t%label))
+  end if
+  if( LEN_TRIM(t%label) < 1 ) then
+    call die('timer_start: timer label not set')
   end if
 
   t%running = .TRUE.

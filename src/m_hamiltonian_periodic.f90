@@ -1415,6 +1415,10 @@ subroutine calculate_coulombvertex_periodic(c_matrix, rootname)
           enddo
         enddo
 
+        if( istate == 1 .AND. jstate == 1 ) then
+          write(stdout, '(1x,a,es16.8,1x,es16.8)') 'Testing integral (11|11) (Ha):', SUM(phiphig_cutoffed(:)**2)
+        end if
+
 #if defined(HAVE_MPI)
         disp = disp_increment * ( (jstate - 1) * nstate + (istate - 1) )
         call MPI_FILE_WRITE_AT(unitcv, disp, phiphig_cutoffed, &
