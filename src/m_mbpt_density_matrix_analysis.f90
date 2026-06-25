@@ -205,7 +205,7 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
   if( print_multipole_ ) then
     !
     ! Evaluate the static dipole
-    call static_dipole(basis, occupation_test, c_matrix_test)
+    call static_dipole(basis, occupation_test, c_matrix_test, label='written')
     !
     ! Evaluate the static quadrupole
     call static_quadrupole(basis, occupation_test, c_matrix_test)

@@ -677,7 +677,7 @@ subroutine evaluate_energy_terms(basis, occupation, c_matrix, p_matrix, en)
 
   deallocate(htmp, hexx)
 
-  call static_dipole(basis, occupation, p_matrix_in=p_matrix)
+  call static_dipole(basis, occupation, p_matrix_in=p_matrix, label='mbpt')
 
 end subroutine evaluate_energy_terms
 

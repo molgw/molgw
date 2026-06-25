@@ -887,31 +887,31 @@ subroutine print_energy_yaml(name, en)
   write(unit_yaml, '(/,a,a)') TRIM(name), ':'
   write(unit_yaml, '(4x,a)')             'unit: Ha'
   if( en%time > -1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'time:                ', en%time
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'time:                ', en%time
   if( ABS(en%total) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'total:               ', en%total
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'total:               ', en%total
   if( ABS(en%totalexx) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'total exx:           ', en%totalexx
-  write(unit_yaml, '(4x,a,1x,es18.8)')   'nucleus-nucleus:     ', en%nuc_nuc
-  write(unit_yaml, '(4x,a,1x,es18.8)')   'kinetic:             ', en%kinetic
-  write(unit_yaml, '(4x,a,1x,es18.8)')   'electron-nucleus:    ', en%nucleus
-  write(unit_yaml, '(4x,a,1x,es18.8)')   'hartree:             ', en%hartree
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'total exx:           ', en%totalexx
+  write(unit_yaml, '(4x,a,1x,es18.10)')   'nucleus-nucleus:     ', en%nuc_nuc
+  write(unit_yaml, '(4x,a,1x,es18.10)')   'kinetic:             ', en%kinetic
+  write(unit_yaml, '(4x,a,1x,es18.10)')   'electron-nucleus:    ', en%nucleus
+  write(unit_yaml, '(4x,a,1x,es18.10)')   'hartree:             ', en%hartree
   if( ABS(en%exx) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'exchange:            ', en%exx
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'exchange:            ', en%exx
   if( ABS(en%exx_hyb) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'hybrid exchange:     ', en%exx_hyb
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'hybrid exchange:     ', en%exx_hyb
   if( ABS(en%xc) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'exchange-correlation:', en%xc
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'exchange-correlation:', en%xc
   if( ABS(en%rpa) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'rpa correlation:     ', en%rpa
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'rpa correlation:     ', en%rpa
   if( ABS(en%gw) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'gw correlation:      ', en%gw
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'gw correlation:      ', en%gw
   if( ABS(en%mp2) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'mp2 correlation:     ', en%mp2
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'mp2 correlation:     ', en%mp2
   if( ABS(en%mp3) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'mp3 correlation:     ', en%mp3
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'mp3 correlation:     ', en%mp3
   if( ABS(en%excit) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'excitation:          ', en%excit
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'excitation:          ', en%excit
 
 
 end subroutine print_energy_yaml

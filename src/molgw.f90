@@ -661,7 +661,7 @@ program molgw
   if( print_multipole_ ) then
     !
     ! Evaluate the static dipole
-    call static_dipole(basis, occupation, c_matrix)
+    call static_dipole(basis, occupation, c_matrix, label='gks')
     !
     ! Evaluate the static quadrupole
     call static_quadrupole(basis, occupation, c_matrix)

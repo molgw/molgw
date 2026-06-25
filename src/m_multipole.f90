@@ -25,7 +25,7 @@ contains
 
 !=========================================================================
 ! Many optional arguments however not all combinations are possible (be careful!)
-subroutine static_dipole(basis, occupation, c_matrix_in, p_matrix_in, dipole_ao_in, dipole_out)
+subroutine static_dipole(basis, occupation, c_matrix_in, p_matrix_in, dipole_ao_in, dipole_out, label)
 
   type(basis_set), intent(in)     :: basis
   real(dp), optional, intent(in)  :: occupation(:, :)
@@ -33,6 +33,7 @@ subroutine static_dipole(basis, occupation, c_matrix_in, p_matrix_in, dipole_ao_
   class(*), optional, intent(in)  :: p_matrix_in(:, :, :)
   real(dp), optional, intent(in)  :: dipole_ao_in(:, :, :)
   real(dp), optional, intent(out) :: dipole_out(3)
+  character(len=*), optional, intent(in) :: label
   !=====
   integer                    :: icenter, idir
   real(dp)                   :: dipole(3)
@@ -88,6 +89,15 @@ subroutine static_dipole(basis, occupation, c_matrix_in, p_matrix_in, dipole_ao_
     dipole_out(:) = dipole(:)
   end if
 
+  if( print_yaml_ .AND. is_iomaster ) then
+    if( PRESENT(label) ) then
+      write(unit_yaml, '(/,a,1x,a,a)') label, 'static dipole', ':'
+    else
+      write(unit_yaml, '(/,a,1x,a,a)') 'unspecified', 'static dipole', ':'
+    end if
+    write(unit_yaml, '(4x,a)') 'unit: au'
+    write(unit_yaml, '(4x,a,es18.8,a,es18.8,a,es18.8,a)') 'xyz: [ ', dipole(1), ', ', dipole(2), ', ', dipole(3), ']'
+  end if
 
 end subroutine static_dipole
 

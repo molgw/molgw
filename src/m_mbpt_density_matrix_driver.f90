@@ -304,7 +304,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     if( .FALSE. ) call plot_rho('MBPT', basis, occupation_tmp, c_matrix_tmp)
     if( .FALSE. ) call write_cube_from_header('MBPT', basis, occupation_tmp, c_matrix_tmp)
     if( print_multipole_ ) then
-      call static_dipole(basis, occupation_tmp, c_matrix_tmp)
+      call static_dipole(basis, occupation_tmp, c_matrix_tmp, label='correlated')
       call static_quadrupole(basis, occupation_tmp, c_matrix_tmp)
     end if
     deallocate(c_matrix_tmp)
