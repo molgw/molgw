@@ -228,7 +228,17 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   end do
   if( ANY(natural_occupation(:, :) < -0.1_dp) ) then
     write(stdout, '(1x,a,f12.6)') 'Too negative natural occupation: ', MINVAL(natural_occupation)
-    call die('get_dm_mbpt: better stop now')
+    call issue_warning('Very negative natural occupation. Result is unsafe.')
+  end if
+
+  if( print_yaml_ .AND. is_iomaster ) then
+    write(unit_yaml, '(/,a)') 'correlated natural occupations:'
+    do ispin=1, nspin
+      write(unit_yaml, '(4x,a,i2,a)') 'spin channel', ispin, ':'
+      do istate=1, nstate
+        write(unit_yaml, '(8x,a,1x,es18.8)') '-', natural_occupation(istate, ispin)
+      end do
+    end do
   end if
 
   if( print_cube_ ) then
