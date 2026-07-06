@@ -770,19 +770,19 @@ subroutine lowdin_pdos_cmplx(basis, s_matrix_sqrt, c_matrix_cmplx, occupation, f
   real(dp), intent(in)            :: occupation(:, :)
   complex(dp), intent(in)         :: c_matrix_cmplx(:, :, :)
   !=====
-  integer                        :: ibf, li, ibf1, ibf2, ishell, ibf_ibf, n_column
-  integer                        :: natom1, natom2, istate, ispin, atom_sampled
-  logical                        :: file_exists
-  integer                        :: pdosfile
-  complex(dp)                    :: proj_state_i(0:basis%ammax)
-  complex(dp)                    :: cs_vector_i(basis%nbf)
-  integer                        :: iatom_ibf(basis%nbf)
-  integer                        :: li_ibf(basis%nbf)
-  real(dp), allocatable           :: proj_charge(:)!,proj_charge_orb(:)
-  integer, allocatable            :: nbf_per_atom(:)
-  integer                        :: iatom_basis, nocc, natom_total, count_nbf, offset_nbf
-  character(len=20)              :: myfmt
-  integer, parameter              :: lmax = 2
+  integer               :: ibf, li, ibf1, ibf2, ishell, n_column
+  integer               :: natom1, natom2, istate, ispin, atom_sampled
+  logical               :: file_exists
+  integer               :: pdosfile
+  complex(dp)           :: proj_state_i(0:basis%ammax)
+  complex(dp)           :: cs_vector_i(basis%nbf)
+  integer               :: iatom_ibf(basis%nbf)
+  integer               :: li_ibf(basis%nbf)
+  real(dp), allocatable :: proj_charge(:)!,proj_charge_orb(:)
+  integer, allocatable  :: nbf_per_atom(:)
+  integer               :: nocc, natom_total, count_nbf, offset_nbf
+  character(len=20)     :: myfmt
+  integer, parameter    :: lmax = 2
   !=====
 
   !if( .NOT. is_iomaster ) return
@@ -961,7 +961,7 @@ subroutine plot_wfn_fourier(basis, c_matrix)
   !=====
   integer                    :: nstate
   real(dp)                   :: qunit(3), qvec(3)
-  integer                    :: iq, istate, ibf, ishell
+  integer                    :: iq, istate, ishell
   integer                    :: gt, li, ni_cart, ibf1, ibf1_cart, ibf2, i_cart
   complex(dp)                :: basis_function_q(basis%nbf)
   complex(dp), allocatable    :: basis_function_q_cart(:)
@@ -973,7 +973,7 @@ subroutine plot_wfn_fourier(basis, c_matrix)
   real(dp), parameter         :: dq=0.10_dp
   !integer,parameter          :: nq=n1*nqradial
   !integer :: ix1,iqradial
-  real(dp) :: xtmp, weight
+  !real(dp) :: xtmp, weight
   !real(dp) :: qlist(3,nq),wq(nq)
   !real(dp) :: x1(n1),y1(n1),z1(n1),w1(n1)
   !real(dp) :: xa(nqradial),wxa(nqradial)
@@ -1207,7 +1207,6 @@ subroutine plot_rho_list(nstate, basis, occupation, c_matrix)
   integer                    :: ispin
   real(dp)                   :: rr(3)
   real(dp), allocatable       :: phi(:, :)
-  real(dp)                   :: u(3), a(3)
   logical                    :: file_exists
   real(dp)                   :: xxmin, xxmax
   real(dp)                   :: basis_function_r(basis%nbf)
@@ -4412,9 +4411,8 @@ subroutine read_molden_file(moldenfilename, basis, occupation, energy, c_matrix)
   !=====
   integer :: fileunit, ios
   integer :: nbf, nstate, istate, ibf, ispin
-  integer :: li, ni, ni_cart, ibf1, ibf2, ibfc, gt, ibf1_cart, ishell, ii
+  integer :: li, ni, ni_cart, ibf1, ibf2, ibfc, gt, ibf1_cart, ishell
   real(dp), allocatable :: c_matrix_cart(:), cart_to_pure_renorm(:, :), pseudo_inv(:, :)
-  real(dp) :: nelec
   character(len=256) :: line, dummy
   logical :: found
   !=====

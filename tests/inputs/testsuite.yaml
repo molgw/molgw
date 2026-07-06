@@ -2639,6 +2639,38 @@ sih4_g0w0@sc-cohsex.in:
     -   GW LUMO energy:
             reference: 4.073908
             tolerance: 0.0001
+co_mp2_singles.in:
+    description: CO dimer MP2 + singles
+    keywords: [MP2, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -113.2002154540
+            tolerance: 1.0e-07
+    -   Singles:
+            reference: -0.0101563903
+            tolerance: 1.0e-07
+    -   MP2 Energy:
+            reference: -0.4420086072
+            tolerance: 1.0e-07
+    -   MP2 Total Energy:
+            reference: -113.1989677035
+            tolerance: 1.0e-07
+co_rpa_singles.in:
+    description: CO dimer RPA + singles
+    keywords: [RPA, hybrid]
+    checks:
+    -   SCF Total Energy:
+            reference: -113.2002154540
+            tolerance: 1.0e-07
+    -   Singles:
+            reference: -0.0101563903
+            tolerance: 1.0e-07
+    -   RPA Energy:
+            reference: -0.4114915279
+            tolerance: 1.0e-07
+    -   RPA Total Energy:
+            reference: -113.1684506243
+            tolerance: 1.0e-07
 co_efield_rpa.in:
     description: RPA using imag. freqs. (and RI) including an electric field
     keywords: [RPA, hybrid]

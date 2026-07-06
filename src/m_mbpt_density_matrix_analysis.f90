@@ -49,7 +49,7 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
   integer               :: nstate
   integer               :: file_density_matrix, file_rho_grid
   integer               :: ispin, jbf
-  integer               :: igrid, igrid_start, igrid_end, nr, ir
+  integer               :: igrid_start, igrid_end, nr, ir
   logical               :: density_matrix_found
   real(dp), allocatable :: s_matrix(:, :), s_matrix_sqrt(:, :), s_eigval(:), p_matrix_ortho(:, :)
   real(dp), allocatable :: p_matrix_test(:, :, :)
@@ -205,7 +205,7 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
   if( print_multipole_ ) then
     !
     ! Evaluate the static dipole
-    call static_dipole(basis, occupation_test, c_matrix_test)
+    call static_dipole(basis, occupation_test, c_matrix_test, label='written')
     !
     ! Evaluate the static quadrupole
     call static_quadrupole(basis, occupation_test, c_matrix_test)

@@ -384,7 +384,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
 
   if( excit_type%form == EXCIT_LIGHT ) then
     call setup_density_matrix_cmplx(c_matrix_cmplx, occupation, p_matrix_cmplx)
-    call static_dipole(basis, p_matrix_in=p_matrix_cmplx, dipole_ao_in=dipole_ao, dipole_out=dipole)
+    call static_dipole(basis, p_matrix_in=p_matrix_cmplx, dipole_ao_in=dipole_ao, dipole_out=dipole, label='rt-tddft')
   end if
 
 
@@ -546,7 +546,7 @@ subroutine realtime_tddft_propagation(basis, auxil_basis, occupation, c_matrix, 
 
       if ( excit_type%form == EXCIT_LIGHT ) then
         call setup_density_matrix_cmplx(c_matrix_cmplx, occupation, p_matrix_cmplx)
-        call static_dipole(basis, p_matrix_in=p_matrix_cmplx, dipole_ao_in=dipole_ao, dipole_out=dipole)
+        call static_dipole(basis, p_matrix_in=p_matrix_cmplx, dipole_ao_in=dipole_ao, dipole_out=dipole, label='rt-tddft')
       end if
 
       en_tddft%total = en_tddft%nucleus + en_tddft%kinetic + en_tddft%nuc_nuc &

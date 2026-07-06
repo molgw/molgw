@@ -76,13 +76,13 @@ program molgw
   type(spectral_function)    :: wpol
   type(lbfgs_state)          :: lbfgs_plan
   type(energy_contributions) :: en_gks, en_mbpt, en_noft
-  integer                 :: restart_type
-  integer                 :: nstate, nocc
-  integer                 :: istep, istring
-  logical                 :: is_restart, is_big_restart, is_basis_restart
-  logical                 :: restart_tddft_is_correct = .TRUE.
-  logical                 :: scf_has_converged
-  real(dp)                :: eext
+  integer                  :: restart_type
+  integer                  :: nstate, nocc
+  integer                  :: istep, istring
+  logical                  :: is_restart, is_big_restart, is_basis_restart
+  logical                  :: restart_tddft_is_correct = .TRUE.
+  logical                  :: scf_has_converged
+  real(dp)                 :: eext
   real(dp), allocatable    :: hamiltonian_kinetic(:, :)
   real(dp), allocatable    :: hamiltonian_nucleus(:, :)
   real(dp), allocatable    :: hamiltonian_fock(:, :, :)
@@ -99,8 +99,8 @@ program molgw
   complex(dp), allocatable :: x_matrix_rel(:, :)
   complex(dp), allocatable :: c_matrix_rel(:, :)
   complex(dp), allocatable :: hamiltonian_kin_nuc_rel(:, :)
-  character(len=100)      :: basis_name_1
-  character(len=200)      :: file_name
+  character(len=100)       :: basis_name_1
+  character(len=200)       :: file_name
   character(len=100), allocatable :: basis_name_nrel(:)
   !=====
 
@@ -392,7 +392,7 @@ program molgw
 
     !
     ! External electric field
-    call setup_electric_field(basis, hamiltonian_nucleus, eext)
+    call setup_electric_field(basis, eext, hamiltonian_nucleus)
     !
     ! Add the Nuclei-Electric Field interaction energy to nuc_nuc
     en_gks%nuc_nuc = en_gks%nuc_nuc + eext
@@ -661,7 +661,7 @@ program molgw
   if( print_multipole_ ) then
     !
     ! Evaluate the static dipole
-    call static_dipole(basis, occupation, c_matrix)
+    call static_dipole(basis, occupation, c_matrix, label='gks')
     !
     ! Evaluate the static quadrupole
     call static_quadrupole(basis, occupation, c_matrix)
@@ -745,7 +745,6 @@ program molgw
     call clean_allocate('Sigx - Vxc', exchange_m_vxc, nstate, nstate, nspin)
     call setup_exchange_m_vxc(basis, occupation, energy, c_matrix, hamiltonian_fock, exchange_m_vxc)
   end if
-  call clean_deallocate('Fock operator F', hamiltonian_fock)
 
   !
   ! Linear-response time dependent calculations work for BSE and TDDFT
@@ -821,19 +820,21 @@ program molgw
 
   end if
 
+
   !
   ! final evaluation for RPAx total energy
   ! (can also use imaginary freqs. to speed-up dRPA (RPA) and dRPA (RPA+)
   !
   if( TRIM(postscf(1:3)) == 'RPA' .OR. TRIM(postscf) == 'BSE-I' ) then
     en_mbpt = en_gks
-    call acfd_total_energy(basis, nstate, occupation, energy, c_matrix, en_mbpt)
+    call acfd_total_energy(basis, occupation, energy, c_matrix, hamiltonian_fock, en_mbpt)
   end if
 
   !
   ! final evaluation for MP2 total energy
   !
   if( calc_type%is_mp2 ) then
+    call selfenergy_set_state_range(nstate, occupation)
 
     if( .NOT. x2c_ ) then ! non-relativistic
 
@@ -844,6 +845,9 @@ program molgw
         else
           call mp2_energy(occupation, c_matrix, energy, en_gks%mp2)
         end if
+        if( correlation_singles_ ) then
+          call correlation_energy_singles(basis, occupation, energy, c_matrix, hamiltonian_fock, en_gks%singles)
+        endif
 
       else                         ! complex
 
@@ -858,10 +862,11 @@ program molgw
 
       write(stdout, '(a,2x,f19.10)') ' MP2 Energy       (Ha):', en_gks%mp2
       write(stdout, *)
-      en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx + en_gks%mp2
-
-      if(kappa_hybrid/=zero) then
-        en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp2
+      en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx + en_gks%mp2 + en_gks%singles
+      
+      if(kappa_hybrid /= zero) then
+        en_gks%total = en_gks%nuc_nuc + en_gks%kinetic + en_gks%nucleus + en_gks%hartree + en_gks%exx_hyb + en_gks%xc &
+                       + en_gks%mp2 + en_gks%singles
       end if
 
     else                    ! relativistic
@@ -876,10 +881,10 @@ program molgw
 
       write(stdout, '(a,2x,f19.10)') ' MP2 Energy       (Ha):', en_gks%mp2
       write(stdout, *)
-      en_gks%total = en_gks%nuc_nuc + en_gks%kin_nuc + en_gks%hartree + en_gks%exx + en_gks%mp2
+      en_gks%total = en_gks%nuc_nuc + en_gks%kin_nuc + en_gks%hartree + en_gks%exx + en_gks%mp2 + en_gks%singles
 
-      if(kappa_hybrid/=zero) then
-        en_gks%total = en_gks%nuc_nuc + en_gks%kin_nuc + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp2
+      if(kappa_hybrid /= zero) then
+        en_gks%total = en_gks%nuc_nuc + en_gks%kin_nuc + en_gks%hartree + en_gks%exx_hyb + en_gks%xc + en_gks%mp2 + en_gks%singles
       end if
 
     end if
@@ -936,9 +941,12 @@ program molgw
     call destroy_fft_grid()
   end if
   call destroy_eri_3center_mo(force=.TRUE.)
-  call clean_deallocate('Full RKB wavefunctions C', c_matrix_rel)
+  if( x2c_ ) then
+    call clean_deallocate('Full RKB wavefunctions C', c_matrix_rel)
+  endif
   call clean_deallocate('Wavefunctions C_cmplx', c_matrix_cmplx)
   call clean_deallocate('Wavefunctions C', c_matrix)
+  call clean_deallocate('Fock operator F', hamiltonian_fock)
   deallocate(energy, occupation)
 
   call deallocate_eri()

@@ -49,17 +49,18 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   integer                    :: nstate, nocc
   logical                    :: density_matrix_found
   integer                    :: file_density_matrix, reading_status
-  integer                    :: ispin, pstate
+  integer                    :: ispin, istate
+  real(dp)                   :: eext
   type(spectral_function)    :: wpol
   type(energy_contributions) :: en_dm_corr
-  real(dp), allocatable       :: h_ii(:, :)
-  real(dp), allocatable       :: p_matrix_corr_ao(:, :, :), p_matrix_corr_mo(:, :, :)
-  real(dp), allocatable       :: hamiltonian_hartree_corr(:, :)
-  real(dp), allocatable       :: hamiltonian_exx_corr(:, :, :)
-  real(dp), allocatable       :: c_matrix_natorb(:, :, :), p_matrix_mo(:, :, :), c_matrix_mo_no(:, :, :)
-  real(dp), allocatable       :: c_matrix_tmp(:, :, :)
-  real(dp), allocatable       :: occupation_tmp(:, :), natural_occupation(:, :)
-  real(dp), allocatable       :: energy_qp(:, :)
+  real(dp), allocatable      :: h_ii(:, :)
+  real(dp), allocatable      :: p_matrix_corr_ao(:, :, :), p_matrix_corr_mo(:, :, :)
+  real(dp), allocatable      :: hamiltonian_hartree_corr(:, :)
+  real(dp), allocatable      :: hamiltonian_exx_corr(:, :, :)
+  real(dp), allocatable      :: c_matrix_natorb(:, :, :), p_matrix_mo(:, :, :), c_matrix_mo_no(:, :, :)
+  real(dp), allocatable      :: c_matrix_tmp(:, :, :)
+  real(dp), allocatable      :: occupation_tmp(:, :), natural_occupation(:, :)
+  real(dp), allocatable      :: energy_qp(:, :), energy_dummy(:, :)
   !=====
 
   nstate = SIZE(c_matrix, DIM=2)
@@ -71,15 +72,30 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   p_matrix_corr_ao(:, :, :) = 0.0_dp
   p_matrix_corr_mo(:, :, :) = 0.0_dp
 
+
   !
-  ! Three possibilities: read_fchk , pt_density_matrix, DENSITY_MATRIX
+  ! Three possibilities: read_fchk or read_molden, pt_density_matrix, DENSITY_MATRIX
   !
 
-
-  ! Option 1:
+  ! Option 1a:
   ! Is there a Gaussian formatted checkpoint file to be read?
   if( read_fchk /= 'NO') call read_gaussian_fchk(read_fchk, 'gaussian.fchk', basis, p_matrix_corr_ao)
 
+  ! Option 1b:
+  ! Is there a MOLDEN file to be read?
+  if( LEN_TRIM(read_molden) > 0 ) then
+    call clean_allocate('Natural orbital C matrix', c_matrix_natorb, basis%nbf, nstate, nspin)
+    allocate(natural_occupation(nstate, nspin))
+
+    allocate(energy_dummy(nstate, nspin))
+    call read_molden_file(read_molden, basis, natural_occupation, energy_dummy, c_matrix_natorb)
+
+    call setup_density_matrix(c_matrix_natorb, natural_occupation, p_matrix_corr_ao)
+
+    call clean_deallocate('Natural orbital C matrix', c_matrix_natorb)
+    deallocate(natural_occupation)
+    deallocate(energy_dummy)
+  end if
 
   ! Option 2:
   ! Calculate a MBPT density matrix if requested
@@ -94,7 +110,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     case('PT2', 'MP2')
       ! This keyword calculates the PT2 density matrix as it is derived in PT2 theory (differs from MP2 density matrix)
       call pt2_density_matrix(occupation, energy, c_matrix, p_matrix_corr_mo)
-    case('GW', 'G0W0', 'GW_CEDERBAUM')
+    case('GW', 'G0W0', 'GW_CEDERBAUM', 'RPA')
       ! This keyword calculates the GW density matrix as it is derived in the new GW theory
       call wpol%init(nstate, occupation, 0)
       call wpol%enforce_approximation('RPA')
@@ -139,14 +155,29 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     !
     ! Cederbaum Appendix B
     !
-    if( TRIM(pt_density_matrix) == 'GW_CEDERBAUM'  &
-        .OR. TRIM(pt_density_matrix) == 'MP2' ) then
+    if( TRIM(pt_density_matrix) == 'GW_CEDERBAUM' ) then
 
       call timer_tmp1%start()
+
+      !call cederbaum_naive1(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
+      !call cederbaum_naive2(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
+      !call cederbaum_naive3(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
       call cederbaum_blas(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
+
       p_matrix_corr_ao(:, :, :) = 0.0_dp
       call timer_tmp1%stop()
 
+    end if
+
+    !
+    ! Burow, Bates, Furche, Eshuit RPA gradients
+    ! JCTC 2013
+    !
+    if( TRIM(pt_density_matrix) == 'RPA'  &
+        .OR. TRIM(pt_density_matrix) == 'MP2' ) then
+
+      call turbomole_naive(basis, energy, occupation, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
+      p_matrix_corr_ao(:, :, :) = 0.0_dp
     end if
 
     call update_density_matrix(occupation, c_matrix, p_matrix_corr_mo, p_matrix_corr_ao)
@@ -207,7 +238,17 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
   end do
   if( ANY(natural_occupation(:, :) < -0.1_dp) ) then
     write(stdout, '(1x,a,f12.6)') 'Too negative natural occupation: ', MINVAL(natural_occupation)
-    call die('get_dm_mbpt: better stop now')
+    call issue_warning('Very negative natural occupation. Result is unsafe.')
+  end if
+
+  if( print_yaml_ .AND. is_iomaster ) then
+    write(unit_yaml, '(/,a)') 'correlated natural occupations:'
+    do ispin=1, nspin
+      write(unit_yaml, '(4x,a,i2,a)') 'spin channel', ispin, ':'
+      do istate=1, nstate
+        write(unit_yaml, '(8x,a,1x,es18.8)') '-', natural_occupation(istate, ispin)
+      end do
+    end do
   end if
 
   if( print_cube_ ) then
@@ -231,7 +272,14 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
 
     !
     ! Nucleus-nucleus repulsion contribution to the energy
+    !  including the electric field if any
     call nucleus_nucleus_energy(en_dm_corr%nuc_nuc)
+
+    call setup_electric_field(basis, eext)
+    !
+    ! Add the Nuclei-Electric Field interaction energy to nuc_nuc
+    en_dm_corr%nuc_nuc = en_dm_corr%nuc_nuc + eext
+
     en_dm_corr%kinetic = SUM( hamiltonian_kinetic(:, :) * SUM(p_matrix_corr_ao(:, :, :), DIM=3) )
     en_dm_corr%nucleus = SUM( hamiltonian_nucleus(:, :) * SUM(p_matrix_corr_ao(:, :, :), DIM=3) )
 
@@ -276,7 +324,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     if( .FALSE. ) call plot_rho('MBPT', basis, occupation_tmp, c_matrix_tmp)
     if( .FALSE. ) call write_cube_from_header('MBPT', basis, occupation_tmp, c_matrix_tmp)
     if( print_multipole_ ) then
-      call static_dipole(basis, occupation_tmp, c_matrix_tmp)
+      call static_dipole(basis, occupation_tmp, c_matrix_tmp, label='correlated')
       call static_quadrupole(basis, occupation_tmp, c_matrix_tmp)
     end if
     deallocate(c_matrix_tmp)
@@ -303,165 +351,6 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
 
 
 end subroutine get_dm_mbpt
-
-
-!=========================================================================
-subroutine fock_density_matrix(basis, occupation, energy, c_matrix, hfock, p_matrix)
-
-  type(basis_set), intent(in)         :: basis
-  real(dp), intent(in)                :: occupation(:, :), energy(:, :)
-  real(dp), intent(in)                :: c_matrix(:, :, :)
-  real(dp), intent(in)                :: hfock(:, :, :)
-  real(dp), intent(out)               :: p_matrix(:, :, :)
-  !=====
-  integer  :: nstate
-  integer  :: pstate
-  integer  :: istate
-  integer  :: astate
-  integer  :: pqspin
-  real(dp), allocatable :: p_matrix_mo(:, :, :)
-  real(dp), allocatable :: hfock_mo(:, :, :)
-  !=====
-
-  call timer_mbpt_dm%start()
-  write(stdout, '(/,1x,a)') 'Calculate the perturbative Fock density matrix'
-
-  nstate = SIZE(occupation, DIM=1)
-
-  call clean_allocate('Density matrix P_MO', p_matrix_mo, nstate, nstate, nspin)
-  call clean_allocate('Fock matrix F_MO', hfock_mo, nstate, nstate, nspin)
-
-  call h_ao_to_mo(c_matrix, hfock, hfock_mo)
-
-  p_matrix_mo(:, :, :) = 0.0_dp
-  do pqspin=1, nspin
-    ! Fill the diagonal
-    do pstate=1, nstate
-      p_matrix_mo(pstate, pstate, pqspin) = occupation(pstate, pqspin)
-    end do
-
-    do istate=ncore_G+1, nhomo_G
-      do astate=nhomo_G+1, nvirtual_G-1
-        p_matrix_mo(istate, astate, pqspin) = hfock_mo(istate, astate, pqspin)  &
-                                               / ( energy(istate, pqspin) - energy(astate, pqspin) ) * spin_fact
-        p_matrix_mo(astate, istate, pqspin) = p_matrix_mo(istate, astate, pqspin)
-      end do
-    end do
-  end do
-
-  call p_mo_to_ao(c_matrix, p_matrix_mo, p_matrix)
-
-  call clean_deallocate('Density matrix P_MO', p_matrix_mo)
-  call clean_deallocate('Fock matrix F_MO', hfock_mo)
-
-  call timer_mbpt_dm%stop()
-
-end subroutine fock_density_matrix
-
-
-!=========================================================================
-subroutine fock_density_matrix_second_order(basis, occupation, energy, c_matrix, hfock, p_matrix)
-
-  type(basis_set), intent(in)         :: basis
-  real(dp), intent(in)                :: occupation(:, :), energy(:, :)
-  real(dp), intent(in)                :: c_matrix(:, :, :)
-  real(dp), intent(in)                :: hfock(:, :, :)
-  real(dp), intent(inout)             :: p_matrix(:, :, :)
-  !=====
-  integer  :: nstate
-  integer  :: pstate
-  integer  :: istate, jstate
-  integer  :: astate, bstate
-  integer  :: pqspin
-  real(dp), allocatable :: p_matrix_mo(:, :, :), p_matrix_ao(:, :, :)
-  real(dp), allocatable :: delta_sigma_mo(:, :, :)
-  !=====
-
-  call timer_mbpt_dm%start()
-  write(stdout, '(/,1x,a)') 'Calculate the perturbative Fock density matrix'
-
-  nstate = SIZE(occupation, DIM=1)
-
-  call clean_allocate('Density matrix P_MO', p_matrix_mo, nstate, nstate, nspin)
-  call clean_allocate('Density matrix P_AO', p_matrix_ao, basis%nbf, basis%nbf, nspin)
-  call clean_allocate('Delta Sigma_MO', delta_sigma_mo, nstate, nstate, nspin)
-
-  ! < p | Sigma_x - v_xc | q > = < p | H_fock - H_gKS | q >
-  !                            = < p | H_fock | q >   - energy_p \delta_pq
-  call h_ao_to_mo(c_matrix, hfock, delta_sigma_mo)
-  do pstate=1, nstate
-    delta_sigma_mo(pstate, pstate, :) = delta_sigma_mo(pstate, pstate, :) - energy(pstate, :)
-  end do
-
-
-  p_matrix_mo(:, :, :) = 0.0_dp
-  !
-  ! occupied - occupied block
-  do pqspin=1, nspin
-    do istate=ncore_G+1, nhomo_G
-      do jstate=ncore_G+1, nhomo_G
-        do astate=nhomo_G+1, nvirtual_G-1
-          p_matrix_mo(istate, jstate, pqspin) = p_matrix_mo(istate, jstate, pqspin) &
-             - spin_fact * delta_sigma_mo(istate, astate, pqspin)  * delta_sigma_mo(astate, jstate, pqspin) &
-                     / ( ( energy(astate, pqspin) - energy(istate, pqspin) ) * ( energy(astate, pqspin) - energy(jstate, pqspin) ) )
-        end do
-      end do
-    end do
-  end do
-  !
-  ! virtual - virtual block
-  do pqspin=1, nspin
-    do astate=nhomo_G+1, nvirtual_G-1
-      do bstate=nhomo_G+1, nvirtual_G-1
-        do istate=ncore_G+1, nhomo_G
-          p_matrix_mo(astate, bstate, pqspin) = p_matrix_mo(astate, bstate, pqspin) &
-             + spin_fact * delta_sigma_mo(astate, istate, pqspin)  * delta_sigma_mo(istate, bstate, pqspin) &
-                     / ( ( energy(istate, pqspin) - energy(astate, pqspin) ) * ( energy(istate, pqspin) - energy(bstate, pqspin) ) )
-        end do
-      end do
-    end do
-  end do
-  !
-  ! occupied - virtual block
-  do pqspin=1, nspin
-    do istate=ncore_G+1, nhomo_G
-      do astate=nhomo_G+1, nvirtual_G-1
-
-        do bstate=nhomo_G+1, nvirtual_G-1
-          p_matrix_mo(istate, astate, pqspin) = p_matrix_mo(istate, astate, pqspin) &
-             + spin_fact * delta_sigma_mo(istate, bstate, pqspin)  * delta_sigma_mo(bstate, astate, pqspin) &
-                     / ( ( energy(istate, pqspin) - energy(astate, pqspin) ) * ( energy(istate, pqspin) - energy(bstate, pqspin) ) )
-        end do
-        do jstate=ncore_G+1, nhomo_G
-          p_matrix_mo(istate, astate, pqspin) = p_matrix_mo(istate, astate, pqspin) &
-             - spin_fact * delta_sigma_mo(istate, bstate, pqspin)  * delta_sigma_mo(bstate, astate, pqspin) &
-                     / ( ( energy(astate, pqspin) - energy(istate, pqspin) ) * ( energy(astate, pqspin) - energy(jstate, pqspin) ) )
-        end do
-
-      end do
-    end do
-  end do
-  !
-  ! virtual - occupied block (by symmetry)
-  do pqspin=1, nspin
-    do astate=nhomo_G+1, nvirtual_G-1
-      do istate=ncore_G+1, nhomo_G
-        p_matrix_mo(astate, istate, pqspin) = p_matrix_mo(istate, astate, pqspin)
-      end do
-    end do
-  end do
-
-  call p_mo_to_ao(c_matrix, p_matrix_mo, p_matrix_ao)
-
-  p_matrix(:, :, :) = p_matrix(:, :, :) + p_matrix_ao(:, :, :)
-
-  call clean_deallocate('Density matrix P_MO', p_matrix_mo)
-  call clean_deallocate('Density matrix P_AO', p_matrix_ao)
-  call clean_deallocate('Delta Sigma F_MO', delta_sigma_mo)
-
-  call timer_mbpt_dm%stop()
-
-end subroutine fock_density_matrix_second_order
 
 
 !=========================================================================

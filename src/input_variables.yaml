@@ -1020,6 +1020,14 @@ ci_type:
   comment: Selects which excitations will be included in the CI expansion. Valid choices
     are 'all', 'CISD', 'CISDT', 'CISDTQ'.
 
+correlation_singles:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Add the correlation contribution for singles in MP2 or RPA. See Ren et al. PRL 106, 153003 (2011).
+
 cphf_cpks_0:
   family: post
   datatype: yes/no

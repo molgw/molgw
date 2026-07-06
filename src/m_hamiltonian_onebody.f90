@@ -1651,19 +1651,22 @@ end subroutine setup_giao_rxp_ao
 
 !=========================================================================
 ! Calculate the Hamiltonian and the energy contributions induced by an external electric field
-subroutine setup_electric_field(basis, hext, eext)
-  type(basis_set), intent(in)         :: basis
-  real(dp), intent(out)               :: eext
-  real(dp), allocatable, intent(inout) :: hext(:, :)
+subroutine setup_electric_field(basis, eext, hext)
+  type(basis_set), intent(in)       :: basis
+  real(dp), intent(out)             :: eext
+  real(dp), optional, intent(inout) :: hext(:, :)
   !=====
-  integer                            :: icenter
-  real(dp)                           :: efield(3)
-  real(dp), allocatable               :: dipole_ao(:, :, :)
+  integer               :: icenter
+  real(dp)              :: efield(3)
+  real(dp), allocatable :: dipole_ao(:, :, :)
   !=====
 
-  if( ABS(electric_field_x) < 1.0e-6_dp  &
-     .AND. ABS(electric_field_y) < 1.0e-6_dp &
-     .AND. ABS(electric_field_z) < 1.0e-6_dp ) then
+  efield(1) = electric_field_x
+  efield(2) = electric_field_y
+  efield(3) = electric_field_z
+
+  ! If no electric field, exit immediately
+  if( ALL(ABS(efield(:)) < 1.0e-6_dp) ) then
     eext = 0.0_dp
     return
   end if
@@ -1671,20 +1674,19 @@ subroutine setup_electric_field(basis, hext, eext)
   !
   ! Electronic part of the external static electric field
   !
-  call setup_dipole_ao(basis, dipole_ao)
+  if( PRESENT(hext) ) then
+    call setup_dipole_ao(basis, dipole_ao)
 
-  hext(:, :) = hext(:, :) + electric_field_x * dipole_ao(:, :, 1) &
-                        + electric_field_y * dipole_ao(:, :, 2) &
-                        + electric_field_z * dipole_ao(:, :, 3)
+    hext(:, :) = hext(:, :) + efield(1) * dipole_ao(:, :, 1) &
+                            + efield(2) * dipole_ao(:, :, 2) &
+                            + efield(3) * dipole_ao(:, :, 3)
 
-  deallocate(dipole_ao)
+    deallocate(dipole_ao)
+  end if
 
   !
   ! Nuclear part of the external static electric field
   !
-  efield(1) = electric_field_x
-  efield(2) = electric_field_y
-  efield(3) = electric_field_z
   eext = 0.0_dp
   do icenter=1, ncenter_nuclei
     eext = eext - zvalence(icenter) * SUM( xatom(:, icenter) * efield(:) )

@@ -234,7 +234,7 @@ subroutine relativistic_init(basis, is_x2c, electrons_in, nstate, c_matrix, s_ma
   !! Nucleus-electron interaction
   call setup_nucleus(basis, scalar_nucleus)
   !! External electric field
-  call setup_electric_field(basis, scalar_nucleus, eext)
+  call setup_electric_field(basis, eext, scalar_nucleus)
   !! <alpha | nabla_r | beta >
   call setup_nabla_ao(basis, scalar_nabla_ao)
   write(stdout, '(a)') ' '
