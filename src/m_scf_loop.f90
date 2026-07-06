@@ -122,7 +122,7 @@ subroutine scf_loop(is_restart, &
   !
   ! Start the big scf loop
   !
-  do iscf=1, nscf
+  scf_cycles: do iscf=1, nscf
     write(stdout, '(/,1x,a)') '-------------------------------------------'
     write(stdout, '(a,1x,i4,/)') ' *** SCF cycle No:', iscf
 
@@ -388,7 +388,7 @@ subroutine scf_loop(is_restart, &
 
     !
     ! end of the big SCF loop
-  end do
+  end do scf_cycles
 
 
   write(stdout, '(/,1x,a)') '=================================================='

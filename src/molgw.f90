@@ -157,7 +157,7 @@ program molgw
   !
   ! Nucleus motion loop
   !
-  do istep=1, nstep
+  geometry_loop: do istep=1, nstep
 
     if( move_nuclei == 'relax' ) then
       write(stdout, '(/,/,1x,a,i5,/)') ' === LBFGS step ', istep
@@ -581,7 +581,7 @@ program molgw
     if(has_auxil_basis) call destroy_libcint(auxil_basis)
 #endif
 
-  end do ! istep
+  end do geometry_loop
 
 
 
