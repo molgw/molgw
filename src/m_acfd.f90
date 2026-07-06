@@ -297,7 +297,7 @@ subroutine acfd_total_energy(basis, occupation, energy, c_matrix, hfock, en_mbpt
 
     if( abs(kappa_hybrid) > 1.0e-10_dp ) then ! Double-hybrids using RPA (and RPA versions)
       write(stdout, '(/,a,f16.10)') ' RPAx-I Energy scaled by :', kappa_hybrid
-      en_mbpt%rpa=kappa_hybrid*en_mbpt%rpa
+      en_mbpt%rpa = kappa_hybrid*en_mbpt%rpa
     end if
     write(stdout, '(a,2x,f19.10)') ' RPAx-I Energy      (Ha):', en_mbpt%rpa
 

@@ -21,6 +21,9 @@ module m_mbpt_density_matrix
   use m_hamiltonian_tools
   use m_spectral_function
   use m_io
+  use m_tddft_fxc
+  use m_linear_response
+
 
 
   implicit none
@@ -1561,6 +1564,225 @@ subroutine cederbaum_naive3(energy, c_matrix, hfock_ao, p_matrix_mo)
 
 
 end subroutine cederbaum_naive3
+
+
+!=========================================================================
+! Implement the formula from
+! Furche-Eshuit
+! "Analytical First-Order Molecular Properties and Forces within the Adiabatic Connection Random Phase Approximation"
+! JCTC 2013
+!
+subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matrix_mo)
+  type(basis_set), intent(in) :: basis
+  real(dp), intent(in)    :: occupation(:, :), energy(:, :)
+  real(dp), intent(in)    :: c_matrix(:, :, :)
+  real(dp), intent(in)    :: hfock_ao(:, :, :)
+  real(dp), intent(inout) :: p_matrix_mo(:, :, :)
+  !=====
+  integer :: kstate, cstate, bstate, astate, istate, jstate, pstate, qstate, pqspin, nstate
+  integer :: it, jt, nocc, nvirt, nt
+  integer :: info, lwork
+  integer, allocatable :: ipiv(:)
+  real(dp), allocatable :: a11(:, :), b1(:), z_vector(:), work(:)
+  real(dp), allocatable :: hfock_mo(:, :, :)
+  real(dp) :: eri_pqkl, eri_plkq, eri_pklq, deltae
+  real(dp) :: eri_iajb, eri_ibja, eri_ijab, delta, eri_ijkb, eri_ikjb, eri_ikpq, eri_iqpk
+  real(dp) :: eri_iapq, eri_iqpa, eri_cajb, eri_capq, eri_cqpa, eri_cbja, eri_cjab, eri_ibjk
+
+  type(spectral_function)        :: wpol
+  integer :: m_a, n_a, nmat, desc_a(NDEL)
+  real(dp), allocatable :: a_matrix(:, :), b_matrix(:, :), apb_matrix(:, :)
+  real(dp) :: fxc
+  !=====
+
+  if( nspin > 1 ) call die('turbomole_naive: only spin restricted here')
+
+  write(stdout, *) 'Include a TDDFT kernel contribution to A+B matrix'
+  write(stdout, '(1x,a,f12.4)') 'Exact-exchange amount: ', alpha_hybrid
+
+  pqspin = 1
+  nvirt = nvirtual_G-1 - nhomo_G
+  nocc  = nhomo_G - ncore_G
+  nt = nvirt * nocc
+  nstate = SIZE(energy, DIM=1)
+
+  ! First create the Fock hamiltonian in MO basis
+  call clean_allocate('Fock matrix F_MO', hfock_mo, nstate, nstate, nspin)
+  call h_ao_to_mo(c_matrix, hfock_ao, hfock_mo)
+
+  ! Get TDDFT A+B block
+  call wpol%init(nstate, occupation, 0)
+  nmat = wpol%npole_reso
+  m_a = NUMROC(nmat, block_row, iprow_sd, first_row, nprow_sd)
+  n_a = NUMROC(nmat, block_col, ipcol_sd, first_col, npcol_sd)
+  call DESCINIT(desc_a, nmat, nmat, block_row, block_col, first_row, first_col, cntxt_sd, MAX(1, m_a), info)
+
+  call clean_allocate('A matrix', a_matrix, m_a, n_a)
+  call clean_allocate('A+B matrix', apb_matrix, m_a, n_a)
+
+  if( TRIM(scf) == 'HF' ) then
+    call wpol%enforce_approximation('TDHF')
+  else
+    call wpol%enforce_approximation('TDDFT')
+  end if
+  call wpol%enforce_spin_multiplicity(1)
+  call polarizability(basis, occupation, energy, c_matrix, wpol, &
+                      a_matrix=a_matrix, b_matrix=apb_matrix, calculate_w=.FALSE.)
+  ! A+B = A + B
+  apb_matrix(:, :) = apb_matrix(:, :) + a_matrix(:, :)
+  call clean_deallocate('A matrix', a_matrix)
+  do it=1, 5
+    write(stdout, '(1x,a,*(1x,i5))') 'Transition table: ', it, wpol%transition_table(:, it)
+  enddo
+  call wpol%destroy()
+
+
+  if( TRIM(scf) /= 'HF' ) then
+    call prepare_tddft(.FALSE., nstate, basis, c_matrix, occupation)
+  end if
+
+  allocate(b1(nt))
+
+  b1(:) = 0.0_dp
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      deltae = energy(istate, pqspin) - energy(astate, pqspin)
+      ! epsilon^HF and gamma_ia-gamma_ai in Furche-Eshuit (Equations 33 and 36)
+      b1(it) = hfock_mo(istate, astate, pqspin) + p_matrix_mo(istate, astate, pqspin) / spin_fact * deltae
+    end do
+  end do
+
+
+  call clean_deallocate('Fock matrix F_MO', hfock_mo)
+
+  allocate(a11(nt, nt))
+
+  if(has_auxil_basis) then
+    call calculate_eri_3center_mo(c_matrix, ncore_G+1, nvirtual_G-1, ncore_G+1, nvirtual_G-1)
+  else
+    call die("turbomole_naive: not coded without RI")
+  end if
+
+  !
+  ! Step 1: Build B = B₁
+  !         occ-virt block
+  ! Equation B2.b
+  !
+  call timer_tmp2%start
+  it = 0
+  ! blocks (H^+ T) of Furche-Eshuit
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      ! here limit to occupied-occupied block
+      do jstate=ncore_G+1, nhomo_G
+        do kstate=ncore_G+1, nhomo_G
+
+          if( TRIM(scf) /= 'HF' ) then
+            fxc = eval_fxc_rks_singlet(istate, astate, 1, jstate, kstate, 1)
+            !call grid%sum(fxc)
+          else
+            fxc = 0.0_dp
+          end if
+          eri_iapq = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, jstate, kstate, pqspin) )
+          eri_iqpa = DOT_PRODUCT(eri_3center_mo(:, istate, kstate, pqspin), eri_3center_mo(:, jstate, astate, pqspin) )
+          b1(it) = b1(it) + (2.0_dp * eri_iapq - alpha_hybrid * eri_iqpa + fxc) * p_matrix_mo(jstate, kstate, pqspin) / spin_fact
+        end do
+      end do
+      ! here limit to virtual-virtual block
+      do bstate=nhomo_G+1, nvirtual_G-1
+        do cstate=nhomo_G+1, nvirtual_G-1
+
+          if( TRIM(scf) /= 'HF' ) then
+            fxc = eval_fxc_rks_singlet(istate, astate, 1, bstate, cstate, 1)
+            !call grid%sum(fxc)
+          else
+            fxc = 0.0_dp
+          end if
+
+          eri_iapq = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, bstate, cstate, pqspin) )
+          eri_iqpa = DOT_PRODUCT(eri_3center_mo(:, istate, cstate, pqspin), eri_3center_mo(:, bstate, astate, pqspin) )
+          b1(it) = b1(it) + (2.0_dp * eri_iapq - alpha_hybrid * eri_iqpa + fxc) * p_matrix_mo(bstate, cstate, pqspin) / spin_fact
+        end do
+      end do
+    end do
+  end do
+  call timer_tmp2%stop()
+
+  !
+  ! Opposite definition in Z-vector equations as compared to Cederbaum
+  !
+  b1(:) = -b1(:)
+
+  !
+  ! In Z-vector equation, we consider A+B, which happens to be
+  ! Cederbaum's A₁₁ * Δϵ for TDHF
+  !it = 0
+  !do istate=ncore_G+1, nhomo_G
+  !  do astate=nhomo_G+1, nvirtual_G-1
+  !    it = it + 1
+  !    jt = 0
+  !    do jstate=ncore_G+1, nhomo_G
+  !      do bstate=nhomo_G+1, nvirtual_G-1
+  !        jt = jt + 1
+  !        ! this deltae is positive eb - ej
+  !        ! opposite definition as compared to other codings in this file
+  !        deltae = energy(bstate, pqspin) - energy(jstate, pqspin)
+  !        delta = MERGE(deltae, 0.0_dp, it == jt)
+  !        eri_iajb = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, jstate, bstate, pqspin) )
+  !        eri_ibja = DOT_PRODUCT(eri_3center_mo(:, istate, bstate, pqspin), eri_3center_mo(:, jstate, astate, pqspin) )
+  !        eri_ijab = DOT_PRODUCT(eri_3center_mo(:, istate, jstate, pqspin), eri_3center_mo(:, astate, bstate, pqspin) )
+  !        a11(it, jt) = delta + 4.0_dp * eri_iajb - eri_ibja - eri_ijab
+  !      end do
+  !    end do
+  !  end do
+  !end do
+
+
+  a11(:, :) = apb_matrix(:, :)
+
+  !
+  ! a11 now contains (A+B)
+  ! it is symmetric, we use DSYSV
+  !
+  ! (A+B) * z_vector(:) = -b1(:)
+  write(stdout, '(1x,a)') 'Solve (A+B) · Z = -B₁'
+  call move_alloc(b1, z_vector)
+  allocate(ipiv(nt))
+  allocate(work(1))
+  lwork = -1
+  call DSYSV('L', nt, 1, a11, nt, ipiv, z_vector, nt, work, lwork, info)
+  lwork = NINT(work(1))
+  deallocate(work)
+  allocate(work(lwork))
+  call DSYSV('L', nt, 1, a11, nt, ipiv, z_vector, nt, work, lwork, info)
+  deallocate(work)
+  deallocate(ipiv)
+
+
+  !
+  ! Step 3: Z is the full occ-virtual density-matrix
+  ! Note: only the occ-virt block is involved, the rest is unchanged
+  it = 0
+  do istate=ncore_G+1, nhomo_G
+    do astate=nhomo_G+1, nvirtual_G-1
+      it = it + 1
+      p_matrix_mo(istate, astate, pqspin) = z_vector(it) * spin_fact
+      p_matrix_mo(astate, istate, pqspin) = p_matrix_mo(istate, astate, pqspin)
+    end do
+  end do
+  deallocate(a11)
+  deallocate(z_vector)
+
+  call destroy_eri_3center_mo()
+
+  if( TRIM(scf) /= 'HF' ) then
+    call destroy_tddft()
+  end if
+
+end subroutine turbomole_naive
 
 
 !=========================================================================

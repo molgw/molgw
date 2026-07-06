@@ -445,9 +445,9 @@ subroutine sf_enforce_approximation(sf, approximation)
     sf%need_qp_energy       = .FALSE.
     sf%include_tddft_kernel = .TRUE.
     sf%include_tdhf_kernel  = .TRUE.
+    sf%alpha_hybrid         = alpha_hybrid
+    sf%beta_hybrid          = beta_hybrid
     !Don't touch this
-    !sf%alpha_hybrid         = 1.0_dp
-    !sf%beta_hybrid          = 0.0_dp
     !sf%need_lr_exchange     = .FALSE.
   case default
     call die("sf_enforce_approximation: choice not implemented or not existing")

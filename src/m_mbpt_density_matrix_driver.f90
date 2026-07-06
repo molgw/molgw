@@ -110,7 +110,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     case('PT2', 'MP2')
       ! This keyword calculates the PT2 density matrix as it is derived in PT2 theory (differs from MP2 density matrix)
       call pt2_density_matrix(occupation, energy, c_matrix, p_matrix_corr_mo)
-    case('GW', 'G0W0', 'GW_CEDERBAUM')
+    case('GW', 'G0W0', 'GW_CEDERBAUM', 'RPA')
       ! This keyword calculates the GW density matrix as it is derived in the new GW theory
       call wpol%init(nstate, occupation, 0)
       call wpol%enforce_approximation('RPA')
@@ -155,8 +155,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     !
     ! Cederbaum Appendix B
     !
-    if( TRIM(pt_density_matrix) == 'GW_CEDERBAUM'  &
-        .OR. TRIM(pt_density_matrix) == 'MP2' ) then
+    if( TRIM(pt_density_matrix) == 'GW_CEDERBAUM' ) then
 
       call timer_tmp1%start()
 
@@ -168,6 +167,17 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
       p_matrix_corr_ao(:, :, :) = 0.0_dp
       call timer_tmp1%stop()
 
+    end if
+
+    !
+    ! Burow, Bates, Furche, Eshuit RPA gradients
+    ! JCTC 2013
+    !
+    if( TRIM(pt_density_matrix) == 'RPA'  &
+        .OR. TRIM(pt_density_matrix) == 'MP2' ) then
+
+      call turbomole_naive(basis, energy, occupation, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
+      p_matrix_corr_ao(:, :, :) = 0.0_dp
     end if
 
     call update_density_matrix(occupation, c_matrix, p_matrix_corr_mo, p_matrix_corr_ao)
