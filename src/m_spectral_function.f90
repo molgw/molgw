@@ -84,7 +84,6 @@ module m_spectral_function
     logical  :: include_tdhf_kernel
     real(dp) :: alpha_hybrid
     real(dp) :: beta_hybrid
-    character(len=256) :: w_screening
 
   contains
 
@@ -373,7 +372,6 @@ subroutine sf_set_approximation(sf)
   sf%include_tdhf_kernel  = calc_type%include_tdhf_kernel
 
   sf%beta_hybrid          = beta_hybrid
-  sf%w_screening          = w_screening
 
   ! Set alpha_hybrid: the exchange fraction for this response calculation
   ! manual_tdhf file can override anything
@@ -406,7 +404,6 @@ subroutine sf_enforce_approximation(sf, approximation)
   select case(TRIM(capitalize(approximation)))
   case('RPA')
     sf%approximation = 'RPA'
-    sf%w_screening   = 'RPA'
     sf%need_bse_kernel      = .FALSE.
     sf%need_qp_energy       = .FALSE.
     sf%include_tddft_kernel = .FALSE.
@@ -416,7 +413,6 @@ subroutine sf_enforce_approximation(sf, approximation)
     sf%beta_hybrid          = 0.0_dp
   case('BSE')
     sf%approximation = 'BSE'
-    sf%w_screening   = 'BSE'
     sf%need_bse_kernel      = .TRUE.
     sf%need_qp_energy       = .TRUE.
     sf%include_tddft_kernel = .FALSE.
@@ -425,7 +421,6 @@ subroutine sf_enforce_approximation(sf, approximation)
     sf%beta_hybrid          = 0.0_dp
   case('TDHF')
     sf%approximation = 'TDHF'
-    sf%w_screening   = 'TDHF'
     sf%need_bse_kernel      = .FALSE.
     sf%need_qp_energy       = .FALSE.
     sf%include_tddft_kernel = .FALSE.
@@ -434,7 +429,6 @@ subroutine sf_enforce_approximation(sf, approximation)
     sf%beta_hybrid          = 0.0_dp
   case('TDDFT')
     sf%approximation = 'TDDFT'
-    sf%w_screening   = 'TDDFT'
     sf%need_bse_kernel      = .FALSE.
     sf%need_qp_energy       = .FALSE.
     sf%include_tddft_kernel = .TRUE.
