@@ -52,7 +52,7 @@ subroutine polarizability(basis, occupation, energy, c_matrix, wpol_out, &
   type(spectral_function)   :: wpol_static
   logical                   :: eri_3center_mo_available
   integer                   :: nmat, nexc
-  real(dp)                  :: alpha_local, beta_local, lambda_
+  real(dp)                  :: lambda_
   real(dp), allocatable     :: amb_diag_rpa(:)
   real(dp), allocatable     :: amb_matrix(:, :), apb_matrix(:, :)
   real(dp), allocatable     :: xpy_matrix(:, :), xmy_matrix(:, :)
@@ -81,7 +81,7 @@ subroutine polarizability(basis, occupation, energy, c_matrix, wpol_out, &
   need_bse_kernel   = wpol_out%need_bse_kernel
   need_qp_energy    = wpol_out%need_qp_energy
   need_exchange     = wpol_out%alpha_hybrid > 1.0e-6_dp
-  need_lr_exchange  = wpol_out%need_lr_exchange
+  need_lr_exchange  = wpol_out%beta_hybrid > 1.0e-6_dp
 
   write(stdout, '(/,a)') ' Calculating the polarizability'
 
@@ -105,7 +105,6 @@ subroutine polarizability(basis, occupation, energy, c_matrix, wpol_out, &
     write(stdout, '(a)') ' Singlet final state'
   end if
 
-  beta_local = 0.0_dp
   if( has_auxil_basis ) then
     if( need_lr_exchange ) then
       eri_3center_mo_available = ( ALLOCATED(eri_3center_mo) .AND. ALLOCATED(eri_3center_mo_lr) )
@@ -113,7 +112,6 @@ subroutine polarizability(basis, occupation, energy, c_matrix, wpol_out, &
         call calculate_eri_3center_mo(c_matrix, ncore_W+1, nvirtual_W-1, ncore_W+1, nvirtual_W-1, timing=timer_aomo_pola, &
                 long_range=.TRUE.)
       end if
-      beta_local = wpol_out%beta_hybrid
     else
       eri_3center_mo_available = ALLOCATED(eri_3center_mo)
       if( .NOT. eri_3center_mo_available ) then
@@ -122,9 +120,6 @@ subroutine polarizability(basis, occupation, energy, c_matrix, wpol_out, &
     end if
   end if
 
-  !
-  ! Set up exchange content alpha_local (precomputed in wpol_out%alpha_hybrid)
-  alpha_local = wpol_out%alpha_hybrid
 
   is_rpa = .NOT.(need_tddft_kernel) .AND. .NOT.(need_bse_kernel) .AND. .NOT.(need_exchange)
 
@@ -132,9 +127,9 @@ subroutine polarizability(basis, occupation, energy, c_matrix, wpol_out, &
   write(stdout, '(1x,a24,l1)')                'RPA: ', is_rpa
   write(stdout, '(1x,a24,l1)')         'BSE kernel: ', need_bse_kernel
   write(stdout, '(1x,a24,l1)')    'Exchange kernel: ', need_exchange
-  write(stdout, '(1x,a24,f6.4)')     'hybrid alpha: ', alpha_local
+  write(stdout, '(1x,a24,f6.4)')     'hybrid alpha: ', wpol_out%alpha_hybrid
   write(stdout, '(1x,a24,l1)') 'Exchange LR kernel: ', need_lr_exchange
-  write(stdout, '(1x,a24,f6.4)')      'hybrid beta: ', beta_local
+  write(stdout, '(1x,a24,f6.4)')      'hybrid beta: ', wpol_out%beta_hybrid
   write(stdout, '(1x,a24,l1)')       'TDDFT kernel: ', need_tddft_kernel
   write(stdout, *)
 
@@ -202,12 +197,12 @@ subroutine polarizability(basis, occupation, energy, c_matrix, wpol_out, &
 
     !
     ! Step 1
-    call build_amb_apb_diag_auxil(nmat, nstate, energy_qp, wpol_out, m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa)
+    call build_amb_apb_diag_ri(nmat, nstate, energy_qp, wpol_out, m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa)
 
 #if defined(HAVE_SCALAPACK)
-    call build_apb_hartree_auxil_scalapack(wpol_out%is_triplet, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
+    call build_apb_hartree_ri_scalapack(wpol_out%is_triplet, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
 #else
-    call build_apb_hartree_auxil(wpol_out%is_triplet, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
+    call build_apb_hartree_ri(wpol_out%is_triplet, lambda_, desc_apb, wpol_out, m_apb, n_apb, apb_matrix)
 #endif
 
 
@@ -221,10 +216,8 @@ subroutine polarizability(basis, occupation, energy, c_matrix, wpol_out, &
     !
     ! Step 3
     if( need_exchange .OR. need_lr_exchange ) then
-      call build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda_, desc_apb, wpol_out, wpol_static, &
-                                                 m_apb, n_apb, amb_matrix, apb_matrix)
-    else
-      write(stdout, '(a,f8.3)') ' Content of Exchange: ', alpha_local
+      call build_amb_apb_screened_exchange_ri(lambda_, desc_apb, wpol_out, wpol_static, &
+                                              m_apb, n_apb, amb_matrix, apb_matrix)
     end if
 
     if( need_bse_kernel ) then
@@ -239,9 +232,8 @@ subroutine polarizability(basis, occupation, energy, c_matrix, wpol_out, &
 
     !
     ! Step 1
-    call build_amb_apb_common(wpol_out%is_triplet, lambda_, nmat, basis%nbf, nstate, c_matrix, energy_qp, &
-                              wpol_out, alpha_local, &
-                              m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa, en_rpa_)
+    call build_amb_apb_common_nori(wpol_out%is_triplet, lambda_, nmat, basis%nbf, nstate, c_matrix, energy_qp, &
+                                   wpol_out, m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa, en_rpa_)
 
     !
     ! Step 2
@@ -254,7 +246,7 @@ subroutine polarizability(basis, occupation, energy, c_matrix, wpol_out, &
     !
     ! Step 3
     if( need_bse_kernel ) then
-      call build_amb_apb_bse(wpol_out, wpol_static, m_apb, n_apb, amb_matrix, apb_matrix)
+      call build_amb_apb_bse_nori(wpol_out, wpol_static, m_apb, n_apb, amb_matrix, apb_matrix)
       call wpol_static%destroy()
     end if
 
@@ -477,9 +469,11 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
   integer                   :: t_ia, t_jb, jstate, bstate, jbspin, t_jb_global
   integer                   :: nmat, desc_x(NDEL)
   real(dp)                  :: energy_jb
-  real(dp), allocatable      :: tmp_matrix(:, :), inv_apb_matrix(:, :), work(:)
+  real(dp), allocatable     :: tmp_matrix(:, :), inv_apb_matrix(:, :), work(:)
+  logical                   :: need_lr_exchange
   !=====
 
+  need_lr_exchange  = wpol_out%beta_hybrid > 1.0e-6_dp
   !
   ! Prepare the big matrices A and B
   !
@@ -576,7 +570,7 @@ subroutine coupled_perturbed(basis, occupation, energy, c_matrix, wpol_out)
   end if
 #endif
 
-  call destroy_eri_3center_mo(long_range=wpol_out%need_lr_exchange)
+  call destroy_eri_3center_mo(long_range=need_lr_exchange)
   call clean_deallocate('Tmp_Mat', tmp_matrix)
   call clean_deallocate('(A+B)^-1', inv_apb_matrix)
 

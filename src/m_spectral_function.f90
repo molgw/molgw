@@ -84,7 +84,6 @@ module m_spectral_function
     logical  :: include_tdhf_kernel
     real(dp) :: alpha_hybrid
     real(dp) :: beta_hybrid
-    logical  :: need_lr_exchange
     character(len=256) :: w_screening
 
   contains
@@ -374,8 +373,6 @@ subroutine sf_set_approximation(sf)
   sf%include_tdhf_kernel  = calc_type%include_tdhf_kernel
 
   sf%beta_hybrid          = beta_hybrid
-  sf%need_lr_exchange     = (beta_hybrid > 1.0e-6_dp) .AND. &
-                            (TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' .OR. TRIM(w_screening) == 'TDDFT')
   sf%w_screening          = w_screening
 
   ! Set alpha_hybrid: the exchange fraction for this response calculation
@@ -417,7 +414,6 @@ subroutine sf_enforce_approximation(sf, approximation)
 
     sf%alpha_hybrid         = 0.0_dp
     sf%beta_hybrid          = 0.0_dp
-    sf%need_lr_exchange     = .FALSE.
   case('BSE')
     sf%approximation = 'BSE'
     sf%w_screening   = 'BSE'
@@ -427,7 +423,6 @@ subroutine sf_enforce_approximation(sf, approximation)
     sf%include_tdhf_kernel  = .TRUE.
     sf%alpha_hybrid         = 1.0_dp
     sf%beta_hybrid          = 0.0_dp
-    sf%need_lr_exchange     = .FALSE.
   case('TDHF')
     sf%approximation = 'TDHF'
     sf%w_screening   = 'TDHF'
@@ -437,7 +432,6 @@ subroutine sf_enforce_approximation(sf, approximation)
     sf%include_tdhf_kernel  = .TRUE.
     sf%alpha_hybrid         = 1.0_dp
     sf%beta_hybrid          = 0.0_dp
-    sf%need_lr_exchange     = .FALSE.
   case('TDDFT')
     sf%approximation = 'TDDFT'
     sf%w_screening   = 'TDDFT'
@@ -447,8 +441,6 @@ subroutine sf_enforce_approximation(sf, approximation)
     sf%include_tdhf_kernel  = .TRUE.
     sf%alpha_hybrid         = alpha_hybrid
     sf%beta_hybrid          = beta_hybrid
-    !Don't touch this
-    !sf%need_lr_exchange     = .FALSE.
   case default
     call die("sf_enforce_approximation: choice not implemented or not existing")
   end select
