@@ -1585,10 +1585,9 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
   integer, allocatable :: ipiv(:)
   real(dp), allocatable :: a11(:, :), b1(:), z_vector(:), work(:)
   real(dp), allocatable :: hfock_mo(:, :, :)
-  real(dp) :: eri_pqkl, eri_plkq, eri_pklq, deltae
-  real(dp) :: eri_iajb, eri_ibja, eri_ijab, delta, eri_ijkb, eri_ikjb, eri_ikpq, eri_iqpk
-  real(dp) :: eri_iapq, eri_iqpa, eri_cajb, eri_capq, eri_cqpa, eri_cbja, eri_cjab, eri_ibjk
-
+  real(dp) :: deltae
+  !real(dp) :: eri_iajb, eri_ibja, eri_ijab, delta
+  real(dp) :: eri_iajk, eri_ikja, eri_icba, eri_iabc
   type(spectral_function)        :: wpol
   integer :: m_a, n_a, nmat, desc_a(NDEL)
   real(dp), allocatable :: a_matrix(:, :), b_matrix(:, :), apb_matrix(:, :)
@@ -1596,6 +1595,7 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
   !=====
 
   if( nspin > 1 ) call die('turbomole_naive: only spin restricted here')
+  if( nprow_sd * npcol_sd > 1 ) call die('turbomole_naive: not implemented with SCALAPACK distribution')
 
   write(stdout, *) 'Include a TDDFT kernel contribution to A+B matrix'
   write(stdout, '(1x,a,f12.4)') 'Exact-exchange amount: ', alpha_hybrid
@@ -1631,9 +1631,6 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
   ! A+B = A + B
   apb_matrix(:, :) = apb_matrix(:, :) + a_matrix(:, :)
   call clean_deallocate('A matrix', a_matrix)
-  do it=1, 5
-    write(stdout, '(1x,a,*(1x,i5))') 'Transition table: ', it, wpol%transition_table(:, it)
-  enddo
   call wpol%destroy()
 
 
@@ -1686,9 +1683,9 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
           else
             fxc = 0.0_dp
           end if
-          eri_iapq = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, jstate, kstate, pqspin) )
-          eri_iqpa = DOT_PRODUCT(eri_3center_mo(:, istate, kstate, pqspin), eri_3center_mo(:, jstate, astate, pqspin) )
-          b1(it) = b1(it) + (2.0_dp * eri_iapq - alpha_hybrid * eri_iqpa + fxc) * p_matrix_mo(jstate, kstate, pqspin) / spin_fact
+          eri_iajk = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, jstate, kstate, pqspin) )
+          eri_ikja = DOT_PRODUCT(eri_3center_mo(:, istate, kstate, pqspin), eri_3center_mo(:, jstate, astate, pqspin) )
+          b1(it) = b1(it) + (2.0_dp * eri_iajk - alpha_hybrid * eri_ikja + fxc) * p_matrix_mo(jstate, kstate, pqspin) / spin_fact
         end do
       end do
       ! here limit to virtual-virtual block
@@ -1702,9 +1699,9 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
             fxc = 0.0_dp
           end if
 
-          eri_iapq = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, bstate, cstate, pqspin) )
-          eri_iqpa = DOT_PRODUCT(eri_3center_mo(:, istate, cstate, pqspin), eri_3center_mo(:, bstate, astate, pqspin) )
-          b1(it) = b1(it) + (2.0_dp * eri_iapq - alpha_hybrid * eri_iqpa + fxc) * p_matrix_mo(bstate, cstate, pqspin) / spin_fact
+          eri_iabc = DOT_PRODUCT(eri_3center_mo(:, istate, astate, pqspin), eri_3center_mo(:, bstate, cstate, pqspin) )
+          eri_icba = DOT_PRODUCT(eri_3center_mo(:, istate, cstate, pqspin), eri_3center_mo(:, bstate, astate, pqspin) )
+          b1(it) = b1(it) + (2.0_dp * eri_iabc - alpha_hybrid * eri_icba + fxc) * p_matrix_mo(bstate, cstate, pqspin) / spin_fact
         end do
       end do
     end do
