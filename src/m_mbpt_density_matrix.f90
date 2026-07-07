@@ -1590,7 +1590,7 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
   real(dp) :: eri_iajk, eri_ikja, eri_icba, eri_iabc
   type(spectral_function)        :: wpol
   integer :: m_a, n_a, nmat, desc_a(NDEL)
-  real(dp), allocatable :: a_matrix(:, :), b_matrix(:, :), apb_matrix(:, :)
+  real(dp), allocatable :: a_matrix(:, :), apb_matrix(:, :)
   real(dp) :: fxc
   !=====
 
@@ -1738,7 +1738,8 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
   !end do
 
 
-  a11(:, :) = apb_matrix(:, :)
+  !a11(:, :) = apb_matrix(:, :)
+  call gather_distributed_copy(desc_a, apb_matrix, a11)
 
   !
   ! a11 now contains (A+B)
