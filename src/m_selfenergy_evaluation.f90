@@ -355,6 +355,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
         call read_spectral_function(wpol, reading_status)
         ! If reading has failed, then do the calculation
         if( reading_status /= 0 ) then
+          call wpol%enforce_approximation(w_screening)
           call polarizability(basis, occupation, energy_w, c_matrix, wpol, en_rpa=en_mbpt%rpa, en_gw=en_mbpt%gw)
         end if
 
@@ -544,6 +545,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
       call read_spectral_function(wpol, reading_status)
       ! If reading has failed, then do the calculation
       if( reading_status /= 0 ) then
+        call wpol%enforce_approximation(w_screening)
         call polarizability(basis, occupation, energy_w, c_matrix, wpol, en_rpa=en_mbpt%rpa, en_gw=en_mbpt%gw)
       end if
       call gw_selfenergy(GW, occupation, energy_g, c_matrix, wpol, se)

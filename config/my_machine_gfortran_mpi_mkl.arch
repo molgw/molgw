@@ -4,7 +4,7 @@ PYTHON=python3
 # Parallel MPI/SCALAPACK compilation with MKL
 FC=mpifort
 
-CPPFLAGS=-DHAVE_SCALAPACK -DHAVE_MKL
+CPPFLAGS=-DHAVE_SCALAPACK -DHAVE_MKL -DHAVE_FFTW3
 
 CXX=g++
 FCFLAGS= -cpp -m64 -I${MKLROOT}/include -O3 -march=native -mtune=native 
@@ -18,6 +18,8 @@ SCALAPACK=-Wl,--start-group ${MKLROOT}/lib/intel64/libmkl_gf_lp64.a \
  ${MKLROOT}/lib/intel64/libmkl_sequential.a \
  ${MKLROOT}/lib/intel64/libmkl_blacs_openmpi_lp64.a \
  -Wl,--end-group -lpthread -lm -ldl
+
+FFTW3_INCS=-I${MKLROOT}/include/fftw/
 
 LIBXC_ROOT=${HOME}/src/libxc-4.3.4/
 

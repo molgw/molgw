@@ -5,7 +5,7 @@ PYTHON=python3
 FC=gfortran 
 
 # don't use LIBCINT, but LIBINT
-CPPFLAGS=-DHAVE_MKL -DNO_LIBCINT
+CPPFLAGS=-DHAVE_MKL -DHAVE_FFTW3 -DNO_LIBCINT
 
 CXX=g++
 FCFLAGS= -cpp -m64 -I${MKLROOT}/include -O3 -march=native -mtune=native 
@@ -13,6 +13,8 @@ CXXFLAGS= -cpp -O3 -march=native -mtune=native
 
 # MKL with threads
 LAPACK=  -L${MKLROOT}/lib/intel64 -Wl,--no-as-needed -lmkl_gf_lp64 -lmkl_gnu_thread -lmkl_core -lgomp -lpthread -lm -ldl
+
+FFTW3_INCS=-I${MKLROOT}/include/fftw/
 
 LIBXC_ROOT=/opt/libxc-4.3.4/
 

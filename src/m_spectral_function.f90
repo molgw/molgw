@@ -66,9 +66,9 @@ module m_spectral_function
     !
     ! Static or Dynamic W might be stored directly in the auxiliary basis
     real(dp), allocatable    :: chi(:, :, :)
-    integer                 :: mchi, nchi
-    integer                 :: desc_chi(NDEL)
-    integer                 :: nomega           ! Number of quadrature points
+    integer                  :: mchi, nchi
+    integer                  :: desc_chi(NDEL)
+    integer                  :: nomega           ! Number of quadrature points
     real(dp), allocatable    :: weight_quad(:)   ! quadrature weight for numerical integration
     complex(dp), allocatable :: omega(:)         ! frequency grid (can real or imaginary)
 
