@@ -1595,7 +1595,6 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
   !=====
 
   if( nspin > 1 ) call die('turbomole_naive: only spin restricted here')
-  if( nprow_sd * npcol_sd > 1 ) call die('turbomole_naive: not implemented with SCALAPACK distribution')
 
   write(stdout, *) 'Include a TDDFT kernel contribution to A+B matrix'
   write(stdout, '(1x,a,f12.4)') 'Exact-exchange amount: ', alpha_hybrid
