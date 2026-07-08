@@ -1831,8 +1831,7 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
   integer  :: ispin, ibf, jbf, ifft_local
   real(dp) :: shift(3)
   real(dp), allocatable :: tmp1(:, :), tmp2(:, :)
-  integer :: npos, nneg, ipos, ineg, nneg_batch, current_batch_size
-  integer :: ifft_local_first_in_batch
+  integer :: npos, nneg, ipos, ineg, nneg_batch
   !=====
 
 
@@ -1887,38 +1886,25 @@ subroutine calculate_hao_periodic(basis, vloc, h_ao)
 
           call clean_allocate('TMP2', tmp2, basis%nbf, nneg_batch)
 
-          ifft_local_first_in_batch = 1
-          do while( ifft_local_first_in_batch < nfft_local )
+          ineg = 0
+          do ifft_local=1, nfft_local
+            if( vloc(ifft_local, ispin) < 0.0_dp ) then
+              ineg = ineg + 1
+              tmp2(:, ineg) = bfr(:, ifft_local) * SQRT(-vloc(ifft_local, ispin))
 
-            ineg = 0
-            ifft_local = ifft_local_first_in_batch
-            do
-              ifft_local = ifft_local + 1
-
-              if( ifft_local > nfft_local ) then
-                ifft_local_first_in_batch = ifft_local   ! ifft_local_first_in_batch = nfft_local + 1
-                current_batch_size = ineg - 1
-                exit
+              if( ineg == nneg_batch ) then
+                call DSYRK('L', 'N', basis%nbf, ineg, -1.0d0, tmp2, basis%nbf, &
+                           1.0_dp, h_ao(:, :, ispin), basis%nbf)
+                ineg = 0
               end if
-
-              if( vloc(ifft_local, ispin) < 0.0_dp ) then
-                ineg = ineg + 1
-                if( ineg > nneg_batch ) then
-                  ifft_local_first_in_batch = ifft_local
-                  current_batch_size = ineg - 1
-                  exit
-                else
-                  tmp2(:, ineg) = bfr(:, ifft_local) * SQRT(-vloc(ifft_local, ispin))
-                end if
-              end if
-            end do
-
-            ! Negative vloc
-            if( current_batch_size > 0 ) then
-              call DSYRK('L', 'N', basis%nbf, current_batch_size, -1.0d0, tmp2, basis%nbf, &
-                         1.0_dp, h_ao(:, :, ispin), basis%nbf)
             end if
           end do
+
+          ! Flush the last, possibly incomplete, batch
+          if( ineg > 0 ) then
+            call DSYRK('L', 'N', basis%nbf, ineg, -1.0d0, tmp2, basis%nbf, &
+                       1.0_dp, h_ao(:, :, ispin), basis%nbf)
+          end if
 
           call clean_deallocate('TMP2', tmp2)
         end select

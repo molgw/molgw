@@ -3520,7 +3520,7 @@ h2_gth_box.in:
             reference: -0.6648540174
             tolerance: 1.0e-07
 h2_gth_box_shifted.in:
-    description: H2 in a periodic box with analytical GTH pseudo
+    description: H2 in a periodic box with analytical GTH pseudo (same ref values as previous)
     keywords: [DFT, ECP, PBC, noRI]
     requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
@@ -3557,22 +3557,22 @@ li2_gth_box.in:
             reference: -1.3333009531
             tolerance: 1.0e-07
     -   Kinetic Energy:
-            reference: 13.0609436559
+            reference: 13.0609434747
             tolerance: 1.0e-07
     -   Nucleus Energy:
-            reference: -29.8326614516
+            reference: -29.8326610257
             tolerance: 1.0e-07
     -   Hartree Energy:
-            reference: 6.7425313354
+            reference: 6.7425310421
             tolerance: 1.0e-07
     -   XC Energy:
-            reference: -3.3014102685
+            reference: -3.3014102201
             tolerance: 1.0e-07
     -   gKS HOMO energy:
-            reference: -3.337858
+            reference: -3.337860
             tolerance: 0.0001
     -   gKS LUMO energy:
-            reference: -1.1165
+            reference: -1.116501
             tolerance: 0.0001
 lif_gth_box.in:
     description: LiF molecule in a periodic box (GTH pseudo local and non-local)
@@ -3673,10 +3673,10 @@ he8_lattice_gth_bcc_box.in:
             reference: -7.7039928095
             tolerance: 1.0e-07
     -   Kinetic Energy:
-            reference: 21.6805153971
+            reference: 21.6805117091
             tolerance: 1.0e-07
     -   gKS HOMO energy:
-            reference: -14.446911
+            reference: -14.446915
             tolerance: 0.0001
 he16_lattice_gth_sc_box.in:
     description: Sixteen-helium lattice in a periodic box
@@ -3690,13 +3690,13 @@ he16_lattice_gth_sc_box.in:
             reference: -15.4064033273
             tolerance: 1.0e-07
     -   Kinetic Energy:
-            reference: 43.3596224486
+            reference: 43.3596142961
             tolerance: 1.0e-07
     -   Nucleus Energy:
-            reference: -75.2053835552
+            reference: -75.2053738200
             tolerance: 1.0e-07
     -   gKS HOMO energy:
-            reference: -14.447436
+            reference: -14.447441
             tolerance: 0.0001
 diamond_gth_08.in:
     description: 8-atom cell of diamond
@@ -3707,10 +3707,10 @@ diamond_gth_08.in:
             reference: -51.1779066085
             tolerance: 1.0e-07
     -   SCF Total Energy:
-            reference: -44.623041884
+            reference: -44.6230419314
             tolerance: 1.0e-07
     -   gKS HOMO energy:
-            reference: 13.724214
+            reference: 13.723407
             tolerance: 0.0001
 he_gth_box_hf.in:
     description: He atom within HF with PBC
@@ -3741,19 +3741,19 @@ diamond_gth_08_hf.in:
             reference: -51.1102279515
             tolerance: 1.0e-07
     -   Hartree Energy:
-            reference: 4.3523671507
+            reference: 4.3523348715
             tolerance: 1.0e-07
     -   Exchange Energy:
-            reference: -13.1822569359
+            reference: -13.1822466157
             tolerance: 1.0e-07
     -   SCF Total Energy:
-            reference: -43.5733353282
+            reference: -43.5733353609
             tolerance: 1.0e-07
     -   gKS HOMO energy:
-            reference: 9.61057
+            reference: 9.610304
             tolerance: 0.0001
     -   gKS LUMO energy:
-            reference: 24.796982
+            reference: 24.797083
             tolerance: 0.0001
 he_hf_cc4s_box_output.in:
     description: HF helium atom with output of Cc4s files
@@ -3798,13 +3798,13 @@ diamond_gth_08_pbe.in:
     requirements: [HAVE_LIBCINT, HAVE_FFTW3]
     checks:
     -   SCF Total Energy:
-            reference: -44.9101913413
+            reference: -44.9101914439
             tolerance: 1.0e-07
     -   gKS HOMO energy:
-            reference: 13.880276
+            reference: 13.880144
             tolerance: 0.0001
     -   gKS LUMO energy:
-            reference: 18.497151
+            reference: 18.497111
             tolerance: 0.0001
 co2_gw_dm_cederbaum.in:
     description: CO2 GW density-matrix a la Cederbaum
