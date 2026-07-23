@@ -9,7 +9,7 @@
  postscf='two-rings'
  selfenergy_state_min=5
  selfenergy_state_max=6
- frozencore='yes'
+ frozencore='molgw'
  
 
  natom=1

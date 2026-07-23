@@ -18,6 +18,8 @@ module m_scf
   use m_linear_algebra, only: invert
 
 
+  implicit none
+
   integer, private              :: nhistmax
   integer, private              :: nhist_current
 
@@ -68,6 +70,7 @@ module m_scf
     real(dp) :: time       = -1.0_dp      ! time in TDDFT
     real(dp) :: work_p_nonconserv  = 0.0_dp   ! non-conservative work on the projectile in TDDFT
     real(dp) :: work_p             = 0.0_dp   ! conservative work on the projectile in TDDFT
+    real(dp) :: singles = 0.0_dp
   end type
 
 
@@ -77,7 +80,6 @@ contains
 
 !=========================================================================
 subroutine init_scf(nbf_in, nstate_in)
-  implicit none
   integer, intent(in)  :: nbf_in, nstate_in
   !=====
   integer :: info
@@ -106,8 +108,8 @@ subroutine init_scf(nbf_in, nstate_in)
 
     if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
       call die('init_scf: ADIIS and EDIIS not implemented with SCALAPACK use DIIS or simple mixing instead')
-    endif
-  endif
+    end if
+  end if
 
   iscf          = 0
   nhist_current = 0
@@ -136,7 +138,7 @@ subroutine init_scf(nbf_in, nstate_in)
   call clean_allocate('Density matrix history', p_matrix_hist, mh, nh, nspin, nhistmax)
   if( mixing_scheme /= 'SIMPLE' ) then
     call clean_allocate('Residual history', res_hist, mr, nr, nspin, nhistmax)
-  endif
+  end if
 
   allocate(en_hist(nhistmax))
 
@@ -147,7 +149,6 @@ end subroutine init_scf
 
 !=========================================================================
 subroutine destroy_scf()
-  implicit none
   !=====
   !=====
 
@@ -164,7 +165,6 @@ end subroutine destroy_scf
 
 !=========================================================================
 subroutine hamiltonian_prediction(s_matrix, x_matrix, p_matrix, ham, etot)
-  implicit none
   real(dp), intent(in)    :: s_matrix(:, :)
   real(dp), intent(in)    :: x_matrix(:, :)
   real(dp), intent(inout) :: p_matrix(:, :, :)
@@ -188,19 +188,19 @@ subroutine hamiltonian_prediction(s_matrix, x_matrix, p_matrix, ham, etot)
   p_matrix_hist(:, :, :, 2:) = p_matrix_hist(:, :, :, 1:nhistmax-1)
   if( ALLOCATED(res_hist) ) then
     res_hist(:, :, :, 2:)   = res_hist(:, :, :, 1:nhistmax-1)
-  endif
+  end if
   if( ALLOCATED(a_matrix_hist) ) then
     a_matrix_hist(2:, 2:) = a_matrix_hist(1:nhistmax-1, 1:nhistmax-1)
     a_matrix_hist(1, :)   = 0.0_dp
     a_matrix_hist(:, 1)   = 0.0_dp
-  endif
+  end if
 
 
   if( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) then
     p_dot_h_hist(2:, 2:) = p_dot_h_hist(1:nhistmax-1, 1:nhistmax-1)
     p_dot_h_hist(1, :)   = 0.0_dp
     p_dot_h_hist(:, 1)   = 0.0_dp
-  endif
+  end if
 
   !
   ! Set the newest values in history in position 1
@@ -218,13 +218,13 @@ subroutine hamiltonian_prediction(s_matrix, x_matrix, p_matrix, ham, etot)
     call diis_prediction(s_matrix, x_matrix, p_matrix, ham)
   else
     call simple_prediction(p_matrix, ham)
-  endif
+  end if
 
 
   ! If ADIIS or EDIIS prediction, overwrite the hamiltonian with a new one
   if( ( mixing_scheme == 'ADIIS' .OR. mixing_scheme == 'EDIIS' ) .AND. adiis_regime ) then
     call xdiis_prediction(p_matrix, ham)
-  endif
+  end if
 
   ! p_matrix_in(:,:,:) = p_matrix(:,:,:)
   call create_distributed_copy(p_matrix, desch, p_matrix_in)
@@ -235,7 +235,6 @@ end subroutine hamiltonian_prediction
 
 !=========================================================================
 subroutine simple_prediction(p_matrix, ham)
-  implicit none
   real(dp), intent(inout) :: p_matrix(:, :, :)
   real(dp), intent(inout) :: ham(:, :, :)
   !=====
@@ -249,7 +248,7 @@ subroutine simple_prediction(p_matrix, ham)
     ham_hist(:, :, :, 1)      = alpha_mixing * ham_hist(:, :, :, 1) + (1.0_dp - alpha_mixing) * ham_hist(:, :, :, 2)
     p_matrix_hist(:, :, :, 1) = alpha_mixing * p_matrix_hist(:, :, :, 1) + (1.0_dp - alpha_mixing) * p_matrix_hist(:, :, :, 2)
 
-  endif
+  end if
   call gather_distributed_copy(desch, ham_hist(:, :, :, 1), ham)
   call gather_distributed_copy(desch, p_matrix_hist(:, :, :, 1), p_matrix)
 
@@ -258,7 +257,6 @@ end subroutine simple_prediction
 
 !=========================================================================
 subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
-  implicit none
   real(dp), intent(in)    :: s_matrix(:, :)
   real(dp), intent(in)    :: x_matrix(:, :)
   real(dp), intent(inout) :: p_matrix(:, :, :)
@@ -280,7 +278,7 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
 #endif
   !=====
 
-  call start_clock(timing_diis)
+  call timer_diis%start()
 
 
   write(stdout, '(/,1x,a)') 'Pulay DIIS mixing'
@@ -321,14 +319,14 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
 #if defined(HAVE_SCALAPACK)
     if( iprow_sd < nprow_sd .AND. ipcol_sd < npcol_sd ) then
       call create_distributed_copy(matrix_tmp2, descr, res_hist(:, :, ispin, 1))
-    endif
+    end if
 #else
     res_hist(:, :, ispin, 1) = matrix_tmp2(:, :)
 #endif
 
     deallocate(matrix_tmp2)
     deallocate(matrix_tmp1)
-  enddo
+  end do
 
 
   !
@@ -343,10 +341,10 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
     a_matrix_hist(1, 1) = SUM( res_hist(:, :, :, 1)**2 ) * nspin
     do ihist=2, nhist_current
       a_matrix_hist(ihist, 1) = SUM( res_hist(:, :, :, ihist) * res_hist(:, :, :, 1) ) * nspin
-    enddo
+    end do
   else
     a_matrix_hist(1:nhist_current, 1) = 0.0_dp
-  endif
+  end if
   call world%sum(a_matrix_hist(1, 1))
   call world%sum(a_matrix_hist(2:nhist_current, 1))
 
@@ -355,7 +353,7 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
 
   do ihist=2, nhist_current
     a_matrix_hist(ihist, 1) = SUM( res_hist(:, :, :, ihist) * res_hist(:, :, :, 1) ) * nspin
-  enddo
+  end do
 #endif
   a_matrix_hist(1, 2:nhist_current) = a_matrix_hist(2:nhist_current, 1)
 
@@ -380,7 +378,7 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
   if( ABS( SUM(alpha_diis(1:nhist_current)) -1.0_dp ) > 1.0e-4_dp ) then
     call issue_warning('DIIS coefficients rescaled')
     alpha_diis(1:nhist_current) = alpha_diis(1:nhist_current) / SUM( alpha_diis(1:nhist_current) )
-  endif
+  end if
 
   !
   ! Output the residual history and coefficients
@@ -399,7 +397,7 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
   !  residual_pred(:,:,:) = residual_pred(:,:,:) + alpha_diis(ihist) * res_hist(:,:,:,ihist)
   !  ham(:,:,:)           = ham(:,:,:)           + alpha_diis(ihist) * ham_hist(:,:,:,ihist)
   !  p_matrix(:,:,:)      = p_matrix(:,:,:)      + alpha_diis(ihist) * p_matrix_hist(:,:,:,ihist)
-  !enddo
+  !end do
 
   allocate(residual_pred(mr, nr, nspin))
 
@@ -420,14 +418,14 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
                      1.0_dp, ham_distrib(:, :, ispin), 1, 1, desch)
         call PDGEADD('N', nbf_scf, nbf_scf, alpha_diis(ihist), p_matrix_hist(:, :, ispin, ihist), 1, 1,desch,&
                      1.0_dp, p_matrix_distrib(:, :, ispin), 1, 1, desch)
-      enddo
+      end do
 
       residual = residual + PDLANGE('F', nstate_scf, nstate_scf, residual_pred(:, :, ispin), 1, 1, descr, work)**2
-    enddo
+    end do
 
   else
     residual = -1.0_dp
-  endif
+  end if
   call world%max(residual)
   call gather_distributed_copy(desch, ham_distrib, ham)
   call gather_distributed_copy(desch, p_matrix_distrib, p_matrix)
@@ -452,7 +450,7 @@ subroutine diis_prediction(s_matrix, x_matrix, p_matrix, ham)
   deallocate(a_matrix)
   deallocate(a_matrix_inv)
 
-  call stop_clock(timing_diis)
+  call timer_diis%stop()
 
 end subroutine diis_prediction
 
@@ -460,7 +458,6 @@ end subroutine diis_prediction
 !=========================================================================
 subroutine xdiis_prediction(p_matrix, ham)
   use m_lbfgs
-  implicit none
   real(dp), intent(out)   :: p_matrix(:, :, :)
   real(dp), intent(out)   :: ham(:, :, :)
   !=====
@@ -482,7 +479,7 @@ subroutine xdiis_prediction(p_matrix, ham)
   real(dp), parameter :: alpha_max=0.60_dp
   !=====
 
-  call start_clock(timing_diis)
+  call timer_diis%start()
 
 
   write(stdout, '(/,1x,a)') TRIM(mixing_scheme)//' mixing'
@@ -494,15 +491,15 @@ subroutine xdiis_prediction(p_matrix, ham)
     do ispin=1, nspin
       call trace_transab_scalapack(scalapack_block_min, p_matrix_hist(:, :, ispin, ihist), ham_hist(:, :, ispin, 1), ph_trace)
       p_dot_h_hist(ihist, 1) =  p_dot_h_hist(ihist, 1) + ph_trace
-    enddo
-  enddo
+    end do
+  end do
 
   do jhist=2, nhist_current
     do ispin=1, nspin
       call trace_transab_scalapack(scalapack_block_min, p_matrix_hist(:, :, ispin, 1), ham_hist(:, :, ispin, jhist), ph_trace)
       p_dot_h_hist(1, jhist) =  p_dot_h_hist(1, jhist) + ph_trace
-    enddo
-  enddo
+    end do
+  end do
 
 
   allocate(alpha_diis_mc(nhist_current))
@@ -514,7 +511,7 @@ subroutine xdiis_prediction(p_matrix, ham)
 
   do ihist=1, nhist_current
     diag(ihist) = en_hist(ihist) - half_ph(ihist, ihist)
-  enddo
+  end do
 
 
   allocate(ti(nhist_current), ci(nhist_current))
@@ -531,7 +528,7 @@ subroutine xdiis_prediction(p_matrix, ham)
     do ihist=1, nhist_current
       ti(1)  = 1.0_dp
       ti(2:) = 0.2_dp
-    enddo
+    end do
 
     call lbfgs_init(lbfgs_plan, nhist_current, 5)
 
@@ -543,9 +540,9 @@ subroutine xdiis_prediction(p_matrix, ham)
       do jhist=1, nhist_current
         do ihist=1, nhist_current
           dcdt(ihist, jhist) = - 2.0_dp * ti(ihist)**2 * ti(jhist) / sum_ti2**2
-        enddo
+        end do
         dcdt(jhist, jhist) = dcdt(jhist, jhist) + 2.0_dp * ti(jhist) / sum_ti2
-      enddo
+      end do
 
 
       ! Evaluate XDIIS function
@@ -560,11 +557,11 @@ subroutine xdiis_prediction(p_matrix, ham)
       ! If the coefficient ci are identical within 1.0e-4, then consider they are converged
       if( ALL( ABS(ci(:) - ti(:)**2 / SUM( ti(:)**2 ) ) < 1.0e-4_dp ) ) then
         exit
-      endif
+      end if
 
       if( info <= 0 ) exit
 
-    enddo
+    end do
 
     call lbfgs_destroy(lbfgs_plan)
 
@@ -575,7 +572,7 @@ subroutine xdiis_prediction(p_matrix, ham)
     if( f_xdiis < f_xdiis_min ) then
       alpha_diis(:) = ci(:)
       f_xdiis_min = f_xdiis
-    endif
+    end if
 
 
     ! If a coefficient is too large, start again the minimization
@@ -591,7 +588,7 @@ subroutine xdiis_prediction(p_matrix, ham)
       allocate(seed(nseed))
       do iseed=1, nseed
         seed(iseed) = NINT( world%rank * iseed * pi * 27.21 )
-      enddo
+      end do
       call RANDOM_SEED(PUT=seed)
       deallocate(seed)
 
@@ -614,9 +611,9 @@ subroutine xdiis_prediction(p_matrix, ham)
         if( f_xdiis < f_xdiis_min ) then
           f_xdiis_min = f_xdiis
           alpha_diis(:) = alpha_diis_mc(:)
-        endif
+        end if
 
-      enddo
+      end do
 
       ! Propage f_xdiis_min and alpha_diis to all procs
       f_xdiis = f_xdiis_min
@@ -626,15 +623,15 @@ subroutine xdiis_prediction(p_matrix, ham)
         iproc = world%rank
       else
         iproc = -1
-      endif
+      end if
       call world%max(iproc)
       call world%bcast(iproc, alpha_diis)
 
 
-    endif
+    end if
 
 
-  endif
+  end if
 
 
   deallocate(ti, ci, gradf)
@@ -650,12 +647,12 @@ subroutine xdiis_prediction(p_matrix, ham)
   do ihist=1, nhist_current
     ham(:, :, :)      = ham(:, :, :)      + alpha_diis(ihist) * ham_hist(:, :, :, ihist)
     p_matrix(:, :, :) = p_matrix(:, :, :) + alpha_diis(ihist) * p_matrix_hist(:, :, :, ihist)
-  enddo
+  end do
 
   deallocate(alpha_diis_mc)
   deallocate(half_ph)
 
-  call stop_clock(timing_diis)
+  call timer_diis%stop()
 
 
 contains
@@ -708,7 +705,6 @@ end subroutine xdiis_prediction
 
 !=========================================================================
 subroutine density_matrix_preconditioning(hkin, s_matrix, p_matrix_new)
-  implicit none
 
   real(dp), intent(in)      :: hkin(:, :)
   real(dp), intent(in)      :: s_matrix(:, :)
@@ -741,28 +737,28 @@ subroutine density_matrix_preconditioning(hkin, s_matrix, p_matrix_new)
 
     do iglobal=1, nbf
       hkin_tmp(iglobal, iglobal) = hkin_tmp(iglobal, iglobal) + 0.5_dp * kerker_k0**2
-    enddo
+    end do
     hkin_inv(:, :) = hkin_tmp(:, :)
     call invert(hkin_inv)
     hkin_inv(:, :) = -hkin_inv(:, :) * 0.5_dp * kerker_k0**2
     do iglobal=1, nbf
       hkin_inv(iglobal, iglobal) = hkin_inv(iglobal, iglobal) + 1.0_dp
-    enddo
+    end do
 
     write(stdout, *) '================================'
     do iglobal=1, 20
       write(stdout, '(*(2x,f6.2))') hkin(iglobal, 1:20)
-    enddo
+    end do
     write(stdout, *) '================================'
     do iglobal=1, 20
       write(stdout, '(*(2x,f6.2))') hkin_inv(iglobal, 1:20)
-    enddo
+    end do
     write(stdout, *) '================================'
 
     write(stdout, *) '=============P_MATRIX BEFORE===='
     do iglobal=1, 20
       write(stdout, '(*(2x,f6.2))') p_matrix_new(iglobal, 1:20, 1)
-    enddo
+    end do
     write(stdout, *) '================================'
 
     allocate(matrix(nbf, nbf))
@@ -783,12 +779,12 @@ subroutine density_matrix_preconditioning(hkin, s_matrix, p_matrix_new)
 
       p_matrix_new(:, :, ispin) = p_matrix_new(:, :, ispin) + p_matrix_in(:, :, ispin) * (trace_ref-trace_current) / trace_ref
 
-    enddo
+    end do
 
     write(stdout, *) '=============P_MATRIX AFTER ===='
     do iglobal=1, 20
       write(stdout, '(*(2x,f6.2))') p_matrix_new(iglobal, 1:20, 1)
-    enddo
+    end do
     write(stdout, *) '================================'
 
     matrix(:, :) = MATMUL( p_matrix_new(:, :, 1) , s_matrix )
@@ -799,7 +795,7 @@ subroutine density_matrix_preconditioning(hkin, s_matrix, p_matrix_new)
     deallocate(hkin_inv)
     deallocate(delta_p_matrix)
 
-  endif
+  end if
 
   if( density_matrix_damping > 1.0e-6 ) then
 
@@ -810,11 +806,11 @@ subroutine density_matrix_preconditioning(hkin, s_matrix, p_matrix_new)
     do ispin=1, nspin
       p_matrix_new_distrib(:, :, :) = p_matrix_in(:, :, :) &
                     +  ( p_matrix_new_distrib(:, :, :) - p_matrix_in(:, :, :) ) * ( 1.0_dp - density_matrix_damping)
-    enddo
+    end do
     call gather_distributed_copy(desch, p_matrix_new_distrib, p_matrix_new)
     deallocate(p_matrix_new_distrib)
 
-  endif
+  end if
 
 
 end subroutine density_matrix_preconditioning
@@ -822,7 +818,6 @@ end subroutine density_matrix_preconditioning
 
 !=========================================================================
 function check_converged(p_matrix_new)
-  implicit none
 
   logical               :: check_converged
   real(dp), intent(in)   :: p_matrix_new(:, :, :)
@@ -854,8 +849,8 @@ function check_converged(p_matrix_new)
       write(stdout, '(1x,a,es12.5)') 'Fair convergence has been reached: lower than ', diis_switch
       write(stdout, *) 'Now switch on regular DIIS'
       adiis_regime = .FALSE.
-    endif
-  endif
+    end if
+  end if
 
   if( rms < tolscf ) then
     check_converged = .TRUE.
@@ -871,10 +866,10 @@ function check_converged(p_matrix_new)
         call issue_warning('SCF convergence is very poor')
       else if( rms > 1.0e-4_dp ) then
         call issue_warning('SCF convergence is poor')
-      endif
-    endif
+      end if
+    end if
 
-  endif
+  end if
 
 
 end function check_converged
@@ -882,7 +877,6 @@ end function check_converged
 
 !=========================================================================
 subroutine print_energy_yaml(name, en)
-  implicit none
   character(len=*), intent(in)           :: name
   type(energy_contributions), intent(in) :: en
   !=====
@@ -893,31 +887,31 @@ subroutine print_energy_yaml(name, en)
   write(unit_yaml, '(/,a,a)') TRIM(name), ':'
   write(unit_yaml, '(4x,a)')             'unit: Ha'
   if( en%time > -1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'time:                ', en%time
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'time:                ', en%time
   if( ABS(en%total) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'total:               ', en%total
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'total:               ', en%total
   if( ABS(en%totalexx) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'total exx:           ', en%totalexx
-  write(unit_yaml, '(4x,a,1x,es18.8)')   'nucleus-nucleus:     ', en%nuc_nuc
-  write(unit_yaml, '(4x,a,1x,es18.8)')   'kinetic:             ', en%kinetic
-  write(unit_yaml, '(4x,a,1x,es18.8)')   'electron-nucleus:    ', en%nucleus
-  write(unit_yaml, '(4x,a,1x,es18.8)')   'hartree:             ', en%hartree
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'total exx:           ', en%totalexx
+  write(unit_yaml, '(4x,a,1x,es18.10)')   'nucleus-nucleus:     ', en%nuc_nuc
+  write(unit_yaml, '(4x,a,1x,es18.10)')   'kinetic:             ', en%kinetic
+  write(unit_yaml, '(4x,a,1x,es18.10)')   'electron-nucleus:    ', en%nucleus
+  write(unit_yaml, '(4x,a,1x,es18.10)')   'hartree:             ', en%hartree
   if( ABS(en%exx) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'exchange:            ', en%exx
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'exchange:            ', en%exx
   if( ABS(en%exx_hyb) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'hybrid exchange:     ', en%exx_hyb
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'hybrid exchange:     ', en%exx_hyb
   if( ABS(en%xc) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'exchange-correlation:', en%xc
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'exchange-correlation:', en%xc
   if( ABS(en%rpa) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'rpa correlation:     ', en%rpa
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'rpa correlation:     ', en%rpa
   if( ABS(en%gw) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'gw correlation:      ', en%gw
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'gw correlation:      ', en%gw
   if( ABS(en%mp2) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'mp2 correlation:     ', en%mp2
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'mp2 correlation:     ', en%mp2
   if( ABS(en%mp3) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'mp3 correlation:     ', en%mp3
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'mp3 correlation:     ', en%mp3
   if( ABS(en%excit) > 1.0e-10_dp ) &
-    write(unit_yaml, '(4x,a,1x,es18.8)') 'excitation:          ', en%excit
+    write(unit_yaml, '(4x,a,1x,es18.10)') 'excitation:          ', en%excit
 
 
 end subroutine print_energy_yaml

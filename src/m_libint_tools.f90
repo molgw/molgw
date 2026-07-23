@@ -23,6 +23,9 @@ module m_libint_tools
   !=========================================================================
   ! interfaces to libint wrappers in C/C++ with iso_c_binding
   !=========================================================================
+
+  implicit none
+
   interface
 
 #if (LIBINT2_SUPPORT_ONEBODY)
@@ -273,7 +276,6 @@ contains
 
 !=========================================================================
 subroutine transform_molgw_to_molgw_2d(gaussian_type, am1, am2, array_in, matrix_out)
-  implicit none
   character(len=4), intent(in)      :: gaussian_type
   integer, intent(in)               :: am1, am2
   real(C_DOUBLE), intent(in)        :: array_in(:)
@@ -306,7 +308,6 @@ end subroutine transform_molgw_to_molgw_2d
 
 !=========================================================================
 subroutine transform_libint_to_molgw_2d(gaussian_type, am1, am2, array_in, matrix_out)
-  implicit none
   character(len=4), intent(in)      :: gaussian_type
   integer, intent(in)               :: am1, am2
   real(C_DOUBLE), intent(in)        :: array_in(:)
@@ -340,7 +341,6 @@ end subroutine transform_libint_to_molgw_2d
 
 !=========================================================================
 subroutine transform_libint_to_molgw_3d(gaussian_type_left, am1, gaussian_type_right, am2, am3, array_in, matrix_out)
-  implicit none
   character(len=4), intent(in)      :: gaussian_type_left, gaussian_type_right
   integer, intent(in)               :: am1, am2, am3
   real(C_DOUBLE), intent(in)        :: array_in(:)
@@ -374,9 +374,9 @@ subroutine transform_libint_to_molgw_3d(gaussian_type_left, am1, gaussian_type_r
           matrix_out(i1, i2, i3) = array_in(ii) * cart_to_pure_norm(am1, CARTG)%matrix(i1, i1) &
                                               * cart_to_pure_norm(am2, CARTG)%matrix(i2, i2) &
                                               * cart_to_pure_norm(am3, CARTG)%matrix(i3, i3)
-        enddo
-      enddo
-    enddo
+        end do
+      end do
+    end do
   else
 
     allocate(matrix_tmp1(n1, n2c*n3c))
@@ -393,18 +393,17 @@ subroutine transform_libint_to_molgw_3d(gaussian_type_left, am1, gaussian_type_r
 
       ! Transform the 3rd index
       matrix_out(i1, :, :) = MATMUL( matrix_tmp2(:, :) , cart_to_pure_norm(am3, gt_tagr)%matrix(:, :) )
-    enddo
+    end do
 
     deallocate(matrix_tmp1, matrix_tmp2)
 
-  endif
+  end if
 
 end subroutine transform_libint_to_molgw_3d
 
 
 !=========================================================================
 subroutine transform_libint_to_molgw_4d(gaussian_type, am1, am2, am3, am4, array_in, matrix_out)
-  implicit none
   character(len=4), intent(in)      :: gaussian_type
   integer, intent(in)               :: am1, am2, am3, am4
   real(C_DOUBLE), intent(in)        :: array_in(:)
@@ -454,8 +453,8 @@ subroutine transform_libint_to_molgw_4d(gaussian_type, am1, am2, am3, am4, array
 
       ! Transform the 4th index
       matrix_out(i1, i2, :, :) = MATMUL( matrix_tmp3(:, :) , cart_to_pure_norm(am4, gt_tag)%matrix(:, :) )
-    enddo
-  enddo
+    end do
+  end do
 
   deallocate(matrix_tmp1, matrix_tmp2, matrix_tmp3)
 
@@ -463,43 +462,7 @@ end subroutine transform_libint_to_molgw_4d
 
 
 !=========================================================================
-! Here index 1 stands for the projector which is always 'PURE' and already normalized
-subroutine transform_libint_to_molgw_gth_projector(gaussian_type, am1, am2, array_in, matrix_out)
-  implicit none
-  character(len=4), intent(in)      :: gaussian_type
-  integer, intent(in)               :: am1, am2
-  real(C_DOUBLE), intent(in)        :: array_in(:)
-  real(dp), allocatable, intent(out) :: matrix_out(:, :)
-  !=====
-  integer :: n1, n2, n1c, n2c
-  integer :: gt_tag
-  real(dp), allocatable :: matrix_tmp(:, :)
-  !=====
-
-  gt_tag = get_gaussian_type_tag(gaussian_type)
-  n1c = number_basis_function_am('CART',am1)
-  n2c = number_basis_function_am('CART',am2)
-  n1  = number_basis_function_am('PURE',am1)
-  n2  = number_basis_function_am(gaussian_type, am2)
-
-  if( .NOT. ALLOCATED(matrix_out) ) allocate(matrix_out(n1, n2))
-  allocate(matrix_tmp(n1, n2c))
-
-  ! Transform the 1st index
-  matrix_tmp(:, :) = TRANSPOSE( MATMUL( RESHAPE( array_in(:) , (/ n2c , n1c /) ) , &
-                    cart_to_pure(am1, gt_tag)%matrix(1:n1c, 1:n1) ) )
-
-  ! Transform the 2nd index
-  matrix_out(:, :) = MATMUL( matrix_tmp(:, :) , cart_to_pure_norm(am2, gt_tag)%matrix(:, :) )
-
-  deallocate(matrix_tmp)
-
-end subroutine transform_libint_to_molgw_gth_projector
-
-
-!=========================================================================
 subroutine set_libint_shell(shell, amA, contrdepthA, A, alphaA, cA)
-  implicit none
 
   type(shell_type), intent(in)            :: shell
   integer(C_INT), intent(out)             :: amA, contrdepthA

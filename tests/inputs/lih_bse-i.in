@@ -10,7 +10,7 @@
 
  basis='cc-pVQZ'
  auxil_basis='cc-pVQZ-RI'
- frozencore='yes'
+ frozencore='molgw'
 
  natom=2
  length_unit='bohr'

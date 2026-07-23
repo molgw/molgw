@@ -4,7 +4,7 @@
  npulay_hist=8
 
  postscf='gw'
- frozencore='yes'
+ frozencore='molgw'
  print_sigma='yes'
  selfenergy_state_min=11
  selfenergy_state_max=12

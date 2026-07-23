@@ -70,7 +70,7 @@ subroutine calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter_glob
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
 !arrays
- real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ)::Phases
+ real(dp),dimension(RDMd%NBF_occ,RDMd%NBF_occ),intent(inout)::Phases
 !Local variables ------------------------------
 !scalars
  logical::diagco,converged,only_phases_
@@ -1031,59 +1031,59 @@ end subroutine Grad_r_wrt_z
 !!
 !! SOURCE
 
-! subroutine num_calc_Grad_z_amp(ELAGd,RDMd,INTEGd,y_ij,y_ab,Grad_residue) 
-! !Arguments ------------------------------------
-! !scalars
-!  type(elag_t),intent(inout)::ELAGd
-!  type(rdm_t),intent(inout)::RDMd
-!  type(integ_t),intent(inout)::INTEGd
-! !arrays
-!  real(dp),dimension(RDMd%Namplitudes)::Grad_residue
-!  real(dp),dimension(RDMd%Npairs,RDMd%Npairs)::y_ij
-!  real(dp),dimension(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs))::y_ab
-! !Local variables ------------------------------
-! !scalars
-!  integer::iorb,iorb1
-!  real(dp)::saved_z,sum_tmp,step=tol6
-! !arrays
-!  real(dp),allocatable,dimension(:,:)::Grad_res_tmp
-! !************************************************************************
-!  
-!  allocate(Grad_res_tmp(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)))
-!  Grad_res_tmp=zero
-! 
-!  do iorb=1,RDMd%Npairs
-!   do iorb1=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)
-!    saved_z=RDMd%z_pccd_old(iorb,iorb1)
-!    ! 2*step
-!    RDMd%z_pccd_old(iorb,iorb1)=RDMd%z_pccd_old(iorb,iorb1)+two*step
-!    call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
-!    sum_tmp=-dsqrt(sum(RDMd%tz_residue(:,:)**two))
-!    ! step
-!    RDMd%z_pccd_old(iorb,iorb1)=RDMd%z_pccd_old(iorb,iorb1)-step
-!    call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
-!    sum_tmp=sum_tmp+eight*dsqrt(sum(RDMd%tz_residue(:,:)**two)) 
-!    ! -step
-!    RDMd%z_pccd_old(iorb,iorb1)=RDMd%z_pccd_old(iorb,iorb1)-two*step
-!    call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
-!    sum_tmp=sum_tmp-eight*dsqrt(sum(RDMd%tz_residue(:,:)**two))
-!    ! -2*step
-!    RDMd%z_pccd_old(iorb,iorb1)=RDMd%z_pccd_old(iorb,iorb1)-step
-!    call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
-!    sum_tmp=sum_tmp+dsqrt(sum(RDMd%tz_residue(:,:)**two))
-!    ! Save the gradient
-!    Grad_res_tmp(iorb,iorb1)=sum_tmp/(twelve*step) 
-!    ! Recover z_pccd_old
-!    RDMd%z_pccd_old(iorb,iorb1)=saved_z
-!   enddo
-!  enddo
-!  
-!  Grad_residue=reshape(Grad_res_tmp,(/RDMd%Namplitudes/))
-! 
-!  deallocate(Grad_res_tmp)
-! 
-! end subroutine num_calc_Grad_z_amp
-! !!***
+subroutine num_calc_Grad_z_amp(ELAGd,RDMd,INTEGd,y_ij,y_ab,Grad_residue) 
+!Arguments ------------------------------------
+!scalars
+ type(elag_t),intent(inout)::ELAGd
+ type(rdm_t),intent(inout)::RDMd
+ type(integ_t),intent(inout)::INTEGd
+!arrays
+ real(dp),dimension(RDMd%Namplitudes),intent(out)::Grad_residue
+ real(dp),dimension(RDMd%Npairs,RDMd%Npairs),intent(in)::y_ij
+ real(dp),dimension(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)),intent(in)::y_ab
+!Local variables ------------------------------
+!scalars
+ integer::iorb,iorb1
+ real(dp)::saved_z,sum_tmp,step=tol6
+!arrays
+ real(dp),allocatable,dimension(:,:)::Grad_res_tmp
+!************************************************************************
+ 
+ allocate(Grad_res_tmp(RDMd%Npairs,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)))
+ Grad_res_tmp=zero
+
+ do iorb=1,RDMd%Npairs
+  do iorb1=1,RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)
+   saved_z=RDMd%z_pccd_old(iorb,iorb1)
+   ! 2*step
+   RDMd%z_pccd_old(iorb,iorb1)=RDMd%z_pccd_old(iorb,iorb1)+two*step
+   call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
+   sum_tmp=-dsqrt(sum(RDMd%tz_residue(:,:)**two))
+   ! step
+   RDMd%z_pccd_old(iorb,iorb1)=RDMd%z_pccd_old(iorb,iorb1)-step
+   call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
+   sum_tmp=sum_tmp+eight*dsqrt(sum(RDMd%tz_residue(:,:)**two)) 
+   ! -step
+   RDMd%z_pccd_old(iorb,iorb1)=RDMd%z_pccd_old(iorb,iorb1)-two*step
+   call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
+   sum_tmp=sum_tmp-eight*dsqrt(sum(RDMd%tz_residue(:,:)**two))
+   ! -2*step
+   RDMd%z_pccd_old(iorb,iorb1)=RDMd%z_pccd_old(iorb,iorb1)-step
+   call calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
+   sum_tmp=sum_tmp+dsqrt(sum(RDMd%tz_residue(:,:)**two))
+   ! Save the gradient
+   Grad_res_tmp(iorb,iorb1)=sum_tmp/(twelve*step) 
+   ! Recover z_pccd_old
+   RDMd%z_pccd_old(iorb,iorb1)=saved_z
+  enddo
+ enddo
+ 
+ Grad_residue=reshape(Grad_res_tmp,(/RDMd%Namplitudes/))
+
+ deallocate(Grad_res_tmp)
+
+end subroutine num_calc_Grad_z_amp
+!!***
 
 !!***
 !!****f* DoNOF/calc_t_residues
@@ -1109,7 +1109,7 @@ subroutine calc_t_residues(ELAGd,RDMd,INTEGd,y_ij)
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
 !arrays
- real(dp),dimension(RDMd%Npairs,RDMd%Npairs)::y_ij
+ real(dp),dimension(RDMd%Npairs,RDMd%Npairs),intent(out)::y_ij
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5
@@ -1210,8 +1210,8 @@ subroutine calc_z_residues(ELAGd,RDMd,INTEGd,y_ij,y_ab)
  type(rdm_t),intent(inout)::RDMd
  type(integ_t),intent(inout)::INTEGd
 !arrays
- real(dp),dimension(RDMd%Npairs,RDMd%Npairs)::y_ij
- real(dp),dimension(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs))::y_ab
+ real(dp),dimension(RDMd%Npairs,RDMd%Npairs),intent(in)::y_ij
+ real(dp),dimension(RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs),RDMd%NBF_occ-(RDMd%Nfrozen+RDMd%Npairs)),intent(in)::y_ab
 !Local variables ------------------------------
 !scalars
  integer::iorb,iorb1,iorb2,iorb3,iorb4,iorb5

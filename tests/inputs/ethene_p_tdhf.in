@@ -10,7 +10,7 @@
  auxil_basis='cc-pVDZ-RI'
 
  postscf='td'
- frozencore='yes'
+ frozencore='molgw'
  nexcitation=4
 
  natom=6

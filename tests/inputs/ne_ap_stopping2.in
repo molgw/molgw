@@ -5,7 +5,7 @@
  auxil_basis='AUTO'
 
  postscf='td'
- frozencore='yes'
+ frozencore='molgw'
 
  stopping='3d'
  nvel_projectile=2

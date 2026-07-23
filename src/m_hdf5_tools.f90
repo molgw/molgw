@@ -650,7 +650,7 @@ contains
     else
        write(*, '(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
             ", is not constent with dset_dims(1)=", dset_dims(1)
-    endif
+    end if
     
     ! close id's
     call h5sclose_f(dspace_id, hdferror)  
@@ -720,7 +720,7 @@ contains
     else
        write(*, '(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
             ", is not constent with dset_dims(1)=", dset_dims(1)
-    endif
+    end if
     
     ! close id's
     call h5sclose_f(dspace_id, hdferror)  
@@ -790,7 +790,7 @@ contains
     else
        write(*, '(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
             ", is not constent with dset_dims(1)=", dset_dims(1)
-    endif
+    end if
     
     ! close id's
     call h5sclose_f(dspace_id, hdferror)  
@@ -860,7 +860,7 @@ contains
     else
        write(*, '(A,I0,A,I0)') "--->ERROR: size(vector)=", size(vector), &
             ", is not constent with dset_dims(1)=", dset_dims(1)
-    endif
+    end if
     
     ! close id's
     call h5sclose_f(dspace_id, hdferror)  

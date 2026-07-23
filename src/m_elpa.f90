@@ -166,8 +166,8 @@ end subroutine elpa_func_deallocate
 !! SOURCE
 
 subroutine elpa_func_error_handler(err_code, err_msg, err_varname)
-  integer, optional :: err_code
-  character(len=*), optional :: err_msg, err_varname
+  integer, intent(in), optional :: err_code
+  character(len=*), intent(in), optional :: err_msg, err_varname
   !=====
   integer :: err_code_
   character(len=500) :: msg
@@ -260,7 +260,7 @@ subroutine elpa_func_get_communicators(elpa_hdl, mpi_comm_parent, process_row, p
     err = elpa_hdl%elpa%setup()
     write(msg, '(3a)') "Error when setting '", varname, "'during ELPA communicators setup"
     call elpa_func_error_handler(err_code=err, err_msg=msg)
-  endif
+  end if
 
   elpa_hdl%mpi_comm_parent = mpi_comm_parent
   elpa_hdl%process_row = process_row
@@ -370,7 +370,7 @@ subroutine elpa_func_solve_evp_real(elpa_hdl, aa, qq, ev, nev, use_two_stage)
 
   integer, intent(in)  :: nev
   type(elpa_hdl_t), intent(inout) :: elpa_hdl
-  logical :: use_two_stage
+  logical, intent(in) :: use_two_stage
   real(dp), intent(inout) :: aa(:, :)
   real(dp), intent(out) :: ev(:), qq(:, :)
   !=====
@@ -437,7 +437,7 @@ subroutine elpa_func_solve_evp_complex(elpa_hdl, aa, qq, ev, nev, use_two_stage)
 
   integer, intent(in)  :: nev
   type(elpa_hdl_t), intent(inout) :: elpa_hdl
-  logical :: use_two_stage
+  logical, intent(in) :: use_two_stage
   complex(dp), intent(inout) :: aa(:, :)
   real(dp), intent(out) :: ev(:)
   complex(dp), intent(out) :: qq(:, :)

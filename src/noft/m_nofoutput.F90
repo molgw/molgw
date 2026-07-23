@@ -43,7 +43,7 @@ subroutine init_output(output_file_in)
 !Arguments ------------------------------------
 !scalars
 !arrays
- character(len=100)::output_file_in
+ character(len=100),intent(in)::output_file_in
 !Local variables ------------------------------
 !scalars
  integer::iunit=313

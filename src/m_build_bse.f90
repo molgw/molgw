@@ -15,7 +15,7 @@ module m_build_bse
   use m_memory
   use m_mpi
   use m_scalapack
-  use m_inputparam
+  use m_inputparam, only: nspin, has_auxil_basis, spin_fact
   use m_spectral_function
   use m_basis_set
   use m_eri_ao_mo
@@ -26,13 +26,14 @@ module m_build_bse
   
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
-subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate, c_matrix, energy, wpol, alpha_local, &
-                                m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa, rpa_correlation)
-  implicit none
+subroutine build_amb_apb_common_nori(is_triplet_currently, lambda, nmat, nbf, nstate, c_matrix, energy, wpol, &
+                                     m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa, rpa_correlation)
 
   logical, intent(in)                 :: is_triplet_currently
   real(dp), intent(in)                :: lambda
@@ -40,7 +41,6 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
   real(dp), intent(in)                :: energy(nstate, nspin)
   real(dp), intent(in)                :: c_matrix(nbf, nstate, nspin)
   type(spectral_function), intent(in) :: wpol
-  real(dp), intent(in)                :: alpha_local
   integer, intent(in)                 :: m_apb, n_apb
   real(dp), intent(inout)             :: amb_matrix(m_apb, n_apb), apb_matrix(m_apb, n_apb)
   real(dp), intent(out)               :: amb_diag_rpa(nmat)
@@ -60,23 +60,22 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
   real(dp), allocatable :: apb_block(:, :)
   !=====
 
-  call start_clock(timing_build_common)
+  call timer_build_common%start()
     
   write(stdout, '(a)') ' Build Common part: Energies + Hartree + possibly Exchange'
-  write(stdout, '(a,f8.3)') ' Content of Exchange: ', alpha_local
-  if( (beta_hybrid > 1.0e-6_dp) .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' &
-     .OR. TRIM(w_screening)=='TDDFT' ) ) then
-    write(stdout, '(a,f8.3)') ' Content of LR-Exchange(missing): ', beta_hybrid
-    call die('build_amb_apb_common: Long-range exchange not available in TD-DFT without RI.' &
+  write(stdout, '(a,f8.3)') ' Content of Exchange: ', wpol%alpha_hybrid
+  if( ABS(wpol%beta_hybrid) > 1.0e-6_dp ) then
+    write(stdout, '(a,f8.3)') ' Content of LR-Exchange(missing): ', wpol%beta_hybrid
+    call die('build_amb_apb_common_nori: Long-range exchange not available in TD-DFT without RI.' &
              // ' (Hint: try to use an auxiliary basis)')
-  endif
+  end if
 
   if( .NOT. has_auxil_basis) then
     allocate(eri_mo_jbmin(nstate, nstate, nstate, nspin))
     ! Set this to zero and then enforce the calculation of the first series of
     ! Coulomb integrals
     eri_mo_jbmin(:, :, :, :) = 0.0_dp
-  endif
+  end if
 
   if( nprow_sd * npcol_sd > 1 ) &
      write(stdout, '(a,i4,a,i4)') ' SCALAPACK grid    :', nprow_sd, ' x ', npcol_sd
@@ -108,7 +107,7 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
           jbmin = MIN(jstate, bstate)
           j_is_jbmin = (jbmin == jstate)
           call calculate_eri_4center_mo(c_matrix, jbmin, jbspin, eri_mo_jbmin)
-        endif
+        end if
 
         do t_ia=1, m_apb_block
           t_ia_global = rowindex_local_to_global(iprow, nprow_sd, t_ia)
@@ -128,17 +127,17 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
               eri_mo_iajb = eri_mo_jbmin(bstate, istate, astate, iaspin)
             else                ! treating (b,j)
               eri_mo_iajb = eri_mo_jbmin(jstate, istate, astate, iaspin)
-            endif
-          endif
+            end if
+          end if
 
           if( .NOT. is_triplet_currently) then
             apb_block(t_ia, t_jb) = 2.0_dp * eri_mo_iajb * spin_fact * lambda
           else
             apb_block(t_ia, t_jb) = 0.0_dp
-          endif
+          end if
           amb_block(t_ia, t_jb) = 0.0_dp
 
-          if( alpha_local > 1.0e-6_dp ) then
+          if( wpol%alpha_hybrid > 1.0e-6_dp ) then
             if( iaspin == jbspin ) then
               if(has_auxil_basis) then
                 eri_mo_ijab = evaluate_eri_mo_ri_paral(istate, jstate, iaspin, astate, bstate, jbspin)
@@ -150,14 +149,14 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
                 else
                   eri_mo_ijab = eri_mo_jbmin(astate, istate, jstate, jbspin)
                   eri_mo_ibaj = eri_mo_jbmin(istate, astate, jstate, jbspin)
-                endif
-              endif
-              apb_block(t_ia, t_jb) = apb_block(t_ia, t_jb) - eri_mo_ijab * alpha_local * lambda &
-                                                          - eri_mo_ibaj * alpha_local * lambda
-              amb_block(t_ia, t_jb) = amb_block(t_ia, t_jb) - eri_mo_ijab * alpha_local * lambda &
-                                                          + eri_mo_ibaj * alpha_local * lambda
-            endif
-          endif
+                end if
+              end if
+              apb_block(t_ia, t_jb) = apb_block(t_ia, t_jb) - eri_mo_ijab * wpol%alpha_hybrid * lambda &
+                                                          - eri_mo_ibaj * wpol%alpha_hybrid * lambda
+              amb_block(t_ia, t_jb) = amb_block(t_ia, t_jb) - eri_mo_ijab * wpol%alpha_hybrid * lambda &
+                                                          + eri_mo_ibaj * wpol%alpha_hybrid * lambda
+            end if
+          end if
 
           if( t_ia_global == t_jb_global ) then
             !
@@ -165,14 +164,14 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
             if( auxil%rank == 0 ) then
               apb_block(t_ia, t_jb) =  apb_block(t_ia, t_jb) + ( energy(bstate, jbspin) - energy(jstate, jbspin) )
               amb_block(t_ia, t_jb) =  amb_block(t_ia, t_jb) + ( energy(bstate, jbspin) - energy(jstate, jbspin) )
-            endif
+            end if
             ! First part of the RPA correlation energy: sum over diagonal terms
             rpa_correlation = rpa_correlation - 0.25_dp * ( apb_block(t_ia, t_jb) + amb_block(t_ia, t_jb) )
-          endif
+          end if
 
-        enddo
+        end do
 
-      enddo
+      end do
 
 
       call auxil%sum(amb_block)
@@ -181,13 +180,13 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
       if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
         amb_matrix(:, :) = amb_block(:, :)
         apb_matrix(:, :) = apb_block(:, :)
-      endif
+      end if
 
 
       deallocate(amb_block)
       deallocate(apb_block)
-    enddo
-  enddo
+    end do
+  end do
 
   call world%sum(rpa_correlation)
 
@@ -202,20 +201,19 @@ subroutine build_amb_apb_common(is_triplet_currently, lambda, nmat, nbf, nstate,
 
     amb_diag_rpa(t_ia_global) = energy(astate, iaspin) - energy(istate, iaspin)
 
-  enddo
+  end do
   !$OMP END PARALLEL DO
 
   if(ALLOCATED(eri_mo_jbmin)) deallocate(eri_mo_jbmin)
 
 
-  call stop_clock(timing_build_common)
+  call timer_build_common%stop()
 
-end subroutine build_amb_apb_common
+end subroutine build_amb_apb_common_nori
 
 
 !=========================================================================
-subroutine build_amb_apb_diag_auxil(nmat, nstate, energy, wpol, m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa)
-  implicit none
+subroutine build_amb_apb_diag_ri(nmat, nstate, energy, wpol, m_apb, n_apb, amb_matrix, apb_matrix, amb_diag_rpa)
 
   integer, intent(in)                 :: nmat, nstate
   real(dp), intent(in)                :: energy(nstate, nspin)
@@ -244,16 +242,15 @@ subroutine build_amb_apb_diag_auxil(nmat, nstate, energy, wpol, m_apb, n_apb, am
     if( t_ia > 0 .AND. t_jb > 0 ) then
       apb_matrix(t_ia, t_jb) =  amb_diag_rpa(t_jb_global)
       amb_matrix(t_ia, t_jb) =  amb_diag_rpa(t_jb_global)
-    endif
-  enddo
+    end if
+  end do
 
 
-end subroutine build_amb_apb_diag_auxil
+end subroutine build_amb_apb_diag_ri
 
 
 !=========================================================================
 subroutine remove_a_energy_diag(energy, wpol, a_matrix)
-  implicit none
 
   real(dp), intent(in)                :: energy(:, :)
   type(spectral_function), intent(in) :: wpol
@@ -277,8 +274,8 @@ subroutine remove_a_energy_diag(energy, wpol, a_matrix)
     ! If the diagonal element belongs to this proc, then substract it.
     if( t_ia > 0 .AND. t_jb > 0 ) then
        a_matrix(t_ia, t_jb) = a_matrix(t_ia, t_jb) - ( energy(bstate, jbspin) - energy(jstate, jbspin) )
-    endif
-  enddo
+    end if
+  end do
 
 
 end subroutine remove_a_energy_diag
@@ -286,7 +283,6 @@ end subroutine remove_a_energy_diag
 
 !=========================================================================
 subroutine get_rpa_correlation(nmat, m_apb, n_apb, amb_matrix, apb_matrix, rpa_correlation)
-  implicit none
 
   integer, intent(in)                 :: nmat
   integer, intent(in)                 :: m_apb, n_apb
@@ -307,8 +303,8 @@ subroutine get_rpa_correlation(nmat, m_apb, n_apb, amb_matrix, apb_matrix, rpa_c
     if( t_ia > 0 .AND. t_jb > 0 ) then
       rpa_correlation = rpa_correlation - 0.25_dp * apb_matrix(t_ia, t_jb)   &
                                         - 0.25_dp * amb_matrix(t_ia, t_jb)
-    endif
-  enddo
+    end if
+  end do
 
   call world%sum(rpa_correlation)
 
@@ -317,8 +313,7 @@ end subroutine get_rpa_correlation
 
 
 !=========================================================================
-subroutine build_apb_hartree_auxil(is_triplet_currently, lambda, desc_apb, wpol, m_apb, n_apb, apb_matrix)
-  implicit none
+subroutine build_apb_hartree_ri(is_triplet_currently, lambda, desc_apb, wpol, m_apb, n_apb, apb_matrix)
 
   logical, intent(in)                 :: is_triplet_currently
   real(dp), intent(in)                :: lambda
@@ -341,7 +336,7 @@ subroutine build_apb_hartree_auxil(is_triplet_currently, lambda, desc_apb, wpol,
   ! in case of triplet final state, no contribution is to be calculated
   if( is_triplet_currently) return
 
-  call start_clock(timing_build_common)
+  call timer_build_common%start()
 
   write(stdout, '(a)') ' Build Hartree part with auxil basis'
 
@@ -381,7 +376,7 @@ subroutine build_apb_hartree_auxil(is_triplet_currently, lambda, desc_apb, wpol,
 
           eri_3center_right(t_jb) = eri_3center_mo(ibf_auxil, jstate, bstate, jbspin)
 
-        enddo
+        end do
 
         do t_ia=1, m_apb_block
           t_ia_global = rowindex_local_to_global(iprow, nprow_sd, t_ia)
@@ -391,12 +386,12 @@ subroutine build_apb_hartree_auxil(is_triplet_currently, lambda, desc_apb, wpol,
 
           eri_3center_left(t_ia) = eri_3center_mo(ibf_auxil, istate, astate, iaspin)
 
-        enddo
+        end do
 
         call DGER(m_apb_block, n_apb_block, 2.0_dp*spin_fact*lambda, eri_3center_left, 1, eri_3center_right, 1, &
                   apb_block, m_apb_block)
 
-      enddo
+      end do
 
       deallocate(eri_3center_left, eri_3center_right)
 
@@ -404,22 +399,21 @@ subroutine build_apb_hartree_auxil(is_triplet_currently, lambda, desc_apb, wpol,
 
       if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
         apb_matrix(:, :) = apb_matrix(:, :) + apb_block(:, :)
-      endif
+      end if
 
 
       deallocate(apb_block)
-    enddo
-  enddo
+    end do
+  end do
 
 
-  call stop_clock(timing_build_common)
+  call timer_build_common%stop()
 
-end subroutine build_apb_hartree_auxil
+end subroutine build_apb_hartree_ri
 
 
 !=========================================================================
-subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda, desc_apb, wpol, m_apb, n_apb, apb_matrix)
-  implicit none
+subroutine build_apb_hartree_ri_scalapack(is_triplet_currently, lambda, desc_apb, wpol, m_apb, n_apb, apb_matrix)
 
   logical, intent(in)                 :: is_triplet_currently
   real(dp), intent(in)                :: lambda
@@ -441,17 +435,12 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda, desc_
   ! in case of triplet final state, no contribution is to be calculated
   if( is_triplet_currently) return
 
-  if( calc_type%is_lr_mbpt ) then
-    nauxil_global_ = nauxil_global_lr
-    nauxil_local_  = nauxil_local_lr
-  else
-    nauxil_global_ = nauxil_global
-    nauxil_local_  = nauxil_local
-  endif
+  nauxil_global_ = nauxil_global
+  nauxil_local_  = nauxil_local
 
 #if defined(HAVE_SCALAPACK)
 
-  call start_clock(timing_build_common)
+  call timer_build_common%start()
 
   write(stdout, '(a)') ' Build Hartree part with auxil basis using DSYRK'
 
@@ -467,7 +456,7 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda, desc_
     bstate = wpol%transition_table(2, t_jb_global)
     jbspin = wpol%transition_table(3, t_jb_global)
     eri_3tmp(:, t_jb_global) = eri_3center_mo(:, jstate, bstate, jbspin)
-  enddo
+  end do
 
   !
   ! Descriptors
@@ -490,14 +479,13 @@ subroutine build_apb_hartree_auxil_scalapack(is_triplet_currently, lambda, desc_
 #endif
 
 
-  call stop_clock(timing_build_common)
+  call timer_build_common%stop()
 
-end subroutine build_apb_hartree_auxil_scalapack
+end subroutine build_apb_hartree_ri_scalapack
 
 
 !=========================================================================
 subroutine build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, occupation, wpol, m_apb, n_apb, apb_matrix)
-  implicit none
 
   logical, intent(in)                 :: is_triplet_currently
   integer, intent(in)                 :: nmat, nstate
@@ -517,7 +505,7 @@ subroutine build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, 
   real(dp), allocatable :: apb_block(:, :)
   !=====
 
-  call start_clock(timing_build_tddft)
+  call timer_build_tddft%start()
 
   write(stdout, '(a)') ' Build fxc part'
 
@@ -564,17 +552,17 @@ subroutine build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, 
               xctmp = eval_fxc_rks_singlet(istate, astate, iaspin, jstate, bstate, jbspin)
             else
               xctmp = eval_fxc_rks_triplet(istate, astate, iaspin, jstate, bstate, jbspin)
-            endif
+            end if
           else
             xctmp =  eval_fxc_uks(istate, astate, iaspin, jstate, bstate, jbspin)
-          endif
+          end if
 
 
           ! The factor two accounts for (A+B), and not A or B.
           apb_block(t_ia, t_jb) = apb_block(t_ia, t_jb) + 2.0_dp * xctmp
 
-        enddo
-      enddo
+        end do
+      end do
 
       !
       ! real-space integration grid is distributed, one needs to sum contributions here
@@ -584,23 +572,22 @@ subroutine build_apb_tddft(is_triplet_currently, nmat, nstate, basis, c_matrix, 
         !$OMP PARALLEL WORKSHARE
         apb_matrix(:, :) = apb_matrix(:, :) + apb_block(:, :)
         !$OMP END PARALLEL WORKSHARE
-      endif
+      end if
       deallocate(apb_block)
 
-    enddo
-  enddo
+    end do
+  end do
 
 
   call destroy_tddft()
 
-  call stop_clock(timing_build_tddft)
+  call timer_build_tddft%stop()
 
 end subroutine build_apb_tddft
 
 
 !=========================================================================
-subroutine build_amb_apb_bse(wpol, wpol_static, m_apb, n_apb, amb_matrix, apb_matrix)
-  implicit none
+subroutine build_amb_apb_bse_nori(wpol, wpol_static, m_apb, n_apb, amb_matrix, apb_matrix)
 
   type(spectral_function), intent(in) :: wpol, wpol_static
   integer, intent(in)                 :: m_apb, n_apb
@@ -617,7 +604,7 @@ subroutine build_amb_apb_bse(wpol, wpol_static, m_apb, n_apb, amb_matrix, apb_ma
 
   if( has_auxil_basis ) call die('Have an auxil basis. This should not happen here')
 
-  call start_clock(timing_build_bse)
+  call timer_build_bse%start()
 
   write(stdout, '(a)') ' Build W part'
 
@@ -669,26 +656,25 @@ subroutine build_amb_apb_bse(wpol, wpol_static, m_apb, n_apb, amb_matrix, apb_ma
       amb_matrix(t_ia, t_jb) =  amb_matrix(t_ia, t_jb) + wtmp
 
 
-    enddo
+    end do
 
-  enddo
+  end do
 
   deallocate(bra, ket)
 
 
-  call stop_clock(timing_build_bse)
+  call timer_build_bse%stop()
 
 
-end subroutine build_amb_apb_bse
+end subroutine build_amb_apb_bse_nori
 
 
 !=========================================================================
-subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda, &
+subroutine build_amb_apb_screened_exchange_ri(lambda, &
                                                  desc_apb, wpol, wpol_static, m_apb, n_apb, &
                                                  amb_matrix, apb_matrix)
-  implicit none
 
-  real(dp), intent(in)                :: alpha_local, beta_local, lambda
+  real(dp), intent(in)                :: lambda
   integer, intent(in)                 :: desc_apb(NDEL)
   type(spectral_function), intent(in) :: wpol, wpol_static
   integer, intent(in)                 :: m_apb, n_apb
@@ -707,7 +693,7 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
   integer              :: m_apb_block, n_apb_block
   real(dp), allocatable :: amb_block(:, :)
   real(dp), allocatable :: apb_block(:, :)
-  logical              :: include_long_range_exchange
+  logical              :: need_lr_exchange
 #if defined(HAVE_SCALAPACK)
   real(dp), allocatable :: vsqrt_chi_vsqrt_i(:), w_s(:), wp0_i(:, :)
 #else
@@ -715,14 +701,13 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
 #endif
   !=====
 
-  call start_clock(timing_build_bse)
+  call timer_build_bse%start()
   if( .NOT. has_auxil_basis ) call die('Does not have auxil basis. This should not happen')
 
   write(stdout, '(a)')      ' Build W part Auxil'
-  write(stdout, '(a,f8.3)') ' Content of Exchange: ', alpha_local
-  if( beta_local > 1.0e-6_dp ) write(stdout, '(a,f8.3)') ' Content of LR-Exchange: ', beta_local
-  include_long_range_exchange = ( beta_local > 1.0e-6_dp ) &
-                          .AND. ( TRIM(postscf) == 'TD' .OR. TRIM(postscf) == 'CPKS' .OR. TRIM(w_screening)=='TDDFT' )
+  write(stdout, '(a,f8.3)') ' Content of Exchange:    ', wpol%alpha_hybrid
+  write(stdout, '(a,f8.3)') ' Content of LR-Exchange: ', wpol%beta_hybrid
+  need_lr_exchange = wpol%beta_hybrid > 1.0e-6_dp
 
   nmat = desc_apb(M_)
   ! Is it an exchange or a screened exchange calculation
@@ -738,16 +723,16 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
     if( irank > 0 ) jstate_min = jstate_max + 1
     jstate_max = MAXVAL( wpol%transition_table(1, 1:wpol%npole_reso) )
     jstate_max = MIN( jstate_min + (jstate_max-jstate_min+1) / (poorman%nproc-irank) - 1 , jstate_max )
-  enddo
+  end do
 
   call clean_allocate('Temporary array for W', wp0, 1, nauxil_local, ncore_W+1, nvirtual_W-1, jstate_min, jstate_max, 1, nspin)
   wp0(:, :, :, :) = 0.0_dp
 
-  if( include_long_range_exchange ) then
+  if( need_lr_exchange ) then
     call clean_allocate('Temporary array for W_lr', wp0_lr, 1, nauxil_local_lr, ncore_W+1, nvirtual_W-1, &
                         jstate_min, jstate_max, 1, nspin)
     wp0_lr(:, :, :, :) = 0.0_dp
-  endif
+  end if
 
   if( is_bse ) then
 #if !defined(HAVE_SCALAPACK)
@@ -770,10 +755,10 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
             vsqrt_chi_vsqrt(:, jbf_auxil) = vsqrt_chi_vsqrt(:, jbf_auxil) &
                      - wpol_static%w_s(:, spole)                 &
                        * wpol_static%w_s(jbf_auxil, spole) * 2.0_dp / wpol_static%pole(spole)
-          enddo
-        enddo
+          end do
+        end do
 
-      endif
+      end if
 
       !
       ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
@@ -781,11 +766,11 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
       do jstate=jstate_min, jstate_max
         wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) = lambda * MATMUL( vsqrt_chi_vsqrt(:, :), &
                                                               eri_3center_mo(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) )
-      enddo
+      end do
 
       deallocate(vsqrt_chi_vsqrt)
 
-    enddo
+    end do
 
 #else
 
@@ -803,19 +788,19 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
           do jbf_auxil=1, nauxil_local
             jbf_auxil_global = ibf_auxil_g(jbf_auxil)
             w0_local(jbf_auxil) = wpol_static%chi(ibf_auxil_global, jbf_auxil_global, 1)
-          enddo
+          end do
 
           do jstate=jstate_min, jstate_max
             wp0_i(ncore_W+1:nvirtual_W-1, jstate) = MATMUL( w0_local(:) , &
                                                             eri_3center_mo(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) )
-          enddo
+          end do
           call auxil%sum(wp0_i)
 
           if( iproc_ibf_auxil(ibf_auxil_global) == auxil%rank ) then
             wp0(ibf_auxil_l(ibf_auxil_global), :, :, iaspin) = lambda * wp0_i(:, :)
-          endif
+          end if
 
-        enddo
+        end do
         deallocate(wp0_i)
         deallocate(w0_local)
 
@@ -831,61 +816,61 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
             w_s(:) = wpol_static%w_s(ibf_auxil_l(ibf_auxil), :)
           else
             w_s(:) = 0.0_dp
-          endif
+          end if
           call auxil%sum(w_s)
 
           vsqrt_chi_vsqrt_i(:) = 0.0_dp
           do spole=1, wpol_static%npole_reso
             vsqrt_chi_vsqrt_i(:) = vsqrt_chi_vsqrt_i(:) &
                      - w_s(spole) * wpol_static%w_s(:, spole) * 2.0_dp / wpol_static%pole(spole)
-          enddo
+          end do
           !
           ! The last index of wp0 only runs on occupied states (to save memory and CPU time)
           ! Be careful in the following not to forget it
           do jstate=jstate_min, jstate_max
             wp0_i(ncore_W+1:nvirtual_W-1, jstate) = MATMUL( vsqrt_chi_vsqrt_i(:), &
                                                            eri_3center_mo(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) )
-          enddo
+          end do
           call auxil%sum(wp0_i)
 
           if( iproc_ibf_auxil(ibf_auxil) == auxil%rank ) then
             wp0(ibf_auxil_l(ibf_auxil), :, :, iaspin) = lambda * wp0_i(:, :)
-          endif
+          end if
 
-        enddo
+        end do
 
         deallocate(vsqrt_chi_vsqrt_i, w_s, wp0_i)
 
-      endif
+      end if
 
-    enddo
+    end do
 #endif
-  endif
+  end if
 
 
   !
   ! Add the global exact exchange here
   !
-  if( alpha_local > 1.0e-6_dp ) then
+  if( wpol%alpha_hybrid > 1.0e-6_dp ) then
     do iaspin=1, nspin
       do jstate=jstate_min, jstate_max
         wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) = wp0(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) &
-                           + alpha_local * lambda *  eri_3center_mo(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
-      enddo
-    enddo
-  endif
+                           + wpol%alpha_hybrid * lambda *  eri_3center_mo(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
+      end do
+    end do
+  end if
 
   !
   ! Add the long-range exact exchange here
   !
-  if( include_long_range_exchange ) then
+  if( need_lr_exchange ) then
     do iaspin=1, nspin
       do jstate=jstate_min, jstate_max
         wp0_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) = wp0_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin) &
-                           + beta_local * lambda *  eri_3center_mo_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
-      enddo
-    enddo
-  endif
+                           + wpol%beta_hybrid * lambda *  eri_3center_mo_lr(:, ncore_W+1:nvirtual_W-1, jstate, iaspin)
+      end do
+    end do
+  end if
 
 
   if( nprow_sd * npcol_sd > 1 ) &
@@ -927,26 +912,26 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
           if( iaspin /= jbspin ) cycle
 
           wtmp = DOT_PRODUCT( eri_3center_mo(:, astate, bstate, iaspin) , wp0(:, istate, jstate, iaspin) )
-          if( include_long_range_exchange ) then
+          if( need_lr_exchange ) then
             wtmp2 = DOT_PRODUCT( eri_3center_mo_lr(:, astate, bstate, iaspin) , wp0_lr(:, istate, jstate, iaspin) )
-          endif
+          end if
 
           apb_block(t_ia, t_jb) = -wtmp -wtmp2
           amb_block(t_ia, t_jb) = -wtmp -wtmp2
 
 
           wtmp = DOT_PRODUCT( eri_3center_mo(:, istate, bstate, iaspin) , wp0(:, astate, jstate, iaspin) )
-          if( include_long_range_exchange ) then
+          if( need_lr_exchange ) then
             wtmp2 = DOT_PRODUCT( eri_3center_mo_lr(:, istate, bstate, iaspin) , wp0_lr(:, astate, jstate, iaspin) )
-          endif
+          end if
             
           apb_block(t_ia, t_jb) =  apb_block(t_ia, t_jb) - wtmp -wtmp2
           amb_block(t_ia, t_jb) =  amb_block(t_ia, t_jb) + wtmp +wtmp2
 
 
-        enddo
+        end do
 
-      enddo
+      end do
 
 
       call world%sum(amb_block)
@@ -955,21 +940,21 @@ subroutine build_amb_apb_screened_exchange_auxil(alpha_local, beta_local, lambda
       if( iprow == iprow_sd .AND. ipcol == ipcol_sd ) then
         amb_matrix(:, :) = amb_matrix(:, :) + amb_block(:, :)
         apb_matrix(:, :) = apb_matrix(:, :) + apb_block(:, :)
-      endif
+      end if
       deallocate(amb_block)
       deallocate(apb_block)
 
 
-    enddo
-  enddo
+    end do
+  end do
 
   call clean_deallocate('Temporary array for W', wp0)
   if(allocated(wp0_lr)) call clean_deallocate('Temporary array for W_lr', wp0_lr)
 
-  call stop_clock(timing_build_bse)
+  call timer_build_bse%stop()
 
 
-end subroutine build_amb_apb_screened_exchange_auxil
+end subroutine build_amb_apb_screened_exchange_ri
 
 
 end module m_build_bse

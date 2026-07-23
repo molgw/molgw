@@ -1,0 +1,17 @@
+&molgw
+ scf='lda'
+
+ ecp_basis='GTH-cc-pVTZ'
+ ecp_auxil_basis='AUTO'
+
+ npulay_hist=3
+ ecp_elements='Si H'
+ ecp_type='lda.gth'
+
+ natom=5
+/
+Si  0.0000  0.0000  0.0000
+H   0.8544 -0.8544  0.8544
+H  -0.8544  0.8544  0.8544
+H  -0.8544 -0.8544 -0.8544
+H   0.8544  0.8544 -0.8544

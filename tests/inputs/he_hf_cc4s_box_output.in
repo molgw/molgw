@@ -13,7 +13,7 @@
  a2=  0., 4., 0.      ! angstrom
  a3=  0., 0., 4.      ! angstrom
 
- fft_ecut = 120.0
+ fft_ecut = 180.0
 
  print_cc4s_files = 'yes'
  cc4s_output = 'molgw_hf_GTH-TZ'

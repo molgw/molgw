@@ -31,12 +31,13 @@ module m_selfenergy_evaluation
   use m_multipole,only: static_dipole
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m_vxc, en_mbpt)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)        :: occupation(:, :)
@@ -47,7 +48,6 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
   !=====
   integer                 :: nstate
   type(selfenergy_grid)   :: se, se2, se3, se_sox, se_gwpt3, se_gw, se_g3w2
-  logical                 :: enforce_rpa
   character(len=36)       :: selfenergy_tag
   integer                 :: reading_status
   integer                 :: nstate_small
@@ -71,7 +71,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
   allocate(exchange_m_vxc_diag(nstate, nspin))
   do pstate=1, nstate
     exchange_m_vxc_diag(pstate, :) = exchange_m_vxc(pstate, pstate, :)
-  enddo
+  end do
 
 
   do istep_gw=1, nstep_gw
@@ -117,6 +117,10 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
       selfenergy_tag='SIGMA_TDHF'
     case(SIGMA_TDSCHF)
       selfenergy_tag='SIGMA_TDSCHF'
+    case(SIGMA_TDHF_PSD)
+      selfenergy_tag='SIGMA_TDHF_PSD'
+    case(SIGMA_TDSCHF_PSD)
+      selfenergy_tag='SIGMA_TDSCHF_PSD'
     case(GW2SOSEXPSD)
       selfenergy_tag='GW+2SOSEX_PSD'
     case default
@@ -139,7 +143,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
       ! and until they are restored in destroy_fno
       !
       call calculate_virtual_fno(basis, nstate, nsemax, occupation, energy, c_matrix)
-    endif
+    end if
     !
     ! Or alternatively use the small basis technique
     if( has_small_basis ) then
@@ -150,7 +154,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
       call selfenergy_set_state_range(nstate_small, occupation)
     else
       nstate_small = nstate
-    endif
+    end if
 
 
     !
@@ -161,7 +165,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
       if( reading_status /=0 ) then
         call issue_warning('File energy_qp not found: assuming 1st iteration')
         energy_g(:, :) = energy(:, :)
-      endif
+      end if
 
       !
       ! For GnWn, update both the energy in G and in W
@@ -169,12 +173,12 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
         energy_w(:, :) = energy_g(:, :)
       else
         energy_w(:, :) = energy(:, :)
-      endif
+      end if
 
     else
       energy_g(:, :) = energy(:, :)
       energy_w(:, :) = energy(:, :)
-    endif
+    end if
 
 
     call se%init(calc_type%selfenergy_technique, energy_g)
@@ -203,7 +207,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
         else
           write(stdout, '(/,1x,a)') 'For GnWn calculations, never try to read file SCREENED_COULOMB'
           reading_status = 1
-        endif
+        end if
         ! If reading has failed, then do the calculation
         if( reading_status /= 0 ) then
           select case(calc_type%selfenergy_technique)
@@ -214,20 +218,20 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
             ! no need for chi, it will be calculated directly inside
           case default
             ! in case of BSE calculation, enforce RPA here
-            enforce_rpa = calc_type%is_bse
             call wpol%init(nstate_small, occupation, 0)
-            call polarizability(enforce_rpa, .TRUE., basis, occupation, energy_w, c_matrix, en_mbpt%rpa, en_mbpt%gw, wpol)
+            call wpol%enforce_approximation(w_screening)
+            call polarizability(basis, occupation, energy_w, c_matrix, wpol, en_rpa=en_mbpt%rpa, en_gw=en_mbpt%gw)
           end select
-        endif
+        end if
 
         en_mbpt%total = en_mbpt%total + en_mbpt%rpa
         en_mbpt%total = en_mbpt%total - en_mbpt%xc - en_mbpt%exx_hyb + en_mbpt%exx
 
         if( ABS(en_mbpt%rpa) > 1.e-6_dp ) then
           write(stdout, '(/,a,f19.10)') ' RPA Total energy (Ha): ', en_mbpt%total
-        endif
+        end if
 
-      endif
+      end if
 
 
       select case(calc_type%selfenergy_technique)
@@ -254,19 +258,19 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
             call dump_gw_ingredients(energy_g, c_matrix, wpol)
           else
             call gw_selfenergy(calc_type%selfenergy_approx, occupation, energy_g, c_matrix, wpol, se)
-          endif
+          end if
 #if defined(HAVE_SCALAPACK)
-        endif
+        end if
 #endif
       end select
 
       if( ABS(en_mbpt%gw) > 1.0e-5_dp ) then
         write(stdout, '(/,a,f19.10)') ' Galitskii-Migdal Total energy (Ha): ', en_mbpt%total - en_mbpt%rpa + en_mbpt%gw
-      endif
+      end if
 
       if( .NOT. ( calc_type%selfenergy_approx == GnW0 .AND. istep_gw < nstep_gw ) ) then
         call wpol%destroy()
-      endif
+      end if
 
       if( has_small_basis ) then
         !
@@ -301,20 +305,20 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
           call write_selfenergy_omega('selfenergy_GW_small'   , exchange_m_vxc_diag, occupation, energy_g, se)
           call write_selfenergy_omega('selfenergy_1ring_big'  , exchange_m_vxc_diag, occupation, energy_g, se3)
           call write_selfenergy_omega('selfenergy_1ring_small', exchange_m_vxc_diag, occupation, energy_g, se2)
-        endif
+        end if
 
         !
         ! Extrapolated Sigma(omega) = Sigma^{GW}_small(omega) + Sigma^{1-ring}_big(0) - Sigma^{1-ring}_small(0)
         do iomega=-se%nomega, se%nomega
           se%sigma(iomega, :, :) = se%sigma(iomega, :, :) + se3%sigma(0, :, :) - se2%sigma(0, :, :)
-        enddo
+        end do
 
         call se2%destroy()
         call se3%destroy()
 
-      endif
+      end if
 
-    endif
+    end if
 
     !
     !  sigma_TDHF self-energy (See Vacondio et al., Forster-Bruneval)
@@ -322,7 +326,11 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
     if( calc_type%selfenergy_approx == SIGMA_TDHF &
         .OR. calc_type%selfenergy_approx == SIGMA_TDSCHF ) then
       call tdhf_selfenergy(basis, occupation, energy_g, c_matrix, se)
-    endif
+    end if
+    if( calc_type%selfenergy_approx == SIGMA_TDHF_PSD &
+        .OR. calc_type%selfenergy_approx == SIGMA_TDSCHF_PSD ) then
+      call tdhf_selfenergy_psd(basis, occupation, energy_g, c_matrix, se)
+    end if
 
     !
     ! GW+SOX or 
@@ -347,8 +355,9 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
         call read_spectral_function(wpol, reading_status)
         ! If reading has failed, then do the calculation
         if( reading_status /= 0 ) then
-          call polarizability(.FALSE., .TRUE., basis, occupation, energy_w, c_matrix, en_mbpt%rpa, en_mbpt%gw, wpol)
-        endif
+          call wpol%enforce_approximation(w_screening)
+          call polarizability(basis, occupation, energy_w, c_matrix, wpol, en_rpa=en_mbpt%rpa, en_gw=en_mbpt%gw)
+        end if
 
         call se_gw%init(calc_type%selfenergy_technique, energy_g)
         call gw_selfenergy(GW, occupation, energy_g, c_matrix, wpol, se_gw)
@@ -373,7 +382,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
           call se_g3w2%init(static_selfenergy, energy_qp_new)
         else
           call se_g3w2%init(calc_type%selfenergy_technique, energy_g)
-        endif
+        end if
 
         !
         ! selfenergy = GWSOX
@@ -406,7 +415,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
             call sosex_selfenergy_analyzed(basis, occupation, energy_g, c_matrix, wpol, se_g3w2)
           else
             call sosex_selfenergy(basis, occupation, energy_g, c_matrix, wpol, se_g3w2)
-          endif
+          end if
 
           call se%add(se_gw)
           call se%add(se_g3w2)
@@ -421,7 +430,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
 
             else
               call psd_gw2sosex_selfenergy_upfolding(occupation, energy_g, c_matrix, wpol, exchange_m_vxc, en_mbpt%gw)
-            endif
+            end if
 
           else
             if( print_hartree_ .OR. use_correlated_density_matrix_ ) then
@@ -434,11 +443,11 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
 
             else
               call psd_gw2sosex_selfenergy(occupation, energy_g, c_matrix, wpol, en_mbpt%gw, se_g3w2)
-            endif
+            end if
             call se%reset()
             call se%add(se_g3w2)
             call se_g3w2%destroy()
-          endif
+          end if
 
         case(G3W2)
           call sosex_selfenergy(basis, occupation, energy_g, c_matrix, wpol, se_g3w2)
@@ -488,13 +497,13 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
         call sox_selfenergy_imag_grid(occupation, energy_g, c_matrix, se)
         if( calc_type%selfenergy_approx == GWSOSEX .OR. calc_type%selfenergy_approx == G3W2 ) then
           call sosex_selfenergy_imag_grid(basis, occupation, energy_g, c_matrix, se)
-        endif
+        end if
         if( calc_type%selfenergy_approx == G3W2 ) then
           call g3w2_selfenergy_imag_grid(basis, occupation, energy_g, c_matrix, se)
-        endif
+        end if
         call se%pade_fit()
-      endif
-    endif
+      end if
+    end if
 
 
     !
@@ -513,9 +522,9 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
 
         write(stdout, '(a,2x,f19.10)') ' MP2 Total Energy (Ha):', en_mbpt%total
         write(stdout, *)
-      endif
+      end if
 
-    endif
+    end if
 
     !
     ! Selfenergy = PT3 or 2-rings
@@ -523,7 +532,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
     if( calc_type%selfenergy_approx == PT3 .OR. calc_type%selfenergy_approx == TWO_RINGS ) then
       call pt3_selfenergy(calc_type%selfenergy_approx, calc_type%selfenergy_technique, &
                           basis, occupation, energy_g, c_matrix, se, en_mbpt%mp2)
-    endif
+    end if
 
     !
     ! selfenergy = GWPT3
@@ -536,8 +545,9 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
       call read_spectral_function(wpol, reading_status)
       ! If reading has failed, then do the calculation
       if( reading_status /= 0 ) then
-        call polarizability(.FALSE., .TRUE., basis, occupation, energy_w, c_matrix, en_mbpt%rpa, en_mbpt%gw, wpol)
-      endif
+        call wpol%enforce_approximation(w_screening)
+        call polarizability(basis, occupation, energy_w, c_matrix, wpol, en_rpa=en_mbpt%rpa, en_gw=en_mbpt%gw)
+      end if
       call gw_selfenergy(GW, occupation, energy_g, c_matrix, wpol, se)
 
       !
@@ -553,7 +563,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
 
       call se_gwpt3%destroy()
 
-    endif
+    end if
 
 
     !
@@ -562,7 +572,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
 
     if( print_sigma_ ) then
       call write_selfenergy_omega('selfenergy_'//TRIM(selfenergy_tag), exchange_m_vxc_diag, occupation, energy_g, se)
-    endif
+    end if
 
     allocate(energy_qp_new(nstate, nspin))
 
@@ -588,7 +598,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
 
     if( calc_type%selfenergy_approx == GW ) then
       call selfenergy_convergence_prediction(basis, c_matrix, energy_qp_new)
-    endif
+    end if
 
     !
     ! Write the QP energies on disk: ENERGY_QP file
@@ -610,7 +620,7 @@ subroutine selfenergy_evaluation(basis, occupation, energy, c_matrix, exchange_m
 
     ! Synchronization of all CPUs before going on
     call world%barrier()
-  enddo ! nstep_gw
+  end do ! nstep_gw
 
   deallocate(exchange_m_vxc_diag)
 
@@ -620,7 +630,6 @@ end subroutine selfenergy_evaluation
 !=========================================================================
 ! Evaluate the total energy fragments
 subroutine evaluate_energy_terms(basis, occupation, c_matrix, p_matrix, en)
-  implicit none
 
   type(basis_set), intent(inout) :: basis
   real(dp), intent(in)        :: occupation(:, :)
@@ -657,7 +666,7 @@ subroutine evaluate_energy_terms(basis, occupation, c_matrix, p_matrix, en)
 
 
   en%totalexx = en%nuc_nuc + en%kinetic + en%nucleus &
-                       + en%hartree + en%exx
+                           + en%hartree + en%exx
   en%total = en%totalexx + en%gw
   write(stdout, '(/,1x,a)') 'Energies from correlated density matrix'
   write(stdout, '(a35,1x,f19.10)')     'Kinetic Energy (Ha):', en%kinetic
@@ -670,7 +679,7 @@ subroutine evaluate_energy_terms(basis, occupation, c_matrix, p_matrix, en)
 
   deallocate(htmp, hexx)
 
-  call static_dipole(basis, occupation, p_matrix_in=p_matrix)
+  call static_dipole(basis, occupation, p_matrix_in=p_matrix, label='mbpt')
 
 end subroutine evaluate_energy_terms
 

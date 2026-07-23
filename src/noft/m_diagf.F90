@@ -375,7 +375,7 @@ end subroutine diis_F
 function traceF(RDMd,ELAGd,idiis_in) result(traceFF)
 !Arguments ------------------------------------
 !scalars
- integer::idiis_in
+ integer,intent(in)::idiis_in
  real(dp)::traceFF
  type(elag_t),intent(in)::ELAGd
  type(rdm_t),intent(in)::RDMd
@@ -479,7 +479,7 @@ end subroutine diis_F_cmplx
 function traceF_cmplx(RDMd,ELAGd,idiis_in) result(traceFFc)
 !Arguments ------------------------------------
 !scalars
- integer::idiis_in
+ integer,intent(in)::idiis_in
  complex(dp)::traceFFc
  type(elag_t),intent(in)::ELAGd
  type(rdm_t),intent(in)::RDMd

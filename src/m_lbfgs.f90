@@ -10,6 +10,8 @@
 module m_lbfgs
   use m_definitions
 
+  implicit none
+
   type, public :: lbfgs_state
   integer              :: lbfgs_status
   integer              :: ndim
@@ -45,7 +47,6 @@ contains
 
 !=========================================================================
 subroutine lbfgs_init(lbfgs_plan, ndim, history_record, diag_guess)
-  implicit none
 
   type(lbfgs_state), intent(inout) :: lbfgs_plan
   integer, intent(in)              :: ndim
@@ -73,7 +74,7 @@ subroutine lbfgs_init(lbfgs_plan, ndim, history_record, diag_guess)
     lbfgs_plan%diag(:) = diag_guess
   else
     lbfgs_plan%diag(:) = 1.0_dp
-  endif
+  end if
 
 
 end subroutine lbfgs_init
@@ -81,7 +82,6 @@ end subroutine lbfgs_init
 
 !=========================================================================
 subroutine lbfgs_destroy(lbfgs_plan)
-  implicit none
   type(lbfgs_state), intent(inout) :: lbfgs_plan
   !=====
 
@@ -93,7 +93,6 @@ end subroutine lbfgs_destroy
 
 !=========================================================================
 function lbfgs_execute(lbfgs_plan, x, f, gradf)
-  implicit none
   type(lbfgs_state), intent(inout) :: lbfgs_plan
   real(dp), intent(inout)          :: x(lbfgs_plan%ndim)
   real(dp), intent(in)             :: f
@@ -124,7 +123,6 @@ subroutine lbfgs(N, M, X, F, G, DIAG, W, IFLAG,      &
                  LINE_STY, LINE_FY, LINE_DGY,   &
                  LINE_STMIN, LINE_STMAX,       &
                  LINE_BRACKT, LINE_STAGE1, LINE_INFOC)
-  implicit none
 
   integer, intent(inout) :: LINE_INFOC
   integer, intent(inout)  :: ITER, IFLAG, INFO, NFEV
@@ -210,7 +208,7 @@ subroutine lbfgs(N, M, X, F, G, DIAG, W, IFLAG,      &
       IYCN = IYPT + CP * N
       W(INMC)= W(N+CP+1) * SQ
       W(1:N) = W(1:N) - W(INMC) * W(IYCN+1:IYCN+N)
-    enddo
+    end do
 
     W(1:N) = DIAG(1:N) * W(1:N)
 
@@ -223,13 +221,13 @@ subroutine lbfgs(N, M, X, F, G, DIAG, W, IFLAG,      &
       W(1:N) = W(1:N) + BETA * W(ISCN+1:ISCN+N)
       CP = CP + 1
       if (CP == M) CP = 0
-    enddo
+    end do
 
     !
     !  STORE THE NEW SEARCH DIRECTION
     W(ISPT+POINT*N+1:ISPT+POINT*N+N) = W(1:N)
 
-  endif
+  end if
 
   !
   ! Obtain the one-dimensional minimizer of the function
@@ -254,7 +252,7 @@ subroutine lbfgs(N, M, X, F, G, DIAG, W, IFLAG,      &
   else
     IFLAG = -1
     return
-  endif
+  end if
 
 end subroutine lbfgs
 
@@ -264,7 +262,6 @@ subroutine mcsrch(N, X, F, G, S, STP, FTOL, MAXFEV, INFO, NFEV, WA, &
                   GTOL, STPMIN, STPMAX, DGINIT, FINIT, &
                   STX, FX, DGX, STY, FY, DGY, STMIN, STMAX, &
                   BRACKT, STAGE1, INFOC)
-  implicit none
 
   integer, intent(in)     :: N, MAXFEV
   integer, intent(inout)  :: INFO, NFEV
@@ -358,7 +355,7 @@ subroutine mcsrch(N, X, F, G, S, STP, FTOL, MAXFEV, INFO, NFEV, WA, &
       !     AND TO COMPUTE THE NEW STEP.
       !
       call mcstep(STX, FX, DGX, STY, FY, DGY, STP, F, DG, BRACKT, STMIN, STMAX, INFOC)
-    endif
+    end if
     !
     !  FORCE A SUFFICIENT DECREASE IN THE SIZE OF THE
     !  INTERVAL OF UNCERTAINTY.
@@ -367,7 +364,7 @@ subroutine mcsrch(N, X, F, G, S, STP, FTOL, MAXFEV, INFO, NFEV, WA, &
       if (ABS(STY-STX) >= P66 * WIDTH1) STP = STX + P5 * (STY - STX)
       WIDTH1 = WIDTH
       WIDTH = ABS(STY-STX)
-    endif
+    end if
 
   else
 
@@ -386,7 +383,7 @@ subroutine mcsrch(N, X, F, G, S, STP, FTOL, MAXFEV, INFO, NFEV, WA, &
 
     if (DGINIT > 0.0_dp) then
       return
-    endif
+    end if
     !
     !  INITIALIZE LOCAL VARIABLES.
     !
@@ -414,7 +411,7 @@ subroutine mcsrch(N, X, F, G, S, STP, FTOL, MAXFEV, INFO, NFEV, WA, &
     STY = 0.0_dp
     FY = FINIT
     DGY = DGINIT
-  endif
+  end if
 
   !
   !SET THE MINIMUM AND MAXIMUM STEPS TO CORRESPOND
@@ -426,7 +423,7 @@ subroutine mcsrch(N, X, F, G, S, STP, FTOL, MAXFEV, INFO, NFEV, WA, &
   else
     STMIN = STX
     STMAX = STP + XTRAPF*(STP - STX)
-  endif
+  end if
   !
   !FORCE THE STEP TO BE WITHIN THE BOUNDS STPMAX AND STPMIN.
   !
@@ -455,7 +452,6 @@ end subroutine mcsrch
 
 !=========================================================================
 subroutine mcstep(STX, FX, DX, STY, FY, DY, STP, FP, DG, BRACKT, STPMIN, STPMAX, INFO)
-  implicit none
 
   integer, intent(inout)  :: INFO
   real(dp), intent(in)     :: FP

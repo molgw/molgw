@@ -5,7 +5,7 @@
  auxil_basis='auto'
 
  postscf='td'
- frozencore='yes'
+ frozencore='molgw'
  tddft_grid_quality='medium'
 
  natom=6

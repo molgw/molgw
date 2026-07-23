@@ -21,12 +21,13 @@ module m_block_diago
   use m_elpa
 
 
+  implicit none
+
 contains
 
 
 !=========================================================================
 subroutine diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, bigomega, xpy_matrix, xmy_matrix, desc_x)
-  implicit none
 
   integer, intent(in)     :: desc_apb(NDEL), desc_x(NDEL)
   real(dp), intent(inout) :: amb_matrix(:, :), apb_matrix(:, :)
@@ -43,8 +44,8 @@ subroutine diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, bigomega, xpy_ma
   integer              :: nprow, npcol, iprow, ipcol
   !=====
 
-  call start_clock(timing_diago_h2p)
-  call start_clock(timing_tmp2)
+  call timer_diago_h2p%start()
+  call timer_tmp2%start()
 
   write(stdout, '(/,a)') ' Performing the block diago with Cholesky'
 
@@ -128,18 +129,17 @@ subroutine diago_4blocks_chol(amb_matrix, apb_matrix, desc_apb, bigomega, xpy_ma
     end forall
 
 #if defined(HAVE_SCALAPACK)
-  endif
+  end if
 #endif
 
-  call stop_clock(timing_tmp2)
-  call stop_clock(timing_diago_h2p)
+  call timer_tmp2%stop()
+  call timer_diago_h2p%stop()
 
 end subroutine diago_4blocks_chol
 
 
 !=========================================================================
 subroutine diago_4blocks_rpa_sca(amb_diag_rpa, apb_matrix, desc_apb, bigomega, xpy_matrix, desc_x)
-  implicit none
 
   integer, intent(in)     :: desc_apb(NDEL), desc_x(NDEL)
   real(dp), intent(in)    :: amb_diag_rpa(:)
@@ -152,7 +152,7 @@ subroutine diago_4blocks_rpa_sca(amb_diag_rpa, apb_matrix, desc_apb, bigomega, x
   real(dp)        :: amb_diag_sqrt(SIZE(bigomega))
   !=====
 
-  call start_clock(timing_diago_h2p)
+  call timer_diago_h2p%start()
 
   write(stdout, '(/,a)') ' Performing the SCALAPACK block diago when A-B is diagonal'
 
@@ -198,7 +198,7 @@ subroutine diago_4blocks_rpa_sca(amb_diag_rpa, apb_matrix, desc_apb, bigomega, x
   call matmul_diag_sca('L', amb_diag_sqrt, desc_x, xpy_matrix)
 
 
-  call stop_clock(timing_diago_h2p)
+  call timer_diago_h2p%stop()
 
 
 end subroutine diago_4blocks_rpa_sca
@@ -208,7 +208,6 @@ end subroutine diago_4blocks_rpa_sca
 subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
                                   amb_matrix, apb_matrix, desc_apb, &
                                   bigomega, xpy_matrix, xmy_matrix, desc_x)
-  implicit none
 
   real(dp), intent(in)    :: toldav
   integer, intent(in)     :: nstep
@@ -248,8 +247,8 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
   real(dp), allocatable :: work(:)
   !=====
 
-  call start_clock(timing_diago_h2p)
-  call start_clock(timing_tmp1)
+  call timer_diago_h2p%start()
+  call timer_tmp1%start()
 
   write(stdout, '(/,a,i4)') ' Performing the Davidson block diago'
 
@@ -291,7 +290,7 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
     jbb = MINLOC( amb_diag_rpa(:) , DIM=1, MASK=maskmin(:))
     bb(jbb, ibb) = 1.0_dp
     maskmin(jbb) = .FALSE.
-  enddo
+  end do
   deallocate(maskmin)
   ! Gram-Schmidt orthonormalization of the initial guesses
   do ibb=1, nbbc
@@ -299,11 +298,11 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
     ! Orthogonalize to previous vectors
     do jbb=1, ibb-1
       bb(:, ibb) = bb(:, ibb) - bb(:, jbb) * DOT_PRODUCT( bb(:, ibb) , bb(:, jbb) )
-    enddo
+    end do
     !
     ! Normalize
     bb(:, ibb) = bb(:, ibb) / NORM2( bb(:, ibb) )
-  enddo
+  end do
 
   !
   ! The time-consumming operation:
@@ -327,8 +326,8 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
     do ib=1, mb
       iglobal = INDXL2G(ib, block_row, iprow_sd, first_row, nprow_sd)
       bb_local(ib, jb) = bb(iglobal, jglobal)
-    enddo
-  enddo
+    end do
+  end do
 
   !
   ! Calculate (A-B) b
@@ -343,8 +342,8 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
     do ib=1, mb
       iglobal = INDXL2G(ib, block_row, iprow_sd, first_row, nprow_sd)
       amb_bb(iglobal, jglobal) = ab_local(ib, jb)
-    enddo
-  enddo
+    end do
+  end do
   call world%sum(amb_bb(:, 1:nbbc))
 
   !
@@ -360,8 +359,8 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
     do ib=1, mb
       iglobal = INDXL2G(ib, block_row, iprow_sd, first_row, nprow_sd)
       apb_bb(iglobal, jglobal) = ab_local(ib, jb)
-    enddo
-  enddo
+    end do
+  end do
   call world%sum(apb_bb(:, 1:nbbc))
 
 
@@ -393,7 +392,7 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
     call DPOTRF('L', nbbc, amb_tilde, nbbc,info)
     if( info /= 0 ) then
       call die('Matrix (A-B) is not positive definite')
-    endif
+    end if
 
     ! Calculate L^T * (A+B) * L
     call DSYGST(3, 'L', nbbc, apb_tilde, nbbc, amb_tilde, nbbc,info)
@@ -435,7 +434,7 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
                    - bigomega_tmp(ibb) * MATMUL( bb(:, 1:nbbc) , eigvec_left(:, ibb) )
       qr(:, ibb) = MATMUL( amb_bb(:, 1:nbbc) ,  eigvec_left(:, ibb) )  &
                    - bigomega_tmp(ibb) * MATMUL( bb(:, 1:nbbc) , eigvec_right(:, ibb) )
-    enddo
+    end do
 
     !
     ! Some output at each cycle
@@ -445,26 +444,26 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
       write(stdout, '(a,i4,1x,f13.6,1x,es12.4)') ' Excitation   Energy (eV)  Residual: ', ibb, bigomega_tmp(ibb) * Ha_eV, &
                   MAX( NORM2(ql(:, ibb)) , NORM2(qr(:, ibb)) )
       tolres = MAXVAL( NORM2(ql(:, :), DIM=1) )
-    enddo
+    end do
 
     !
     ! Stop the iterations here, because one of the stopping criteria has been met
     if( tolres < toldav ) then
       write(stdout, '(a,es12.4,a,es12.4)') ' Davidson diago converged ', tolres, ' is lower than ', toldav
       exit
-    endif
+    end if
     if( icycle == nstep ) then
       write(stdout, '(a,1x,i4)')           ' Maximum iteration number reached', nstep
       write(stdout, '(a,es12.4,a,es12.4)') ' Davidson diago not converged ', tolres, ' is larger than ', toldav
       call issue_warning('TDDFT or BSE Davidson diago not fully converged')
       exit
-    endif
+    end if
     if( nbbc + 2 * nexcitation > nmat ) then
       write(stdout, '(a,i6)') ' Iterative subspace is larger than the transition space ', nmat
       write(stdout, '(a,es12.4,a,es12.4)') ' Davidson diago not converged ', tolres, ' is larger than ', toldav
       call issue_warning('TDDFT or BSE Davidson diago not fully converged')
       exit
-    endif
+    end if
 
     !
     ! Preconditioning of the residual to get the new trial vectors
@@ -472,18 +471,18 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
       do imat=1, nmat
         bb(imat, nbbc+2*ibb-1) = ql(imat, ibb) / ( bigomega_tmp(ibb) - amb_diag_rpa(imat) )
         bb(imat, nbbc+2*ibb  ) = qr(imat, ibb) / ( bigomega_tmp(ibb) - amb_diag_rpa(imat) )
-      enddo
-    enddo
+      end do
+    end do
 
     !
     ! Orthogonalize to all previous
     do ibb=nbbc+1, nbbc+2*nexcitation
       do jbb=1, ibb-1
         bb(:, ibb) = bb(:, ibb) - bb(:, jbb) * DOT_PRODUCT( bb(:, ibb) , bb(:, jbb) )
-      enddo
+      end do
       ! Normalize
       bb(:, ibb) = bb(:, ibb) / NORM2( bb(:, ibb) )
-    enddo
+    end do
 
     !
     ! Calculate the new  (A-B) * b   and   (A+B) * b
@@ -511,8 +510,8 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
       do ib=1, mb
         iglobal = INDXL2G(ib, block_row, iprow_sd, first_row, nprow_sd)
         bb_local(ib, jb) = bb(iglobal, nbbc+jglobal)
-      enddo
-    enddo
+      end do
+    end do
 
     !
     ! Calculate (A-B) b
@@ -527,8 +526,8 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
       do ib=1, mb
         iglobal = INDXL2G(ib, block_row, iprow_sd, first_row, nprow_sd)
         amb_bb(iglobal, nbbc+jglobal) = ab_local(ib, jb)
-      enddo
-    enddo
+      end do
+    end do
     call world%sum(amb_bb(:, nbbc+1:nbbc+nbba))
 
     !
@@ -544,8 +543,8 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
       do ib=1, mb
         iglobal = INDXL2G(ib, block_row, iprow_sd, first_row, nprow_sd)
         apb_bb(iglobal, nbbc+jglobal) = ab_local(ib, jb)
-      enddo
-    enddo
+      end do
+    end do
     call world%sum(apb_bb(:, nbbc+1:nbbc+nbba))
 
 
@@ -572,7 +571,7 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
     deallocate(c_tilde)
     deallocate(amb_sqrt_tilde, amb_sqrt_inv_tilde)
     deallocate(eigvec_left, eigvec_right)
-  enddo
+  end do
 
 
 
@@ -602,8 +601,8 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
     do ib=1, mb
       iglobal = INDXL2G(ib, block_row, iprow_sd, first_row, nprow_sd)
       bb_local(ib, jb) = bb(iglobal, jglobal)
-    enddo
-  enddo
+    end do
+  end do
 
   me = NUMROC(nbbc, SMALL_BLOCK, iprow_sd, first_row, nprow_sd)
   ne = NUMROC(nexcitation, SMALL_BLOCK, ipcol_sd, first_col, npcol_sd)
@@ -617,8 +616,8 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
     do ib=1, me
       iglobal = INDXL2G(ib, SMALL_BLOCK, iprow_sd, first_row, nprow_sd)
       ev_local(ib, jb) = eigvec_left(iglobal, jglobal)
-    enddo
-  enddo
+    end do
+  end do
 
   call PDGEMM('N', 'N', nmat, nexcitation,nbbc,  &
              1.0_dp, bb_local, 1, 1, descb,      &
@@ -633,8 +632,8 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
     do ib=1, me
       iglobal = INDXL2G(ib, SMALL_BLOCK, iprow_sd, first_row, nprow_sd)
       ev_local(ib, jb) = eigvec_right(iglobal, jglobal)
-    enddo
-  enddo
+    end do
+  end do
 
   call PDGEMM('N', 'N', nmat, nexcitation,nbbc,  &
              1.0_dp, bb_local, 1, 1, descb,      &
@@ -654,8 +653,8 @@ subroutine diago_4blocks_davidson(toldav, nstep, amb_diag_rpa, &
   deallocate(eigvec_left, eigvec_right)
 
 
-  call stop_clock(timing_tmp1)
-  call stop_clock(timing_diago_h2p)
+  call timer_tmp1%stop()
+  call timer_diago_h2p%stop()
 
 
 end subroutine diago_4blocks_davidson

@@ -611,7 +611,7 @@ subroutine print_orb_coefs(RDMd,name_file,COEF,COEF_cmplx)
 !scalars
  class(rdm_t),intent(in)::RDMd
 !arrays
- character(len=20)::name_file 
+ character(len=20),intent(in)::name_file
  real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEF
  complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEF_cmplx
 !Local variables ------------------------------
@@ -671,7 +671,7 @@ subroutine print_orb_coefs_bin(RDMd,name_file,COEF,COEF_cmplx)
 !scalars
  class(rdm_t),intent(in)::RDMd
 !arrays
- character(len=20)::name_file
+ character(len=20),intent(in)::name_file
  real(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEF
  complex(dp),optional,dimension(RDMd%NBF_tot,RDMd%NBF_tot),intent(in)::COEF_cmplx
 !Local variables ------------------------------
