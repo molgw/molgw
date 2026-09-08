@@ -23,6 +23,8 @@ module m_mbpt_density_matrix
   use m_io
   use m_tddft_fxc
   use m_linear_response
+  use m_eri_calculate
+  use m_linear_algebra
 
 
 
@@ -911,7 +913,7 @@ subroutine cederbaum_blas(energy, c_matrix, hfock_ao, p_matrix_mo)
   real(dp), intent(in)    :: hfock_ao(:, :, :)
   real(dp), intent(inout) :: p_matrix_mo(:, :, :)
   !=====
-  integer :: kstate, cstate, nstate
+  integer :: nstate
   integer :: it, jt, nocc, nvirt, nmo, nt, imo, nneg
   real(dp), allocatable :: a11(:, :), b1(:), sigma_inf1(:)
   integer :: istate, jstate, astate, bstate, pstate, qstate
@@ -1095,6 +1097,20 @@ subroutine cederbaum_blas(energy, c_matrix, hfock_ao, p_matrix_mo)
     a11(it, it) = a11(it, it) + 1.0d0
   end do
 
+  !DEBUG
+  !block
+  !  real(dp), allocatable :: matrix(:, :), eigval(:)
+
+  !  allocate(matrix, SOURCE=a11)
+  !  allocate(eigval(nt))
+  !  call diagonalize_wo_vectors_dp(' ', matrix, eigval)
+  !  write(stdout, *) '================='
+  !  write(stdout, '(es14.6)') eigval(1:20)
+  !  write(stdout, *)
+  !  write(stdout, '(es14.6)') eigval(nt-19:nt)
+  !  write(stdout, *) '================='
+
+  !end block
   !
   ! a11 now contains (1-A₁₁)
   !
@@ -1567,13 +1583,50 @@ end subroutine cederbaum_naive3
 
 
 !=========================================================================
+! Transform the dense AO 3-center overlap tensor (mu nu | P) into a MO block
+! mo_overlap3(l, r, P) = SUM_mu,nu c_matrix(mu,left_min+l-1,ispin) * ao_overlap3(mu,nu,P) * c_matrix(nu,right_min+r-1,ispin)
+! Uses BLAS level 3 (DGEMM), looping over the auxiliary index P.
+subroutine transform_overlap3_to_mo(nbf, naux, ao_overlap3, nstate, nspin_c, c_matrix, ispin, &
+                                    left_min, left_max, right_min, right_max, mo_overlap3)
+  integer, intent(in)   :: nbf, naux, nstate, nspin_c, ispin
+  integer, intent(in)   :: left_min, left_max, right_min, right_max
+  real(dp), intent(in)  :: ao_overlap3(nbf, nbf, naux)
+  real(dp), intent(in)  :: c_matrix(nbf, nstate, nspin_c)
+  real(dp), intent(out) :: mo_overlap3(left_max-left_min+1, right_max-right_min+1, naux)
+  !=====
+  integer :: n_left, n_right, iaux
+  real(dp), allocatable :: tmp(:, :)
+  !=====
+
+  n_left  = left_max  - left_min  + 1
+  n_right = right_max - right_min + 1
+
+  allocate(tmp(n_left, nbf))
+
+  ! c_matrix(1,left_min,ispin) / ao_overlap3(1,1,iaux) are passed as the starting
+  ! element of a contiguous block (explicit-shape dummies are simply contiguous),
+  ! matching the F77-style calling convention used elsewhere in this file for DGEMM.
+  do iaux=1, naux
+    call DGEMM('T', 'N', n_left, nbf, nbf, 1.0_dp, c_matrix(1, left_min, ispin), nbf, &
+               ao_overlap3(1, 1, iaux), nbf, 0.0_dp, tmp(1, 1), n_left)
+    call DGEMM('N', 'N', n_left, n_right, nbf, 1.0_dp, tmp(1, 1), n_left, c_matrix(1, right_min, ispin), nbf, &
+               0.0_dp, mo_overlap3(1, 1, iaux), n_left)
+  end do
+
+  deallocate(tmp)
+
+end subroutine transform_overlap3_to_mo
+
+
+!=========================================================================
 ! Implement the formula from
 ! Furche-Eshuit
 ! "Analytical First-Order Molecular Properties and Forces within the Adiabatic Connection Random Phase Approximation"
 ! JCTC 2013
 !
-subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matrix_mo)
+subroutine turbomole_naive(basis, auxil_basis, energy, occupation, c_matrix, hfock_ao, p_matrix_mo)
   type(basis_set), intent(in) :: basis
+  type(basis_set), intent(in) :: auxil_basis
   real(dp), intent(in)    :: occupation(:, :), energy(:, :)
   real(dp), intent(in)    :: c_matrix(:, :, :)
   real(dp), intent(in)    :: hfock_ao(:, :, :)
@@ -1592,6 +1645,19 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
   integer :: m_a, n_a, nmat, desc_a(NDEL)
   real(dp), allocatable :: a_matrix(:, :), apb_matrix(:, :)
   real(dp) :: fxc
+  real(dp), allocatable :: s_matrix_aux(:, :)
+  integer :: naux, jk_idx, bc_idx
+  real(dp), allocatable :: fxc_auxil(:, :)
+  real(dp), allocatable :: s_inv(:, :)
+  real(dp), allocatable :: tmp_aux(:, :)
+  real(dp), allocatable :: metric_aux(:, :)
+  real(dp), allocatable :: ao_overlap3(:, :, :)
+  real(dp), allocatable :: pair_aux_ia(:, :, :)
+  real(dp), allocatable :: pair_aux_jk(:, :, :)
+  real(dp), allocatable :: pair_aux_bc(:, :, :)
+  real(dp), allocatable :: ia_metric(:, :)
+  real(dp), allocatable :: fxc_iajk(:, :)
+  real(dp), allocatable :: fxc_iabc(:, :)
   !=====
 
   if( nspin > 1 ) call die('turbomole_naive: only spin restricted here')
@@ -1635,6 +1701,75 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
 
   if( TRIM(scf) /= 'HF' ) then
     call prepare_tddft(.FALSE., nstate, basis, c_matrix, occupation)
+
+    !
+    ! Overlap matrix S of the auxiliary basis, needed for the resolution-of-identity
+    ! approximation of the fxc kernel: (ia|fxc|bc) ~= (ia|P) S^-1_PQ (Q|fxc|R) S^-1_RS (bc|S)
+    call clean_allocate('Auxiliary basis overlap S', s_matrix_aux, auxil_basis%nbf, auxil_basis%nbf)
+    call setup_overlap_finite(auxil_basis, s_matrix_aux)
+
+    if( tddft_kernel_auxil_ ) then
+      naux = auxil_basis%nbf
+      write(stdout, '(1x,a)') 'Use the auxiliary-basis (RI) approximation for the fxc kernel'
+
+      ! metric_aux = S^-1 (Q|fxc|R) S^-1
+      call clean_allocate('fxc auxiliary matrix (Q|fxc|R)', fxc_auxil, naux, naux)
+      call eval_fxc_rks_singlet_auxiliary(auxil_basis, fxc_auxil)
+
+      call clean_allocate('Inverse auxiliary overlap S^-1', s_inv, naux, naux)
+      s_inv(:, :) = s_matrix_aux(:, :)
+      call invert_symmetric(s_inv)
+      call matrix_lower_to_full(s_inv)
+
+      call clean_allocate('S^-1 * (Q|fxc|R)', tmp_aux, naux, naux)
+      call DGEMM('N', 'N', naux, naux, naux, 1.0_dp, s_inv(1, 1), naux, fxc_auxil(1, 1), naux, &
+                 0.0_dp, tmp_aux(1, 1), naux)
+      call clean_allocate('S^-1 (Q|fxc|R) S^-1', metric_aux, naux, naux)
+      call DGEMM('N', 'N', naux, naux, naux, 1.0_dp, tmp_aux(1, 1), naux, s_inv(1, 1), naux, &
+                 0.0_dp, metric_aux(1, 1), naux)
+      call clean_deallocate('S^-1 * (Q|fxc|R)', tmp_aux)
+      call clean_deallocate('Inverse auxiliary overlap S^-1', s_inv)
+      call clean_deallocate('fxc auxiliary matrix (Q|fxc|R)', fxc_auxil)
+
+      ! Dense AO 3-center overlap (mu nu | P)
+      call clean_allocate('AO 3-center overlap (mu nu|P)', ao_overlap3, basis%nbf, basis%nbf, naux)
+      call calculate_overlap_3center(basis, auxil_basis, ao_overlap3)
+
+      ! pair_aux_ia(a,i,P): "a" fastest, matching the "it" running index used below
+      call clean_allocate('(ia|P) pair density', pair_aux_ia, nvirt, nocc, naux)
+      call transform_overlap3_to_mo(basis%nbf, naux, ao_overlap3, nstate, nspin, c_matrix, pqspin, &
+                                    nhomo_G+1, nvirtual_G-1, ncore_G+1, nhomo_G, pair_aux_ia)
+
+      ! pair_aux_jk(k,j,P): "k" fastest, matching the inner kstate loop below
+      call clean_allocate('(jk|P) pair density', pair_aux_jk, nocc, nocc, naux)
+      call transform_overlap3_to_mo(basis%nbf, naux, ao_overlap3, nstate, nspin, c_matrix, pqspin, &
+                                    ncore_G+1, nhomo_G, ncore_G+1, nhomo_G, pair_aux_jk)
+
+      ! pair_aux_bc(c,b,P): "c" fastest, matching the inner cstate loop below
+      call clean_allocate('(bc|P) pair density', pair_aux_bc, nvirt, nvirt, naux)
+      call transform_overlap3_to_mo(basis%nbf, naux, ao_overlap3, nstate, nspin, c_matrix, pqspin, &
+                                    nhomo_G+1, nvirtual_G-1, nhomo_G+1, nvirtual_G-1, pair_aux_bc)
+      call clean_deallocate('AO 3-center overlap (mu nu|P)', ao_overlap3)
+
+      ! (ia|P) * metric  ->  ia_metric(it,Q)
+      call clean_allocate('(ia|P) * metric', ia_metric, nt, naux)
+      call DGEMM('N', 'N', nt, naux, naux, 1.0_dp, pair_aux_ia(1, 1, 1), nt, metric_aux(1, 1), naux, &
+                 0.0_dp, ia_metric(1, 1), nt)
+      call clean_deallocate('S^-1 (Q|fxc|R) S^-1', metric_aux)
+      call clean_deallocate('(ia|P) pair density', pair_aux_ia)
+
+      ! (ia|fxc|jk) = (ia|P) * metric * (jk|Q)^T  and  (ia|fxc|bc) = (ia|P) * metric * (bc|Q)^T
+      call clean_allocate('(ia|fxc|jk) matrix', fxc_iajk, nt, nocc*nocc)
+      call DGEMM('N', 'T', nt, nocc*nocc, naux, 1.0_dp, ia_metric(1, 1), nt, pair_aux_jk(1, 1, 1), nocc*nocc, &
+                 0.0_dp, fxc_iajk(1, 1), nt)
+      call clean_deallocate('(jk|P) pair density', pair_aux_jk)
+
+      call clean_allocate('(ia|fxc|bc) matrix', fxc_iabc, nt, nvirt*nvirt)
+      call DGEMM('N', 'T', nt, nvirt*nvirt, naux, 1.0_dp, ia_metric(1, 1), nt, pair_aux_bc(1, 1, 1), nvirt*nvirt, &
+                 0.0_dp, fxc_iabc(1, 1), nt)
+      call clean_deallocate('(bc|P) pair density', pair_aux_bc)
+      call clean_deallocate('(ia|P) * metric', ia_metric)
+    end if
   end if
 
   allocate(b1(nt))
@@ -1673,12 +1808,18 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
     do astate=nhomo_G+1, nvirtual_G-1
       it = it + 1
       ! here limit to occupied-occupied block
+      jk_idx = 0
       do jstate=ncore_G+1, nhomo_G
         do kstate=ncore_G+1, nhomo_G
+          jk_idx = jk_idx + 1
 
           if( TRIM(scf) /= 'HF' ) then
-            fxc = eval_fxc_rks_singlet(istate, astate, 1, jstate, kstate, 1)
-            !call grid%sum(fxc)
+            if( tddft_kernel_auxil_ ) then
+              fxc = fxc_iajk(it, jk_idx)
+            else
+              fxc = eval_fxc_rks_singlet(istate, astate, 1, jstate, kstate, 1)
+              !call grid%sum(fxc)
+            end if
           else
             fxc = 0.0_dp
           end if
@@ -1688,12 +1829,18 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
         end do
       end do
       ! here limit to virtual-virtual block
+      bc_idx = 0
       do bstate=nhomo_G+1, nvirtual_G-1
         do cstate=nhomo_G+1, nvirtual_G-1
+          bc_idx = bc_idx + 1
 
           if( TRIM(scf) /= 'HF' ) then
-            fxc = eval_fxc_rks_singlet(istate, astate, 1, bstate, cstate, 1)
-            !call grid%sum(fxc)
+            if( tddft_kernel_auxil_ ) then
+              fxc = fxc_iabc(it, bc_idx)
+            else
+              fxc = eval_fxc_rks_singlet(istate, astate, 1, bstate, cstate, 1)
+              !call grid%sum(fxc)
+            end if
           else
             fxc = 0.0_dp
           end if
@@ -1740,6 +1887,21 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
   !a11(:, :) = apb_matrix(:, :)
   call gather_distributed_copy(desc_a, apb_matrix, a11)
 
+  !DEBUG
+  !block
+  !  real(dp), allocatable :: matrix(:, :), eigval(:)
+
+  !  allocate(matrix, SOURCE=a11)
+  !  allocate(eigval(nt))
+  !  call diagonalize_wo_vectors_dp(' ', matrix, eigval)
+  !  write(stdout, *) '================='
+  !  write(stdout, '(es14.6)') eigval(1:20)
+  !  write(stdout, *)
+  !  write(stdout, '(es14.6)') eigval(nt-19:nt)
+  !  write(stdout, *) '================='
+
+  !end block
+
   !
   ! a11 now contains (A+B)
   ! it is symmetric, we use DSYSV
@@ -1776,6 +1938,11 @@ subroutine turbomole_naive(basis, energy, occupation, c_matrix, hfock_ao, p_matr
   call destroy_eri_3center_mo()
 
   if( TRIM(scf) /= 'HF' ) then
+    call clean_deallocate('Auxiliary basis overlap S', s_matrix_aux)
+    if( tddft_kernel_auxil_ ) then
+      call clean_deallocate('(ia|fxc|jk) matrix', fxc_iajk)
+      call clean_deallocate('(ia|fxc|bc) matrix', fxc_iabc)
+    end if
     call destroy_tddft()
   end if
 

@@ -1439,6 +1439,14 @@ tda:
   default: 'no'
   comment: Triggers the use of Tamm-Dancoff approximation in TD-DFT or BSE.
 
+tddft_kernel_auxil:
+  family: post
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'no'
+  comment: Turns on or off the resolution-of-the-identity approximation in the TDDFT kernel. Speeds-up the calculations, but uses more memory.
+
 tddft_grid_quality:
   family: post
   datatype: characters

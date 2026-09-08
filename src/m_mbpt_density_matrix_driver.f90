@@ -34,10 +34,11 @@ contains
 
 
 !=========================================================================
-subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
+subroutine get_dm_mbpt(basis, auxil_basis, occupation, energy, c_matrix, s_matrix, &
                        hamiltonian_kinetic, hamiltonian_nucleus, hamiltonian_fock)
 
   type(basis_set), intent(inout) :: basis
+  type(basis_set), intent(in)    :: auxil_basis
   real(dp), intent(in)           :: occupation(:, :)
   real(dp), intent(in)           :: energy(:, :)
   real(dp), intent(in)           :: c_matrix(:, :, :)
@@ -176,7 +177,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     if( TRIM(pt_density_matrix) == 'RPA'  &
         .OR. TRIM(pt_density_matrix) == 'MP2' ) then
 
-      call turbomole_naive(basis, energy, occupation, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
+      call turbomole_naive(basis, auxil_basis, energy, occupation, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
       p_matrix_corr_ao(:, :, :) = 0.0_dp
     end if
 

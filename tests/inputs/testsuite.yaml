@@ -3884,4 +3884,32 @@ co2_gw@pbeh_dm_cederbaum.in:
     -   Exchange HOMO expectation:
             reference: -23.873869
             tolerance: 0.0001
+co_mp2_dm@pbe0.in:
+    description: CO MP2 relaxed density-matrix 
+    keywords: [density-matrix, hybrid]
+    checks:
+    -   Hartree Energy:
+            reference:  76.4554885779
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -13.0919492408
+            tolerance: 1.0e-07
+    -    Dipole (a.u.):  
+            reference: 0.343116
+            tolerance: 1.0e-07
+            column: 2
+co_rpa_dm@pbe0.in:
+    description: CO RPA relaxed density-matrix 
+    keywords: [density-matrix, hybrid]
+    checks:
+    -   Hartree Energy:
+            reference:  76.4354599338
+            tolerance: 1.0e-07
+    -   Exchange Energy:
+            reference: -13.19756408  
+            tolerance: 1.0e-07
+    -    Dipole (a.u.):  
+            reference: 0.092030
+            tolerance: 1.0e-07
+            column: 2
 ...
