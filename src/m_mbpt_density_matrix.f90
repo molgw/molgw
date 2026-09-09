@@ -1818,7 +1818,7 @@ subroutine turbomole_naive(basis, auxil_basis, energy, occupation, c_matrix, hfo
               fxc = fxc_iajk(it, jk_idx)
             else
               fxc = eval_fxc_rks_singlet(istate, astate, 1, jstate, kstate, 1)
-              !call grid%sum(fxc)
+              call grid%sum(fxc)
             end if
           else
             fxc = 0.0_dp
@@ -1839,7 +1839,7 @@ subroutine turbomole_naive(basis, auxil_basis, energy, occupation, c_matrix, hfo
               fxc = fxc_iabc(it, bc_idx)
             else
               fxc = eval_fxc_rks_singlet(istate, astate, 1, bstate, cstate, 1)
-              !call grid%sum(fxc)
+              call grid%sum(fxc)
             end if
           else
             fxc = 0.0_dp

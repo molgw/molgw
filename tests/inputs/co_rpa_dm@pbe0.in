@@ -12,6 +12,7 @@
  print_multipole='yes'
 
  tddft_kernel_auxil='yes'
+ mpi_poorman='yes'
 
  natom = 2
 /

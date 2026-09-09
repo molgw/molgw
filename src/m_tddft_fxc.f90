@@ -379,6 +379,12 @@ subroutine eval_fxc_rks_singlet_auxiliary(auxil_basis, fxc_auxil)
     deallocate(term3)
   end if
 
+  !
+  ! The DFT grid is distributed over the 'grid' communicator (independently of
+  ! mpi_poorman): each proc only summed its local share of grid points above,
+  ! so a single reduction over the whole (naux, naux) matrix is needed here.
+  call grid%sum(fxc_auxil)
+
 end subroutine eval_fxc_rks_singlet_auxiliary
 
 

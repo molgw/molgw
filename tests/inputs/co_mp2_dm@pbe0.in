@@ -8,6 +8,7 @@
  frozencore='no'
 
  tddft_kernel_auxil='yes'
+ mpi_poorman='yes'
  pt_density_matrix='MP2'
  use_correlated_density_matrix='yes'
  print_multipole='yes'
