@@ -174,6 +174,8 @@ subroutine write_header(sha)
  call write_output(msg)
  write(msg,'(a)') '  First version: VU Amsterdam 2022 '
  call write_output(msg)
+ write(msg,'(a)') '  Second version: LCPQ/LPT Toulouse 2026 '
+ call write_output(msg)
  write(msg,'(a)') ' '
  call write_output(msg)
  call date_and_time(date=date,time=time,zone=zone,values=tvalues)

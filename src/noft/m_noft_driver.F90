@@ -27,6 +27,7 @@ module m_noft_driver
  use m_integd
  use m_elag
  use m_hessian
+ use m_adam
  use m_optocc
  use m_optorb
  use m_tz_pCCD_amplitudes
@@ -90,8 +91,8 @@ contains
 subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 &  Ncoupled_in,Nbeta_elect_in,Nalpha_elect_in,imethocc,imethorb,itermax,iprintdmn,iprintswdmn,&
 &  iprintints,itolLambda,ndiis,Enof,tolE_in,Vnn,AOverlap_in,occ_inout,mo_ints,ofile_name,NO_COEF,NO_COEF_cmplx,&
-&  lowmemERI,restart,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,Lpower,fcidump,&   ! Optional
-&  irange_sep,hessian)                                                                                        ! Optional
+&  lowmemERI,restart,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,iNOTupdateocc,iNOTupdateORB,Lpower,s_reg,fcidump,&   ! Optional
+&  irange_sep,hessian)                                                                                              ! Optional
 !Arguments ------------------------------------
 !scalars
  logical,optional,intent(in)::restart,lowmemERI,fcidump,hessian
@@ -99,7 +100,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  integer,intent(in)::INOF_in,Ista_in,imethocc,imethorb,itermax,iprintdmn,iprintints,iprintswdmn
  integer,intent(in)::NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,itolLambda,ndiis  
  integer,intent(in)::Nbeta_elect_in,Nalpha_elect_in
- real(dp),optional,intent(in)::Lpower
+ real(dp),optional,intent(in)::Lpower,s_reg
  real(dp),intent(in)::Vnn,tolE_in
  real(dp),intent(inout)::Enof
  interface
@@ -142,6 +143,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  type(integ_t),target::INTEGd
  type(elag_t),target::ELAGd
  type(hessian_t),target::HESSIANd
+ type(adam_t),target::ADAMd
 !arrays
  real(dp),allocatable,dimension(:,:)::DM1,Phases
  real(dp),allocatable,dimension(:,:,:)::DM2_JK
@@ -166,7 +168,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
  
 ! Check whether to compute the Hessian matrix (for Quadratic Convergence or to check the eigenvalues)
  if(present(hessian)) hessian_in=hessian
- if(imethorb/=1) hessian_in=.true.
+ if(imethorb==2) hessian_in=.true.
 
  ! Check whether to use a range-sep. calculation
  if(present(irange_sep)) then 
@@ -224,10 +226,17 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call rdm_init(RDMd,INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,Ncoupled_in,&
 & Nbeta_elect_in,Nalpha_elect_in,irs_noft)
  endif
+ if(present(s_reg)) then
+  RDMd%s_reg=s_reg
+ endif
 
- if(present(lowmemERI) .and. (.not.hessian_in .and. imethorb/=1)) then ! The Hessian for Quadratic Convergence method needs all integrals
-  call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft,lowmemERI=lowmemERI)
- else
+ if(imethorb==0 .or. imethorb==1) then ! F_diag and ADAM can use lowmemERI
+  if(present(lowmemERI)) then
+   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft,lowmemERI=lowmemERI)
+  else
+   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
+  endif
+ else                                  ! The Hessian for Quadratic Convergence method needs all integrals  
   call integ_init(INTEGd,RDMd%NBF_tot,RDMd%NBF_occ,AOverlap_in,cpx_mos,irs_noft)
  endif
  call elag_init(ELAGd,RDMd%NBF_tot,diagLpL,itolLambda,ndiis,tolE_in,cpx_mos)
@@ -235,6 +244,12 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   call hessian_init(HESSIANd,RDMd%NBF_tot,cpx_mos)
  else
   call hessian_init(HESSIANd,2,cpx_mos)
+ endif
+
+ if(imethorb==0) then ! Allocate ADAMd (even if it is allocated with size 1)
+  call adam_init(ADAMd,RDMd%NBF_tot,cpx_mos)
+ else
+  call adam_init(ADAMd,2,cpx_mos)
  endif
 
  ! Check for the presence of restart files. Then, if they are available read them (only if required)
@@ -275,7 +290,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(RDMd%INOF<0) then ! pCCD
    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs)
   else ! NOFT
-   if(RDMd%INOF==70) then ! pCCD phases
+   if(RDMd%INOF==700) then ! pCCD phases
     call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs,only_phases=.true.)
    endif
    if(RDMd%NBF_occ-(RDMd%Nfrozen+1)<=20 .and. .false.) then ! May print some phases for debug 
@@ -303,7 +318,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(RDMd%INOF<0) then ! pCCD
    call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs)
   else ! NOFT
-   if(RDMd%INOF==70) then ! pCCD phases
+   if(RDMd%INOF==700) then ! pCCD phases
     call calc_tz_pCCD_amplitudes(ELAGd,RDMd,INTEGd,Vnn,Energy,Phases,iter,imethocc,keep_occs,only_phases=.true.)
    endif
    if(RDMd%NBF_occ-(RDMd%Nfrozen+1)<=20 .and. .false.) then ! May print some phases for debug 
@@ -372,10 +387,10 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(.not.keep_orbs) then
    call ELAGd%clean_diis()
    if(cpx_mos) then
-    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints,Phases, &
+    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxdiff_lambda,mo_ints,Phases, &
     & NO_COEF_cmplx=NO_COEF_cmplx)
    else   
-    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,Vnn,Energy,maxdiff_lambda,mo_ints,Phases, &
+    call opt_orb(iter,imethorb,ELAGd,RDMd,INTEGd,HESSIANd,ADAMd,Vnn,Energy,maxdiff_lambda,mo_ints,Phases, &
     & NO_COEF=NO_COEF)
    endif
    if(imethorb==1) then ! For F diag method, print F_pp elements after each global iteration
@@ -409,7 +424,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
   if(RDMd%INOF<0) call RDMd%print_tz_amplitudes()
 
   ! Check convergence
-  if(dabs(Energy-Energy_old)<ELAGd%tolE) then
+  if(dabs(Energy-Energy_old)<ELAGd%tolE .and. .not.ADAMd%restart) then
    Energy_old=Energy
    exit
   endif
@@ -601,6 +616,7 @@ subroutine run_noft(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in,&
 
  ! Free all allocated RDMd, INTEGd, ELAGd, and HESSIANd arrays
  call ELAGd%free() 
+ call ADAMd%free()
  call HESSIANd%free()
  call INTEGd%free()
  ! Reallocated INTEGd and print FCIDUMP file if required for real orbs and not rs-NOFT calcs
@@ -768,7 +784,7 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
   call write_output(msg)
   write(msg,'(a)') ' M. Piris, Phys. Rev. Lett., 127, 233001 (2021)'
   call write_output(msg)
- elseif(INOF_in==70) then
+ elseif(INOF_in==700) then
   write(msg,'(a)') ' Using PNOF7_PHASES approximation'
   call write_output(msg)
  else
@@ -792,7 +808,12 @@ subroutine echo_input(INOF_in,Ista_in,NBF_tot_in,NBF_occ_in,Nfrozen_in,Npairs_in
  else
   ! TODO
  endif
- if(imethorb==1) then
+ if(imethorb==0) then
+  write(msg,'(a,i12)') ' ADAM method used in orb opt.      ',imethorb
+  call write_output(msg)
+  write(msg,'(a,e10.3)') ' Tolerance gradient convergence      ',ten**(-itolLambda)
+  call write_output(msg)
+ elseif(imethorb==1) then
   write(msg,'(a,i12)') ' F_diag method used in orb opt.    ',imethorb
   call write_output(msg)
   write(msg,'(a,e10.3)') ' Tolerance Lambda convergence        ',ten**(-itolLambda)
@@ -994,7 +1015,7 @@ subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOv
 
  ! Read GAMMAs (indep. parameters used to optimize occs.) from GAMMAS file 
  if(ireadGAMMAS==1) then
-  if(RDMd%INOF>-1 .and. RDMd%INOF/=70) then
+  if(RDMd%INOF>-1 .and. RDMd%INOF/=700) then
    allocate(GAMMAS_in(RDMd%Ngammas))
    open(unit=iunit,form='unformatted',file='GAMMAS',iostat=istat,status='old')
    icount=0
@@ -1021,7 +1042,7 @@ subroutine read_restart(RDMd,ELAGd,ireadGAMMAS,ireadocc,ireadCOEF,ireadFdiag,AOv
    close(iunit)
    deallocate(GAMMAS_in)
   else ! pCCD or PNOF7-PHASES
-   if(RDMd%INOF==70) then
+   if(RDMd%INOF==700) then
     allocate(GAMMAS_in(RDMd%Ngammas))
     open(unit=iunit,form='unformatted',file='GAMMAS',iostat=istat,status='old')
     icount=0
