@@ -91,12 +91,13 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
   if(noft_readCOEF=='yes') ireadCOEF=1
   if(noft_readFdiag=='yes') ireadFdiag=1
   if(noft_readGAMMAS=='yes') ireadGAMMAs=1
-  if(noft_NR_OCC=='yes') imethocc=2
+  if(noft_NR_OCC=='no') imethocc=2
   if(noft_QC_ORB=='yes') imethorb=2
+  if(noft_ADAM_ORB=='yes') imethorb=0
 
   select case(capitalize(noft_functional))
   case('PNOF7_PHASES')
-    inof=70
+    inof=700
   case('GNOFS')
     inof=8
     ista=3
@@ -119,6 +120,8 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
     inof=103
   case('GU')
     inof=104
+  case('HFB')
+    inof=105
   case('HF')
     inof=0
   case('PCCD')
@@ -411,6 +414,8 @@ subroutine noft_energy(basis, occupation, Enoft, Vnn, Aoverlap, c_matrix, c_matr
    end if
    
    ! If required print post-procesing files
+   occupation(:,:)=0.0d0
+   c_matrix(:,:,:)=0.0d0
    occupation(1:nstate_occ, 1)=occ(1:nstate_occ, 1)
    if( irs_noft==0 ) then
      if(noft_complex=='yes') then

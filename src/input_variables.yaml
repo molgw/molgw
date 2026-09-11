@@ -2052,8 +2052,8 @@ noft_nr_occ:
   datatype: yes/no
   mandatory: 'no'
   experimental: 'no'
-  default: 'no'
-  comment: Use quasi-Newton-Rapson method for the t and z amplitudes optimization in pCCD (default= 'no').
+  default: 'yes'
+  comment: Use Newton-Rapson method for the t and z amplitudes optimization in pCCD (default= 'yes').
 
 noft_qc_orb:
   family: noft
@@ -2062,6 +2062,14 @@ noft_qc_orb:
   experimental: 'no'
   default: 'no'
   comment: Use the Quadratic Convergence method in orbital optimization by constructing the Hessian (default= 'no').
+
+noft_ADAM_ORB:
+  family: noft
+  datatype: yes/no
+  mandatory: 'no'
+  experimental: 'no'
+  default: 'yes'
+  comment: Use the ADAM method in orbital optimization (default= 'yes').
 
 noft_ithresh_lambda:
   family: noft
