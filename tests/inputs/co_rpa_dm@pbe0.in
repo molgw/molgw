@@ -1,0 +1,20 @@
+&molgw
+ scf='PBE0'
+ tolscf=1.0e-8
+
+ basis='cc-pVDZ'
+ auxil_basis='pauto'
+
+ frozencore='no'
+
+ pt_density_matrix='RPA'
+ use_correlated_density_matrix='yes'
+ print_multipole='yes'
+
+ tddft_kernel_auxil='yes'
+ mpi_poorman='yes'
+
+ natom = 2
+/
+C 0.0 0.0 0.0
+O 0.0 0.0 1.118

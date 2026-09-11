@@ -281,6 +281,114 @@ end function eval_fxc_rks_singlet
 
 
 !=========================================================================
+! Evaluate the auxiliary-basis matrix (Q|fxc|R) for the whole auxiliary
+! basis set at once, to be used in the resolution-of-identity approximation
+! ( i a | fxc | b c ) ~= SUM_PQRS ( i a | P ) S^-1_PQ (Q|fxc|R) S^-1_RS ( b c | S )
+! Same physics as eval_fxc_rks_singlet, but with the co-density phi_i*phi_j
+! replaced by a single auxiliary basis function phi_P
+subroutine eval_fxc_rks_singlet_auxiliary(auxil_basis, fxc_auxil)
+  type(basis_set), intent(in) :: auxil_basis
+  real(dp), intent(out)       :: fxc_auxil(:, :)
+  !=====
+  integer               :: naux
+  integer                :: igrid_start, igrid_end, nr, ir
+  real(dp), allocatable  :: phiP_r(:, :), phiP_r_scaled(:, :)
+  real(dp), allocatable  :: phiP_gradx(:, :), phiP_grady(:, :), phiP_gradz(:, :)
+  real(dp), allocatable  :: phiP_grad_scaled(:, :)
+  real(dp), allocatable  :: dot_gradphiP_rho(:, :), dot_gradphiP_rho_scaled(:, :)
+  real(dp), allocatable  :: term3(:, :)
+  !=====
+
+  naux = auxil_basis%nbf
+
+  allocate(phiP_r(naux, BATCH_SIZE), phiP_r_scaled(naux, BATCH_SIZE))
+  if( dft_xc(1)%needs_gradient ) then
+    allocate(phiP_gradx(naux, BATCH_SIZE), phiP_grady(naux, BATCH_SIZE), phiP_gradz(naux, BATCH_SIZE))
+    allocate(phiP_grad_scaled(naux, BATCH_SIZE))
+    allocate(dot_gradphiP_rho(naux, BATCH_SIZE), dot_gradphiP_rho_scaled(naux, BATCH_SIZE))
+    allocate(term3(naux, naux))
+  end if
+
+  fxc_auxil(:, :) = 0.0_dp
+
+  do igrid_start=1, ngrid, BATCH_SIZE
+    igrid_end = MIN(ngrid, igrid_start+BATCH_SIZE-1)
+    nr = igrid_end - igrid_start + 1
+
+    call calculate_basis_functions_r_batch(auxil_basis, rr_grid(:, igrid_start:igrid_end), phiP_r(:, 1:nr))
+
+    !
+    ! LDA term: (Q|fxc|R) += SUM_r phiP_Q(r) * phiP_R(r) * 2 * v2rho2(r)
+    do ir=1, nr
+      phiP_r_scaled(:, ir) = phiP_r(:, ir) * 2.0_dp * v2rho2(igrid_start+ir-1, 1)
+    end do
+    call DGEMM('N', 'T', naux, naux, nr, 1.0_dp, phiP_r_scaled, naux, phiP_r, naux, 1.0_dp, fxc_auxil, naux)
+
+    if( dft_xc(1)%needs_gradient ) then
+      call calculate_basis_functions_gradr_batch(auxil_basis, rr_grid(:, igrid_start:igrid_end), &
+                                                  phiP_gradx(:, 1:nr), phiP_grady(:, 1:nr), phiP_gradz(:, 1:nr))
+
+      !
+      ! grad-grad term: (Q|fxc|R) += SUM_r grad(phiP_Q).grad(phiP_R) * 4 * vsigma(r)
+      do ir=1, nr
+        phiP_grad_scaled(:, ir) = phiP_gradx(:, ir) * 4.0_dp * vsigma(igrid_start+ir-1, 1)
+      end do
+      call DGEMM('N', 'T', naux, naux, nr, 1.0_dp, phiP_grad_scaled, naux, phiP_gradx, naux, 1.0_dp, fxc_auxil, naux)
+      do ir=1, nr
+        phiP_grad_scaled(:, ir) = phiP_grady(:, ir) * 4.0_dp * vsigma(igrid_start+ir-1, 1)
+      end do
+      call DGEMM('N', 'T', naux, naux, nr, 1.0_dp, phiP_grad_scaled, naux, phiP_grady, naux, 1.0_dp, fxc_auxil, naux)
+      do ir=1, nr
+        phiP_grad_scaled(:, ir) = phiP_gradz(:, ir) * 4.0_dp * vsigma(igrid_start+ir-1, 1)
+      end do
+      call DGEMM('N', 'T', naux, naux, nr, 1.0_dp, phiP_grad_scaled, naux, phiP_gradz, naux, 1.0_dp, fxc_auxil, naux)
+
+      !
+      ! dot_gradphiP_rho(Q,r) = grad(rho)(r) . grad(phiP_Q)(r)
+      do ir=1, nr
+        dot_gradphiP_rho(:, ir) = phiP_gradx(:, ir) * rho_gradr(1, igrid_start+ir-1, 1) &
+                                + phiP_grady(:, ir) * rho_gradr(2, igrid_start+ir-1, 1) &
+                                + phiP_gradz(:, ir) * rho_gradr(3, igrid_start+ir-1, 1)
+      end do
+
+      !
+      ! cross term: (Q|fxc|R) += SUM_r [ phiP_Q(r) * dot_gradphiP_rho(R,r) + phiP_R(r) * dot_gradphiP_rho(Q,r) ] * 4 * v2rhosigma(r)
+      do ir=1, nr
+        dot_gradphiP_rho_scaled(:, ir) = dot_gradphiP_rho(:, ir) * 4.0_dp * v2rhosigma(igrid_start+ir-1, 1)
+      end do
+      call DGEMM('N', 'T', naux, naux, nr, 1.0_dp, phiP_r, naux, dot_gradphiP_rho_scaled, naux, 0.0_dp, term3, naux)
+      fxc_auxil(:, :) = fxc_auxil(:, :) + term3(:, :) + TRANSPOSE(term3(:, :))
+
+      !
+      ! v2sigma2 term: (Q|fxc|R) += SUM_r dot_gradphiP_rho(Q,r) * dot_gradphiP_rho(R,r) * 8 * v2sigma2(r)
+      do ir=1, nr
+        dot_gradphiP_rho_scaled(:, ir) = dot_gradphiP_rho(:, ir) * 8.0_dp * v2sigma2(igrid_start+ir-1, 1)
+      end do
+      call DGEMM('N', 'T', naux, naux, nr, 1.0_dp, dot_gradphiP_rho_scaled, naux, dot_gradphiP_rho, naux, &
+                 1.0_dp, fxc_auxil, naux)
+
+    end if
+
+  end do
+
+  deallocate(phiP_r, phiP_r_scaled)
+  if( dft_xc(1)%needs_gradient ) then
+    deallocate(phiP_gradx, phiP_grady, phiP_gradz)
+    deallocate(phiP_grad_scaled)
+    deallocate(dot_gradphiP_rho, dot_gradphiP_rho_scaled)
+    deallocate(term3)
+  end if
+
+  !
+  ! The DFT grid is distributed over the 'grid' communicator (independently of
+  ! mpi_poorman): each proc only summed its local share of grid points above,
+  ! so a single reduction over the whole (naux, naux) matrix is needed here.
+  call grid%sum(fxc_auxil)
+
+end subroutine eval_fxc_rks_singlet_auxiliary
+
+
+!=========================================================================
 function eval_fxc_uks(istate, jstate, ijspin, kstate, lstate, klspin)
   !=====
   real(dp)           :: eval_fxc_uks

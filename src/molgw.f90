@@ -727,7 +727,8 @@ program molgw
         .OR. TRIM(pt_density_matrix) /= 'NO' &
         .OR. use_correlated_density_matrix_ ) &
       .AND. scf_has_converged ) then
-    call get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, hamiltonian_kinetic, hamiltonian_nucleus, hamiltonian_fock)
+    call get_dm_mbpt(basis, auxil_basis, occupation, energy, c_matrix, s_matrix, &
+                     hamiltonian_kinetic, hamiltonian_nucleus, hamiltonian_fock)
   end if
 
   call clean_deallocate('Overlap matrix S', s_matrix)

@@ -1951,6 +1951,96 @@ end subroutine calculate_eri_3center_scalapack
 
 
 !=========================================================================
+! Calculate the dense 3-center overlap integrals
+!    (alpha beta | P) = \int phi_alpha(r) phi_beta(r) chi_P(r) dr
+! where alpha, beta run over the orbital basis and P runs over the auxiliary basis.
+subroutine calculate_overlap_3center(basis, auxil_basis, overlap_3center)
+  type(basis_set), intent(in) :: basis
+  type(basis_set), intent(in) :: auxil_basis
+  real(dp), intent(out)       :: overlap_3center(:, :, :)
+  !=====
+  integer                     :: ishell, jshell, kshell
+  integer                     :: li, lj, lk
+  integer                     :: ni, nj, nk
+  integer                     :: ibf1, ibf2, jbf1, jbf2, kbf1, kbf2
+  integer                     :: iloc, jloc, kloc
+  real(dp), allocatable        :: matrix(:, :, :)
+  !=====
+  ! variables used to call C
+  integer(C_INT)               :: amI, amJ, amK
+  integer(C_INT)               :: contrdepthI, contrdepthJ, contrdepthK
+  real(C_DOUBLE)               :: xI(3), xJ(3), xK(3)
+  real(C_DOUBLE), allocatable   :: alphaI(:), alphaJ(:), alphaK(:)
+  real(C_DOUBLE), allocatable   :: cI(:), cJ(:), cK(:)
+  real(C_DOUBLE), allocatable   :: array_cart(:)
+  !=====
+
+#if !defined(HAVE_LIBCINT)
+  call die('calculate_overlap_3center: only implemented with LIBCINT')
+#else
+
+  write(stdout, '(/,1x,a)') 'Calculate the dense 3-center overlap integrals (alpha beta | P)'
+
+  do kshell=1, auxil_basis%nshell
+    lk   = auxil_basis%shell(kshell)%am
+    nk   = number_basis_function_am(auxil_basis%gaussian_type, lk)
+    kbf1 = auxil_basis%shell(kshell)%istart
+    kbf2 = auxil_basis%shell(kshell)%iend
+    call set_libint_shell(auxil_basis%shell(kshell), amK, contrdepthK, xK, alphaK, cK)
+
+    do jshell=1, basis%nshell
+      lj   = basis%shell(jshell)%am
+      nj   = number_basis_function_am(basis%gaussian_type, lj)
+      jbf1 = basis%shell(jshell)%istart
+      jbf2 = basis%shell(jshell)%iend
+      call set_libint_shell(basis%shell(jshell), amJ, contrdepthJ, xJ, alphaJ, cJ)
+
+      do ishell=1, basis%nshell
+        li   = basis%shell(ishell)%am
+        ni   = number_basis_function_am(basis%gaussian_type, li)
+        ibf1 = basis%shell(ishell)%istart
+        ibf2 = basis%shell(ishell)%iend
+        call set_libint_shell(basis%shell(ishell), amI, contrdepthI, xI, alphaI, cI)
+
+        allocate(array_cart( number_basis_function_am('CART', li) &
+                            * number_basis_function_am('CART', lj) &
+                            * number_basis_function_am('CART', lk) ))
+
+        ! Argument order chosen so that the fastest-varying shell in the output
+        ! (the 3rd group) is lj, the middle one is li, the slowest is lk,
+        ! matching the layout expected by transform_libint_to_molgw_3d below.
+        call libcint_overlap_3center(amK, contrdepthK, xK, alphaK, cK, &
+                                     amI, contrdepthI, xI, alphaI, cI, &
+                                     amJ, contrdepthJ, xJ, alphaJ, cJ, &
+                                     array_cart)
+
+        call transform_libint_to_molgw(auxil_basis%gaussian_type, lk, basis%gaussian_type, li, lj, &
+                                       array_cart, matrix)
+
+        do jloc=1, nj
+          do iloc=1, ni
+            do kloc=1, nk
+              overlap_3center(ibf1+iloc-1, jbf1+jloc-1, kbf1+kloc-1) = matrix(kloc, iloc, jloc)
+            end do
+          end do
+        end do
+
+        deallocate(array_cart, matrix)
+        deallocate(alphaI, cI)
+      end do
+      deallocate(alphaJ, cJ)
+    end do
+    deallocate(alphaK, cK)
+  end do
+
+  write(stdout, '(1x,a,/)') 'All 3-center overlap integrals have been calculated'
+
+#endif
+
+end subroutine calculate_overlap_3center
+
+
+!=========================================================================
 subroutine calculate_eri_approximate_hartree(basis, x0_rho, coeff_rho, alpha_rho, vhrho)
   type(basis_set), intent(in) :: basis
   real(dp), intent(in)        :: x0_rho(3)

@@ -34,10 +34,11 @@ contains
 
 
 !=========================================================================
-subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
+subroutine get_dm_mbpt(basis, auxil_basis, occupation, energy, c_matrix, s_matrix, &
                        hamiltonian_kinetic, hamiltonian_nucleus, hamiltonian_fock)
 
   type(basis_set), intent(inout) :: basis
+  type(basis_set), intent(in)    :: auxil_basis
   real(dp), intent(in)           :: occupation(:, :)
   real(dp), intent(in)           :: energy(:, :)
   real(dp), intent(in)           :: c_matrix(:, :, :)
@@ -107,10 +108,10 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     case('ONE-RING')
       ! This keyword calculates the 1-ring density matrix as it is derived in PT2 theory
       call onering_density_matrix(occupation, energy, c_matrix, p_matrix_corr_mo)
-    case('PT2', 'MP2')
+    case('PT2', 'IDPT2', 'MP2')
       ! This keyword calculates the PT2 density matrix as it is derived in PT2 theory (differs from MP2 density matrix)
       call pt2_density_matrix(occupation, energy, c_matrix, p_matrix_corr_mo)
-    case('GW', 'G0W0', 'GW_CEDERBAUM', 'RPA')
+    case('GW', 'G0W0', 'IDGW', 'GW_CEDERBAUM', 'RPA')
       ! This keyword calculates the GW density matrix as it is derived in the new GW theory
       call wpol%init(nstate, occupation, 0)
       call wpol%enforce_approximation('RPA')
@@ -155,13 +156,12 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     !
     ! Cederbaum Appendix B
     !
-    if( TRIM(pt_density_matrix) == 'GW_CEDERBAUM' ) then
+    if( TRIM(pt_density_matrix) == 'GW_CEDERBAUM' &
+       .OR. TRIM(pt_density_matrix) == 'IDGW' &
+       .OR. TRIM(pt_density_matrix) == 'IDPT2' ) then
 
       call timer_tmp1%start()
 
-      !call cederbaum_naive1(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
-      !call cederbaum_naive2(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
-      !call cederbaum_naive3(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
       call cederbaum_blas(energy, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
 
       p_matrix_corr_ao(:, :, :) = 0.0_dp
@@ -176,7 +176,7 @@ subroutine get_dm_mbpt(basis, occupation, energy, c_matrix, s_matrix, &
     if( TRIM(pt_density_matrix) == 'RPA'  &
         .OR. TRIM(pt_density_matrix) == 'MP2' ) then
 
-      call turbomole_naive(basis, energy, occupation, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
+      call turbomole_naive(basis, auxil_basis, energy, occupation, c_matrix, hamiltonian_fock, p_matrix_corr_mo)
       p_matrix_corr_ao(:, :, :) = 0.0_dp
     end if
 
