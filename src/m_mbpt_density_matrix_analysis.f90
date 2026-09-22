@@ -50,6 +50,8 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
   integer               :: file_density_matrix, file_rho_grid
   integer               :: ispin, jbf
   integer               :: igrid_start, igrid_end, nr, ir
+  integer               :: ibatch, nbatch, npoint_block
+  integer(kind=int8)    :: ngrid_total
   logical               :: density_matrix_found
   real(dp), allocatable :: s_matrix(:, :), s_matrix_sqrt(:, :), s_eigval(:), p_matrix_ortho(:, :)
   real(dp), allocatable :: p_matrix_test(:, :, :)
@@ -59,10 +61,9 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
   real(dp), allocatable :: rhor_batch_test(:, :)
   real(dp), allocatable :: weight_batch(:)
   real(dp), allocatable :: basis_function_r_batch(:, :)
+  real(dp), allocatable :: rhor_weight_global(:, :)
   !=====
 
-  ! dm_dump: not coded in parallel. Run with 1 core only
-  if( grid%nproc > 1 ) return
 
   write(stdout, '(/,1x,a)') 'Dump the electronic density into a file'
 
@@ -164,40 +165,68 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
   normalization_test(:) = 0.0_dp
 
   !
+  ! Grid points are distributed in a round-robin fashion over grid%nproc:
+  ! global point igrid_global belongs to rank MODULO(igrid_global-1, grid%nproc)
+  ! Hence, the local batch ibatch of all the ranks covers a contiguous block of global points
+  ! of size BATCH_SIZE * grid%nproc (the last block may be incomplete).
+  ! This block is gathered with a sum and written by the iomaster in the original grid order.
+  !
+  ngrid_total = ngrid
+  call grid%sum(ngrid_total)
+  nbatch = INT( ( ngrid_total + BATCH_SIZE * grid%nproc - 1 ) / ( BATCH_SIZE * grid%nproc ) )
+  allocate(rhor_weight_global(nspin+1, BATCH_SIZE * grid%nproc))
+
+  if( is_iomaster ) open(newunit=file_rho_grid, file='rho_grid.dat', form='formatted', action='write')
+
+  !
   ! Loop over batches of grid points
   !
-  open(newunit=file_rho_grid, file='rho_grid.dat', form='formatted', action='write')
-  do igrid_start=1, ngrid, BATCH_SIZE
-    igrid_end = MIN(ngrid, igrid_start+BATCH_SIZE-1)
-    nr = igrid_end - igrid_start + 1
+  do ibatch=1, nbatch
+    igrid_start = (ibatch - 1) * BATCH_SIZE + 1
+    igrid_end   = MIN(ngrid, igrid_start+BATCH_SIZE-1)
+    nr = MAX(igrid_end - igrid_start + 1, 0)
+    ! number of global grid points in this block
+    npoint_block = INT( MIN( INT(BATCH_SIZE * grid%nproc, KIND=int8), &
+                             ngrid_total - INT(ibatch - 1, KIND=int8) * BATCH_SIZE * grid%nproc ) )
 
+    rhor_weight_global(:, :) = 0.0_dp
 
-    allocate(weight_batch(nr))
-    allocate(basis_function_r_batch(basis%nbf, nr))
-    allocate(rhor_batch_test(nspin, nr))
+    if( nr > 0 ) then
+      allocate(weight_batch(nr))
+      allocate(basis_function_r_batch(basis%nbf, nr))
+      allocate(rhor_batch_test(nspin, nr))
 
-    weight_batch(:) = w_grid(igrid_start:igrid_end)
+      weight_batch(:) = w_grid(igrid_start:igrid_end)
 
-    call get_basis_functions_r_batch(basis, igrid_start, basis_function_r_batch)
-    call calc_density_r_batch(occupation_test, c_matrix_test, basis_function_r_batch, rhor_batch_test)
+      call get_basis_functions_r_batch(basis, igrid_start, basis_function_r_batch)
+      call calc_density_r_batch(occupation_test, c_matrix_test, basis_function_r_batch, rhor_batch_test)
 
-    ! Normalization
-    normalization_test(:) = normalization_test(:) + MATMUL( rhor_batch_test(:, :) , weight_batch(:) )
+      ! Normalization
+      normalization_test(:) = normalization_test(:) + MATMUL( rhor_batch_test(:, :) , weight_batch(:) )
 
+      ! Place the local points at their global position within the block
+      do ir=1, nr
+        rhor_weight_global(1:nspin, (ir-1)*grid%nproc + grid%rank + 1) = rhor_batch_test(:, ir)
+        rhor_weight_global(nspin+1, (ir-1)*grid%nproc + grid%rank + 1) = weight_batch(ir)
+      end do
 
-    if( nspin == 1 ) then
-      write(file_rho_grid, '(2(1x,es16.6))') (rhor_batch_test(:, ir), weight_batch(ir), ir=1, nr)
-    else
-      write(file_rho_grid, '(3(1x,es16.6))') (rhor_batch_test(:, ir), weight_batch(ir), ir=1, nr)
+      deallocate(weight_batch, rhor_batch_test, basis_function_r_batch)
     end if
 
-    deallocate(weight_batch, rhor_batch_test, basis_function_r_batch)
+    call grid%sum(rhor_weight_global)
+
+    if( is_iomaster ) then
+      do ir=1, npoint_block
+        write(file_rho_grid, '(*(1x,es16.6))') rhor_weight_global(:, ir)
+      end do
+    end if
 
   end do
-  close(file_rho_grid)
 
-  ! not coded in parallel
-  !call grid%sum(normalization_test)
+  if( is_iomaster ) close(file_rho_grid)
+  deallocate(rhor_weight_global)
+
+  call grid%sum(normalization_test)
 
   write(stdout, '(/,a,2(2x,f12.6))') ' Number of electrons:', normalization_test(:)
 
