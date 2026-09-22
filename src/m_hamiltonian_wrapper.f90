@@ -115,6 +115,7 @@ subroutine calculate_exchange_real(basis, p_matrix, hexx, ex, occupation, c_matr
   !=====
   real(dp), allocatable :: c_matrix_tmp(:, :, :)
   real(dp), allocatable :: occupation_tmp(:, :)
+  real(dp), allocatable :: s_matrix(:, :)
   real(dp)             :: eexx
   !=====
 
@@ -142,8 +143,11 @@ subroutine calculate_exchange_real(basis, p_matrix, hexx, ex, occupation, c_matr
         end if
       else
         !
-        ! c_matrix is not provided, then calculate it from the square-root of P
-        call get_c_matrix_from_p_matrix(p_matrix, c_matrix_tmp, occupation_tmp)
+        ! c_matrix is not provided, then calculate it from the natural orbitals of P
+        allocate(s_matrix(basis%nbf, basis%nbf))
+        call setup_overlap(basis, s_matrix)
+        call get_c_matrix_from_p_matrix(s_matrix, p_matrix, c_matrix_tmp, occupation_tmp)
+        deallocate(s_matrix)
         call setup_exchange_ri(occupation_tmp, c_matrix_tmp, p_matrix, hexx, eexx)
         deallocate(c_matrix_tmp)
         deallocate(occupation_tmp)
@@ -168,6 +172,7 @@ subroutine calculate_exchange_lr(basis, p_matrix, hexx, ex, occupation, c_matrix
   !=====
   real(dp), allocatable :: c_matrix_tmp(:, :, :)
   real(dp), allocatable :: occupation_tmp(:, :)
+  real(dp), allocatable :: s_matrix(:, :)
   real(dp)             :: eexx
   !=====
 
@@ -179,8 +184,11 @@ subroutine calculate_exchange_lr(basis, p_matrix, hexx, ex, occupation, c_matrix
       call setup_exchange_longrange_ri(occupation, c_matrix, p_matrix, hexx, eexx)
     else
       !
-      ! c_matrix is not provided, then calculate it from the square-root of P
-      call get_c_matrix_from_p_matrix(p_matrix, c_matrix_tmp, occupation_tmp)
+      ! c_matrix is not provided, then calculate it from the natural orbitals of P
+      allocate(s_matrix(basis%nbf, basis%nbf))
+      call setup_overlap(basis, s_matrix)
+      call get_c_matrix_from_p_matrix(s_matrix, p_matrix, c_matrix_tmp, occupation_tmp)
+      deallocate(s_matrix)
       call setup_exchange_longrange_ri(occupation_tmp, c_matrix_tmp, p_matrix, hexx, eexx)
       deallocate(c_matrix_tmp)
       deallocate(occupation_tmp)

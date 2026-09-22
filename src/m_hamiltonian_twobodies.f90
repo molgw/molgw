@@ -704,6 +704,60 @@ end subroutine setup_exchange_longrange
 
 
 !=========================================================================
+! Prepare c_t(istate, ibf) = SQRT( |f_istate| / spin_fact ) * C(ibf, istate) for the exchange
+! so that P = C * f * C**T = c_t(1:npos, :)**T * c_t(1:npos, :) - c_t(npos+1:, :)**T * c_t(npos+1:, :)
+! (within a factor spin_fact)
+!
+! Retained states:
+!   all the states up to nocc, the highest occupied state
+!   + all the states with a significantly negative occupation (e.g. correlated natural occupations)
+!
+subroutine get_sqrt_occupation_c_matrix(nocc, occupation, c_matrix, npos, c_t)
+  integer, intent(in)                :: nocc
+  real(dp), intent(in)               :: occupation(:)
+  real(dp), intent(in)               :: c_matrix(:, :)
+  integer, intent(out)               :: npos
+  real(dp), allocatable, intent(out) :: c_t(:, :)
+  !=====
+  integer              :: nbf, nstate, nneg
+  integer              :: istate, ibf, jstate
+  integer, allocatable :: index_state(:)
+  !=====
+
+  nbf    = SIZE(c_matrix, DIM=1)
+  nstate = SIZE(occupation(:))
+
+  allocate(index_state(nstate))
+  npos = 0
+  do istate=1, nocc
+    if( occupation(istate) >= 0.0_dp ) then
+      npos = npos + 1
+      index_state(npos) = istate
+    end if
+  end do
+  nneg = 0
+  do istate=1, nstate
+    if( occupation(istate) < 0.0_dp .AND. ( istate <= nocc .OR. occupation(istate) <= -completely_empty ) ) then
+      nneg = nneg + 1
+      index_state(npos+nneg) = istate
+    end if
+  end do
+
+  allocate(c_t(npos+nneg, nbf))
+  !$OMP PARALLEL DO PRIVATE(jstate)
+  do ibf=1, nbf
+    do jstate=1, npos+nneg
+      c_t(jstate, ibf) = c_matrix(ibf, index_state(jstate)) * SQRT( ABS(occupation(index_state(jstate))) / spin_fact )
+    end do
+  end do
+  !$OMP END PARALLEL DO
+
+  deallocate(index_state)
+
+end subroutine get_sqrt_occupation_c_matrix
+
+
+!=========================================================================
 subroutine setup_exchange_ri(occupation, c_matrix, p_matrix, exchange_ao, eexchange)
   real(dp), intent(in)  :: occupation(:, :)
   real(dp), intent(in)  :: c_matrix(:, :, :)
@@ -713,7 +767,7 @@ subroutine setup_exchange_ri(occupation, c_matrix, p_matrix, exchange_ao, eexcha
   !=====
   integer              :: nbf, nstate
   integer              :: ibf, jbf, ispin
-  integer              :: nocc
+  integer              :: nocc, npos, nstate_x
   real(dp), allocatable :: tmp(:, :), c_t(:, :)
   integer              :: ipair, iauxil
   !=====
@@ -730,16 +784,12 @@ subroutine setup_exchange_ri(occupation, c_matrix, p_matrix, exchange_ao, eexcha
   nbf    = SIZE(exchange_ao, DIM=1)
   nstate = SIZE(occupation(:, :), DIM=1)
 
-  allocate(tmp(nocc, nbf))
-  allocate(c_t(nocc, nbf))
-
   do ispin=1, nspin
 
-    !$OMP PARALLEL DO
-    do ibf=1, nbf
-      c_t(:, ibf) = c_matrix(ibf, 1:nocc, ispin) * SQRT( occupation(1:nocc, ispin) / spin_fact )
-    end do
-    !$OMP END PARALLEL DO
+    ! c_t = SQRT(|f|) * C**T with the positive occupations first (1:npos) and the negative ones last
+    call get_sqrt_occupation_c_matrix(nocc, occupation(:, ispin), c_matrix(:, :, ispin), npos, c_t)
+    nstate_x = SIZE(c_t, DIM=1)
+    allocate(tmp(nstate_x, nbf))
 
     do iauxil=1, nauxil_local
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
@@ -757,13 +807,16 @@ subroutine setup_exchange_ri(occupation, c_matrix, p_matrix, exchange_ao, eexcha
       ! exchange_ao(:, :, ispin) = exchange_ao(:, :, ispin) &
       !                    - MATMUL( TRANSPOSE(tmp(:, :)) , tmp(:, :) ) / spin_fact
       ! C = A^T * A + C
-      call DSYRK('L', 'T', nbf, nocc, -1.0_dp, tmp(1, 1), nocc, 1.0_dp, exchange_ao(1, 1, ispin), nbf)
+      call DSYRK('L', 'T', nbf, npos, -1.0_dp, tmp(1, 1), nstate_x, 1.0_dp, exchange_ao(1, 1, ispin), nbf)
+      ! Negative occupations contribute with the opposite sign
+      if( nstate_x > npos ) &
+        call DSYRK('L', 'T', nbf, nstate_x - npos, 1.0_dp, tmp(npos+1, 1), nstate_x, 1.0_dp, exchange_ao(1, 1, ispin), nbf)
 
     end do
-  end do
 
-  deallocate(c_t)
-  deallocate(tmp)
+    deallocate(c_t)
+    deallocate(tmp)
+  end do
 
 
   !
@@ -794,7 +847,7 @@ subroutine setup_exchange_longrange_ri(occupation, c_matrix, p_matrix, exchange_
   !=====
   integer              :: nbf, nstate
   integer              :: ibf, jbf, ispin
-  integer              :: nocc
+  integer              :: nocc, npos, nstate_x
   real(dp), allocatable :: tmp(:, :), c_t(:, :)
   integer              :: ipair, iauxil
   !=====
@@ -811,17 +864,12 @@ subroutine setup_exchange_longrange_ri(occupation, c_matrix, p_matrix, exchange_
   nbf    = SIZE(exchange_ao, DIM=1)
   nstate = SIZE(occupation(:, :), DIM=1)
 
-
-  allocate(tmp(nocc, nbf))
-  allocate(c_t(nocc, nbf))
-
   do ispin=1, nspin
 
-    !$OMP PARALLEL DO
-    do ibf=1, nbf
-      c_t(:, ibf) = c_matrix(ibf, 1:nocc, ispin) * SQRT( occupation(1:nocc, ispin) / spin_fact )
-    end do
-    !$OMP END PARALLEL DO
+    ! c_t = SQRT(|f|) * C**T with the positive occupations first (1:npos) and the negative ones last
+    call get_sqrt_occupation_c_matrix(nocc, occupation(:, ispin), c_matrix(:, :, ispin), npos, c_t)
+    nstate_x = SIZE(c_t, DIM=1)
+    allocate(tmp(nstate_x, nbf))
 
     do iauxil=1, nauxil_local_lr
       if( MODULO( iauxil - 1 , poorman%nproc ) /= poorman%rank ) cycle
@@ -839,13 +887,16 @@ subroutine setup_exchange_longrange_ri(occupation, c_matrix, p_matrix, exchange_
       ! exchange_ao(:,:,ispin) = exchange_ao(:,:,ispin) &
       !                    - MATMUL( TRANSPOSE(tmp(:,:)) , tmp(:,:) ) / spin_fact
       ! C = A^T * A + C
-      call DSYRK('L', 'T', nbf, nocc, -1.0_dp, tmp(1, 1), nocc, 1.0_dp, exchange_ao(1, 1, ispin), nbf)
+      call DSYRK('L', 'T', nbf, npos, -1.0_dp, tmp(1, 1), nstate_x, 1.0_dp, exchange_ao(1, 1, ispin), nbf)
+      ! Negative occupations contribute with the opposite sign
+      if( nstate_x > npos ) &
+        call DSYRK('L', 'T', nbf, nstate_x - npos, 1.0_dp, tmp(npos+1, 1), nstate_x, 1.0_dp, exchange_ao(1, 1, ispin), nbf)
 
     end do
-  end do
 
-  deallocate(c_t)
-  deallocate(tmp)
+    deallocate(c_t)
+    deallocate(tmp)
+  end do
 
 
   !

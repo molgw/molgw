@@ -103,7 +103,7 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
       call read_gaussian_fchk(read_fchk, 'gaussian.fchk', basis, p_matrix_test)
 
       write(stdout,'(1x,a)') 'Natural orbitals have been calculated from a density-matrix in a file'
-      call get_c_matrix_from_p_matrix(p_matrix_test, c_matrix_test, occupation_test)
+      call get_c_matrix_from_p_matrix(s_matrix, p_matrix_test, c_matrix_test, occupation_test)
 
     else if( LEN_TRIM(read_molden) > 0 ) then
       allocate(occupation_test(nstate, nspin))
@@ -129,7 +129,7 @@ subroutine dm_dump(basis, natural_occupation, natural_orbital)
       end if
 
       write(stdout,'(1x,a)') 'Natural orbitals have been calculated from a density-matrix in a file'
-      call get_c_matrix_from_p_matrix(p_matrix_test, c_matrix_test, occupation_test)
+      call get_c_matrix_from_p_matrix(s_matrix, p_matrix_test, c_matrix_test, occupation_test)
     end if
 
 

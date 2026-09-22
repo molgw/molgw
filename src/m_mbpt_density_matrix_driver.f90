@@ -320,7 +320,7 @@ subroutine get_dm_mbpt(basis, auxil_basis, occupation, energy, c_matrix, s_matri
   end if
 
   if( print_multipole_ ) then
-    call get_c_matrix_from_p_matrix(p_matrix_corr_ao, c_matrix_tmp, occupation_tmp)
+    call get_c_matrix_from_p_matrix(s_matrix, p_matrix_corr_ao, c_matrix_tmp, occupation_tmp)
     if( .FALSE. ) call plot_rho('MBPT', basis, occupation_tmp, c_matrix_tmp)
     if( .FALSE. ) call write_cube_from_header('MBPT', basis, occupation_tmp, c_matrix_tmp)
     if( print_multipole_ ) then
