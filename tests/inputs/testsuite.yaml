@@ -3851,13 +3851,13 @@ co2_mp2_dm.in:
             reference: 142.9727941016
             tolerance: 1.0e-07
     -   Exchange Energy:
-            reference: -21.0552706236
+            reference: -21.0548046761
             tolerance: 1.0e-07
     -   Hartree  HOMO expectation:
             reference: 291.425633
             tolerance: 0.0001
     -   Exchange HOMO expectation:
-            reference: -24.426481
+            reference: -24.426127
             tolerance: 0.0001
 co2_gw@pbeh_dm_cederbaum.in:
     description: CO2 GW density-matrix a la Cederbaum
@@ -3876,13 +3876,13 @@ co2_gw@pbeh_dm_cederbaum.in:
             reference: 142.7575597891
             tolerance: 1.0e-07
     -   Exchange Energy:
-            reference: -21.0972552041
+            reference: -21.0907502804
             tolerance: 1.0e-07
     -   Hartree  HOMO expectation:
             reference: 293.645469
             tolerance: 0.0001
     -   Exchange HOMO expectation:
-            reference: -23.873869
+            reference: -23.832140
             tolerance: 0.0001
 co_mp2_dm@pbe0.in:
     description: CO MP2 relaxed density-matrix 

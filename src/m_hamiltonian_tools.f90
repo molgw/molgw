@@ -1353,59 +1353,72 @@ end subroutine setup_sqrt_density_matrix
 
 
 !=========================================================================
-subroutine get_c_matrix_from_p_matrix(p_matrix, c_matrix, occupation)
+! Natural orbitals C and natural occupations f from the density matrix P
+! by solving the generalized eigenvalue problem:
+!   (S * P * S) * C = S * C * f
+! with C**T * S * C = 1 and P = C * f * C**T
+!
+subroutine get_c_matrix_from_p_matrix(s_matrix, p_matrix, c_matrix, occupation)
 
-  real(dp), intent(in)              :: p_matrix(:, :, :)
+  real(dp), intent(in)               :: s_matrix(:, :)
+  real(dp), intent(in)               :: p_matrix(:, :, :)
   real(dp), allocatable, intent(out) :: c_matrix(:, :, :)
   real(dp), allocatable, intent(out) :: occupation(:, :)
   !=====
-  real(dp), allocatable :: p_matrix_sqrt(:, :, :), occupation_tmp(:, :)
-  integer              :: nbf, nstate
+  real(dp), allocatable :: x_matrix(:, :), x_matrix_spin(:, :, :), p_matrix_ortho(:, :, :)
+  integer              :: nbf, nstate, nstate_positive
   integer              :: ispin
   !=====
 
   nbf    = SIZE( p_matrix(:, :, :), DIM=1 )
-  allocate(p_matrix_sqrt(nbf, nbf, nspin))
-  allocate(occupation_tmp(nbf, nspin))
 
-  write(stdout, *) 'Calculate the square root of the density matrix to obtain the C matrix'
+  write(stdout, *) 'Diagonalize S * P * S to obtain the natural orbitals C'
   call timer_sqrt_density_matrix%start()
 
-  ! Minus the p_matrix so that the eigenvalues are ordered from the largest to the lowest
-  p_matrix_sqrt(:, :, :) = -p_matrix(:, :, :)
+  ! X such that X**T * S * X = 1
+  call setup_x_matrix(min_overlap, s_matrix, nstate, x_matrix)
 
+  ! P_ortho = X**T * S * P * S * X
+  allocate(x_matrix_spin(nbf, nstate, nspin))
   do ispin=1, nspin
-
-    ! Diagonalization with or without SCALAPACK
-    call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, p_matrix_sqrt(:, :, ispin), occupation_tmp(:, ispin))
-
+    x_matrix_spin(:, :, ispin) = x_matrix(:, :)
   end do
-
-  occupation_tmp(:, :) = -occupation_tmp(:, :)
-
-  nstate = COUNT( ALL( occupation_tmp(:, :) > -0.0001_dp , DIM=2 ) )
-
-  if( nstate /= nbf ) then
-    call issue_warning('get_c_matrix_from_p_matrix: negative occupation numbers')
-    write(stdout, '(1x,a,i4)')     'Number of negative eigenvalues: ', nbf - nstate
-    write(stdout, '(1x,a,*(1x,es18.8))') 'Most negative eigenvalue: ', occupation_tmp(nbf, :)
-  end if
-
-  !
-  ! Keep all the states, even those with negative occupations
-  ! Sometimes needed to conserve the trace
-  nstate = nbf
+  allocate(p_matrix_ortho(nstate, nstate, nspin))
+  call p_ao_to_mo(x_matrix_spin, s_matrix, p_matrix, p_matrix_ortho)
+  deallocate(x_matrix_spin)
 
   if( ALLOCATED(c_matrix) ) deallocate(c_matrix)
   if( ALLOCATED(occupation) ) deallocate(occupation)
   allocate(c_matrix(nbf, nstate, nspin))
   allocate(occupation(nstate, nspin))
-  c_matrix(:, :, :) = p_matrix_sqrt(:, :nstate, :)
-  occupation(:, :) = occupation_tmp(:nstate, :)
 
+  ! Minus P_ortho so that the eigenvalues are ordered from the largest to the lowest
+  p_matrix_ortho(:, :, :) = -p_matrix_ortho(:, :, :)
 
-  deallocate(p_matrix_sqrt, occupation_tmp)
+  do ispin=1, nspin
+    ! Diagonalization with or without SCALAPACK
+    call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, p_matrix_ortho(:, :, ispin), occupation(:, ispin))
 
+    ! C = X * U
+    call DGEMM('N', 'N', nbf, nstate, nstate, 1.0_dp, x_matrix(1, 1), nbf, &
+               p_matrix_ortho(1, 1, ispin), nstate, 0.0_dp, c_matrix(1, 1, ispin), nbf)
+  end do
+
+  occupation(:, :) = -occupation(:, :)
+
+  deallocate(p_matrix_ortho)
+  call clean_deallocate('Overlap X * X**H = S**-1', x_matrix)
+
+  !
+  ! Keep all the states, even those with negative occupations
+  ! Sometimes needed to conserve the trace
+  nstate_positive = COUNT( ALL( occupation(:, :) > -0.0001_dp , DIM=2 ) )
+
+  if( nstate_positive /= nstate ) then
+    call issue_warning('get_c_matrix_from_p_matrix: negative occupation numbers')
+    write(stdout, '(1x,a,i4)')     'Number of negative eigenvalues: ', nstate - nstate_positive
+    write(stdout, '(1x,a,*(1x,es18.8))') 'Most negative eigenvalue: ', occupation(nstate, :)
+  end if
 
   call timer_sqrt_density_matrix%stop()
 
