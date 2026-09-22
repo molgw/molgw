@@ -1365,7 +1365,7 @@ subroutine get_c_matrix_from_p_matrix(s_matrix, p_matrix, c_matrix, occupation)
   real(dp), allocatable, intent(out) :: c_matrix(:, :, :)
   real(dp), allocatable, intent(out) :: occupation(:, :)
   !=====
-  real(dp), allocatable :: x_matrix(:, :), sps_matrix(:, :, :)
+  real(dp), allocatable :: x_matrix(:, :), x_matrix_spin(:, :, :), p_matrix_ortho(:, :, :)
   integer              :: nbf, nstate, nstate_positive
   integer              :: ispin
   !=====
@@ -1378,22 +1378,35 @@ subroutine get_c_matrix_from_p_matrix(s_matrix, p_matrix, c_matrix, occupation)
   ! X such that X**T * S * X = 1
   call setup_x_matrix(min_overlap, s_matrix, nstate, x_matrix)
 
-  ! Minus S*P*S so that the eigenvalues are ordered from the largest to the lowest
-  allocate(sps_matrix(nbf, nbf, nspin))
+  ! P_ortho = X**T * S * P * S * X
+  allocate(x_matrix_spin(nbf, nstate, nspin))
   do ispin=1, nspin
-    sps_matrix(:, :, ispin) = -MATMUL( s_matrix(:, :), MATMUL( p_matrix(:, :, ispin), s_matrix(:, :) ) )
+    x_matrix_spin(:, :, ispin) = x_matrix(:, :)
   end do
+  allocate(p_matrix_ortho(nstate, nstate, nspin))
+  call p_ao_to_mo(x_matrix_spin, s_matrix, p_matrix, p_matrix_ortho)
+  deallocate(x_matrix_spin)
 
   if( ALLOCATED(c_matrix) ) deallocate(c_matrix)
   if( ALLOCATED(occupation) ) deallocate(occupation)
   allocate(c_matrix(nbf, nstate, nspin))
   allocate(occupation(nstate, nspin))
 
-  call diagonalize_hamiltonian_scalapack(sps_matrix, x_matrix, occupation, c_matrix)
+  ! Minus P_ortho so that the eigenvalues are ordered from the largest to the lowest
+  p_matrix_ortho(:, :, :) = -p_matrix_ortho(:, :, :)
+
+  do ispin=1, nspin
+    ! Diagonalization with or without SCALAPACK
+    call diagonalize_scalapack(scf_diago_flavor, scalapack_block_min, p_matrix_ortho(:, :, ispin), occupation(:, ispin))
+
+    ! C = X * U
+    call DGEMM('N', 'N', nbf, nstate, nstate, 1.0_dp, x_matrix(1, 1), nbf, &
+               p_matrix_ortho(1, 1, ispin), nstate, 0.0_dp, c_matrix(1, 1, ispin), nbf)
+  end do
 
   occupation(:, :) = -occupation(:, :)
 
-  deallocate(sps_matrix)
+  deallocate(p_matrix_ortho)
   call clean_deallocate('Overlap X * X**H = S**-1', x_matrix)
 
   !
