@@ -2276,6 +2276,36 @@ h2o_pbe0_ri_force.in:
             reference: 0.0255817612
             tolerance: 1.0e-06
             column: 2
+h2o_pbe0_ri_force_cart.in:
+    description: H2O PBE0 forces with RI and cartesian gaussians
+    keywords: [hybrid]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.251227912
+            tolerance: 1.0e-07
+    -   Total force atom    1:
+            reference: -0.0028007731
+            tolerance: 1.0e-06
+    -   Total force atom    1:
+            reference: -0.0071002306
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    1:
+            reference: -0.0586185375
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    2:
+            reference: -0.0774334348
+            tolerance: 1.0e-06
+    -   Total force atom    2:
+            reference: -0.0785482374
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    2:
+            reference: 0.0255221546
+            tolerance: 1.0e-06
+            column: 2
 ch4_pbe_ri_force.in:
     description: CH4 PBE forces with RI
     keywords: [DFT]
