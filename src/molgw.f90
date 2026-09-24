@@ -551,11 +551,11 @@ program molgw
       call relax_atoms(lbfgs_plan, en_gks%total)
       call output_positions()
 
-      if( MAXVAL(force(:, :)) < tolforce ) then
-        write(stdout, '(1x,a,es16.6,a,es16.6,/)') 'Forces are     converged: ', MAXVAL(force(:, :)) , '   < ', tolforce
+      if( MAXVAL(ABS(force(:, :))) < tolforce ) then
+        write(stdout, '(1x,a,es16.6,a,es16.6,/)') 'Forces are     converged: ', MAXVAL(ABS(force(:, :))) , '   < ', tolforce
         exit
       else
-        write(stdout, '(1x,a,es16.6,a,es16.6,/)') 'Forces are not converged: ', MAXVAL(force(:, :)) , '   > ', tolforce
+        write(stdout, '(1x,a,es16.6,a,es16.6,/)') 'Forces are not converged: ', MAXVAL(ABS(force(:, :))) , '   > ', tolforce
         !
         ! If it is not the last step, then deallocate everything and start over
         if( istep /= nstep ) then
@@ -573,6 +573,8 @@ program molgw
           if(has_auxil_basis) call destroy_basis_set(auxil_basis)
         end if
       end if
+    else if( move_nuclei == 'force' ) then
+      call calculate_force(basis, auxil_basis, occupation, energy, c_matrix)
     end if
 
 #if defined(HAVE_LIBCINT)

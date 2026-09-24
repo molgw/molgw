@@ -1,7 +1,6 @@
 &molgw
  comment='H2 LDA forces with RI'
- move_nuclei='relax'
- nstep=1
+ move_nuclei='force'
  scf='lda'
  tolscf=1.0e-10
  nscf=50

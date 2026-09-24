@@ -2307,6 +2307,35 @@ ch4_pbe_ri_force.in:
             reference: -0.0052314898
             tolerance: 1.0e-06
             column: 1
+h2o_b3lyp_ri_relax.in:
+    description: H2O B3LYP relaxation with RI from a distorted geometry
+    keywords: [hybrid]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.4227360312
+            tolerance: 1.0e-06
+    -   Forces are     converged:
+            reference: 0.0
+            tolerance: 1.0e-05
+    -   atom    1   O:
+            reference: 0.053868
+            tolerance: 1.0e-03
+    -   atom    1   O:
+            reference: -0.002134
+            tolerance: 1.0e-03
+            column: 1
+    -   atom    1   O:
+            reference: 0.225308
+            tolerance: 1.0e-03
+            column: 2
+    -   atom    2   H:
+            reference: 1.103833
+            tolerance: 1.0e-03
+    -   atom    3   H:
+            reference: -0.949987
+            tolerance: 1.0e-03
+            column: 2
 h2o_gw_pade.in:
     description: GW calculation with Pade analytic continuation
     keywords: [GW, hybrid]

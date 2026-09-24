@@ -1,7 +1,6 @@
 &molgw
  comment='H2O HF forces with RI'
- move_nuclei='relax'
- nstep=1
+ move_nuclei='force'
  scf='hf'
  tolscf=1.0e-10
  nscf=80

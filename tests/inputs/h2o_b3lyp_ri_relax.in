@@ -1,0 +1,17 @@
+&molgw
+ comment='H2O B3LYP relaxation with RI from a distorted geometry'
+ move_nuclei='relax'
+ nstep=30
+ scf='b3lyp'
+ tolscf=1.0e-10
+ nscf=80
+ read_restart='no'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+
+ natom=3
+/
+O   0.05   0.02   0.10
+H   0.80   0.76  -0.45
+H  -0.70  -0.80  -0.50
