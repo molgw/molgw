@@ -281,6 +281,44 @@ end function eval_gaussian_grad
 
 
 !=========================================================================
+! Hessian of a cartesian gaussian: xx, yy, zz, xy, xz, yz
+! d2/dx2 x^n e^{-a x^2} = [ n(n-1) x^{n-2} - 2a(2n+1) x^n + 4a^2 x^{n+2} ] e^{-a x^2}
+function eval_gaussian_hess(ga, x)
+
+  type(gaussian), intent(in) :: ga
+  real(dp), intent(in) :: x(3)
+  real(dp) :: eval_gaussian_hess(6)
+  !=====
+  integer  :: nn(3), idir
+  real(dp) :: dx(3), dx2
+  real(dp) :: g0(3), g1(3), g2(3)
+  !=====
+
+  dx(:) = x(:) - ga%x0(:)
+  dx2 = SUM( dx(:)**2 )
+  nn(:) = [ ga%nx, ga%ny, ga%nz ]
+
+  do idir=1, 3
+    g0(idir) = dx(idir)**nn(idir)
+    g1(idir) = -2.0_dp * ga%alpha * dx(idir)**(nn(idir)+1)
+    if( nn(idir) > 0 ) g1(idir) = g1(idir) + REAL(nn(idir), dp) * dx(idir)**(nn(idir)-1)
+    g2(idir) = 4.0_dp * ga%alpha**2 * dx(idir)**(nn(idir)+2) - 2.0_dp * ga%alpha * REAL(2*nn(idir)+1, dp) * dx(idir)**nn(idir)
+    if( nn(idir) > 1 ) g2(idir) = g2(idir) + REAL(nn(idir)*(nn(idir)-1), dp) * dx(idir)**(nn(idir)-2)
+  end do
+
+  eval_gaussian_hess(1) = g2(1) * g0(2) * g0(3)
+  eval_gaussian_hess(2) = g0(1) * g2(2) * g0(3)
+  eval_gaussian_hess(3) = g0(1) * g0(2) * g2(3)
+  eval_gaussian_hess(4) = g1(1) * g1(2) * g0(3)
+  eval_gaussian_hess(5) = g1(1) * g0(2) * g1(3)
+  eval_gaussian_hess(6) = g0(1) * g1(2) * g1(3)
+
+  eval_gaussian_hess(:) = eval_gaussian_hess(:) * ga%norm_factor * EXP( - ga%alpha * dx2 )
+
+end function eval_gaussian_hess
+
+
+!=========================================================================
 function eval_gaussian_lapl(ga, x)
 
   type(gaussian), intent(in) :: ga

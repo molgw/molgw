@@ -849,6 +849,56 @@ end subroutine calculate_basis_functions_gradr_batch
 
 
 !=========================================================================
+!=========================================================================
+! Hessian of the basis functions on a batch of points: bf_hess(nbf, nr, 6) with xx, yy, zz, xy, xz, yz
+subroutine calculate_basis_functions_hessr_batch(basis, rr, bf_hess)
+
+  type(basis_set), intent(in) :: basis
+  real(dp), intent(in)        :: rr(:, :)
+  real(dp), intent(out)       :: bf_hess(:, :, :)
+  !=====
+  integer              :: gt
+  integer              :: ir, nr, icomp
+  integer              :: ishell, ibf1, ibf2, ibf1_cart
+  integer              :: i_cart
+  integer              :: ni_cart, li
+  real(dp), allocatable :: basis_function_hessr_cart(:, :, :)
+  !=====
+
+  nr = SIZE(bf_hess, DIM=2)
+  gt = get_gaussian_type_tag(basis%gaussian_type)
+
+  !$OMP PARALLEL PRIVATE(li, ni_cart, ibf1, ibf1_cart, ibf2, basis_function_hessr_cart)
+  !$OMP DO
+  do ishell=1, basis%nshell
+    li      = basis%shell(ishell)%am
+    ni_cart = number_basis_function_am('CART',li)
+    ibf1      = basis%shell(ishell)%istart
+    ibf1_cart = basis%shell(ishell)%istart_cart
+    ibf2      = basis%shell(ishell)%iend
+
+    allocate(basis_function_hessr_cart(ni_cart, nr, 6))
+
+    do ir=1, nr
+      do i_cart=1, ni_cart
+        basis_function_hessr_cart(i_cart, ir, :) = eval_basis_function_hess(basis%bfc(ibf1_cart+i_cart-1), rr(:, ir))
+      end do
+    end do
+
+    do icomp=1, 6
+      bf_hess(ibf1:ibf2, :, icomp) = MATMUL( TRANSPOSE(cart_to_pure(li, gt)%matrix(:, :)) , basis_function_hessr_cart(:, :, icomp) )
+    end do
+
+    deallocate(basis_function_hessr_cart)
+
+  end do
+  !$OMP END DO
+  !$OMP END PARALLEL
+
+end subroutine calculate_basis_functions_hessr_batch
+
+
+!=========================================================================
 subroutine calculate_basis_functions_laplr(basis, rr, basis_function_gradr, basis_function_laplr)
 
   type(basis_set), intent(in) :: basis
