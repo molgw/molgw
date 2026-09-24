@@ -62,6 +62,16 @@ module m_libcint_tools
       type(C_PTR), value :: opt
     end function cint2e_cart
 
+    ! ( \nabla_r i j | k l ): 3 components
+    integer(C_INT) function cint2e_ip1_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint2e_ip1_cart
+
     integer(C_INT) function cint2c2e_sph(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
       import :: C_INT, C_DOUBLE, C_PTR
       integer(C_INT), value  :: natm, nbas

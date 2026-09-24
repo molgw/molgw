@@ -3,7 +3,7 @@
 ! Author: Fabien Bruneval
 !
 ! This file contains
-! the calculation of the forces (requires LIBINT with gradients)
+! the calculation of the forces (requires LIBCINT or LIBINT with gradients)
 !
 !=========================================================================
 #include "molgw.h"
@@ -33,7 +33,7 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   real(dp), intent(in)           :: energy(:, :)
   real(dp), intent(in)           :: c_matrix(:, :, :)
   !=====
-  real(dp), parameter      :: TOL_DENSITY_MATRIX=1.0e-2
+  real(dp), parameter      :: TOL_DENSITY_MATRIX=1.0e-6
   integer                 :: nstate
   integer                 :: ijshellpair, klshellpair
   integer                 :: iatom
@@ -53,7 +53,7 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   !=====
 
   if( .NOT. MOLGW_has_gradient) then
-    call issue_warning('calculate_force: impossible to calculate gradient if LIBINT does not support the gradients')
+    call issue_warning('calculate_force: impossible to calculate gradient without LIBCINT or LIBINT with gradients')
     return
   end if
 
@@ -100,10 +100,11 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   allocate(grad_onebody(basis%nbf, basis%nbf, 3))
   call setup_overlap_grad(basis, grad_onebody)
 
+  ! F_A = + 2 \sum_{i \in A, j} W_ij d S_ij / d R_i
   force_ovp(:, :) = 0.0_dp
   do ibf=1, basis%nbf
     iatom = basis%bff(ibf)%icenter
-    force_ovp(:, iatom) = force_ovp(:, iatom) + 2.0_dp * MATMUL( r_matrix(ibf, :) , grad_onebody(:, ibf, :) )
+    force_ovp(:, iatom) = force_ovp(:, iatom) + 2.0_dp * MATMUL( r_matrix(ibf, :) , grad_onebody(ibf, :, :) )
   end do
   deallocate(grad_onebody)
 
@@ -114,10 +115,11 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   allocate(grad_onebody(basis%nbf, basis%nbf, 3))
   call setup_kinetic_grad(basis, grad_onebody)
 
+  ! F_A = - 2 \sum_{i \in A, j} P_ij d T_ij / d R_i
   force_kin(:, :) = 0.0_dp
   do ibf=1, basis%nbf
     iatom = basis%bff(ibf)%icenter
-    force_kin(:, iatom) = force_kin(:, iatom) + 2.0_dp * MATMUL( SUM( p_matrix(ibf, :, :), DIM=2) , grad_onebody(ibf, :, :) )
+    force_kin(:, iatom) = force_kin(:, iatom) - 2.0_dp * MATMUL( SUM( p_matrix(ibf, :, :), DIM=2) , grad_onebody(ibf, :, :) )
   end do
   deallocate(grad_onebody)
 
@@ -128,18 +130,20 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   allocate(grad_nucleus(basis%nbf, basis%nbf, natom+1, 3))
   call setup_nucleus_grad(basis, grad_nucleus)
 
+  ! Pulay: F_A = - 2 \sum_{i \in A, j} P_ij d V_ij / d R_i
   force_nuc(:, :) = 0.0_dp
   do ibf=1, basis%nbf
     iatom = basis%bff(ibf)%icenter
     force_nuc(:, iatom) = force_nuc(:, iatom) &
-        + 2.0_dp * MATMUL( SUM( p_matrix(ibf, :, :), DIM=2) , grad_nucleus(ibf, :, natom+1, :) )
+        - 2.0_dp * MATMUL( SUM( p_matrix(ibf, :, :), DIM=2) , grad_nucleus(ibf, :, natom+1, :) )
   end do
 
+  ! Hellmann-Feynman: F_C = - \sum_ij P_ij ( i | d/dR_C -Z_C/|r-R_C| | j )
   force_hellfeyn(:, :) = 0.0_dp
   do iatom=1, natom
-    force_hellfeyn(1, iatom) = force_hellfeyn(1, iatom) + SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 1) )
-    force_hellfeyn(2, iatom) = force_hellfeyn(2, iatom) + SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 2) )
-    force_hellfeyn(3, iatom) = force_hellfeyn(3, iatom) + SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 3) )
+    force_hellfeyn(1, iatom) = force_hellfeyn(1, iatom) - SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 1) )
+    force_hellfeyn(2, iatom) = force_hellfeyn(2, iatom) - SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 2) )
+    force_hellfeyn(3, iatom) = force_hellfeyn(3, iatom) - SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 3) )
   end do
   force_nuc(:, :) = force_nuc(:, :) + force_hellfeyn(:, :)
 
@@ -150,7 +154,7 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   !
   ! Hartree-Fock energy forces
   !
-  write(stdout, '(1x,a)') 'Calculate the Hartee-Fock part with 4-center integrals gradient (LIBINT)'
+  write(stdout, '(1x,a)') 'Calculate the Hartree-Fock part with 4-center integrals gradient'
 
 
   force_har(:, :) = 0.0_dp

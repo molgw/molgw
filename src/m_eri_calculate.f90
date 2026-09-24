@@ -468,10 +468,17 @@ subroutine calculate_eri_4center_shell_grad(basis, rcut, ijshellpair, klshellpai
   real(C_DOUBLE), allocatable   :: gradDx(:)
   real(C_DOUBLE), allocatable   :: gradDy(:)
   real(C_DOUBLE), allocatable   :: gradDz(:)
+  integer(C_INT)               :: cint_info
+  integer(C_INT)               :: shls(4)
+  real(C_DOUBLE), allocatable   :: ip1(:, :)
   !=====
 
   is_longrange = (rcut > 1.0e-12_dp)
+#if defined(HAVE_LIBCINT)
+  call set_erf_screening_length_libcint(basis, rcut)
+#else
   rcut_libint = rcut
+#endif
 
 
 
@@ -543,7 +550,42 @@ subroutine calculate_eri_4center_shell_grad(basis, rcut, ijshellpair, klshellpai
   allocate(gradDy(n1c*n2c*n3c*n4c))
   allocate(gradDz(n1c*n2c*n3c*n4c))
 
-#if (LIBINT2_DERIV_ERI_ORDER > 0)
+#if defined(HAVE_LIBCINT)
+  ! LIBCINT ip1 returns ( \nabla_r a b | c d ) = - d/dR_a ( a b | c d ), a being the first shell in shls
+  ! Output is reordered into LIBINT ordering (l fastest, i slowest) with RESHAPE ORDER=
+  allocate(ip1(n1c*n2c*n3c*n4c, 3))
+
+  ! d/dR_A (ij|kl)
+  shls(:) = [ ishell-1, jshell-1, kshell-1, lshell-1 ]
+  cint_info = cint2e_ip1_cart(ip1, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                              basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, C_NULL_PTR)
+  gradAx(:) = -RESHAPE( RESHAPE(ip1(:, 1), [n4c, n3c, n2c, n1c], ORDER=[4, 3, 2, 1]), [n1c*n2c*n3c*n4c] )
+  gradAy(:) = -RESHAPE( RESHAPE(ip1(:, 2), [n4c, n3c, n2c, n1c], ORDER=[4, 3, 2, 1]), [n1c*n2c*n3c*n4c] )
+  gradAz(:) = -RESHAPE( RESHAPE(ip1(:, 3), [n4c, n3c, n2c, n1c], ORDER=[4, 3, 2, 1]), [n1c*n2c*n3c*n4c] )
+
+  ! d/dR_B (ij|kl) = d/dR_B (ji|kl)
+  shls(:) = [ jshell-1, ishell-1, kshell-1, lshell-1 ]
+  cint_info = cint2e_ip1_cart(ip1, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                              basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, C_NULL_PTR)
+  gradBx(:) = -RESHAPE( RESHAPE(ip1(:, 1), [n4c, n3c, n2c, n1c], ORDER=[3, 4, 2, 1]), [n1c*n2c*n3c*n4c] )
+  gradBy(:) = -RESHAPE( RESHAPE(ip1(:, 2), [n4c, n3c, n2c, n1c], ORDER=[3, 4, 2, 1]), [n1c*n2c*n3c*n4c] )
+  gradBz(:) = -RESHAPE( RESHAPE(ip1(:, 3), [n4c, n3c, n2c, n1c], ORDER=[3, 4, 2, 1]), [n1c*n2c*n3c*n4c] )
+
+  ! d/dR_C (ij|kl) = d/dR_C (kl|ij)
+  shls(:) = [ kshell-1, lshell-1, ishell-1, jshell-1 ]
+  cint_info = cint2e_ip1_cart(ip1, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                              basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, C_NULL_PTR)
+  gradCx(:) = -RESHAPE( RESHAPE(ip1(:, 1), [n4c, n3c, n2c, n1c], ORDER=[2, 1, 4, 3]), [n1c*n2c*n3c*n4c] )
+  gradCy(:) = -RESHAPE( RESHAPE(ip1(:, 2), [n4c, n3c, n2c, n1c], ORDER=[2, 1, 4, 3]), [n1c*n2c*n3c*n4c] )
+  gradCz(:) = -RESHAPE( RESHAPE(ip1(:, 3), [n4c, n3c, n2c, n1c], ORDER=[2, 1, 4, 3]), [n1c*n2c*n3c*n4c] )
+
+  ! Translational invariance: d/dR_D = - d/dR_A - d/dR_B - d/dR_C
+  gradDx(:) = -gradAx(:) - gradBx(:) - gradCx(:)
+  gradDy(:) = -gradAy(:) - gradBy(:) - gradCy(:)
+  gradDz(:) = -gradAz(:) - gradBz(:) - gradCz(:)
+
+  deallocate(ip1)
+#elif (LIBINT2_DERIV_ERI_ORDER > 0)
   call libint_4center_grad(am1, ng1, x01, alpha1, coeff1, &
                           am2, ng2, x02, alpha2, coeff2, &
                           am3, ng3, x03, alpha3, coeff3, &

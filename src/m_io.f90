@@ -262,6 +262,7 @@ subroutine header()
   ! LIBCINT details
 #if defined(HAVE_LIBCINT)
   has_onebody = .TRUE.
+  has_gradient = .TRUE.
   call check_capability_libcint(ammax)
   write(stdout, '(1x,a,i5)') 'Code compiled with LIBCINT support with max angular momentum: ', ammax
   if( pypzpx_order ) then
