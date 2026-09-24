@@ -2140,6 +2140,89 @@ h2_relax.in:
     -   atom    2   H:
             reference: 0.69218
             tolerance: 0.001
+h2_ri_force.in:
+    description: H2 HF forces with RI
+    keywords: [HF]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -1.127724347
+            tolerance: 1.0e-07
+    -   Total force atom    1:
+            reference: 0.0173494532
+            tolerance: 1.0e-06
+    -   Total force atom    1:
+            reference: 0.0173494532
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    1:
+            reference: -0.0121446173
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    2:
+            reference: 0.0121446173
+            tolerance: 1.0e-06
+            column: 2
+h2o_ri_force.in:
+    description: H2O HF forces with RI
+    keywords: [HF]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -75.9169811257
+            tolerance: 1.0e-07
+    -   Total force atom    1:
+            reference: -0.0019190838
+            tolerance: 1.0e-06
+    -   Total force atom    1:
+            reference: -0.0076091649
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    1:
+            reference: -0.0807554118
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    2:
+            reference: -0.0914756332
+            tolerance: 1.0e-06
+    -   Total force atom    2:
+            reference: -0.0923791752
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    2:
+            reference: 0.0365608846
+            tolerance: 1.0e-06
+            column: 2
+ch4_ri_force.in:
+    description: CH4 HF forces with RI
+    keywords: [HF]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -40.1984022819
+            tolerance: 1.0e-07
+    -   Total force atom    1:
+            reference: -0.002436873
+            tolerance: 1.0e-06
+    -   Total force atom    1:
+            reference: 0.0166271447
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    1:
+            reference: -0.0190355194
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    2:
+            reference: 0.0027109071
+            tolerance: 1.0e-06
+    -   Total force atom    4:
+            reference: -0.0101924812
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    5:
+            reference: 0.0066402281
+            tolerance: 1.0e-06
+            column: 2
 h2o_gw_pade.in:
     description: GW calculation with Pade analytic continuation
     keywords: [GW, hybrid]
