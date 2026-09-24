@@ -34,6 +34,7 @@ module m_dft_grid
 
   real(dp), protected, allocatable :: rr_grid(:, :)
   real(dp), protected, allocatable :: w_grid(:)
+  integer, protected, allocatable  :: icenter_grid(:)   ! center that owns the grid point
   real(dp), protected, allocatable :: bf_rad2(:)
 
   real(dp), parameter, private :: pruning_limit = 0.75_dp    ! in terms of covalent radius
@@ -79,6 +80,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
   integer              :: jcenter, kcenter
   real(dp), allocatable :: rr_grid_tmp(:, :)
   real(dp), allocatable :: w_grid_tmp(:)
+  integer, allocatable  :: icenter_grid_tmp(:)
   !=====
 
   if( TIMING_current_stage == TIMING_POSTSCF ) then
@@ -250,7 +252,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
 
   !
   ! Temporary storage before the screening of the low weights
-  allocate(rr_grid_tmp(3, ngridmax), w_grid_tmp(ngridmax))
+  allocate(rr_grid_tmp(3, ngridmax), w_grid_tmp(ngridmax), icenter_grid_tmp(ngridmax))
 
   rr_grid_tmp(:, :) = 0.0_dp
   w_grid_tmp(:)    = 0.0_dp
@@ -271,6 +273,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
 
       do iangular=1, nangular
         ir = ir + 1
+        icenter_grid_tmp(ir) = icenter
 
         ! Parallelization of the weights generation
         if( MODULO(ir-1, world%nproc) /= world%rank ) cycle
@@ -390,7 +393,7 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
                                     nradial, nangular_fine, nangular_coarse
   write(stdout, '(a,i8)')             ' total number of real-space points for this mpi task', ngrid
 
-  allocate(rr_grid(3, ngrid), w_grid(ngrid))
+  allocate(rr_grid(3, ngrid), w_grid(ngrid), icenter_grid(ngrid))
 
 
   igrid = 0
@@ -402,13 +405,14 @@ subroutine init_dft_grid(basis, grid_level_in, needs_gradient, precalculate_wfn,
         ir = ir + 1
         w_grid(ir) = w_grid_tmp(ir1)
         rr_grid(:, ir) = rr_grid_tmp(:, ir1)
+        icenter_grid(ir) = icenter_grid_tmp(ir1)
       end if
 
     end if
   end do
 
 
-  deallocate(rr_grid_tmp, w_grid_tmp)
+  deallocate(rr_grid_tmp, w_grid_tmp, icenter_grid_tmp)
 
   if( TIMING_current_stage == TIMING_POSTSCF ) then
     call timer_tddft_grid_generation%stop()
@@ -538,6 +542,7 @@ subroutine destroy_dft_grid()
 
   deallocate(rr_grid)
   deallocate(w_grid)
+  if( ALLOCATED(icenter_grid) ) deallocate(icenter_grid)
   if( ALLOCATED(bf_rad2) ) then
     deallocate(bf_rad2)
   end if
@@ -572,6 +577,125 @@ function smooth_step(mu)
 end function smooth_step
 
 
+!=========================================================================
+! Partition cell function s(mu) = 1/2 ( 1 - t(mu) ) and its derivative ds/dmu for Becke or SSF
+subroutine cell_function(mu, s_mu, ds_mu)
+  real(dp), intent(in)  :: mu
+  real(dp), intent(out) :: s_mu, ds_mu
+  !=====
+  real(dp) :: f1, f2, f3, z
+  !=====
+
+  select case(partition_scheme)
+  case('BECKE')
+    ! t = f(f(f(mu))),  f(x) = 3/2 x - 1/2 x^3
+    f1 = smooth_step(mu)
+    f2 = smooth_step(f1)
+    f3 = smooth_step(f2)
+    s_mu  = 0.5_dp * ( 1.0_dp - f3 )
+    ds_mu = -0.5_dp * 1.5_dp * ( 1.0_dp - f2**2 ) * 1.5_dp * ( 1.0_dp - f1**2 ) * 1.5_dp * ( 1.0_dp - mu**2 )
+  case default
+    ! SSF: t = ( 35 z - 35 z^3 + 21 z^5 - 5 z^7 ) / 16,  z = mu / a
+    if( mu <= -aa ) then
+      s_mu  = 1.0_dp
+      ds_mu = 0.0_dp
+    else if( mu >= aa ) then
+      s_mu  = 0.0_dp
+      ds_mu = 0.0_dp
+    else
+      z = mu / aa
+      s_mu  = 0.5_dp * ( 1.0_dp - ( 35.0_dp * z - 35.0_dp * z**3 + 21.0_dp * z**5 - 5.0_dp * z**7 ) / 16.0_dp )
+      ds_mu = -0.5_dp * ( 35.0_dp - 105.0_dp * z**2 + 105.0_dp * z**4 - 35.0_dp * z**6 ) / ( 16.0_dp * aa )
+    end if
+  end select
+
+end subroutine cell_function
+
+
+!=========================================================================
+! Grid weight contribution to the energy gradient for a batch of points
+! w_g = w0_g P_A(r_g),  P_A = Z_A / \sum_C Z_C,  Z_C = \prod_{D /= C} s(mu_CD),  mu_CD = ( |r-R_C| - |r-R_D| ) / R_CD
+! dE/dR_B += w_g f_g ( dZ_A/dR_B / Z_A - \sum_C dZ_C/dR_B / Z )   for B /= A (r_g fixed)
+! dE/dR_A  = - \sum_{B /= A} dE/dR_B                             (translational invariance)
+subroutine grid_weight_gradient(igrid_start, wf, grad)
+  integer, intent(in)     :: igrid_start
+  real(dp), intent(in)    :: wf(:)          ! w_g * f_g
+  real(dp), intent(inout) :: grad(:, :)     ! dE/dR
+  !=====
+  integer  :: nr, ir, igrid, icenter, jcenter, kcenter, lcenter, owner
+  real(dp) :: rr(3), zsum, prod_excl, dmu(3, 2)
+  real(dp) :: rk(ncenter_basis), uk(3, ncenter_basis), kj(ncenter_basis, ncenter_basis)
+  real(dp) :: s_cell(ncenter_basis, ncenter_basis), ds_cell(ncenter_basis, ncenter_basis)
+  real(dp) :: mu(ncenter_basis, ncenter_basis)
+  real(dp) :: zc(ncenter_basis), dzc(3, ncenter_basis, ncenter_basis)   ! dzc(:, B, C) = dZ_C/dR_B
+  real(dp) :: dlnp(3, ncenter_basis)
+  !=====
+
+  if( ncenter_basis == 1 ) return
+  nr = SIZE(wf)
+
+  do jcenter=1, ncenter_basis
+    do icenter=1, ncenter_basis
+      kj(icenter, jcenter) = NORM2( xbasis(:, icenter) - xbasis(:, jcenter) )
+    end do
+  end do
+
+  do ir=1, nr
+    igrid = igrid_start + ir - 1
+    owner = icenter_grid(igrid)
+    rr(:) = rr_grid(:, igrid)
+
+    do icenter=1, ncenter_basis
+      rk(icenter)    = NORM2( rr(:) - xbasis(:, icenter) )
+      uk(:, icenter) = ( rr(:) - xbasis(:, icenter) ) / rk(icenter)
+    end do
+
+    s_cell(:, :)  = 1.0_dp
+    ds_cell(:, :) = 0.0_dp
+    do jcenter=1, ncenter_basis
+      do icenter=1, ncenter_basis
+        if( icenter == jcenter ) cycle
+        mu(icenter, jcenter) = ( rk(icenter) - rk(jcenter) ) / kj(icenter, jcenter)
+        call cell_function(mu(icenter, jcenter), s_cell(icenter, jcenter), ds_cell(icenter, jcenter))
+      end do
+    end do
+    zc(:) = PRODUCT(s_cell(:, :), DIM=2)
+    zsum  = SUM(zc(:))
+
+    ! dZ_C/dR_B with explicit dependence on the nuclei only
+    dzc(:, :, :) = 0.0_dp
+    do kcenter=1, ncenter_basis
+      do lcenter=1, ncenter_basis
+        if( kcenter == lcenter ) cycle
+        if( ABS(ds_cell(kcenter, lcenter)) < 1.0e-30_dp ) cycle
+        prod_excl = 1.0_dp
+        do jcenter=1, ncenter_basis
+          if( jcenter == kcenter .OR. jcenter == lcenter ) cycle
+          prod_excl = prod_excl * s_cell(kcenter, jcenter)
+        end do
+        ! dmu_CD/dR_C = -u_C / R_CD - mu_CD e_CD / R_CD,  dmu_CD/dR_D = u_D / R_CD + mu_CD e_CD / R_CD
+        dmu(:, 1) = -uk(:, kcenter) / kj(kcenter, lcenter) &
+                    - mu(kcenter, lcenter) * ( xbasis(:, kcenter) - xbasis(:, lcenter) ) / kj(kcenter, lcenter)**2
+        dmu(:, 2) =  uk(:, lcenter) / kj(kcenter, lcenter) &
+                    + mu(kcenter, lcenter) * ( xbasis(:, kcenter) - xbasis(:, lcenter) ) / kj(kcenter, lcenter)**2
+        dzc(:, kcenter, kcenter) = dzc(:, kcenter, kcenter) + prod_excl * ds_cell(kcenter, lcenter) * dmu(:, 1)
+        dzc(:, lcenter, kcenter) = dzc(:, lcenter, kcenter) + prod_excl * ds_cell(kcenter, lcenter) * dmu(:, 2)
+      end do
+    end do
+
+    do jcenter=1, ncenter_basis
+      dlnp(:, jcenter) = dzc(:, jcenter, owner) / zc(owner) - SUM(dzc(:, jcenter, :), DIM=2) / zsum
+    end do
+    dlnp(:, owner) = 0.0_dp
+    dlnp(:, owner) = -SUM(dlnp(:, :), DIM=2)
+
+    grad(:, 1:ncenter_basis) = grad(:, 1:ncenter_basis) + wf(ir) * dlnp(:, :)
+  end do
+
+end subroutine grid_weight_gradient
+
+
+!=========================================================================
 !=========================================================================
 subroutine prepare_basis_functions_r(basis, batch_size)
 

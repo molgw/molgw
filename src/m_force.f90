@@ -19,6 +19,8 @@ module m_force
   use m_hamiltonian_tools
   use m_hamiltonian_onebody
   use m_linear_algebra, only: diagonalize
+  use m_dft_grid
+  use m_hamiltonian_twobodies, only: dft_exc_vxc_batch
   use m_libcint_tools
 
 
@@ -43,6 +45,8 @@ subroutine calculate_force(basis, auxil_basis, occupation, energy, c_matrix)
   real(dp), allocatable    :: p_matrix(:, :, :)
   real(dp), allocatable    :: grad_onebody(:, :, :)
   real(dp), allocatable    :: grad_nucleus(:, :, :, :)
+  real(dp), allocatable    :: vxc_ao(:, :, :)
+  real(dp)                 :: exc_xc
   !=====
 
   if( .NOT. MOLGW_has_gradient) then
@@ -133,6 +137,19 @@ subroutine calculate_force(basis, auxil_basis, occupation, energy, c_matrix)
     call force_twobody_4center(basis, p_matrix)
   end if
 
+  !
+  ! Exchange-correlation forces (including grid response)
+  !
+  force_exc(:, :) = 0.0_dp
+  if( calc_type%is_dft ) then
+    if( calc_type%need_exchange_lr ) call die('calculate_force: range-separated hybrids are not implemented')
+    call init_dft_grid(basis, grid_level, dft_xc(1)%needs_gradient, .FALSE., BATCH_SIZE)
+    allocate(vxc_ao(basis%nbf, basis%nbf, nspin))
+    call dft_exc_vxc_batch(BATCH_SIZE, basis, occupation, c_matrix, vxc_ao, exc_xc, xc_force=force_exc)
+    deallocate(vxc_ao)
+    call destroy_dft_grid()
+  end if
+
   ! is_core is an inefficient way to get the Kinetic+Nucleus hamiltonian
   if( calc_type%is_core ) force_har(:, :) = 0.0_dp
 
@@ -142,7 +159,7 @@ subroutine calculate_force(basis, auxil_basis, occupation, energy, c_matrix)
   ! Total forces
   !
   force(:, :) = force_nuc_nuc(:, :) + force_ovp(:, :) &
-               + force_kin(:, :) + force_nuc(:, :) + force_har(:, :) + force_exx(:, :) * alpha_hybrid
+               + force_kin(:, :) + force_nuc(:, :) + force_har(:, :) + force_exx(:, :) * alpha_hybrid + force_exc(:, :)
 
 
   write(stdout, '(/,1x,a)') ' ====== Hellman-Feynman Forces ====== '

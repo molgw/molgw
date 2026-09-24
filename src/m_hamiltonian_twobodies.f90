@@ -23,7 +23,7 @@ module m_hamiltonian_twobodies
   use m_dft_grid
   use m_libxc_tools
   use m_io
-  use m_hamiltonian_tools, only: diagonalize_hamiltonian_scalapack
+  use m_hamiltonian_tools, only: diagonalize_hamiltonian_scalapack, setup_density_matrix
 
 
   implicit none
@@ -1544,7 +1544,7 @@ end subroutine setup_exchange_genuine_ri_cmplx
 ! Calculate the exchange-correlation potential and energy
 ! * subroutine works for both real and complex wavefunctions c_matrix
 !   using "class" syntax of Fortran2003
-subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, exc_xc, dft_xc_in, dm2_JK)
+subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, exc_xc, dft_xc_in, dm2_JK, xc_force)
 
   integer, intent(in)         :: batch_size
   type(basis_set), intent(in) :: basis
@@ -1554,8 +1554,13 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
   real(dp), intent(out)       :: exc_xc
   type(dft_xc_info), intent(in), optional :: dft_xc_in(:)
   real(dp), intent(in), optional          :: dm2_JK(:, :, :)
+  real(dp), intent(out), optional         :: xc_force(:, :)
   !=====
   real(dp), parameter            :: TOL_RHO = 1.0e-9_dp
+  real(dp), allocatable :: p_matrix_force(:, :, :)
+  real(dp), allocatable :: bf_grad_force(:, :, :)
+  real(dp), allocatable :: bf_hess_force(:, :, :)
+  real(dp), allocatable :: edens_batch(:)
   type(dft_xc_info), allocatable :: dft_xc_local(:)
   integer              :: nstate
   integer              :: ibf, jbf, ispin, icoord
@@ -1594,8 +1599,20 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
 
   exc_xc = 0.0_dp
   vxc_ao(:, :, :) = 0.0_dp
+  if( PRESENT(xc_force) ) xc_force(:, :) = 0.0_dp
 
   if( dft_xc_local(1)%nxc == 0 ) return
+
+  if( PRESENT(xc_force) ) then
+    select type(c_matrix)
+    type is(real(dp))
+      allocate(p_matrix_force(basis%nbf, basis%nbf, nspin))
+      call setup_density_matrix(c_matrix, occupation, p_matrix_force)
+    class default
+      call die('dft_exc_vxc_batch: xc forces only implemented for real wavefunctions')
+    end select
+    if( ALLOCATED(rhocore) ) call issue_warning('dft_exc_vxc_batch: xc forces do not include the NLCC core density')
+  end if
 
   !
   ! Switch the timers: complex wavefunctions imply RT-TDDFT run
@@ -1643,6 +1660,10 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
     allocate(exc_batch(nr))
     allocate(vrho_batch(nspin, nr))
     allocate(dedd_r_batch(nspin, nr))
+    if( PRESENT(xc_force) ) then
+      allocate(edens_batch(nr))
+      edens_batch(:) = 0.0_dp
+    end if
     if( (calc_type%is_noft .and. nspin==2) .and. PRESENT(dm2_JK) ) allocate(PIr_batch(nr))
 
     if( dft_xc_local(1)%needs_gradient ) then
@@ -1795,6 +1816,8 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
 
       ! XC energy
       exc_xc = exc_xc + SUM( weight_batch(:) * exc_batch(:) * SUM(rhor_batch(:, :), DIM=1) ) * dft_xc_local(ixc)%coeff
+      if( PRESENT(xc_force) ) &
+        edens_batch(:) = edens_batch(:) + exc_batch(:) * SUM(rhor_batch(:, :), DIM=1) * dft_xc_local(ixc)%coeff
 
       dedd_r_batch(:, :) = dedd_r_batch(:, :) + vrho_batch(:, :) * dft_xc_local(ixc)%coeff
 
@@ -1883,6 +1906,37 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
 
     call timer_xxdft_vxc%stop()
 
+    !
+    ! XC forces from the basis functions, the grid points and the grid weights
+    if( PRESENT(xc_force) ) then
+      allocate(bf_grad_force(basis%nbf, nr, 3))
+      if( dft_xc_local(1)%needs_gradient ) then
+        bf_grad_force(:, :, 1) = bf_gradx_batch(:, :)
+        bf_grad_force(:, :, 2) = bf_grady_batch(:, :)
+        bf_grad_force(:, :, 3) = bf_gradz_batch(:, :)
+        allocate(bf_hess_force(basis%nbf, nr, 6))
+        call calculate_basis_functions_hessr_batch(basis, rr_grid(:, igrid_start:igrid_end), bf_hess_force)
+      else
+        call get_basis_functions_gradr_batch(basis, igrid_start, bf_grad_force(:, :, 1), &
+                                             bf_grad_force(:, :, 2), bf_grad_force(:, :, 3))
+      end if
+      do ispin=1, nspin
+        if( dft_xc_local(1)%needs_gradient ) then
+          call xc_force_batch(basis, icenter_grid(igrid_start:igrid_end), p_matrix_force(:, :, ispin), weight_batch, &
+                              dedd_r_batch(ispin, :), basis_function_r_batch, bf_grad_force, xc_force, &
+                              dedgd_r_batch(:, :, ispin), bf_hess_force)
+        else
+          call xc_force_batch(basis, icenter_grid(igrid_start:igrid_end), p_matrix_force(:, :, ispin), weight_batch, &
+                              dedd_r_batch(ispin, :), basis_function_r_batch, bf_grad_force, xc_force)
+        end if
+      end do
+      ! Grid weights: F = - dE/dR
+      edens_batch(:) = -weight_batch(:) * edens_batch(:)
+      call grid_weight_gradient(igrid_start, edens_batch, xc_force)
+      deallocate(bf_grad_force, edens_batch)
+      if( ALLOCATED(bf_hess_force) ) deallocate(bf_hess_force)
+    end if
+
 
     deallocate(weight_batch)
     deallocate(basis_function_r_batch)
@@ -1921,6 +1975,10 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
   call grid%sum(normalization_core)
   call grid%sum(vxc_ao)
   call grid%sum(exc_xc)
+  if( PRESENT(xc_force) ) then
+    call grid%sum(xc_force)
+    deallocate(p_matrix_force)
+  end if
 
 
 #else
@@ -1939,6 +1997,73 @@ subroutine dft_exc_vxc_batch(batch_size, basis, occupation, c_matrix, vxc_ao, ex
   call timer_xxdft_xc%stop()
 
 end subroutine dft_exc_vxc_batch
+
+
+!=========================================================================
+! XC force for one spin and one batch of grid points, from the basis functions and the grid point motion
+! I_mu,g,a = w_g [ v d_a phi_mu (P phi)_mu + \sum_b g_b ( d_ab phi_mu (P phi)_mu + d_a phi_mu (P d_b phi)_mu ) ]
+! with v = dE/drho and g = dE/d(grad rho)
+! basis functions: F_A,a += 2 \sum_{mu \in A} \sum_g I_mu,g,a
+! grid points:     F_A,a -= 2 \sum_{g \in A} \sum_mu I_mu,g,a    ( = - w_g [ v d_a rho + g . d_a grad rho ] )
+subroutine xc_force_batch(basis, icenter_point, p_matrix, weight, dedd, bf_r, bf_grad, xc_force, dedgd, bf_hess)
+  type(basis_set), intent(in)    :: basis
+  integer, intent(in)            :: icenter_point(:)
+  real(dp), intent(in)           :: p_matrix(:, :)
+  real(dp), intent(in)           :: weight(:)
+  real(dp), intent(in)           :: dedd(:)
+  real(dp), intent(in)           :: bf_r(:, :)
+  real(dp), intent(in)           :: bf_grad(:, :, :)
+  real(dp), intent(inout)        :: xc_force(:, :)
+  real(dp), intent(in), optional :: dedgd(:, :)
+  real(dp), intent(in), optional :: bf_hess(:, :, :)
+  !=====
+  integer, parameter    :: IHESS(3, 3) = RESHAPE([1, 4, 5, 4, 2, 6, 5, 6, 3], [3, 3])
+  integer               :: nbf, nr, ir, ibf, idir, jdir
+  real(dp), allocatable :: x_batch(:, :), y_batch(:, :), gphi(:, :), integrand(:, :)
+  !=====
+
+  nbf = SIZE(bf_r, DIM=1)
+  nr  = SIZE(bf_r, DIM=2)
+
+  ! X = P phi
+  allocate(x_batch(nbf, nr), integrand(nbf, nr))
+  x_batch(:, :) = MATMUL(p_matrix, bf_r)
+
+  if( PRESENT(dedgd) ) then
+    ! Y = P ( w g . grad phi )
+    allocate(gphi(nbf, nr), y_batch(nbf, nr))
+    do ir=1, nr
+      gphi(:, ir) = weight(ir) * ( dedgd(1, ir) * bf_grad(:, ir, 1) + dedgd(2, ir) * bf_grad(:, ir, 2) &
+                                 + dedgd(3, ir) * bf_grad(:, ir, 3) )
+    end do
+    y_batch(:, :) = MATMUL(p_matrix, gphi)
+  end if
+
+  do idir=1, 3
+    do ir=1, nr
+      integrand(:, ir) = weight(ir) * dedd(ir) * bf_grad(:, ir, idir) * x_batch(:, ir)
+    end do
+    if( PRESENT(dedgd) ) then
+      integrand(:, :) = integrand(:, :) + bf_grad(:, :, idir) * y_batch(:, :)
+      do jdir=1, 3
+        do ir=1, nr
+          integrand(:, ir) = integrand(:, ir) &
+                             + weight(ir) * dedgd(jdir, ir) * bf_hess(:, ir, IHESS(idir, jdir)) * x_batch(:, ir)
+        end do
+      end do
+    end if
+    do ibf=1, nbf
+      xc_force(idir, basis%bff(ibf)%icenter) = xc_force(idir, basis%bff(ibf)%icenter) + 2.0_dp * SUM(integrand(ibf, :))
+    end do
+    do ir=1, nr
+      xc_force(idir, icenter_point(ir)) = xc_force(idir, icenter_point(ir)) - 2.0_dp * SUM(integrand(:, ir))
+    end do
+  end do
+
+  if( PRESENT(dedgd) ) deallocate(gphi, y_batch)
+  deallocate(x_batch, integrand)
+
+end subroutine xc_force_batch
 
 
 !=========================================================================
