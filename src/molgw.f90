@@ -590,6 +590,7 @@ program molgw
   if( move_nuclei == 'relax' ) then
     call lbfgs_destroy(lbfgs_plan)
   end if
+  if( move_nuclei /= 'no' ) call print_force_yaml()
 
   ! This overrides the value of scf_has_converged
   if( assume_scf_converged_ ) scf_has_converged = .TRUE.

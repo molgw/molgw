@@ -190,6 +190,30 @@ end subroutine calculate_force
 
 
 !=========================================================================
+! Write the last calculated total force in the yaml file
+! (before the removal of the net force and torque done for the relaxation)
+subroutine print_force_yaml()
+  !=====
+  integer  :: iatom
+  real(dp) :: force_total(3, ncenter_nuclei)
+  !=====
+
+  if( .NOT. ( print_yaml_ .AND. is_iomaster ) ) return
+
+  force_total(:, :) = force_nuc_nuc(:, :) + force_ovp(:, :) + force_kin(:, :) + force_nuc(:, :) + force_har(:, :) &
+                      + alpha_hybrid * force_exx(:, :) + force_exc(:, :)
+
+  write(unit_yaml, '(/,a)') 'forces:'
+  write(unit_yaml, '(4x,a)') 'unit: Ha/bohr'
+  write(unit_yaml, '(4x,a)') 'total:'
+  do iatom=1, ncenter_nuclei
+    write(unit_yaml, '(8x,a,"[ ",es18.10,", ",es18.10,", ",es18.10,"]")') '- ', force_total(:, iatom)
+  end do
+
+end subroutine print_force_yaml
+
+
+!=========================================================================
 ! Hartree and exchange forces with 4-center integral gradients
 !
 subroutine force_twobody_4center(basis, p_matrix)
