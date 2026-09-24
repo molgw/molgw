@@ -547,7 +547,7 @@ program molgw
     !
     ! If requested, evaluate the forces
     if( move_nuclei == 'relax' ) then
-      call calculate_force(basis, occupation, energy, c_matrix)
+      call calculate_force(basis, auxil_basis, occupation, energy, c_matrix)
       call relax_atoms(lbfgs_plan, en_gks%total)
       call output_positions()
 
