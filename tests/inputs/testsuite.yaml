@@ -2140,6 +2140,255 @@ h2_relax.in:
     -   atom    2   H:
             reference: 0.69218
             tolerance: 0.001
+h2_ri_force.in:
+    description: H2 HF forces with RI
+    keywords: [HF]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -1.127724347
+            tolerance: 1.0e-07
+    -   Total force atom    1:
+            reference: 0.0173494532
+            tolerance: 1.0e-06
+    -   Total force atom    1:
+            reference: 0.0173494532
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    1:
+            reference: -0.0121446173
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    2:
+            reference: 0.0121446173
+            tolerance: 1.0e-06
+            column: 2
+h2o_ri_force.in:
+    description: H2O HF forces with RI
+    keywords: [HF]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -75.9169811257
+            tolerance: 1.0e-07
+    -   Total force atom    1:
+            reference: -0.0019190838
+            tolerance: 1.0e-06
+    -   Total force atom    1:
+            reference: -0.0076091649
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    1:
+            reference: -0.0807554118
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    2:
+            reference: -0.0914756332
+            tolerance: 1.0e-06
+    -   Total force atom    2:
+            reference: -0.0923791752
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    2:
+            reference: 0.0365608846
+            tolerance: 1.0e-06
+            column: 2
+ch4_ri_force.in:
+    description: CH4 HF forces with RI
+    keywords: [HF]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -40.1984022819
+            tolerance: 1.0e-07
+    -   Total force atom    1:
+            reference: -0.002436873
+            tolerance: 1.0e-06
+    -   Total force atom    1:
+            reference: 0.0166271447
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    1:
+            reference: -0.0190355194
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    2:
+            reference: 0.0027109071
+            tolerance: 1.0e-06
+    -   Total force atom    4:
+            reference: -0.0101924812
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    5:
+            reference: 0.0066402281
+            tolerance: 1.0e-06
+            column: 2
+h2_lda_ri_force.in:
+    description: H2 LDA forces with RI
+    keywords: [DFT]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -1.1325169637
+            tolerance: 1.0e-07
+    -   Total force atom    1:
+            reference: 0.0026673799
+            tolerance: 1.0e-06
+    -   Total force atom    1:
+            reference: 0.0026673799
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    1:
+            reference: -0.0018947053
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    2:
+            reference: 0.0018947053
+            tolerance: 1.0e-06
+            column: 2
+h2o_pbe0_ri_force.in:
+    description: H2O PBE0 forces with RI
+    keywords: [hybrid]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.2504857409
+            tolerance: 1.0e-07
+    -   Total force atom    1:
+            reference: -0.0027938231
+            tolerance: 1.0e-06
+    -   Total force atom    1:
+            reference: -0.0070934823
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    1:
+            reference: -0.058728079
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    2:
+            reference: -0.0773977432
+            tolerance: 1.0e-06
+    -   Total force atom    2:
+            reference: -0.0785088474
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    2:
+            reference: 0.0255817612
+            tolerance: 1.0e-06
+            column: 2
+h2o_pbe0_ri_force_cart.in:
+    description: H2O PBE0 forces with RI and cartesian gaussians
+    keywords: [hybrid]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.251227912
+            tolerance: 1.0e-07
+    -   Total force atom    1:
+            reference: -0.0028007731
+            tolerance: 1.0e-06
+    -   Total force atom    1:
+            reference: -0.0071002306
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    1:
+            reference: -0.0586185375
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    2:
+            reference: -0.0774334348
+            tolerance: 1.0e-06
+    -   Total force atom    2:
+            reference: -0.0785482374
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    2:
+            reference: 0.0255221546
+            tolerance: 1.0e-06
+            column: 2
+ch4_pbe_ri_force.in:
+    description: CH4 PBE forces with RI
+    keywords: [DFT]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -40.444487611
+            tolerance: 1.0e-07
+    -   Total force atom    1:
+            reference: -0.0025453226
+            tolerance: 1.0e-06
+    -   Total force atom    1:
+            reference: 0.0130082758
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    1:
+            reference: -0.0175378006
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    2:
+            reference: 0.0110968276
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    4:
+            reference: -0.0034853836
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    5:
+            reference: -0.0052314898
+            tolerance: 1.0e-06
+            column: 1
+oh_pbe_ri_force.in:
+    description: OH PBE spin-polarized forces with RI
+    keywords: [DFT]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -75.6476550552
+            tolerance: 1.0e-07
+    -   Total force atom    1:
+            reference: 0.0060170876
+            tolerance: 1.0e-06
+    -   Total force atom    1:
+            reference: 0.0055736671
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    1:
+            reference: -0.0042784296
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    2:
+            reference: 0.0042784296
+            tolerance: 1.0e-06
+            column: 2
+h2o_b3lyp_ri_relax.in:
+    description: H2O B3LYP relaxation with RI from a distorted geometry
+    keywords: [hybrid]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -76.4227360312
+            tolerance: 1.0e-06
+    -   Forces are     converged:
+            reference: 0.0
+            tolerance: 1.0e-05
+    -   atom    1   O:
+            reference: 0.053868
+            tolerance: 1.0e-03
+    -   atom    1   O:
+            reference: -0.002134
+            tolerance: 1.0e-03
+            column: 1
+    -   atom    1   O:
+            reference: 0.225308
+            tolerance: 1.0e-03
+            column: 2
+    -   atom    2   H:
+            reference: 1.103833
+            tolerance: 1.0e-03
+    -   atom    3   H:
+            reference: -0.949987
+            tolerance: 1.0e-03
+            column: 2
 h2o_gw_pade.in:
     description: GW calculation with Pade analytic continuation
     keywords: [GW, hybrid]

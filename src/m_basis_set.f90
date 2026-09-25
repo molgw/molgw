@@ -1444,6 +1444,24 @@ end function eval_basis_function_grad
 
 
 !=========================================================================
+! Hessian of a basis function: xx, yy, zz, xy, xz, yz
+function eval_basis_function_hess(bf, x)
+  type(basis_function), intent(in) :: bf
+  real(dp), intent(in)             :: x(3)
+  real(dp)                        :: eval_basis_function_hess(6)
+  !=====
+  integer                         :: ig
+  !=====
+
+  eval_basis_function_hess(:) = 0.0_dp
+  do ig=1, bf%ngaussian
+    eval_basis_function_hess(:) = eval_basis_function_hess(:) + eval_gaussian_hess(bf%g(ig), x) * bf%coeff(ig)
+  end do
+
+end function eval_basis_function_hess
+
+
+!=========================================================================
 function eval_basis_function_lapl(bf, x)
   type(basis_function), intent(in) :: bf
   real(dp), intent(in)             :: x(3)

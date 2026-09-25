@@ -281,6 +281,44 @@ end function eval_gaussian_grad
 
 
 !=========================================================================
+! Hessian of a cartesian gaussian: xx, yy, zz, xy, xz, yz
+! d2/dx2 x^n e^{-a x^2} = [ n(n-1) x^{n-2} - 2a(2n+1) x^n + 4a^2 x^{n+2} ] e^{-a x^2}
+function eval_gaussian_hess(ga, x)
+
+  type(gaussian), intent(in) :: ga
+  real(dp), intent(in) :: x(3)
+  real(dp) :: eval_gaussian_hess(6)
+  !=====
+  integer  :: nn(3), idir
+  real(dp) :: dx(3), dx2
+  real(dp) :: g0(3), g1(3), g2(3)
+  !=====
+
+  dx(:) = x(:) - ga%x0(:)
+  dx2 = SUM( dx(:)**2 )
+  nn(:) = [ ga%nx, ga%ny, ga%nz ]
+
+  do idir=1, 3
+    g0(idir) = dx(idir)**nn(idir)
+    g1(idir) = -2.0_dp * ga%alpha * dx(idir)**(nn(idir)+1)
+    if( nn(idir) > 0 ) g1(idir) = g1(idir) + REAL(nn(idir), dp) * dx(idir)**(nn(idir)-1)
+    g2(idir) = 4.0_dp * ga%alpha**2 * dx(idir)**(nn(idir)+2) - 2.0_dp * ga%alpha * REAL(2*nn(idir)+1, dp) * dx(idir)**nn(idir)
+    if( nn(idir) > 1 ) g2(idir) = g2(idir) + REAL(nn(idir)*(nn(idir)-1), dp) * dx(idir)**(nn(idir)-2)
+  end do
+
+  eval_gaussian_hess(1) = g2(1) * g0(2) * g0(3)
+  eval_gaussian_hess(2) = g0(1) * g2(2) * g0(3)
+  eval_gaussian_hess(3) = g0(1) * g0(2) * g2(3)
+  eval_gaussian_hess(4) = g1(1) * g1(2) * g0(3)
+  eval_gaussian_hess(5) = g1(1) * g0(2) * g1(3)
+  eval_gaussian_hess(6) = g0(1) * g1(2) * g1(3)
+
+  eval_gaussian_hess(:) = eval_gaussian_hess(:) * ga%norm_factor * EXP( - ga%alpha * dx2 )
+
+end function eval_gaussian_hess
+
+
+!=========================================================================
 function eval_gaussian_lapl(ga, x)
 
   type(gaussian), intent(in) :: ga
@@ -300,15 +338,15 @@ function eval_gaussian_lapl(ga, x)
 
   gpp_x = 4.0_dp * ga%alpha**2 * dx(1)**(ga%nx+2) - 2.0_dp * ga%alpha * REAL(ga%nx+1, dp) * dx(1)**ga%nx
   if(ga%nx>0) gpp_x = gpp_x - 2.0_dp * ga%alpha * REAL(ga%nx, dp) * dx(1)**(ga%nx)
-  if(ga%nx>1) gpp_x = gpp_x + 2.0_dp * ga%alpha * REAL(ga%nx*(ga%nx-1), dp) * dx(1)**(ga%nx-1)
+  if(ga%nx>1) gpp_x = gpp_x + REAL(ga%nx*(ga%nx-1), dp) * dx(1)**(ga%nx-2)
 
   gpp_y = 4.0_dp * ga%alpha**2 * dx(2)**(ga%ny+2) - 2.0_dp * ga%alpha * REAL(ga%ny+1, dp) * dx(2)**ga%ny
   if(ga%ny>0) gpp_y = gpp_y - 2.0_dp * ga%alpha * REAL(ga%ny, dp) * dx(2)**(ga%ny)
-  if(ga%ny>1) gpp_y = gpp_y + 2.0_dp * ga%alpha * REAL(ga%ny*(ga%ny-1), dp) * dx(2)**(ga%ny-1)
+  if(ga%ny>1) gpp_y = gpp_y + REAL(ga%ny*(ga%ny-1), dp) * dx(2)**(ga%ny-2)
 
   gpp_z = 4.0_dp * ga%alpha**2 * dx(3)**(ga%nz+2) - 2.0_dp * ga%alpha * REAL(ga%nz+1, dp) * dx(3)**ga%nz
   if(ga%nz>0) gpp_z = gpp_z - 2.0_dp * ga%alpha * REAL(ga%nz, dp) * dx(3)**(ga%nz)
-  if(ga%nz>1) gpp_z = gpp_z + 2.0_dp * ga%alpha * REAL(ga%nz*(ga%nz-1), dp) * dx(3)**(ga%nz-1)
+  if(ga%nz>1) gpp_z = gpp_z + REAL(ga%nz*(ga%nz-1), dp) * dx(3)**(ga%nz-2)
 
   eval_gaussian_lapl(1) = gpp_x * g_y   * g_z
   eval_gaussian_lapl(2) = g_x   * gpp_y * g_z

@@ -3,7 +3,7 @@
 ! Author: Fabien Bruneval
 !
 ! This file contains
-! the calculation of the forces (requires LIBINT with gradients)
+! the calculation of the forces (requires LIBCINT or LIBINT with gradients)
 !
 !=========================================================================
 #include "molgw.h"
@@ -18,6 +18,10 @@ module m_force
   use m_eri_calculate
   use m_hamiltonian_tools
   use m_hamiltonian_onebody
+  use m_linear_algebra, only: diagonalize
+  use m_dft_grid
+  use m_hamiltonian_twobodies, only: dft_exc_vxc_batch
+  use m_libcint_tools
 
 
   implicit none
@@ -26,34 +30,27 @@ contains
 
 
 !=========================================================================
-subroutine calculate_force(basis, occupation, energy, c_matrix)
+subroutine calculate_force(basis, auxil_basis, occupation, energy, c_matrix)
 
   type(basis_set), intent(inout) :: basis
+  type(basis_set), intent(inout) :: auxil_basis
   real(dp), intent(in)           :: occupation(:, :)
   real(dp), intent(in)           :: energy(:, :)
   real(dp), intent(in)           :: c_matrix(:, :, :)
   !=====
-  real(dp), parameter      :: TOL_DENSITY_MATRIX=1.0e-2
   integer                 :: nstate
-  integer                 :: ijshellpair, klshellpair
   integer                 :: iatom
-  integer                 :: ibf, jbf, kbf, lbf
-  integer                 :: ishell, jshell, kshell, lshell
-  integer                 :: ni, nj, nk, nl
-  real(dp)                :: fact
+  integer                 :: ibf
   real(dp), allocatable    :: r_matrix(:, :)
   real(dp), allocatable    :: p_matrix(:, :, :)
   real(dp), allocatable    :: grad_onebody(:, :, :)
   real(dp), allocatable    :: grad_nucleus(:, :, :, :)
-  real(dp), allocatable    :: shell_gradA(:, :, :, :, :)
-  real(dp), allocatable    :: shell_gradB(:, :, :, :, :)
-  real(dp), allocatable    :: shell_gradC(:, :, :, :, :)
-  real(dp), allocatable    :: shell_gradD(:, :, :, :, :)
-  logical, allocatable     :: skip_shellpair(:, :)
+  real(dp), allocatable    :: vxc_ao(:, :, :)
+  real(dp)                 :: exc_xc
   !=====
 
   if( .NOT. MOLGW_has_gradient) then
-    call issue_warning('calculate_force: impossible to calculate gradient if LIBINT does not support the gradients')
+    call issue_warning('calculate_force: impossible to calculate gradient without LIBCINT or LIBINT with gradients')
     return
   end if
 
@@ -67,6 +64,176 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
   allocate(r_matrix(basis%nbf, basis%nbf))
   call setup_density_matrix(c_matrix, occupation, p_matrix)
   call setup_energy_density_matrix(c_matrix, occupation, energy, r_matrix)
+
+  !
+  ! Nucleus-nucleus repulsion forces
+  !
+  call nucleus_nucleus_force()
+
+
+  !
+  ! Energy density matrix forces
+  !
+  allocate(grad_onebody(basis%nbf, basis%nbf, 3))
+  call setup_overlap_grad(basis, grad_onebody)
+
+  ! F_A = + 2 \sum_{i \in A, j} W_ij d S_ij / d R_i
+  force_ovp(:, :) = 0.0_dp
+  do ibf=1, basis%nbf
+    iatom = basis%bff(ibf)%icenter
+    force_ovp(:, iatom) = force_ovp(:, iatom) + 2.0_dp * MATMUL( r_matrix(ibf, :) , grad_onebody(ibf, :, :) )
+  end do
+  deallocate(grad_onebody)
+
+
+  !
+  ! Kinetic energy forces
+  !
+  allocate(grad_onebody(basis%nbf, basis%nbf, 3))
+  call setup_kinetic_grad(basis, grad_onebody)
+
+  ! F_A = - 2 \sum_{i \in A, j} P_ij d T_ij / d R_i
+  force_kin(:, :) = 0.0_dp
+  do ibf=1, basis%nbf
+    iatom = basis%bff(ibf)%icenter
+    force_kin(:, iatom) = force_kin(:, iatom) - 2.0_dp * MATMUL( SUM( p_matrix(ibf, :, :), DIM=2) , grad_onebody(ibf, :, :) )
+  end do
+  deallocate(grad_onebody)
+
+
+  !
+  ! Nucleus energy forces
+  !
+  allocate(grad_nucleus(basis%nbf, basis%nbf, natom+1, 3))
+  call setup_nucleus_grad(basis, grad_nucleus)
+
+  ! Pulay: F_A = - 2 \sum_{i \in A, j} P_ij d V_ij / d R_i
+  force_nuc(:, :) = 0.0_dp
+  do ibf=1, basis%nbf
+    iatom = basis%bff(ibf)%icenter
+    force_nuc(:, iatom) = force_nuc(:, iatom) &
+        - 2.0_dp * MATMUL( SUM( p_matrix(ibf, :, :), DIM=2) , grad_nucleus(ibf, :, natom+1, :) )
+  end do
+
+  ! Hellmann-Feynman: F_C = - \sum_ij P_ij ( i | d/dR_C -Z_C/|r-R_C| | j )
+  force_hellfeyn(:, :) = 0.0_dp
+  do iatom=1, natom
+    force_hellfeyn(1, iatom) = force_hellfeyn(1, iatom) - SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 1) )
+    force_hellfeyn(2, iatom) = force_hellfeyn(2, iatom) - SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 2) )
+    force_hellfeyn(3, iatom) = force_hellfeyn(3, iatom) - SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 3) )
+  end do
+  force_nuc(:, :) = force_nuc(:, :) + force_hellfeyn(:, :)
+
+
+  deallocate(grad_nucleus)
+
+
+  !
+  ! Two-body (Hartree and exchange) forces
+  !
+  if( has_auxil_basis ) then
+    call force_twobody_ri(basis, auxil_basis, occupation, c_matrix, p_matrix)
+  else
+    call force_twobody_4center(basis, p_matrix)
+  end if
+
+  !
+  ! Exchange-correlation forces (including grid response)
+  !
+  force_exc(:, :) = 0.0_dp
+  if( calc_type%is_dft ) then
+    if( calc_type%need_exchange_lr ) call die('calculate_force: range-separated hybrids are not implemented')
+    call init_dft_grid(basis, grid_level, dft_xc(1)%needs_gradient, .FALSE., BATCH_SIZE)
+    allocate(vxc_ao(basis%nbf, basis%nbf, nspin))
+    call dft_exc_vxc_batch(BATCH_SIZE, basis, occupation, c_matrix, vxc_ao, exc_xc, xc_force=force_exc)
+    deallocate(vxc_ao)
+    call destroy_dft_grid()
+  end if
+
+  ! is_core is an inefficient way to get the Kinetic+Nucleus hamiltonian
+  if( calc_type%is_core ) force_har(:, :) = 0.0_dp
+
+
+
+  !
+  ! Total forces
+  !
+  force(:, :) = force_nuc_nuc(:, :) + force_ovp(:, :) &
+               + force_kin(:, :) + force_nuc(:, :) + force_har(:, :) + force_exx(:, :) * alpha_hybrid + force_exc(:, :)
+
+
+  write(stdout, '(/,1x,a)') ' ====== Hellman-Feynman Forces ====== '
+  write(*, '(1x,a,22x,a,19x,a,19x,a)') 'Atoms', 'Fx', 'Fy','Fz'
+  do iatom=1, natom
+    write(*, '(3x,a,i4,a,2x,3(2x,f19.10))') 'H-F force atom   ', iatom, ':', force_hellfeyn(:, iatom)
+  end do
+  write(stdout, '(/,1x,a)') ' ====== Pulay Forces ====== '
+  write(*, '(1x,a,22x,a,19x,a,19x,a)') 'Atoms', 'Fx', 'Fy','Fz'
+  do iatom=1, natom
+    write(*, '(3x,a,i4,a,2x,3(2x,f19.10))') 'Pulay force atom ', iatom, ':', force(:, iatom) - force_hellfeyn(:, iatom)
+  end do
+  write(stdout, '(/,1x,a)') ' ====== Total Forces ====== '
+  write(*, '(1x,a,22x,a,19x,a,19x,a)') 'Atoms', 'Fx', 'Fy','Fz'
+  do iatom=1, natom
+    write(*, '(3x,a,i4,a,2x,3(2x,f19.10))') 'Total force atom ', iatom, ':', force(:, iatom)
+  end do
+  write(stdout, '(1x,a,/)') ' ==================== '
+
+
+  deallocate(p_matrix)
+  deallocate(r_matrix)
+
+  call timer_force%stop()
+
+
+end subroutine calculate_force
+
+
+!=========================================================================
+! Write the last calculated total force in the yaml file
+! (before the removal of the net force and torque done for the relaxation)
+subroutine print_force_yaml()
+  !=====
+  integer  :: iatom
+  real(dp) :: force_total(3, ncenter_nuclei)
+  !=====
+
+  if( .NOT. ( print_yaml_ .AND. is_iomaster ) ) return
+
+  force_total(:, :) = force_nuc_nuc(:, :) + force_ovp(:, :) + force_kin(:, :) + force_nuc(:, :) + force_har(:, :) &
+                      + alpha_hybrid * force_exx(:, :) + force_exc(:, :)
+
+  write(unit_yaml, '(/,a)') 'forces:'
+  write(unit_yaml, '(4x,a)') 'unit: Ha/bohr'
+  write(unit_yaml, '(4x,a)') 'total:'
+  do iatom=1, ncenter_nuclei
+    write(unit_yaml, '(8x,a,"[ ",es18.10,", ",es18.10,", ",es18.10,"]")') '- ', force_total(:, iatom)
+  end do
+
+end subroutine print_force_yaml
+
+
+!=========================================================================
+! Hartree and exchange forces with 4-center integral gradients
+!
+subroutine force_twobody_4center(basis, p_matrix)
+
+  type(basis_set), intent(inout) :: basis
+  real(dp), intent(in)           :: p_matrix(:, :, :)
+  !=====
+  real(dp), parameter      :: TOL_DENSITY_MATRIX=1.0e-6
+  integer                 :: ijshellpair, klshellpair
+  integer                 :: iatom
+  integer                 :: ibf, jbf, kbf, lbf
+  integer                 :: ishell, jshell, kshell, lshell
+  integer                 :: ni, nj, nk, nl
+  real(dp)                :: fact
+  real(dp), allocatable    :: shell_gradA(:, :, :, :, :)
+  real(dp), allocatable    :: shell_gradB(:, :, :, :, :)
+  real(dp), allocatable    :: shell_gradC(:, :, :, :, :)
+  real(dp), allocatable    :: shell_gradD(:, :, :, :, :)
+  logical, allocatable     :: skip_shellpair(:, :)
+  !=====
 
   !
   ! Filter out the low density matrix shells
@@ -88,69 +255,11 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
                                  COUNT( skip_shellpair(:, :) ), ' / ', basis%nshell**2
 
 
-  !
-  ! Nucleus-nucleus repulsion forces
-  !
-  call nucleus_nucleus_force()
-
-
-  !
-  ! Energy density matrix forces
-  !
-  allocate(grad_onebody(basis%nbf, basis%nbf, 3))
-  call setup_overlap_grad(basis, grad_onebody)
-
-  force_ovp(:, :) = 0.0_dp
-  do ibf=1, basis%nbf
-    iatom = basis%bff(ibf)%icenter
-    force_ovp(:, iatom) = force_ovp(:, iatom) + 2.0_dp * MATMUL( r_matrix(ibf, :) , grad_onebody(:, ibf, :) )
-  end do
-  deallocate(grad_onebody)
-
-
-  !
-  ! Kinetic energy forces
-  !
-  allocate(grad_onebody(basis%nbf, basis%nbf, 3))
-  call setup_kinetic_grad(basis, grad_onebody)
-
-  force_kin(:, :) = 0.0_dp
-  do ibf=1, basis%nbf
-    iatom = basis%bff(ibf)%icenter
-    force_kin(:, iatom) = force_kin(:, iatom) + 2.0_dp * MATMUL( SUM( p_matrix(ibf, :, :), DIM=2) , grad_onebody(ibf, :, :) )
-  end do
-  deallocate(grad_onebody)
-
-
-  !
-  ! Nucleus energy forces
-  !
-  allocate(grad_nucleus(basis%nbf, basis%nbf, natom+1, 3))
-  call setup_nucleus_grad(basis, grad_nucleus)
-
-  force_nuc(:, :) = 0.0_dp
-  do ibf=1, basis%nbf
-    iatom = basis%bff(ibf)%icenter
-    force_nuc(:, iatom) = force_nuc(:, iatom) &
-        + 2.0_dp * MATMUL( SUM( p_matrix(ibf, :, :), DIM=2) , grad_nucleus(ibf, :, natom+1, :) )
-  end do
-
-  force_hellfeyn(:, :) = 0.0_dp
-  do iatom=1, natom
-    force_hellfeyn(1, iatom) = force_hellfeyn(1, iatom) + SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 1) )
-    force_hellfeyn(2, iatom) = force_hellfeyn(2, iatom) + SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 2) )
-    force_hellfeyn(3, iatom) = force_hellfeyn(3, iatom) + SUM( SUM( p_matrix(:, :, :), DIM=3 ) * grad_nucleus(:, :, iatom, 3) )
-  end do
-  force_nuc(:, :) = force_nuc(:, :) + force_hellfeyn(:, :)
-
-
-  deallocate(grad_nucleus)
-
 
   !
   ! Hartree-Fock energy forces
   !
-  write(stdout, '(1x,a)') 'Calculate the Hartee-Fock part with 4-center integrals gradient (LIBINT)'
+  write(stdout, '(1x,a)') 'Calculate the Hartree-Fock part with 4-center integrals gradient'
 
 
   force_har(:, :) = 0.0_dp
@@ -432,43 +541,222 @@ subroutine calculate_force(basis, occupation, energy, c_matrix)
 
   deallocate(skip_shellpair)
 
-  ! is_core is an inefficient way to get the Kinetic+Nucleus hamiltonian
-  if( calc_type%is_core ) force_har(:, :) = 0.0_dp
+end subroutine force_twobody_4center
 
 
+!=========================================================================
+! Hartree and exchange forces with RI (Coulomb metric V_PQ = (P|Q))
+!  E_J = 1/2 t^T V^{-1} t                            t_P   = \sum_ik P_ik (ik|P)
+!  E_K = -sf/2 \sum_s \sum_ab y_ab^T V^{-1} y_ab     y_abP = \sum_ik ct_ai ct_bk (ik|P),  ct_ai = sqrt(f_a/sf) C_ia
+!  dE  = \sum_ikP G_ikP d(ik|P)/dR + \sum_PQ W_PQ d(P|Q)/dR
+!  G_ikP = P_ik d_P - sf \sum_s (ct^T Z_P ct)_ik     d = V^{-1} t,  Z_ab = V^{-1} y_ab
+!  W_PQ  = -1/2 d_P d_Q + sf/2 \sum_s \sum_ab Z_abP Z_abQ
+!
+subroutine force_twobody_ri(basis, auxil_basis, occupation, c_matrix, p_matrix)
+
+  type(basis_set), intent(in) :: basis
+  type(basis_set), intent(in) :: auxil_basis
+  real(dp), intent(in)        :: occupation(:, :)
+  real(dp), intent(in)        :: c_matrix(:, :, :)
+  real(dp), intent(in)        :: p_matrix(:, :, :)
+  !=====
+  integer               :: nbf, nauxil, nocc, nkept
+  integer               :: ispin, istate, ipair, iswap, idir, iauxil
+  integer               :: ishell, kshell, pshell, qshell
+  integer               :: ibf1, ibf2, kbf1, kbf2, pbf1, pbf2, qbf1, qbf2, pbf
+  integer               :: iatom, patom
+  real(dp)              :: val_j(3), val_k(3)
+  real(dp), allocatable :: p_total(:, :)
+  real(dp), allocatable :: ct(:, :, :)
+  real(dp), allocatable :: t_vector(:), d_vector(:)
+  real(dp), allocatable :: y_matrix(:, :, :), z_matrix(:, :, :)
+  real(dp), allocatable :: v_matrix(:, :), v_inv(:, :), eigvec(:, :), eigval(:)
+  real(dp), allocatable :: w_j(:, :), w_k(:, :)
+  real(dp), allocatable :: eri3(:, :, :), g_j(:, :, :), g_k(:, :, :)
+  real(dp), allocatable :: integrals(:, :, :), integrals2(:, :)
+  real(dp), allocatable :: grad3(:, :, :, :), grad2(:, :, :)
+  real(dp), allocatable :: grad_j(:, :), grad_k(:, :)
+  !=====
+
+  write(stdout, '(1x,a)') 'Calculate the Hartree and exchange forces with RI'
+
+  nbf    = basis%nbf
+  nauxil = auxil_basis%nbf
+  nocc   = get_number_occupied_states(occupation)
+
+  allocate(p_total(nbf, nbf))
+  p_total(:, :) = SUM(p_matrix(:, :, :), DIM=3)
+
+  ! ct_ai = sqrt(f_a / sf) C_ia
+  allocate(ct(nocc, nbf, nspin))
+  do ispin=1, nspin
+    do istate=1, nocc
+      ct(istate, :, ispin) = c_matrix(:, istate, ispin) * SQRT( MAX(occupation(istate, ispin), 0.0_dp) / spin_fact )
+    end do
+  end do
 
   !
-  ! Total forces
+  ! t_P and y_abP from the 3-center integrals
+  allocate(t_vector(nauxil), y_matrix(nocc*nocc, nauxil, nspin))
+  t_vector(:) = 0.0_dp
+  y_matrix(:, :, :) = 0.0_dp
+  do pshell=1, auxil_basis%nshell
+    if( MODULO(pshell - 1, world%nproc) /= world%rank ) cycle
+    pbf1 = auxil_basis%shell(pshell)%istart
+    pbf2 = auxil_basis%shell(pshell)%iend
+    allocate(eri3(nbf, nbf, pbf2 - pbf1 + 1))
+    eri3(:, :, :) = 0.0_dp
+    do ipair=1, nshellpair
+      ishell = index_shellpair(1, ipair)
+      kshell = index_shellpair(2, ipair)
+      ibf1 = basis%shell(ishell)%istart
+      ibf2 = basis%shell(ishell)%iend
+      kbf1 = basis%shell(kshell)%istart
+      kbf2 = basis%shell(kshell)%iend
+      call libcint_3center_shell(basis, auxil_basis, ishell, kshell, pshell, integrals)
+      eri3(ibf1:ibf2, kbf1:kbf2, :) = integrals(:, :, :)
+      eri3(kbf1:kbf2, ibf1:ibf2, :) = RESHAPE(integrals, [kbf2-kbf1+1, ibf2-ibf1+1, pbf2-pbf1+1], ORDER=[2, 1, 3])
+    end do
+    do pbf=pbf1, pbf2
+      t_vector(pbf) = SUM( p_total(:, :) * eri3(:, :, pbf-pbf1+1) )
+      do ispin=1, nspin
+        y_matrix(:, pbf, ispin) = RESHAPE( MATMUL( ct(:, :, ispin), &
+                                           MATMUL( eri3(:, :, pbf-pbf1+1), TRANSPOSE(ct(:, :, ispin)) ) ), [nocc*nocc] )
+      end do
+    end do
+    deallocate(eri3)
+  end do
+  call world%sum(t_vector)
+  call world%sum(y_matrix)
+
   !
-  force(:, :) = force_nuc_nuc(:, :) + force_ovp(:, :) &
-               + force_kin(:, :) + force_nuc(:, :) + force_har(:, :) + force_exx(:, :) * alpha_hybrid
-
-
-  write(stdout, '(/,1x,a)') ' ====== Hellman-Feynman Forces ====== '
-  write(*, '(1x,a,22x,a,19x,a,19x,a)') 'Atoms', 'Fx', 'Fy','Fz'
-  do iatom=1, natom
-    write(*, '(3x,a,i4,a,2x,3(2x,f19.10))') 'H-F force atom   ', iatom, ':', force_hellfeyn(:, iatom)
+  ! V^{-1} with the same eigenvalue filtering as in the SCF
+  allocate(v_matrix(nauxil, nauxil))
+  do pshell=1, auxil_basis%nshell
+    pbf1 = auxil_basis%shell(pshell)%istart
+    pbf2 = auxil_basis%shell(pshell)%iend
+    do qshell=1, auxil_basis%nshell
+      qbf1 = auxil_basis%shell(qshell)%istart
+      qbf2 = auxil_basis%shell(qshell)%iend
+      call libcint_2center_shell(auxil_basis, pshell, qshell, integrals2)
+      v_matrix(pbf1:pbf2, qbf1:qbf2) = integrals2(:, :)
+    end do
   end do
-  write(stdout, '(/,1x,a)') ' ====== Pulay Forces ====== '
-  write(*, '(1x,a,22x,a,19x,a,19x,a)') 'Atoms', 'Fx', 'Fy','Fz'
-  do iatom=1, natom
-    write(*, '(3x,a,i4,a,2x,3(2x,f19.10))') 'Pulay force atom ', iatom, ':', force(:, iatom) - force_hellfeyn(:, iatom)
+  allocate(eigval(nauxil), eigvec(nauxil, nauxil), v_inv(nauxil, nauxil))
+  call diagonalize(' ', v_matrix, eigval, eigvec)
+  nkept = 0
+  v_inv(:, :) = 0.0_dp
+  do iauxil=1, nauxil
+    if( eigval(iauxil) <= TOO_LOW_EIGENVAL ) cycle
+    nkept = nkept + 1
+    call DSYR('L', nauxil, 1.0_dp / eigval(iauxil), eigvec(:, iauxil), 1, v_inv, nauxil)
   end do
-  write(stdout, '(/,1x,a)') ' ====== Total Forces ====== '
-  write(*, '(1x,a,22x,a,19x,a,19x,a)') 'Atoms', 'Fx', 'Fy','Fz'
-  do iatom=1, natom
-    write(*, '(3x,a,i4,a,2x,3(2x,f19.10))') 'Total force atom ', iatom, ':', force(:, iatom)
+  do iauxil=1, nauxil
+    v_inv(iauxil, iauxil+1:) = v_inv(iauxil+1:, iauxil)
   end do
-  write(stdout, '(1x,a,/)') ' ==================== '
+  if( nkept < nauxil ) then
+    call issue_warning('force_twobody_ri: auxiliary eigenvalues were filtered out, RI forces are not exact')
+  end if
+  deallocate(v_matrix, eigval, eigvec)
 
+  ! d = V^{-1} t,  Z_ab = V^{-1} y_ab
+  allocate(d_vector(nauxil), z_matrix(nocc*nocc, nauxil, nspin))
+  d_vector(:) = MATMUL(v_inv, t_vector)
+  do ispin=1, nspin
+    z_matrix(:, :, ispin) = MATMUL(y_matrix(:, :, ispin), v_inv)
+  end do
+  deallocate(v_inv, y_matrix, t_vector)
 
-  deallocate(p_matrix)
-  deallocate(r_matrix)
+  ! W_J = -1/2 d d^T,  W_K = sf/2 \sum_s Z^T Z
+  allocate(w_j(nauxil, nauxil), w_k(nauxil, nauxil))
+  do iauxil=1, nauxil
+    w_j(:, iauxil) = -0.5_dp * d_vector(:) * d_vector(iauxil)
+  end do
+  w_k(:, :) = 0.0_dp
+  do ispin=1, nspin
+    w_k(:, :) = w_k(:, :) + 0.5_dp * spin_fact * MATMUL( TRANSPOSE(z_matrix(:, :, ispin)), z_matrix(:, :, ispin) )
+  end do
 
-  call timer_force%stop()
+  allocate(grad_j(3, natom), grad_k(3, natom))
+  grad_j(:, :) = 0.0_dp
+  grad_k(:, :) = 0.0_dp
 
+  !
+  ! 3-center derivatives: dE/dR_A = 2 \sum_{i \in A} \sum_kP G_ikP d(ik|P)/dR_i - 2 \sum_{P \in A} \sum_ik G_ikP d(ik|P)/dR_i
+  do pshell=1, auxil_basis%nshell
+    if( MODULO(pshell - 1, world%nproc) /= world%rank ) cycle
+    pbf1  = auxil_basis%shell(pshell)%istart
+    pbf2  = auxil_basis%shell(pshell)%iend
+    patom = auxil_basis%shell(pshell)%icenter
+    allocate(g_j(nbf, nbf, pbf2 - pbf1 + 1), g_k(nbf, nbf, pbf2 - pbf1 + 1))
+    do pbf=pbf1, pbf2
+      g_j(:, :, pbf-pbf1+1) = p_total(:, :) * d_vector(pbf)
+      g_k(:, :, pbf-pbf1+1) = 0.0_dp
+      do ispin=1, nspin
+        g_k(:, :, pbf-pbf1+1) = g_k(:, :, pbf-pbf1+1) - spin_fact &
+                   * MATMUL( TRANSPOSE(ct(:, :, ispin)), MATMUL( RESHAPE(z_matrix(:, pbf, ispin), [nocc, nocc]), ct(:, :, ispin) ) )
+      end do
+    end do
 
-end subroutine calculate_force
+    do ipair=1, nshellpair
+      do iswap=1, 2
+        if( iswap == 1 ) then
+          ishell = index_shellpair(1, ipair)
+          kshell = index_shellpair(2, ipair)
+        else
+          if( index_shellpair(1, ipair) == index_shellpair(2, ipair) ) cycle
+          ishell = index_shellpair(2, ipair)
+          kshell = index_shellpair(1, ipair)
+        end if
+        ibf1  = basis%shell(ishell)%istart
+        ibf2  = basis%shell(ishell)%iend
+        kbf1  = basis%shell(kshell)%istart
+        kbf2  = basis%shell(kshell)%iend
+        iatom = basis%shell(ishell)%icenter
+        ! grad3 = ( \nabla_r i k | P ) = - d(ik|P)/dR_i
+        call libcint_3center_ip1_shell(basis, auxil_basis, ishell, kshell, pshell, grad3)
+        do idir=1, 3
+          val_j(idir) = -SUM( g_j(ibf1:ibf2, kbf1:kbf2, :) * grad3(:, :, :, idir) )
+          val_k(idir) = -SUM( g_k(ibf1:ibf2, kbf1:kbf2, :) * grad3(:, :, :, idir) )
+        end do
+        grad_j(:, iatom) = grad_j(:, iatom) + 2.0_dp * val_j(:)
+        grad_j(:, patom) = grad_j(:, patom) - 2.0_dp * val_j(:)
+        grad_k(:, iatom) = grad_k(:, iatom) + 2.0_dp * val_k(:)
+        grad_k(:, patom) = grad_k(:, patom) - 2.0_dp * val_k(:)
+      end do
+    end do
+    deallocate(g_j, g_k)
+  end do
+
+  !
+  ! 2-center derivatives: dE/dR_A = 2 \sum_{P \in A} \sum_Q W_PQ d(P|Q)/dR_P
+  do pshell=1, auxil_basis%nshell
+    if( MODULO(pshell - 1, world%nproc) /= world%rank ) cycle
+    pbf1  = auxil_basis%shell(pshell)%istart
+    pbf2  = auxil_basis%shell(pshell)%iend
+    patom = auxil_basis%shell(pshell)%icenter
+    do qshell=1, auxil_basis%nshell
+      qbf1 = auxil_basis%shell(qshell)%istart
+      qbf2 = auxil_basis%shell(qshell)%iend
+      ! grad2 = ( \nabla_r P | Q ) = - d(P|Q)/dR_P
+      call libcint_2center_ip1_shell(auxil_basis, pshell, qshell, grad2)
+      do idir=1, 3
+        grad_j(idir, patom) = grad_j(idir, patom) - 2.0_dp * SUM( w_j(pbf1:pbf2, qbf1:qbf2) * grad2(:, :, idir) )
+        grad_k(idir, patom) = grad_k(idir, patom) - 2.0_dp * SUM( w_k(pbf1:pbf2, qbf1:qbf2) * grad2(:, :, idir) )
+      end do
+    end do
+  end do
+
+  call world%sum(grad_j)
+  call world%sum(grad_k)
+
+  ! F = - dE/dR
+  force_har(:, :) = -grad_j(:, :)
+  force_exx(:, :) = -grad_k(:, :)
+
+  deallocate(grad_j, grad_k, w_j, w_k, d_vector, z_matrix, ct, p_total)
+
+end subroutine force_twobody_ri
 
 
 end module m_force

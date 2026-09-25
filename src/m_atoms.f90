@@ -326,6 +326,8 @@ subroutine relax_atoms(lbfgs_plan, etotal)
   real(dp) :: xnew(3, ncenter_nuclei)
   !=====
 
+  call remove_rigid_motion_force()
+
   xnew(:, :) = xatom(:, :)
 
   info = lbfgs_execute(lbfgs_plan, xnew, etotal, -force)
@@ -344,6 +346,68 @@ subroutine relax_atoms(lbfgs_plan, etotal)
   xbasis(:, :) = xnew(:, :)
 
 end subroutine relax_atoms
+
+
+!=========================================================================
+! Remove the net force and the net torque, which are only numerical noise (e.g. from the DFT grid)
+! F' = F - \sum_k ( v_k . F ) v_k,  v_k orthonormalized rigid motions in 3N space:
+!   translations  t_k,i = e_k,   rotations  r_k,i = e_k x ( R_i - C ),  C geometric center
+subroutine remove_rigid_motion_force()
+  !=====
+  integer  :: natom_relax, iatom, idir, imode, jmode, nmode
+  real(dp) :: center(3), vnorm, removed
+  real(dp) :: modes(3, ncenter_nuclei, 6), unit_vec(3)
+  !=====
+
+  natom_relax = ncenter_nuclei - nprojectile
+  if( natom_relax < 2 ) return
+
+  center(:) = SUM(xatom(:, 1:natom_relax), DIM=2) / REAL(natom_relax, dp)
+
+  nmode = 0
+  do idir=1, 3
+    unit_vec(:) = 0.0_dp
+    unit_vec(idir) = 1.0_dp
+    ! Translation
+    nmode = nmode + 1
+    do iatom=1, natom_relax
+      modes(:, iatom, nmode) = unit_vec(:)
+    end do
+  end do
+  do idir=1, 3
+    unit_vec(:) = 0.0_dp
+    unit_vec(idir) = 1.0_dp
+    ! Rotation
+    nmode = nmode + 1
+    do iatom=1, natom_relax
+      modes(1, iatom, nmode) = unit_vec(2) * ( xatom(3, iatom) - center(3) ) - unit_vec(3) * ( xatom(2, iatom) - center(2) )
+      modes(2, iatom, nmode) = unit_vec(3) * ( xatom(1, iatom) - center(1) ) - unit_vec(1) * ( xatom(3, iatom) - center(3) )
+      modes(3, iatom, nmode) = unit_vec(1) * ( xatom(2, iatom) - center(2) ) - unit_vec(2) * ( xatom(1, iatom) - center(1) )
+    end do
+  end do
+
+  ! Gram-Schmidt (a linear molecule has only 2 independent rotations)
+  jmode = 0
+  do imode=1, nmode
+    do idir=1, jmode
+      modes(:, 1:natom_relax, imode) = modes(:, 1:natom_relax, imode) &
+             - SUM( modes(:, 1:natom_relax, idir) * modes(:, 1:natom_relax, imode) ) * modes(:, 1:natom_relax, idir)
+    end do
+    vnorm = SQRT( SUM( modes(:, 1:natom_relax, imode)**2 ) )
+    if( vnorm < 1.0e-8_dp ) cycle
+    jmode = jmode + 1
+    modes(:, 1:natom_relax, jmode) = modes(:, 1:natom_relax, imode) / vnorm
+  end do
+
+  removed = 0.0_dp
+  do imode=1, jmode
+    vnorm = SUM( modes(:, 1:natom_relax, imode) * force(:, 1:natom_relax) )
+    force(:, 1:natom_relax) = force(:, 1:natom_relax) - vnorm * modes(:, 1:natom_relax, imode)
+    removed = removed + vnorm**2
+  end do
+  write(stdout, '(1x,a,es12.4)') 'Norm of the net force and torque removed before relaxation: ', SQRT(removed)
+
+end subroutine remove_rigid_motion_force
 
 
 !=========================================================================

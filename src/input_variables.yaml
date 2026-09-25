@@ -294,7 +294,7 @@ move_nuclei:
   experimental: 'no'
   default: 'no'
   comment: Tells the code to move or not the position of the nuclei. Available options
-    are 'no' or 'relax'.
+    are 'no', 'relax' (geometry optimization) or 'force' (forces at the input geometry, no motion).
 
 nstep:
   family: general

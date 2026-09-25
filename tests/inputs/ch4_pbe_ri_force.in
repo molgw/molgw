@@ -1,0 +1,18 @@
+&molgw
+ comment='CH4 PBE forces with RI'
+ move_nuclei='force'
+ scf='pbe'
+ tolscf=1.0e-10
+ nscf=80
+ read_restart='no'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+
+ natom=5
+/
+C   0.02  -0.03   0.01
+H   0.66   0.62   0.60
+H  -0.60  -0.66   0.64
+H  -0.63   0.65  -0.58
+H   0.65  -0.60  -0.69

@@ -462,7 +462,8 @@ def main():
     have_onebody       = 'Running with external LIBINT or LIBCINT calculation of the one-body operators' in fake_content
     have_gradients     = ('Running with external LIBINT calculation of the gradients of the one-body integrals' in fake_content
                           or 'Code compiled with LIBCINT' in fake_content)
-    have_libint_forces = False  # FIXME: force calculation is broken as of today
+    have_forces        = ('Running with external LIBINT calculation of the gradients of the Coulomb integrals' in fake_content
+                          or 'Code compiled with LIBCINT' in fake_content)
     is_libcint         = 'Code compiled with LIBCINT support' in fake_content
     have_hdf5          = 'Running with HDF5' in fake_content
     have_fftw3         = 'Running with FFTW3' in fake_content
@@ -478,7 +479,7 @@ def main():
     print(f'                  integrals: {"LIBCINT" if is_libcint else "LIBINT"}')
     print(f'           1-body integrals: {have_onebody}')
     print(f'        gradients integrals: {have_gradients}')
-    print(f' LIBINT gradients integrals: {have_libint_forces}')
+    print(f'            force integrals: {have_forces}')
     print()
 
     if have_openmp:
@@ -537,7 +538,7 @@ def main():
                 skip_msg = 'this compilation of MOLGW does not have SCALAPACK'
             elif test.need_gradients and not have_gradients:
                 skip_msg = 'this compilation of MOLGW does not have the integral gradients'
-            elif test.need_forces and not have_libint_forces:
+            elif test.need_forces and not have_forces:
                 skip_msg = 'this compilation of MOLGW does not have the force integrals'
             elif not test.parallel and nprocs > 1:
                 skip_msg = 'this test is only serial'

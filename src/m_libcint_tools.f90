@@ -62,6 +62,73 @@ module m_libcint_tools
       type(C_PTR), value :: opt
     end function cint2e_cart
 
+    ! ( \nabla_r i j | k l ): 3 components
+    integer(C_INT) function cint2e_ip1_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint2e_ip1_cart
+
+    ! ( \nabla_r i j | P ): 3 components
+    integer(C_INT) function cint3c2e_ip1_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint3c2e_ip1_cart
+
+    integer(C_INT) function cint3c2e_ip1_sph(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint3c2e_ip1_sph
+
+    ! ( i j | \nabla_r P ): 3 components
+    integer(C_INT) function cint3c2e_ip2_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint3c2e_ip2_cart
+
+    integer(C_INT) function cint3c2e_ip2_sph(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint3c2e_ip2_sph
+
+    ! ( \nabla_r P | Q ): 3 components
+    integer(C_INT) function cint2c2e_ip1_cart(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint2c2e_ip1_cart
+
+    integer(C_INT) function cint2c2e_ip1_sph(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
+      import :: C_INT, C_DOUBLE, C_PTR
+      integer(C_INT), value  :: natm, nbas
+      real(C_DOUBLE), intent(in) :: env(*)
+      integer(C_INT), intent(in) :: shls(*), atm(*), bas(*)
+      real(C_DOUBLE), intent(out) :: array_cart(*)
+      type(C_PTR), value :: opt
+    end function cint2c2e_ip1_sph
+
     integer(C_INT) function cint2c2e_sph(array_cart, shls, atm, natm, bas, nbas, env, opt) bind(C)
       import :: C_INT, C_DOUBLE, C_PTR
       integer(C_INT), value  :: natm, nbas
@@ -1035,6 +1102,172 @@ subroutine libcint_elecpot_grad(amA, contrdepthA, A, alphaA, cA, &
 
 
 end subroutine libcint_elecpot_grad
+
+
+!=========================================================================
+! ( i k | P ): integrals(ni, nk, np)
+! basis contains the joint (basis, auxil_basis) LIBCINT environment
+subroutine libcint_3center_shell(basis, auxil_basis, ishell, kshell, pshell, integrals)
+  type(basis_set), intent(in)        :: basis, auxil_basis
+  integer, intent(in)                :: ishell, kshell, pshell
+  real(dp), allocatable, intent(out) :: integrals(:, :, :)
+  !=====
+  integer                     :: ami, amk, amp, ni, nk, np
+  integer(C_INT)              :: info, shls(3)
+  real(C_DOUBLE), allocatable :: int_shell(:)
+  real(dp), allocatable       :: tmp(:, :, :)
+  !=====
+
+  ami = basis%shell(ishell)%am
+  amk = basis%shell(kshell)%am
+  amp = auxil_basis%shell(pshell)%am
+  ni  = number_basis_function_am(basis%gaussian_type, ami)
+  nk  = number_basis_function_am(basis%gaussian_type, amk)
+  np  = number_basis_function_am(auxil_basis%gaussian_type, amp)
+  allocate(int_shell(ni*nk*np))
+
+  shls(1) = kshell - 1
+  shls(2) = ishell - 1
+  shls(3) = basis%LIBCINT_offset + pshell - 1
+#if defined(HAVE_LIBCINT)
+  if( basis%gaussian_type == 'CART' ) then
+    info = cint3c2e_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                         basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, C_NULL_PTR)
+  else
+    info = cint3c2e_sph(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                        basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, C_NULL_PTR)
+  end if
+#endif
+  ! tmp(P, i, k)
+  call transform_libcint_to_molgw(auxil_basis%gaussian_type, amp, basis%gaussian_type, ami, amk, int_shell, tmp)
+  allocate(integrals(ni, nk, np))
+  integrals(:, :, :) = RESHAPE(tmp, [ni, nk, np], ORDER=[3, 1, 2])
+
+end subroutine libcint_3center_shell
+
+
+!=========================================================================
+! ( \nabla_r i k | P ) = - d/dR_i ( i k | P ): integrals_grad(ni, nk, np, 3)
+! basis contains the joint (basis, auxil_basis) LIBCINT environment
+subroutine libcint_3center_ip1_shell(basis, auxil_basis, ishell, kshell, pshell, integrals_grad)
+  type(basis_set), intent(in)        :: basis, auxil_basis
+  integer, intent(in)                :: ishell, kshell, pshell
+  real(dp), allocatable, intent(out) :: integrals_grad(:, :, :, :)
+  !=====
+  integer                     :: ami, amk, amp, ni, nk, np, idir
+  integer(C_INT)              :: info, shls(3)
+  real(C_DOUBLE), allocatable :: int_shell(:, :)
+  real(dp), allocatable       :: tmp(:, :, :)
+  !=====
+
+  ami = basis%shell(ishell)%am
+  amk = basis%shell(kshell)%am
+  amp = auxil_basis%shell(pshell)%am
+  ni  = number_basis_function_am(basis%gaussian_type, ami)
+  nk  = number_basis_function_am(basis%gaussian_type, amk)
+  np  = number_basis_function_am(auxil_basis%gaussian_type, amp)
+  allocate(int_shell(ni*nk*np, 3))
+
+  ! ip1 acts on the first shell
+  shls(1) = ishell - 1
+  shls(2) = kshell - 1
+  shls(3) = basis%LIBCINT_offset + pshell - 1
+#if defined(HAVE_LIBCINT)
+  if( basis%gaussian_type == 'CART' ) then
+    info = cint3c2e_ip1_cart(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                             basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, C_NULL_PTR)
+  else
+    info = cint3c2e_ip1_sph(int_shell, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                            basis%LIBCINT_bas, basis%LIBCINT_nbas, basis%LIBCINT_env, C_NULL_PTR)
+  end if
+#endif
+  allocate(integrals_grad(ni, nk, np, 3))
+  do idir=1, 3
+    ! tmp(P, k, i)
+    call transform_libcint_to_molgw(auxil_basis%gaussian_type, amp, basis%gaussian_type, amk, ami, int_shell(:, idir), tmp)
+    integrals_grad(:, :, :, idir) = RESHAPE(tmp, [ni, nk, np], ORDER=[3, 2, 1])
+  end do
+
+end subroutine libcint_3center_ip1_shell
+
+
+!=========================================================================
+! ( P | Q ): integrals(np, nq)
+subroutine libcint_2center_shell(auxil_basis, pshell, qshell, integrals)
+  type(basis_set), intent(in)        :: auxil_basis
+  integer, intent(in)                :: pshell, qshell
+  real(dp), allocatable, intent(out) :: integrals(:, :)
+  !=====
+  integer                     :: amp, amq, np, nq
+  integer(C_INT)              :: info, shls(2)
+  real(C_DOUBLE), allocatable :: int_shell(:)
+  real(dp), allocatable       :: tmp(:, :)
+  !=====
+
+  amp = auxil_basis%shell(pshell)%am
+  amq = auxil_basis%shell(qshell)%am
+  np  = number_basis_function_am(auxil_basis%gaussian_type, amp)
+  nq  = number_basis_function_am(auxil_basis%gaussian_type, amq)
+  allocate(int_shell(np*nq))
+
+  shls(1) = pshell - 1
+  shls(2) = qshell - 1
+#if defined(HAVE_LIBCINT)
+  if( auxil_basis%gaussian_type == 'CART' ) then
+    info = cint2c2e_cart(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
+                         auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, C_NULL_PTR)
+  else
+    info = cint2c2e_sph(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
+                        auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, C_NULL_PTR)
+  end if
+#endif
+  ! tmp(Q, P)
+  call transform_libcint_to_molgw(auxil_basis%gaussian_type, amq, amp, int_shell, tmp)
+  allocate(integrals(np, nq))
+  integrals(:, :) = TRANSPOSE(tmp)
+
+end subroutine libcint_2center_shell
+
+
+!=========================================================================
+! ( \nabla_r P | Q ) = - d/dR_P ( P | Q ): integrals_grad(np, nq, 3)
+subroutine libcint_2center_ip1_shell(auxil_basis, pshell, qshell, integrals_grad)
+  type(basis_set), intent(in)        :: auxil_basis
+  integer, intent(in)                :: pshell, qshell
+  real(dp), allocatable, intent(out) :: integrals_grad(:, :, :)
+  !=====
+  integer                     :: amp, amq, np, nq, idir
+  integer(C_INT)              :: info, shls(2)
+  real(C_DOUBLE), allocatable :: int_shell(:, :)
+  real(dp), allocatable       :: tmp(:, :)
+  !=====
+
+  amp = auxil_basis%shell(pshell)%am
+  amq = auxil_basis%shell(qshell)%am
+  np  = number_basis_function_am(auxil_basis%gaussian_type, amp)
+  nq  = number_basis_function_am(auxil_basis%gaussian_type, amq)
+  allocate(int_shell(np*nq, 3))
+
+  ! ip1 acts on the first shell
+  shls(1) = pshell - 1
+  shls(2) = qshell - 1
+#if defined(HAVE_LIBCINT)
+  if( auxil_basis%gaussian_type == 'CART' ) then
+    info = cint2c2e_ip1_cart(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
+                             auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, C_NULL_PTR)
+  else
+    info = cint2c2e_ip1_sph(int_shell, shls, auxil_basis%LIBCINT_atm, auxil_basis%LIBCINT_natm, &
+                            auxil_basis%LIBCINT_bas, auxil_basis%LIBCINT_nbas, auxil_basis%LIBCINT_env, C_NULL_PTR)
+  end if
+#endif
+  allocate(integrals_grad(np, nq, 3))
+  do idir=1, 3
+    ! tmp(Q, P)
+    call transform_libcint_to_molgw(auxil_basis%gaussian_type, amq, amp, int_shell(:, idir), tmp)
+    integrals_grad(:, :, idir) = TRANSPOSE(tmp)
+  end do
+
+end subroutine libcint_2center_ip1_shell
 
 
 !=========================================================================

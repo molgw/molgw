@@ -294,7 +294,7 @@ m_fourier_quadrature.o: m_definitions.o m_warning.o m_timing.o m_atoms.o m_basis
 	$(FC_W_OPTS) -c m_fourier_quadrature.f90  $(LIBXC_INCS)
 
 m_force.o: m_definitions.o m_warning.o m_timing.o m_atoms.o m_basis_set.o m_inputparam.o m_hamiltonian_tools.o \
-         m_hamiltonian_onebody.o m_eri.o m_eri_calculate.o \
+         m_hamiltonian_onebody.o m_eri.o m_eri_calculate.o m_linear_algebra.o m_libcint_tools.o m_dft_grid.o m_hamiltonian_twobodies.o \
          m_force.f90
 	$(FC_W_OPTS) -c m_force.f90  $(LIBXC_INCS)
 

@@ -979,9 +979,15 @@ subroutine read_inputfile_namelist()
   call init_excitation_type()
   nprojectile = MERGE(1, 0, excit_type%form==EXCIT_PROJECTILE .OR. excit_type%form == EXCIT_PROJECTILE_W_BASIS)
 
+  select case(move_nuclei)
+  case('no', 'relax', 'force')
+  case default
+    call die('move_nuclei should be no, relax, or force')
+  end select
+
   !
   ! If no nuclei motion is requested, then override nstep and set it to 1
-  if( move_nuclei == 'no' ) then
+  if( move_nuclei /= 'relax' ) then
     nstep = 1
   end if
 
@@ -1396,6 +1402,10 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
       end if
     end do
   end do
+  ! ECP gradients are not implemented
+  if( move_nuclei /= 'no' .AND. ANY( ABS(zvalence(:) - zatom(:)) > 1.0e-5_dp ) ) then
+    call die('setup_nuclei: forces are not implemented with ECP. Set move_nuclei to no')
+  end if
 
   !
   ! At this stage, natom must be set to a positive value

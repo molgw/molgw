@@ -1,0 +1,15 @@
+&molgw
+ comment='H2 HF forces with RI'
+ move_nuclei='force'
+ scf='hf'
+ tolscf=1.0e-10
+ nscf=50
+ read_restart='no'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+
+ natom=2
+/
+H  -0.30  -0.20   0.10
+H   0.20   0.30  -0.25
