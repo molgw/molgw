@@ -2337,6 +2337,29 @@ ch4_pbe_ri_force.in:
             reference: -0.0052314898
             tolerance: 1.0e-06
             column: 1
+oh_pbe_ri_force.in:
+    description: OH PBE spin-polarized forces with RI
+    keywords: [DFT]
+    requirements: [HAVE_FORCES]
+    checks:
+    -   SCF Total Energy:
+            reference: -75.6476550552
+            tolerance: 1.0e-07
+    -   Total force atom    1:
+            reference: 0.0060170876
+            tolerance: 1.0e-06
+    -   Total force atom    1:
+            reference: 0.0055736671
+            tolerance: 1.0e-06
+            column: 1
+    -   Total force atom    1:
+            reference: -0.0042784296
+            tolerance: 1.0e-06
+            column: 2
+    -   Total force atom    2:
+            reference: 0.0042784296
+            tolerance: 1.0e-06
+            column: 2
 h2o_b3lyp_ri_relax.in:
     description: H2O B3LYP relaxation with RI from a distorted geometry
     keywords: [hybrid]

@@ -1402,6 +1402,10 @@ subroutine setup_nuclei(inputfile, basis, auxil_basis, small_basis, ecp_basis, e
       end if
     end do
   end do
+  ! ECP gradients are not implemented
+  if( move_nuclei /= 'no' .AND. ANY( ABS(zvalence(:) - zatom(:)) > 1.0e-5_dp ) ) then
+    call die('setup_nuclei: forces are not implemented with ECP. Set move_nuclei to no')
+  end if
 
   !
   ! At this stage, natom must be set to a positive value

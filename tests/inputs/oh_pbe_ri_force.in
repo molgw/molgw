@@ -1,0 +1,17 @@
+&molgw
+ comment='OH PBE spin-polarized forces with RI'
+ move_nuclei='force'
+ scf='pbe'
+ nspin=2
+ magnetization=1
+ tolscf=1.0e-10
+ nscf=100
+ read_restart='no'
+
+ basis='cc-pVDZ'
+ auxil_basis='cc-pVDZ-RI'
+
+ natom=2
+/
+O   0.05   0.02   0.10
+H   0.70   0.60  -0.40
