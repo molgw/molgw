@@ -127,7 +127,7 @@ python3 run_testsuite.py --list
 ### Test Structure
 
 - `tests/run_testsuite.py`: Main test runner (handles input validation, execution, output checking)
-- `tests/inputs/testsuite`: Database of all tests — defines which input files to run, their descriptions, per-test flags (`restart`, `noparallel`, `need_scalapack`, `need_gradients`, `need_libcint`, etc.), and the expected output checks (key string, reference value, field position, tolerance). **Edit this file when adding a new test.**
+- `tests/inputs/testsuite.yaml`: Database of all tests — defines which input files to run, their descriptions, per-test flags (`restart`, `noparallel`, `need_scalapack`, `need_gradients`, `need_libcint`, etc.), and the expected output checks (key string, reference value, field position, tolerance). **Edit this file when adding a new test.**
 - `tests/inputs/`: ~100 test input files covering HF, DFT, GW, MP2, CI, TDDFT, BSE, NOFT, etc.
 - `tests/data_for_tests/`: Reference data and expected outputs
 
@@ -253,7 +253,10 @@ When adding a new module, place it at the appropriate level and update the Makef
 - Comments should not be verbose: 1 line or 2
 - Do not add a comment where a bug is eliminated a few commits after being introduced. Only add bug comments for old bugs (say coming from another branch)
 - Git commit message should be short and informative.
-They should be formatted in this way: 1 line summary of the commit, 1 blank line, then a list a new files (if any), new tests (if any), new input variables (if any)
+They should be formatted in this way: 1 line summary of the commit, 1 blank line.
+If and only if a new file is introduced, list it.
+If and only if a new input variable is introduced, list it.
+If and only if a new test is introduced, list it.
 Commit message should be vendor-agnostic. Do not add any reference to the agent name here.
 
 
@@ -330,7 +333,7 @@ python3 run_testsuite.py --list
 | Fix integral evaluation | `src/libint_*.cpp` or `src/m_eri_calculate.f90` |
 | Debug SCF | `src/m_scf_loop.f90`, `src/m_hamiltonian_twobodies.f90` |
 | Extend GW | `src/m_gw_selfenergy_*.f90`, `src/m_spectral_function.f90` |
-| Add test | Create `tests/inputs/new_test.in`, add entry to `tests/inputs/testsuite` (input name, description, expected output checks) |
+| Add test | Create `tests/inputs/new_test.in`, add entry to `tests/inputs/testsuite.yaml` (input name, description, expected output checks) |
 | Optimize compilation | Update `my_machine.arch` or `src/Makefile` (e.g., FCFLAGS, LIBXC_ROOT) |
 
 ## Version and History

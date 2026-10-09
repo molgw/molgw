@@ -21,7 +21,7 @@
 - Mauricio Rodriguez-Mayorga (LCPQ, CNRS-Toulouse, France)
 - Marc Sarraute (AS+)
 - Guillaume Piris (SRMP, CEA, Université Paris-Saclay, France)
-- Caroline McKoen (UC Berkeley, USA)
+- Caroline McKeon (UC Berkeley, USA)
 
 ### Changes affecting the usage
 
