@@ -2446,17 +2446,19 @@ subroutine init_c_matrix_x2c(basis, c_matrix_rel, x_matrix_rel, hamiltonian_kin_
   complex(dp), intent(in)     :: hamiltonian_kin_nuc_rel(:, :)
   complex(dp), intent(inout)  :: c_matrix_rel(:, :), x_matrix_rel(:, :)
   !=====
-  integer                 :: istate, jstate, nstate
+  integer                 :: istate, jstate, nstate, nstate_orth
   real(dp), allocatable    :: E_vec(:)
   real(dp), allocatable    :: vhxc_ao(:, :)
-  complex(dp), allocatable :: hamiltonian_x2c_guess(:, :)
+  complex(dp), allocatable :: hamiltonian_x2c_guess(:, :), hamiltonian_ortho(:, :), c_matrix_ortho(:, :)
   !=====
  
-  nstate=2*basis%nbf
+  nstate=2*basis%nbf                      ! AO^L spin-orbitals
+  nstate_orth=SIZE(x_matrix_rel, DIM=2)   ! canonical spin-orbitals, nstate_orth <= nstate
 
   ! init_hamiltonian ( = CORE is alredy in c_matrix_rel )
   if( TRIM(init_hamiltonian) == 'GUESS' ) then
-    allocate(vhxc_ao(basis%nbf, basis%nbf), hamiltonian_x2c_guess(nstate, nstate), E_vec(nstate))
+    allocate(vhxc_ao(basis%nbf, basis%nbf), hamiltonian_x2c_guess(nstate, nstate), E_vec(nstate_orth))
+    allocate(hamiltonian_ortho(nstate_orth, nstate_orth), c_matrix_ortho(nstate_orth, nstate_orth))
     hamiltonian_x2c_guess=COMPLEX_ZERO
     call dft_approximate_vhxc(basis, vhxc_ao)
     do istate=1, nstate/2
@@ -2466,10 +2468,10 @@ subroutine init_c_matrix_x2c(basis, c_matrix_rel, x_matrix_rel, hamiltonian_kin_
       end do
     end do
     hamiltonian_x2c_guess=hamiltonian_x2c_guess+hamiltonian_kin_nuc_rel
-    hamiltonian_x2c_guess=MATMUL(TRANSPOSE(CONJG(x_matrix_rel)), MATMUL(hamiltonian_x2c_guess, x_matrix_rel))
-    call diagonalize(' ', hamiltonian_x2c_guess, E_vec, c_matrix_rel)
-    c_matrix_rel=MATMUL(x_matrix_rel, c_matrix_rel)
-    deallocate(vhxc_ao, hamiltonian_x2c_guess, E_vec)
+    hamiltonian_ortho=MATMUL(TRANSPOSE(CONJG(x_matrix_rel)), MATMUL(hamiltonian_x2c_guess, x_matrix_rel))
+    call diagonalize(' ', hamiltonian_ortho, E_vec, c_matrix_ortho)
+    c_matrix_rel=MATMUL(x_matrix_rel, c_matrix_ortho)
+    deallocate(vhxc_ao, hamiltonian_x2c_guess, hamiltonian_ortho, c_matrix_ortho, E_vec)
   end if
 
 end subroutine init_c_matrix_x2c

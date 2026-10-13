@@ -78,7 +78,7 @@ program molgw
   type(energy_contributions) :: en_gks, en_mbpt, en_noft
   integer                  :: restart_type
   integer                  :: nstate, nocc
-  integer                  :: istep, istring
+  integer                  :: istep
   logical                  :: is_restart, is_big_restart, is_basis_restart
   logical                  :: restart_tddft_is_correct = .TRUE.
   logical                  :: scf_has_converged
@@ -99,9 +99,7 @@ program molgw
   complex(dp), allocatable :: x_matrix_rel(:, :)
   complex(dp), allocatable :: c_matrix_rel(:, :)
   complex(dp), allocatable :: hamiltonian_kin_nuc_rel(:, :)
-  character(len=100)       :: basis_name_1
   character(len=200)       :: file_name
-  character(len=100), allocatable :: basis_name_nrel(:)
   !=====
 
   !
@@ -168,42 +166,19 @@ program molgw
 
 
     if( x2c_ ) then
-      !
-      ! Build up the basis set
-      !
-      write(stdout, *) 'Setting up the L + S basis set for wavefunctions'
-      call init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type, &
-                          even_tempered_alpha, even_tempered_beta, even_tempered_n_list, basis)
-
       ! Relativistic Hcore = Kinetic + electron-Vext. Build H^X2C and diag. to get the spinors
-      !  sets nstate=2*basis%nbf for X2C
-      !  sets nstate=4*basis%nbf for 4C
-      call relativistic_init(basis, x2c_, electrons, nstate, c_matrix_rel, s_matrix_rel, x_matrix_rel, &
+      !  sets nstate=2*(canonical large comp. functions) for X2C
+      !  sets nstate=4*(canonical large comp. functions) for 4C
+      call relativistic_init(x2c_, electrons, nstate, c_matrix_rel, s_matrix_rel, x_matrix_rel, &
       & hamiltonian_kin_nuc_rel, energy_rel)
-      allocate(basis_name_nrel(ncenter_basis))
-
-      basis_name_1 = trim(basis_name(1))
-      istring = INDEX(basis_name_1, '_rel')
-      basis_name_nrel(:)= basis_name_1(1:istring-1)
-
-      call destroy_basis_set(basis) ! Remove _rel from the basis name (use only Large component basis)
-
-      !
-      ! Build up the basis set
-      !
-      write(stdout, *) 'Setting up the L basis set for wavefunctions'
-      call init_basis_set(basis_path, basis_name_nrel, ecp_basis_name, gaussian_type, &
-         & even_tempered_alpha, even_tempered_beta, even_tempered_n_list, basis)
-      deallocate(basis_name_nrel)
-
-    else
-      !
-      ! Build up the basis set
-      !
-      write(stdout, *) 'Setting up the basis set for wavefunctions'
-      call init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type, &
-                          even_tempered_alpha, even_tempered_beta, even_tempered_n_list, basis)
     end if
+
+    !
+    ! Build up the basis set
+    !
+    write(stdout, *) 'Setting up the basis set for wavefunctions'
+    call init_basis_set(basis_path, basis_name, ecp_basis_name, gaussian_type, &
+                        even_tempered_alpha, even_tempered_beta, even_tempered_n_list, basis)
 
 
     !
@@ -265,17 +240,7 @@ program molgw
     ! A crucial parameter is defined here: nstate
     call setup_x_matrix(min_overlap, s_matrix, nstate, x_matrix)
 
-    !
-    ! Checking (C^x2c)^dagger S C^x2c =? I and overwrite s_matrix_rel, x_matrix_rel,
-    ! c_matrix_rel and hamiltonian_kin_nuc_rel if the deviation from I is too large
-    !
-    if( x2c_ ) then
-      if( TRIM(check_CdSC_x2c) == 'yes' ) then
-        call check_CdaggerSC_I(basis, electrons, c_matrix_rel, s_matrix_rel, x_matrix_rel, energy_rel, &
-        &  hamiltonian_kin_nuc_rel, s_matrix, x_matrix)
-      end if
-      deallocate(energy_rel)
-    end if
+    if( x2c_ ) deallocate(energy_rel)
 
     allocate(occupation(nstate, nspin))
     allocate(energy(nstate, nspin))

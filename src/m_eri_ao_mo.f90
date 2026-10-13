@@ -990,11 +990,12 @@ subroutine calculate_eri_x2c(c_matrix_rel, nstate, nstate_min, nstate_max, mstat
   !=====
 
   nstate_min_ = 1; nstate_max_ = nstate; mstate_min_ = 1; mstate_max_ = nstate;
-  nbf = nstate / 2
+  ! nbf is the number of AO^L (the rows of c_matrix_rel / 2), nstate can be smaller (canonical large component)
+  nbf = SIZE(c_matrix_rel, DIM=1) / 2
   if(PRESENT(nstate_min)) nstate_min_ = nstate_min
   if(PRESENT(nstate_max)) nstate_max_ = nstate_max
   if(PRESENT(mstate_min)) mstate_min_ = mstate_min
-  if(PRESENT(mstate_min)) mstate_max_ = mstate_max
+  if(PRESENT(mstate_max)) mstate_max_ = mstate_max
   allocate(c_matrix_LaorLb(nbf, nstate, nspin))
 
   !
