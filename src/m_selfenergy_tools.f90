@@ -209,6 +209,9 @@ subroutine find_qp_energy_linearization(se, exchange_m_vxc, energy0, energy_qp_z
   integer  :: nstate
   integer  :: pstate, pspin
   real(dp) :: zz_p(nspin)
+  integer  :: iomega0
+  logical  :: out_of_grid
+  real(dp) :: tt, domega, sigma_e0, dsigma_e0, dsigma0, dsigma1
   !=====
 
   nstate = SIZE(exchange_m_vxc, DIM=1)
@@ -217,34 +220,50 @@ subroutine find_qp_energy_linearization(se, exchange_m_vxc, energy0, energy_qp_z
   energy_qp_z(:, :) = energy0(:, :)
 
   ! Then overwrite the interesting energy with the calculated GW one
+  out_of_grid = .FALSE.
   !$OMP PARALLEL
-  !$OMP DO PRIVATE(pspin, zz_p)
+  !$OMP DO PRIVATE(pspin, zz_p, iomega0, tt, domega, sigma_e0, dsigma_e0, dsigma0, dsigma1) REDUCTION(.OR.:out_of_grid)
   do pstate=nsemin, nsemax
 
-    if( se%nomega > 0 .AND. PRESENT(zz) ) then
-      zz_p(:) = REAL( se%sigma(1, pstate, :) - se%sigma(-1, pstate, :) , dp) / REAL( se%omega(1) - se%omega(-1) , dp)
-      zz_p(:) = 1.0_dp / ( 1.0_dp - zz_p(:) )
-      ! Constrain Z to be in [0:1] to avoid crazy values
-      ! Z falls out of [0:1] when a weak self-energy pole is very close to Eks.
-      ! Z out of [0:1] is an indicator for whether it happened or not.
+    if( se%nomega > 1 .AND. PRESENT(zz) ) then
+      ! Expand around E0: interpolate Sigma and dSigma/dw at E0 on the grid se%omega + se%energy0
+      ! (needed for Pade where the grid is centered on E_Fermi and se%energy0 = 0)
+      domega = REAL( se%omega(1) - se%omega(0), dp )
       do pspin=1, nspin
-        zz_p(pspin) = MIN( MAX(zz_p(pspin), 0.0_dp) , 1.0_dp )
-      end do
+        tt = ( energy0(pstate, pspin) - se%energy0(pstate, pspin) - REAL(se%omega(0), dp) ) / domega
+        iomega0 = FLOOR(tt + 1.0e-10_dp)
+        if( iomega0 < -se%nomega+1 .OR. iomega0 > se%nomega-2 ) then
+          out_of_grid = .TRUE.
+          iomega0 = MIN( MAX(iomega0, -se%nomega+1), se%nomega-2 )
+        end if
+        tt = tt - iomega0
+        sigma_e0  = (1.0_dp - tt) * REAL(se%sigma(iomega0, pstate, pspin), dp) &
+                   +          tt  * REAL(se%sigma(iomega0+1, pstate, pspin), dp)
+        dsigma0 = REAL( se%sigma(iomega0+1, pstate, pspin) - se%sigma(iomega0-1, pstate, pspin), dp ) / ( 2.0_dp * domega )
+        dsigma1 = REAL( se%sigma(iomega0+2, pstate, pspin) - se%sigma(iomega0, pstate, pspin), dp )   / ( 2.0_dp * domega )
+        dsigma_e0 = (1.0_dp - tt) * dsigma0 + tt * dsigma1
 
-      zz(pstate, :)          = zz_p(:)
-      energy_qp_z(pstate, :) = se%energy0(pstate, :)  &
-             + zz_p(:) * ( energy0(pstate, :) - se%energy0(pstate, :)  &
-                            + REAL(se%sigma(0, pstate, :), dp) + exchange_m_vxc(pstate, :) )
+        zz_p(pspin) = 1.0_dp / ( 1.0_dp - dsigma_e0 )
+        ! Constrain Z to be in [0:1] to avoid crazy values
+        ! Z falls out of [0:1] when a weak self-energy pole is very close to Eks.
+        zz_p(pspin) = MIN( MAX(zz_p(pspin), 0.0_dp) , 1.0_dp )
+
+        energy_qp_z(pstate, pspin) = energy0(pstate, pspin) + zz_p(pspin) * ( sigma_e0 + exchange_m_vxc(pstate, pspin) )
+      end do
+      zz(pstate, :) = zz_p(:)
 
     else
 
       energy_qp_z(pstate, :) = energy0(pstate, :) + REAL(se%sigma(0, pstate, :), dp) + exchange_m_vxc(pstate, :)
+      if( PRESENT(zz) ) zz(pstate, :) = 1.0_dp
 
     end if
 
   end do
   !$OMP END DO
   !$OMP END PARALLEL
+
+  if( out_of_grid ) call issue_warning('find_qp_energy_linearization: E0 outside the self-energy grid, increase nomega_sigma')
 
 end subroutine find_qp_energy_linearization
 
