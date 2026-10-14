@@ -1861,6 +1861,76 @@ end subroutine setup_nabla_ao
 
 
 !=========================================================================
+! < sigma.p i | V_nuc | sigma.p j > for a CARTESIAN basis, with V_nuc = - sum_C Z_C / |r-C|
+! Components 1:3 are the real vector of the spin-orbit part, component 4 is the scalar part pV.p
+! (libcint ordering, to be combined as W_4 + i s sigma.W_(1:3) with the sign s fixed by the caller)
+subroutine setup_spnucsp_cart(basis, spnucsp_ao)
+  type(basis_set), intent(in)         :: basis
+  real(dp), allocatable, intent(out)  :: spnucsp_ao(:, :, :)
+  !=====
+  integer              :: ishell, jshell
+  integer              :: ibf1, ibf2, jbf1, jbf2
+  integer              :: li, lj, ni_cart, nj_cart, ii, jj, icomp, icenter
+  real(dp)             :: norm_ij
+#if defined(HAVE_LIBCINT)
+  integer(C_INT)       :: info
+  integer(C_INT)       :: shls(2)
+  real(C_DOUBLE), allocatable :: array_cart(:), array_cart_C(:)
+  real(C_DOUBLE), allocatable :: env_local(:)
+#endif
+  !=====
+
+#if defined(HAVE_LIBCINT)
+  write(stdout, '(/,a)') ' Setup sigma.p V sigma.p matrices (LIBCINT)'
+  if( basis%gaussian_type /= 'CART' ) call die('setup_spnucsp_cart: only for cartesian gaussians')
+
+  allocate(spnucsp_ao(basis%nbf, basis%nbf, 4))
+  spnucsp_ao(:, :, :) = 0.0_dp
+
+  allocate(env_local, SOURCE=basis%LIBCINT_env)
+  do jshell=1, basis%nshell
+    lj      = basis%shell(jshell)%am
+    nj_cart = number_basis_function_am('CART', lj)
+    jbf1    = basis%shell(jshell)%istart
+    jbf2    = basis%shell(jshell)%iend
+    do ishell=1, basis%nshell
+      li      = basis%shell(ishell)%am
+      ni_cart = number_basis_function_am('CART', li)
+      ibf1    = basis%shell(ishell)%istart
+      ibf2    = basis%shell(ishell)%iend
+
+      allocate(array_cart(ni_cart*nj_cart*4), array_cart_C(ni_cart*nj_cart*4))
+      array_cart(:) = 0.0_dp
+      do icenter=1, ncenter_nuclei
+        call set_rinv_origin_libcint(xatom(:, icenter), env_local)
+        shls(1) = ishell-1  ! C convention starts with 0: bra
+        shls(2) = jshell-1  ! ket
+        info = cint1e_sprinvsp_cart(array_cart_C, shls, basis%LIBCINT_atm, basis%LIBCINT_natm, &
+                                    basis%LIBCINT_bas, basis%LIBCINT_nbas, env_local)
+        array_cart(:) = array_cart(:) - zvalence(icenter) * array_cart_C(:)
+      end do
+
+      ! libcint order: (i, j, component) with i the fastest index
+      do icomp=1, 4
+        do jj=1, nj_cart
+          do ii=1, ni_cart
+            norm_ij = cart_to_pure_norm(li, CARTG)%matrix(ii, ii) * cart_to_pure_norm(lj, CARTG)%matrix(jj, jj)
+            spnucsp_ao(ibf1+ii-1, jbf1+jj-1, icomp) = array_cart(ii + ni_cart*(jj-1) + ni_cart*nj_cart*(icomp-1)) * norm_ij
+          end do
+        end do
+      end do
+      deallocate(array_cart, array_cart_C)
+    end do
+  end do
+  deallocate(env_local)
+#else
+  call die("setup_spnucsp_cart: only available with LIBCINT")
+#endif
+
+end subroutine setup_spnucsp_cart
+
+
+!=========================================================================
 subroutine calculate_gos_ao_mb(basis, gos_ao)
   type(basis_set), intent(in)          :: basis
   complex(dp), allocatable, intent(out) :: gos_ao(:, :)

@@ -950,8 +950,9 @@ subroutine read_inputfile_namelist()
     if( .NOT. move_nuclei == 'no' ) then
       call die("X2C calculations only implemented for move_nuclei=no")
     end if
-    if( gaussian_type/= 'CART' ) then
-      call die("X2C calculations require cartesian gaussian_type")
+    if( gaussian_type /= 'PURE' ) then
+      call issue_warning("X2C calculations are always done with spherical (PURE) gaussians: setting gaussian_type=PURE")
+      gaussian_type = 'PURE'
     end if
 
   end if
@@ -1056,6 +1057,9 @@ subroutine read_inputfile_namelist()
 
   spin_fact = REAL(-nspin+3, dp)
   electrons = SUM(zvalence(:)) - charge
+  if( x2c_ .AND. MODULO(NINT(electrons), 2) /= 0 ) then
+    call die("X2C calculations require an even number of electrons (Kramers-restricted closed-shell determinant)")
+  end if
 
   ! Echo the interpreted input variables
   call summary_input()

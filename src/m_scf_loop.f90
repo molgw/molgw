@@ -774,16 +774,16 @@ subroutine scf_loop_x2c(basis, &
   type(energy_contributions), intent(inout) :: en_gks
   logical, intent(out)                   :: scf_has_converged
   !=====
-  integer                 :: nstate
+  integer                 :: nstate, nstate_orth
   logical                 :: is_x2c, stopfile_found
   integer                 :: iscf, istate, jstate, jbf, nelectrons
   real(dp)                :: rms
   real(dp), allocatable    :: s_eigval(:)
   real(dp), allocatable    :: energy_vec(:)
-  real(dp), allocatable    :: inv_x_matrix(:, :), matrix_tmp(:, :)
+  real(dp), allocatable    :: inv_x_matrix(:, :), matrix_tmp(:, :), v_nat(:, :)
   real(dp), allocatable    :: p_matrix_real(:, :)
   complex(dp), allocatable :: occ_matrix_rel(:, :)
-  complex(dp), allocatable :: hamiltonian_x2c(:, :)
+  complex(dp), allocatable :: hamiltonian_x2c(:, :), hamiltonian_ortho(:, :), c_matrix_ortho(:, :)
   complex(dp), allocatable :: p_matrix_rel(:, :), p_matrix_rel_old(:, :)  
   complex(dp), allocatable :: hamiltonian_Vhxc(:, :, :)
   complex(dp), allocatable :: hamiltonian_Vhxc2(:, :, :)
@@ -797,13 +797,14 @@ subroutine scf_loop_x2c(basis, &
 
   is_x2c = .TRUE.
   rms = 1000.0
-  nstate = 2 * basis%nbf ! = 2 basis%nbf
+  nstate = 2 * basis%nbf              ! AO^L spin-orbitals
+  nstate_orth = SIZE(x_matrix, DIM=2) ! canonical (linearly independent) spin-orbitals, nstate_orth <= nstate
   nelectrons = NINT(SUM(occupation(:, 1)) + SUM(occupation(:, 2)))
-  if(nelectrons > basis%nbf) call die("In X2C the number of electrons cannot be > the num. of basis functions")
+  if(nelectrons > nstate_orth/2) call die("In X2C the number of electrons cannot be > the num. of canonical large functions")
   occupation = 0.0_dp
   occupation(1:nelectrons, 1) = 1.0_dp
   occupation(1:nelectrons, 2) = 1.0_dp
-  allocate(occ_matrix_rel(nstate, nstate))
+  allocate(occ_matrix_rel(nstate_orth, nstate_orth))
   occ_matrix_rel=COMPLEX_ZERO
   do istate=1, nelectrons
     occ_matrix_rel(istate, istate) = 1.0_dp
@@ -816,12 +817,14 @@ subroutine scf_loop_x2c(basis, &
   if(calc_type%need_exchange .OR. calc_type%need_exchange_lr) then
     call clean_allocate('Hxc operator VHxc2', hamiltonian_Vhxc2, basis%nbf, basis%nbf, nspin)
   end if
-  call clean_allocate('Coefs. La or Lb C', c_matrix_LaorLb, basis%nbf, basis%nbf, nspin)
+  call clean_allocate('Coefs. La or Lb C', c_matrix_LaorLb, basis%nbf, nstate_orth/2, nspin)
   call clean_allocate('Density matrix P_LaLb', p_matrix_LaorLb, basis%nbf, basis%nbf, nspin)
   call clean_allocate('Density matrix P', p_matrix_rel, nstate, nstate)
   call clean_allocate('Density matrix P(old)', p_matrix_rel_old, nstate, nstate)
   call clean_allocate('Hamiltonian history', ham_hist, nstate, nstate, 2)
-  call clean_allocate('State energies', energy_vec, nstate)
+  call clean_allocate('Total Hamiltonian H orthonormal', hamiltonian_ortho, nstate_orth, nstate_orth)
+  call clean_allocate('C matrix orthonormal', c_matrix_ortho, nstate_orth, nstate_orth)
+  call clean_allocate('State energies', energy_vec, nstate_orth)
   ham_hist=COMPLEX_ZERO 
 
   !
@@ -946,26 +949,26 @@ subroutine scf_loop_x2c(basis, &
     !
     ! H' = X**T * H * X
     ! TODO: slow coding. Use BLAS-level 3 in the future
-    hamiltonian_x2c = MATMUL(TRANSPOSE(CONJG(x_matrix)), MATMUL(hamiltonian_x2c, x_matrix))
+    hamiltonian_ortho = MATMUL(TRANSPOSE(CONJG(x_matrix)), MATMUL(hamiltonian_x2c, x_matrix))
 
     !
     ! H' * C' = C' * E
-    call diagonalize(' ', hamiltonian_x2c, energy_vec, c_matrix_rel)
-    do istate=1, nstate/2
+    call diagonalize(' ', hamiltonian_ortho, energy_vec, c_matrix_ortho)
+    do istate=1, nstate_orth/2
       energy(istate, 1)=energy_vec(2*istate-1)
       energy(istate, 2)=energy_vec(2*istate)
     end do
 
     !
     ! C = X * C'
-    c_matrix_rel=MATMUL(x_matrix, c_matrix_rel)
+    c_matrix_rel=MATMUL(x_matrix, c_matrix_ortho)
 
     occupation=0.0_dp
     occupation(1:nelectrons/2, 1)=1.0_dp
     occupation(1:nelectrons/2, 2)=1.0_dp
     call dump_out_energy('=== Energies ===', occupation, energy, is_x2c=is_x2c)
 
-    call output_homolumo('gKS', occupation, energy, 1, basis%nbf)
+    call output_homolumo('gKS', occupation, energy, 1, nstate_orth/2)
     occupation=0.0_dp
     occupation(1:nelectrons, 1)=1.0_dp
     occupation(1:nelectrons, 2)=1.0_dp
@@ -1075,10 +1078,11 @@ subroutine scf_loop_x2c(basis, &
   allocate(matrix_tmp(nstate, nstate))     
   matrix_tmp=0.0_dp
   matrix_tmp=MATMUL(TRANSPOSE(inv_x_matrix), MATMUL(p_matrix_real, inv_x_matrix))
-  call diagonalize(' ', matrix_tmp, occupation(:, 1), c_matrix(:, :, 1))
-  !  C = S^-1/2 V
-  c_matrix(:, :, 1) = MATMUL(x_matrix_real, c_matrix(:, :, 1))
-  deallocate(matrix_tmp, s_eigval)
+  allocate(v_nat(nstate, nstate))
+  call diagonalize(' ', matrix_tmp, occupation(:, 1), v_nat)
+  !  C = S^-1/2 V   (nbf x nstate, nstate <= nbf)
+  c_matrix(:, :, 1) = MATMUL(x_matrix_real, v_nat)
+  deallocate(matrix_tmp, s_eigval, v_nat)
 
   !
   ! Cleanly deallocate the integral grid information
@@ -1098,6 +1102,8 @@ subroutine scf_loop_x2c(basis, &
   call clean_deallocate('Coefs. La or Lb C', c_matrix_LaorLb)
   call clean_deallocate('Hxc operator VHxc', hamiltonian_Vhxc)
   call clean_deallocate('Total Hamiltonian H', hamiltonian_x2c)
+  call clean_deallocate('Total Hamiltonian H orthonormal', hamiltonian_ortho)
+  call clean_deallocate('C matrix orthonormal', c_matrix_ortho)
   call clean_deallocate('Hamiltonian history', ham_hist)
   call clean_deallocate('State energies', energy_vec)
   if(calc_type%need_exchange .OR. calc_type%need_exchange_lr) then

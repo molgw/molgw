@@ -4,11 +4,10 @@
  nspin=2
  
  x2c='yes'
- approx_H_x2c='no'
 
- basis='cc-pVDZ_rel'
+ basis='cc-pVDZ'
  auxil_basis='PAUTO'
- gaussian_type='cart'
+ gaussian_type='pure'
 
  natom=2
 

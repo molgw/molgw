@@ -1,0 +1,15 @@
+&molgw
+ scf='hf'
+ tolscf=1.0e-8
+ nspin=2
+
+ x2c='yes'
+
+ basis='cc-pVDZ'
+ auxil_basis='PAUTO'
+ gaussian_type='pure'
+
+ natom=1
+
+/
+Ne   0. 0. 0.

@@ -1,0 +1,19 @@
+&molgw
+ scf='rsx-qidh'
+ tolscf=1.0e-8
+ nspin=2
+
+ x2c='yes'
+
+ basis='cc-pVDZ'
+ auxil_basis='PAUTO'
+ gaussian_type='pure'
+ min_overlap=0.6
+
+ natom=2
+
+ postscf='MP2'
+
+/
+He   0. 0. 0.
+He   0. 0. 1.7

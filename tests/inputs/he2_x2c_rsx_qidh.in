@@ -5,9 +5,9 @@
 
  x2c='yes'
 
- basis='cc-pVDZ_rel'
+ basis='cc-pVDZ'
  auxil_basis='PAUTO'
- gaussian_type='cart'
+ gaussian_type='pure'
 
  natom=2
 
