@@ -708,10 +708,10 @@ he2_x2c.in:
             reference: -10.4713708709
             tolerance: 1.0e-07
     -   XC Energy:
-            reference: -2.1191544672
+            reference: -2.1190533363
             tolerance: 1.0e-05
     -   SCF Total Energy:
-            reference: -5.7627223336
+            reference: -5.7622737517
             tolerance: 1.0e-05
 he2_x2c_hf.in:
     description: HF He2 atom cc-pVDZ relativistic X2C
@@ -721,24 +721,24 @@ he2_x2c_hf.in:
             reference: -10.4713708709
             tolerance: 1.0e-07
     -   gKS HOMO energy:
-            reference: -23.632190
+            reference: -23.629648
             tolerance: 0.0001
     -   gKS HOMO energy:
-            reference: -23.632190
+            reference: -23.629648
             tolerance: 0.0001
             column: 1
     -   gKS LUMO energy:
-            reference: 35.987235
+            reference: 35.988838
             tolerance: 0.0001
     -   gKS LUMO energy:
-            reference: 35.987235
+            reference: 35.988838
             tolerance: 0.0001
             column: 1
     -   Exchange Energy:
-            reference: -2.0650551135
+            reference: -2.0649481397
             tolerance: 1.0e-05
     -   SCF Total Energy:
-            reference: -5.7029108518
+            reference: -5.7024605667
             tolerance: 1.0e-05
 he2_x2c_hf_lindep.in:
     description: HF He2 atom cc-pVDZ relativistic X2C with linear dependencies removed from the large component (min_overlap)
@@ -748,10 +748,10 @@ he2_x2c_hf_lindep.in:
             reference: -10.1638729024
             tolerance: 1.0e-07
     -   gKS HOMO energy:
-            reference: -24.103970
+            reference: -24.100986
             tolerance: 0.0001
     -   gKS HOMO energy:
-            reference: -24.103970
+            reference: -24.100986
             tolerance: 0.0001
             column: 1
     -   gKS LUMO energy:
@@ -765,7 +765,7 @@ he2_x2c_hf_lindep.in:
             reference: -1.9826496869
             tolerance: 1.0e-05
     -   SCF Total Energy:
-            reference: -5.6778722965
+            reference: -5.677508095
             tolerance: 1.0e-05
 he2_x2c_rsx_qidh_lindep.in:
     description: RSX-QIDH He2 atom cc-pVDZ relativistic X2C and MP2 with linear dependencies removed from the large component
@@ -775,7 +775,7 @@ he2_x2c_rsx_qidh_lindep.in:
             reference: -10.1638729024
             tolerance: 1.0e-07
     -   gKS HOMO energy:
-            reference: -22.723899
+            reference: -22.720916
             tolerance: 0.0001
     -   gKS LUMO energy:
             reference: 61.980488
@@ -787,10 +787,10 @@ he2_x2c_rsx_qidh_lindep.in:
             reference: -0.4631664564
             tolerance: 1.0e-05
     -   SCF Total Energy:
-            reference: -5.7097045331
+            reference: -5.7093403672
             tolerance: 1.0e-05
     -   MP2 Total Energy:
-            reference: -5.7197857155
+            reference: -5.7194218699
             tolerance: 1.0e-05
 ne_x2c_hf.in:
     description: HF Ne atom cc-pVDZ relativistic X2C with a d shell (spherical large component)
@@ -800,24 +800,24 @@ ne_x2c_hf.in:
             reference: -195.2014168279
             tolerance: 1.0e-07
     -   gKS HOMO energy:
-            reference: -22.598444
+            reference: -22.588718
             tolerance: 0.0001
     -   gKS HOMO energy:
-            reference: -22.598444
+            reference: -22.588718
             tolerance: 0.0001
             column: 1
     -   gKS LUMO energy:
-            reference: 45.924395
+            reference: 45.937741
             tolerance: 0.0001
     -   gKS LUMO energy:
-            reference: 45.924395
+            reference: 45.937741
             tolerance: 0.0001
             column: 1
     -   Exchange Energy:
-            reference: -12.1336658887
+            reference: -12.1309442475
             tolerance: 1.0e-05
     -   SCF Total Energy:
-            reference: -128.7702056968
+            reference: -128.6332377083
             tolerance: 1.0e-05
 he2_x2c_cam_b3lyp.in:
     description: CAM-B3LYP He2 atom cc-pVDZ relativistic X2C
@@ -827,27 +827,27 @@ he2_x2c_cam_b3lyp.in:
             reference: -10.4713708709
             tolerance: 1.0e-07
     -   gKS HOMO energy:
-            reference: -18.456242
+            reference: -18.454088
             tolerance: 0.0001
     -   gKS HOMO energy:
-            reference: -18.456242
+            reference: -18.454088
             tolerance: 0.0001
             column: 1
     -   gKS LUMO energy:
-            reference: 30.289176
+            reference: 30.29053
             tolerance: 0.0001
     -   gKS LUMO energy:
-            reference: 30.289176
+            reference: 30.29053
             tolerance: 0.0001
             column: 1
     -   Exchange Energy:
-            reference: -0.7085804493
+            reference: -0.7085588817
             tolerance: 1.0e-05
     -   XC Energy:
-            reference: -1.4273036520
+            reference: -1.4272244552
             tolerance: 1.0e-05
     -   SCF Total Energy:
-            reference: -5.7807637862
+            reference: -5.780315562
             tolerance: 1.0e-05
 he2_x2c_rsx_qidh.in:
     description: RSX-QIDH He2 atom cc-pVDZ relativistic X2C
@@ -857,30 +857,30 @@ he2_x2c_rsx_qidh.in:
             reference: -10.4713708709
             tolerance: 1.0e-07
     -   gKS HOMO energy:
-            reference: -22.176620
+            reference: -22.174242
             tolerance: 0.0001
     -   gKS HOMO energy:
-            reference: -22.176620
+            reference: -22.174242
             tolerance: 0.0001
             column: 1
     -   gKS LUMO energy:
-            reference: 34.283223
+            reference: 34.284701
             tolerance: 0.0001
     -   gKS LUMO energy:
-            reference: 34.283223
+            reference: 34.284701
             tolerance: 0.0001
             column: 1
     -   Exchange Energy:
-            reference: -1.6047164070
+            reference: -1.604641759
             tolerance: 1.0e-05
     -   XC Energy:
-            reference: -0.4829486246
+            reference: -0.4829186594
             tolerance: 1.0e-05
     -   SCF Total Energy:
-            reference: -5.7318413189
+            reference: -5.7313928799
             tolerance: 1.0e-05
     -   MP2 Total Energy:
-            reference: -5.7499805214
+            reference: -5.7495327466
             tolerance: 1.0e-05
 he_tdpbe0.in:
     description: TDDFT calculation of He atom with PBE0 without RI

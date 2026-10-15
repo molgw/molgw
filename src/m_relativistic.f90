@@ -235,13 +235,15 @@ subroutine relativistic_init(is_x2c, electrons_in, nstate, c_matrix, s_matrix, x
    if( max_dev > 1.0e-8_dp ) call issue_warning('Relativistic: H^X2C does not preserve time-reversal symmetry')
    deallocate(tmp_matrix, r_mat, s_full, x_full, h_rkb)
 
-   !! Exact X2C spectrum with the Lambda^-1/2 renormalization: it must reproduce the (+) energy states
-   write(stdout, '(a)') ' Diagonalizing the H^X2C renormalized with Lambda^-1/2'
+   !! Renormalization R^dagger Lambda R = S_LL = 1 (canonical basis), R = Lambda^-1/2: H^FW = R^dagger H^X2C R
+   !! Its spectrum must reproduce the (+) energy states
+   write(stdout, '(a)') ' Renormalizing H^X2C with Lambda^-1/2 and diagonalizing H^FW'
    call hermitian_inverse_sqrt(lambda_mat, lambda_inv_sqrt)
    deallocate(lambda_mat)
    allocate(h_x2c_ortho(nstate_c2, nstate_c2), u_mat(nstate_c2, nstate_c2), W_x2c(nstate_c2))
    h_x2c_ortho=matmul(conjg(transpose(lambda_inv_sqrt)), matmul(h_x2c, lambda_inv_sqrt))
    call diagonalize(' ', h_x2c_ortho, W_x2c, u_mat)
+   h_x2c(:, :)=h_x2c_ortho(:, :)
    deallocate(h_x2c_ortho, u_mat, lambda_inv_sqrt)
    max_dev=maxval(abs(W_x2c(:)-W(nstate_c2+1:nstate_rkb)))
    write(stdout, '(a,es12.4)') ' Max |E(X2C) - E(RKB, +)| ', max_dev
@@ -251,7 +253,7 @@ subroutine relativistic_init(is_x2c, electrons_in, nstate, c_matrix, s_matrix, x
    deallocate(W_x2c, W)
 
    !! Back to the AO^L representation: H_AO = S T H^X2C T^dagger S, so that T^dagger H_AO T = H^X2C
-   write(stdout, '(a)') ' Transforming H^X2C to the AO^L basis'
+   write(stdout, '(a)') ' Transforming H^FW to the AO^L basis'
    allocate(s_t_large(2*nbf_pure, nstate_c2))
    s_t_large=matmul(s_nrel, t_pure)
    call clean_allocate('H_rel in RKB', H_rel_rkb_mat, 2*nbf_pure, 2*nbf_pure)
@@ -262,12 +264,12 @@ subroutine relativistic_init(is_x2c, electrons_in, nstate, c_matrix, s_matrix, x
    x_matrix(:, :)=t_pure(:, :)
    s_matrix(:, :)=s_nrel(:, :)
 
-   !! Initial guess: H^X2C orthonormalized with the large component only (T^dagger S T = I)
+   !! Initial guess: H^FW orthonormalized with the large component only (T^dagger S T = I)
    allocate(u_mat(nstate_c2, nstate_c2), W_x2c(nstate_c2))
    call diagonalize(' ', h_x2c, W_x2c, u_mat)
    call clean_allocate('Full RKB wavefunctions C', c_matrix, 2*nbf_pure, nstate_c2)
    c_matrix=matmul(t_pure, u_mat)
-   write(stdout, '(a)') ' Energies of the H^X2C orthonormalized with the large component only'
+   write(stdout, '(a)') ' Energies of the H^FW orthonormalized with the large component only'
    call print_spinor_energies(W_x2c, ielectrons/2)
    deallocate(u_mat, W_x2c, h_x2c)
 
