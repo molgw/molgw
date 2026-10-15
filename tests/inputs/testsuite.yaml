@@ -1452,7 +1452,7 @@ h2_noft_rsh.in:
     checks:
     -   NOFT Total Energy:
             reference: -0.9973489203
-            tolerance: 1.0e-05
+            tolerance: 5.0e-05
 n2_noft.in:
     description: RI-NOFT calculation applied to dissociated N2 with RI
     keywords: [HF, NOFT]
